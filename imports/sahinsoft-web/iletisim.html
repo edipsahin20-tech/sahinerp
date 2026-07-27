@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İletişim & Destek — ŞahinSoft Bilgi Teknolojileri</title>
+<meta name="description" content="ŞahinSoft ile iletişime geçin — POS, barkod ve kurumsal yazılım çözümleri hakkında bilgi almak, teklif istemek veya teknik destek talep etmek için bize ulaşın.">
+<link rel="canonical" href="https://www.sahinbilisim.com.tr/iletisim.html">
+<meta property="og:title" content="İletişim & Destek — ŞahinSoft Bilgi Teknolojileri">
+<meta property="og:description" content="ŞahinSoft ile iletişime geçin — POS, barkod ve kurumsal yazılım çözümleri hakkında bilgi almak, teklif istemek veya teknik destek talep etmek için bize ulaşın.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.sahinbilisim.com.tr/iletisim.html">
+<meta property="og:image" content="https://www.sahinbilisim.com.tr/assets/images/dinosoft_pos_clean_wide.jpg">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="İletişim & Destek — ŞahinSoft Bilgi Teknolojileri">
+<meta name="twitter:description" content="ŞahinSoft ile iletişime geçin — POS, barkod ve kurumsal yazılım çözümleri hakkında bilgi almak, teklif istemek veya teknik destek talep etmek için bize ulaşın.">
+<meta name="twitter:image" content="https://www.sahinbilisim.com.tr/assets/images/dinosoft_pos_clean_wide.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0c10;
+    --ink-2: #12161f;
+    --ink-card: #0d1117;
+    --fg: #f0f4f8;
+    --dim: #94a3b8;
+    --gold: #d4af37;
+    --gold-hover: #c59b27;
+    --line: rgba(212, 175, 55, 0.25);
+    --font-title: 'Sora', sans-serif;
+    --font-body: 'Manrope', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+  body { background:var(--ink); color:var(--fg); font-family:var(--font-body); line-height:1.6; overflow-x:hidden; }
+
+  /* Preloader Animations */
+  @keyframes spinRight { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes spinLeft { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+  @keyframes flashGlow { 0% { opacity: 0.4; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1.1); } }
+  @keyframes logoPulse { 0% { transform: scale(0.96); filter: drop-shadow(0 0 15px rgba(212,175,55,0.6)); } 100% { transform: scale(1.04); filter: drop-shadow(0 0 35px rgba(212,175,55,1)); } }
+
+  /* Top Info Bar & Header Navigation */
+  .top-info-bar { background: #07090d; border-bottom: 1px solid rgba(212,175,55,0.2); padding: 8px 24px; color: #94a3b8; font-size: 13px; font-family: 'Manrope', sans-serif; position: relative; z-index: 1001; }
+  header { position: sticky; top:0; background:rgba(10,12,16,0.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); z-index:1000; }
+  nav.main-nav { max-width: 1400px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; margin: 0; padding: 0; }
+  .nav-links a { color: #f0f4f8; text-decoration: none; font-size: 14.5px; font-weight: 600; transition: color 0.2s ease; }
+  .nav-links a:hover { color: #d4af37; }
+
+  .has-dd { position: relative; cursor: pointer; padding: 12px 0; }
+  .has-dd:hover .dropdown { display: block !important; opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; }
+  .dropdown { display: none; opacity: 0; visibility: hidden; position: absolute; top: 100%; left: -10px; background: #0b0e14 !important; border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; min-width: 260px; padding: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 99999; transition: all 0.2s ease; margin-top: 0; }
+  .dropdown a { display: block; padding: 10px 14px; border-radius: 8px; color: #f0f4f8 !important; font-size: 14px; font-weight: 600; text-decoration: none; transition: all 0.2s ease; margin-bottom: 2px; }
+  .dropdown a:hover { background: rgba(212,175,55,0.18); color: #d4af37 !important; transform: translateX(4px); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 8px; font-weight: 700; text-decoration: none; transition: all 0.25s; cursor: pointer; font-size: 13.5px; }
+  .btn-gold { background: #d4af37; color: #000; border: 1px solid #d4af37; }
+  .btn-gold:hover { background: #c59b27; transform: translateY(-2px); }
+
+  /* Hero Banner */
+  .contact-hero {
+    background: linear-gradient(180deg, rgba(18, 22, 31, 0.95) 0%, rgba(10, 12, 16, 0.98) 100%);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    padding: 70px 20px 50px 20px;
+    text-align: center;
+  }
+  
+  /* Cards & Form Section */
+  .contact-grid {
+    max-width: 1280px;
+    margin: 50px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 40px;
+  }
+
+  @media (max-width: 992px) {
+    .contact-grid { grid-template-columns: 1fr; }
+  }
+
+  .info-card {
+    background: #12161f;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 20px;
+    padding: 36px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  .info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+  .info-icon {
+    width: 52px;
+    height: 52px;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #d4af37;
+    flex-shrink: 0;
+  }
+  .info-text h4 {
+    font-family: 'Sora', sans-serif;
+    font-size: 17px;
+    color: #ffffff;
+    margin-bottom: 4px;
+  }
+  .info-text p, .info-text a {
+    color: #94a3b8;
+    font-size: 14.5px;
+    text-decoration: none;
+    line-height: 1.5;
+  }
+  .info-text a:hover { color: #d4af37; }
+
+  /* Form */
+  .form-card {
+    background: #12161f;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 20px;
+    padding: 36px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+  }
+  .form-control {
+    width: 100%;
+    background: #0a0c10;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #ffffff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.25s ease;
+  }
+  .form-control:focus {
+    border-color: #d4af37;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+  }
+
+  /* Map Container */
+  .map-section {
+    max-width: 1280px;
+    margin: 20px auto 60px auto;
+    padding: 0 20px;
+  }
+  .map-wrapper {
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  }
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE SYSTEM (ŞahinSoft Professional Mobile Optimization)
+   ========================================================================== */
+
+/* Mobile Hamburger Toggle Button */
+.mobile-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--line, rgba(212, 175, 55, 0.4));
+  color: var(--gold, #d4af37);
+  font-size: 24px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.mobile-toggle:hover, .mobile-toggle:focus {
+  background: rgba(212, 175, 55, 0.15);
+  color: #fff;
+}
+
+/* Tablet & Mobile Adjustments (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  nav.main-nav, nav {
+    padding: 14px 18px !important;
+    position: relative;
+  }
+
+  .nav-links {
+    display: none !important;
+    flex-direction: column !important;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: rgba(10, 12, 16, 0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    border-bottom: 2px solid var(--gold, #d4af37) !important;
+    padding: 20px 24px !important;
+    gap: 16px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9) !important;
+    z-index: 999999 !important;
+  }
+
+  .nav-links.mobile-open {
+    display: flex !important;
+  }
+
+  .nav-links > li {
+    width: 100%;
+  }
+
+  .nav-links a {
+    font-size: 16px !important;
+    padding: 10px 0 !important;
+    display: block;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Dropdown behavior on mobile */
+  .has-dd {
+    padding: 0 !important;
+  }
+  .has-dd > a::after {
+    content: " ▾";
+    font-size: 12px;
+    color: var(--gold, #d4af37);
+  }
+  .dropdown {
+    position: static !important;
+    display: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: rgba(18, 22, 31, 0.9) !important;
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+    margin: 8px 0 12px 0 !important;
+    padding: 10px 14px !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    min-width: 100% !important;
+  }
+  .has-dd.open .dropdown {
+    display: block !important;
+  }
+  .dropdown a {
+    font-size: 14px !important;
+    padding: 8px 10px !important;
+    border-bottom: none !important;
+  }
+
+  /* Layout grids on mobile */
+  .thumb-grid, .sector-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .hw-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* Section Title Spacing */
+  .section-heading, h1, h2 {
+    font-size: 26px !important;
+    line-height: 1.3 !important;
+  }
+  .section-sub, p {
+    font-size: 14.5px !important;
+  }
+}
+
+/* Smartphone Adjustments (768px & below) */
+@media (max-width: 768px) {
+  .top-info-bar {
+    padding: 8px 12px !important;
+    font-size: 11.5px !important;
+  }
+  .top-info-bar div {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .logo {
+    font-size: 20px !important;
+    gap: 8px !important;
+  }
+  .logo img:not(.logo img) {
+    height: 36px !important;
+  }
+
+  /* Hero Section Stacking */
+  section[style*="display: flex"], section[style*="display:grid"], .hero-section {
+    flex-direction: column !important;
+    padding: 35px 16px !important;
+    gap: 24px !important;
+    text-align: center !important;
+  }
+
+  section div[style*="width: 50%"], section div[style*="flex: 1"], section div[style*="max-width"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Buttons on mobile */
+  .btn, a.btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+
+  /* Image containers */
+  div[style*="border-radius: 20px"], div[style*="border-radius: 24px"] {
+    min-height: auto !important;
+    max-height: none !important;
+  }
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Hardware cards padding */
+  .hw-card {
+    padding: 14px 10px !important;
+  }
+  .hw-img-wrap {
+    height: 100px !important;
+  }
+  .hw-img-wrap img:not(.logo img) {
+    max-height: 90px !important;
+  }
+}
+
+
+/* ==========================================================================
+   ŞAHİNSOFT ULTRA-PREMIUM MOBILE DESIGN SYSTEM (V4 Pro Mobile-First)
+   ========================================================================== */
+
+/* Custom Animated Mobile Hamburger Toggle */
+.mobile-toggle {
+  display: none;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(10, 12, 16, 0.8));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+  font-size: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.mobile-toggle:active {
+  transform: scale(0.92);
+}
+.mobile-toggle.active {
+  background: var(--gold, #d4af37);
+  color: #0a0c10;
+  border-color: #d4af37;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+}
+
+/* Tablet & Mobile Layout Adaptations (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex !important;
+  }
+
+  header.site-header, header {
+    background: rgba(10, 12, 16, 0.96) !important;
+    backdrop-filter: blur(18px) !important;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.3) !important;
+  }
+
+  nav.main-nav, nav {
+    padding: 12px 16px !important;
+    position: relative;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* Full Luxury Mobile Menu Overlay */
+  .nav-links {
+    display: none !important;
+    flex-direction: column !important;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(180deg, rgba(10, 12, 16, 0.98) 0%, rgba(14, 18, 26, 0.99) 100%) !important;
+    backdrop-filter: blur(25px) !important;
+    border-bottom: 3px solid #d4af37 !important;
+    padding: 16px 20px 24px !important;
+    gap: 8px !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.95) !important;
+    z-index: 999999 !important;
+    animation: fadeInDown 0.3s ease-out forwards;
+  }
+
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .nav-links.mobile-open {
+    display: flex !important;
+  }
+
+  .nav-links > li {
+    width: 100%;
+    list-style: none;
+  }
+
+  .nav-links > li > a {
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+    color: #f0f4f8 !important;
+    padding: 12px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    text-decoration: none !important;
+    transition: all 0.2s ease;
+  }
+
+  .nav-links > li > a:hover, .nav-links > li > a:active {
+    background: rgba(212, 175, 55, 0.15) !important;
+    border-color: rgba(212, 175, 55, 0.4) !important;
+    color: #d4af37 !important;
+  }
+
+  /* Mobile Dropdown Styling */
+  .has-dd {
+    padding: 0 !important;
+  }
+  .has-dd > a::after {
+    content: " ⊕";
+    font-size: 16px;
+    color: #d4af37;
+    transition: transform 0.3s ease;
+  }
+  .has-dd.open > a::after {
+    content: " ⊖";
+    color: #ff3b30;
+  }
+  .dropdown {
+    position: static !important;
+    display: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: rgba(8, 10, 14, 0.95) !important;
+    border: 1px solid rgba(212, 175, 55, 0.25) !important;
+    margin: 6px 0 10px 0 !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5) !important;
+    min-width: 100% !important;
+  }
+  .has-dd.open .dropdown {
+    display: block !important;
+  }
+  .dropdown a {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    padding: 10px 14px !important;
+    color: #cbd5e1 !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px;
+  }
+  .dropdown a::before {
+    content: "›";
+    color: #d4af37;
+    font-weight: 800;
+  }
+  .dropdown a:hover {
+    background: rgba(212, 175, 55, 0.18) !important;
+    color: #fff !important;
+  }
+
+  /* Grid Layouts on Mobile */
+  .thumb-grid, .sector-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .hw-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .thumb-card, .sector-card, .hw-card {
+    border-radius: 14px !important;
+    background: linear-gradient(145deg, #10141d, #080a0e) !important;
+  }
+}
+
+/* Smartphone Specific Adjustments (768px & below) */
+@media (max-width: 768px) {
+  .top-info-bar {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+    background: #050608 !important;
+  }
+  .top-info-bar div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 10px !important;
+  }
+
+  .logo {
+    font-size: 19px !important;
+    gap: 8px !important;
+  }
+  .logo img:not(.logo img) {
+    height: 34px !important;
+  }
+
+  /* Hero Section Stacking & Typography */
+  section[style*="display: flex"], section[style*="display:grid"], section[style*="display: flex;"], .hero-section {
+    flex-direction: column !important;
+    padding: 28px 14px !important;
+    gap: 20px !important;
+    text-align: center !important;
+  }
+
+  /* Responsive Fluid Typography */
+  h1, .hero-title {
+    font-size: clamp(22px, 6vw, 30px) !important;
+    line-height: 1.3 !important;
+    letter-spacing: -0.01em !important;
+  }
+  h2, .section-heading {
+    font-size: clamp(20px, 5.5vw, 26px) !important;
+    line-height: 1.3 !important;
+  }
+  p, .section-sub, .thumb-desc, .sector-desc {
+    font-size: 13.5px !important;
+    line-height: 1.55 !important;
+  }
+
+  /* Full Width Mobile Buttons */
+  .btn, a.btn, .btn-gold {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 13px 18px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Hero Cards & Image Fitting */
+  div[style*="border-radius: 20px"], div[style*="border-radius: 24px"], div[style*="border-radius: 16px"] {
+    width: 100% !important;
+    min-height: auto !important;
+    max-height: none !important;
+    border-radius: 14px !important;
+  }
+
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 12px;
+  }
+
+  .hw-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .hw-card {
+    padding: 12px 8px !important;
+  }
+  .hw-img-wrap {
+    height: 85px !important;
+  }
+  .hw-img-wrap img:not(.logo img) {
+    max-height: 75px !important;
+  }
+  .hw-title {
+    font-size: 12.5px !important;
+  }
+  .hw-badge {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+
+  footer {
+    padding: 40px 16px 24px !important;
+    font-size: 12.5px !important;
+  }
+}
+
+
+/* ==========================================================================
+   DINOSOFT-STYLE PERFECT MOBILE & PC RESPONSIVE SYSTEM
+   ========================================================================== */
+
+/* Mobile Header Hamburger Button (Dinosoft Square Style) */
+.mobile-toggle {
+  display: none;
+  background: var(--gold, #d4af37);
+  border: none;
+  color: #0a0c10;
+  font-size: 22px;
+  font-weight: bold;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+.mobile-toggle:active {
+  transform: scale(0.92);
+}
+
+/* Full Right-Side Slide-Over Mobile Menu Modal (Exact Dinosoft Pattern) */
+.mobile-menu-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 88%;
+  max-width: 360px;
+  height: 100vh;
+  background: rgba(10, 12, 16, 0.98);
+  backdrop-filter: blur(25px);
+  border-left: 2px solid var(--gold, #d4af37);
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.9);
+  z-index: 999999;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mobile-menu-modal.active {
+  display: flex !important;
+  transform: translateX(0) !important;
+}
+
+/* Backdrop for Mobile Menu */
+.mobile-menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 999998;
+}
+.mobile-menu-backdrop.active {
+  display: block !important;
+}
+
+/* Mobile Menu Header inside Drawer */
+.mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+.mobile-close-btn {
+  background: #ff3b30;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+}
+
+/* Mobile Menu Items (Dinosoft Clean White Card Buttons) */
+.mobile-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-nav-item > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-title, 'Sora', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.mobile-nav-item > a:hover, .mobile-nav-item > a:active {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: var(--gold, #d4af37);
+  color: var(--gold, #d4af37);
+}
+
+/* Mobile Submenu Accordion */
+.mobile-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 4px 12px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(212, 175, 55, 0.3);
+}
+.mobile-nav-item.open .mobile-submenu {
+  display: flex !important;
+}
+.mobile-submenu a {
+  padding: 10px 14px;
+  background: rgba(18, 22, 31, 0.8);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.mobile-submenu a:hover {
+  color: var(--gold, #d4af37);
+  background: rgba(212, 175, 55, 0.15);
+}
+
+/* Tablet & Mobile Breakpoints (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex !important;
+  }
+  .nav-links {
+    display: none !important;
+  }
+}
+
+/* Smartphone Specific Adjustments (768px & below) */
+@media (max-width: 768px) {
+  /* Hero Section Stacking Order: IMAGE ON TOP, TEXT ON BOTTOM (Exact Dinosoft Mobile Pattern) */
+  section[style*="display: flex"], section[style*="display:grid"], .hero-section {
+    display: flex !important;
+    flex-direction: column-reverse !important; /* Places Hero Image at top, Text below */
+    padding: 24px 16px !important;
+    gap: 20px !important;
+    text-align: center !important;
+  }
+
+  /* Force Hero Image Container to top */
+  .hero-section > div:last-child, section > div:last-child {
+    order: -1 !important;
+    width: 100% !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* Hero Content Area below Image */
+  .hero-section > div:first-child, section > div:first-child {
+    order: 1 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  /* Responsive Fluid Titles */
+  h1, .hero-title {
+    font-size: clamp(22px, 6vw, 28px) !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+  }
+  h2, .section-heading {
+    font-size: clamp(20px, 5.5vw, 25px) !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
+  }
+
+  /* Full Width CTA Button (Dinosoft Orange/Gold Style) */
+  .btn, a.btn, .btn-gold {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 14px 20px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+    margin-top: 12px !important;
+  }
+
+  /* Ticks Formatting under CTA Button */
+  div[style*="✓"], .hero-ticks {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    font-size: 13px !important;
+    margin-top: 16px !important;
+  }
+
+  /* Image fitting */
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 14px !important;
+  }
+}
+
+
+/* ==========================================================================
+   STRICT MOBILE AUTO-FIT & OVERFLOW-X PREVENTION (ŞahinSoft Mobile Auto-Fit)
+   ========================================================================== */
+html, body {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+img:not(.logo img), video, canvas, svg, iframe {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Smartphone Strict Viewport Boundary Locks */
+@media (max-width: 768px) {
+  header, nav, section, footer, div, main, article, container {
+    max-width: 100vw !important;
+  }
+
+  nav.main-nav, nav {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 12px 14px !important;
+  }
+
+  /* Full Screen Mobile Menu Fit - No Sideways Overflow */
+  .mobile-menu-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    right: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+  }
+
+  .mobile-menu-modal.active {
+    display: flex !important;
+    transform: translateX(0) !important;
+  }
+
+  /* Prevent Body Scroll when Menu is open */
+  body.menu-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+  }
+}
+
+
+/* ==========================================================================
+   DESKTOP & MOBILE HEADER LOGO FIX (ŞahinSoft PC Header Protection)
+   ========================================================================== */
+
+/* Strict Protection for Logo Image on PC & Desktop View */
+.logo img, a.logo img, nav .logo img {
+  height: 48px !important;
+  max-height: 48px !important;
+  width: auto !important;
+  display: inline-block !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 12px rgba(212, 175, 55, 0.4)) !important;
+}
+
+/* Ensure General Images scale without affecting logo */
+img:not(.logo img) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Desktop Header Flex Alignment */
+header.site-header nav.main-nav, header nav {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: relative !important;
+}
+
+nav .nav-links {
+  display: flex !important;
+  align-items: center !important;
+  gap: 28px !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tablet & Mobile Specific Overrides */
+@media (max-width: 992px) {
+  .logo img, a.logo img, nav .logo img {
+    height: 36px !important;
+    max-height: 36px !important;
+  }
+
+  nav .nav-links {
+    display: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   STABLE & CORPORATE FOOTER DESIGN SYSTEM (ŞahinSoft Corporate Footer)
+   ========================================================================== */
+footer {
+  background: #080a0e !important;
+  border-top: 1px solid rgba(212, 175, 55, 0.25) !important;
+  padding: 60px 24px 30px 24px !important;
+  color: #94a3b8 !important;
+  font-family: 'Manrope', sans-serif !important;
+}
+
+footer .footer-container {
+  max-width: 1400px;
+  margin: 0 auto 45px auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr;
+  gap: 40px;
+}
+
+/* Footer Brand Logo Protection */
+footer img, footer .footer-logo, footer .logo img {
+  height: 44px !important;
+  max-height: 44px !important;
+  width: auto !important;
+  display: inline-block !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 10px rgba(212,175,55,0.3)) !important;
+}
+
+footer h4, footer h3 {
+  font-family: 'Sora', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
+}
+
+footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+footer ul li {
+  margin-bottom: 10px;
+}
+
+footer ul li a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+footer ul li a:hover {
+  color: #d4af37;
+  padding-left: 4px;
+}
+
+footer .footer-bottom {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Tablet Responsive Footer */
+@media (max-width: 992px) {
+  footer .footer-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 30px !important;
+  }
+}
+
+/* Mobile Responsive Footer */
+@media (max-width: 768px) {
+  footer {
+    padding: 40px 18px 24px 18px !important;
+  }
+  footer .footer-container {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+    margin-bottom: 30px !important;
+    text-align: left !important;
+  }
+  footer img, footer .footer-logo, footer .logo img {
+    height: 36px !important;
+    max-height: 36px !important;
+  }
+  footer .footer-bottom {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+  }
+}
+
+</style>
+<script>
+  window.addEventListener('load', function() {
+    var preloader = document.getElementById('preloader');
+    if (!preloader) return;
+    setTimeout(function () {
+      preloader.style.opacity = '0';
+      preloader.style.visibility = 'hidden';
+      setTimeout(function () { preloader.style.display = 'none'; }, 600);
+    }, 600);
+  });
+</script>
+  <link rel="stylesheet" href="assets/css/flair.css">
+</head>
+<body>
+<div id="preloader" style="position:fixed; inset:0; background:#0a0c10; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999999; transition:opacity 0.6s ease, visibility 0.6s ease;">
+  <style>
+    @keyframes bgPulse { 0% { opacity: 0.5; transform: scale(0.9); } 100% { opacity: 0.9; transform: scale(1.1); } }
+    @keyframes redPulse { 0% { opacity: 0.35; transform: scale(0.95); } 100% { opacity: 0.7; transform: scale(1.12); } }
+  </style>
+  <div style="position:relative; width:220px; height:220px;">
+    <div style="position:absolute; inset:0; margin:auto; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.14) 50%, transparent 78%); filter:blur(18px); animation:redPulse 2.1s ease-in-out infinite alternate;"></div>
+    <div style="position:absolute; inset:15px; margin:auto; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle, rgba(212,175,55,0.55) 0%, rgba(212,175,55,0.18) 50%, transparent 78%); filter:blur(14px); animation:bgPulse 1.8s ease-in-out infinite alternate;"></div>
+    <div style="position:absolute; inset:15px; border:2px dashed rgba(212,175,55,0.5); border-radius:50%; animation:spinRight 12s linear infinite;"></div>
+    <svg style="position:absolute; inset:15px; animation:spinLeft 3.4s linear infinite;" viewBox="0 0 190 190">
+      <circle cx="95" cy="95" r="82" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="110 145 110 145" stroke-linecap="round"/>
+    </svg>
+    <svg style="position:absolute; inset:15px; animation:spinRight 2.1s linear infinite;" viewBox="0 0 190 190">
+      <circle cx="95" cy="95" r="62" fill="none" stroke="#d4af37" stroke-width="3" stroke-dasharray="85 105 85 105" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; animation:flashGlow 1.6s ease-in-out infinite alternate;">
+      <img src="assets/images/logo-s-mark.png" alt="ŞahinSoft" style="width:112px; height:auto; filter:drop-shadow(0 0 18px rgba(212,175,55,0.6));" decoding="async">
+    </div>
+  </div>
+  <div style="margin-top:22px; text-align:center;">
+    <div style="font-family:'Sora',sans-serif; font-weight:800; font-size:18px; letter-spacing:0.03em;">
+      <span style="color:#ffffff;">ŞAHİNSOFT</span> <span style="color:#d4af37;">YAZILIM</span>
+    </div>
+    <div style="font-family:'Manrope',sans-serif; font-size:11px; font-weight:500; letter-spacing:0.28em; color:#94a3b8; text-transform:uppercase; margin-top:4px;">Teknolojileri</div>
+  </div>
+</div>
+
+<!-- Corporate Top Bar -->
+<div class="top-info-bar">
+  <div style="max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+      <a href="mailto:edip@sahinbilisim.com.tr" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; transition: color 0.2s;"><span style="color: #d4af37;">✉</span> edip@sahinbilisim.com.tr</a>
+      <a href="tel:05332782379" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s;"><span style="color: #d4af37;">📞</span> 0 (533) 278 23 79</a>
+      <span style="display: inline-flex; align-items: center; gap: 6px; color: #94a3b8;"><span style="color: #d4af37;">📍</span> Nilüfer / Bursa</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <span style="background: rgba(212,175,55,0.12); color: #d4af37; border: 1px solid rgba(212,175,55,0.3); padding: 2px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">● 7/24 Kesintisiz Destek Hattı</span>
+      <a href="https://wa.me/905332782379?text=Merhaba,%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" style="color: #25d366; text-decoration: none; font-weight: 700; font-size: 12.5px;">WhatsApp İletişim →</a>
+      <a href="#" class="panel-login-trigger" style="color: #d4af37; text-decoration: none; font-weight: 700; font-size: 12.5px;">🔒 Panel Girişi</a>
+    </div>
+  </div>
+</div>
+
+<!-- Sticky Main Header Toolbar -->
+<header class="site-header">
+  <nav class="main-nav">
+    <a href="index.html" class="logo" style="display: flex; align-items: center; gap: 14px; text-decoration: none; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 27px; letter-spacing: -0.02em;">
+      <img src="assets/extracted/a902b7b6dbf20bb1.png" alt="ŞahinSoft Logo" style="height: 48px; width: auto; filter: drop-shadow(0 4px 12px rgba(212,175,55,0.4));" loading="lazy" decoding="async">
+      <span><span style="color: #ffffff;">Şahin</span><span style="color: #d4af37;">Soft</span></span>
+    </a>
+<div class="nav-links" style="display: flex; align-items: center; gap: 32px; list-style: none;">
+      <a href="index.html" style="color: #f0f4f8; text-decoration: none; font-size: 15px; font-weight: 600; transition: color 0.2s;">Ana Sayfa</a>
+      
+      <!-- Ürünler Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Ürünler <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="dokunmatik-pos.html">Dokunmatik POS Sistemleri</a>
+          <a href="yazarkasa-pos.html">Yazarkasa POS</a>
+          <a href="barkod-okuyucular.html">Barkod Okuyucular</a>
+          <a href="yazicilar.html">Termal &amp; Fiş Yazıcılar</a>
+          <a href="teraziler.html">Elektronik Teraziler</a>
+          <a href="el-terminali.html">El Terminalleri</a>
+        </div>
+      </div>
+
+      <!-- Çözümlerimiz Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Çözümlerimiz <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="cafe-restoran-cozumleri.html">Cafe &amp; Restoran Otomasyonu</a>
+          <a href="perakende-magaza-cozumleri.html">Perakende &amp; Mağaza Otomasyonu</a>
+          <a href="market-sarkuteri-cozumleri.html">Market &amp; Şarküteri Otomasyonu</a>
+          <a href="depo-lojistik-cozumleri.html">Depo &amp; Lojistik Çözümleri</a>
+          <a href="fabrika-uretim-cozumleri.html">Fabrika &amp; Üretim Takibi</a>
+          <a href="e-ticaret-pazaryeri-cozumleri.html">E-Ticaret &amp; Pazaryeri Entegrasyonu</a>
+          <div style="border-top: 1px solid rgba(212,175,55,0.2); margin: 8px 6px; padding-top: 8px;">
+            <span style="display:block; padding: 4px 14px; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em;">Ödeme Entegrasyonları</span>
+          </div>
+          <a href="pavo-vuk507-entegrasyonu.html">Pavo VUK 507 Entegrasyonu</a>
+          <a href="inpos-gmp3-entegrasyonu.html">Inpos GMP3 Entegrasyonu</a>
+          <a href="ingenico-gmp3-entegrasyonu.html">Ingenico GMP3 Entegrasyonu</a>
+        </div>
+      </div>
+
+      <!-- Hizmetlerimiz Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Hizmetlerimiz <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="web-gelistirme.html">Web Geliştirme</a>
+          <a href="mobil-uygulama.html">Mobil Uygulama</a>
+          <a href="kurumsal-yazilim.html">Kurumsal Yazılım</a>
+          <a href="bakim-destek.html">Bakım &amp; Destek</a>
+        </div>
+      </div>
+
+      <a href="iletisim.html" style="color: #f0f4f8; text-decoration: none; font-size: 15px; font-weight: 600; transition: color 0.2s;">İletişim</a>
+      <a href="iletisim.html" class="btn btn-gold" style="display: inline-flex; align-items: center; justify-content: center; padding: 11px 24px; border-radius: 8px; font-weight: 700; text-decoration: none; transition: all 0.25s; cursor: pointer; font-size: 14px; background: #d4af37; color: #000; border: 1px solid #d4af37;">Teklif Alın</a>
+    </div>
+    </nav>
+</header>
+
+<main>
+
+<!-- Hero Banner -->
+<section class="contact-hero">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <span style="background: rgba(212,175,55,0.15); color: #d4af37; border: 1px solid rgba(212,175,55,0.3); padding: 5px 18px; border-radius: 20px; font-size: 12px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;">✦ 7/24 KESİNTİSİZ DESTEK & ULAŞIM</span>
+    <h1 style="font-family: 'Sora', sans-serif; font-size: 42px; font-weight: 800; color: #ffffff; margin-top: 16px; margin-bottom: 12px; letter-spacing: -0.02em;">Bizimle İletişime Geçin</h1>
+    <p style="color: #94a3b8; font-size: 16.5px; max-width: 680px; margin: 0 auto; line-height: 1.6;">POS, barkod, teraziler ve kurumsal yazılım ihtiyaçlarınız için uzman ekibimiz bir tık uzağınızda. 7/24 teknik destek ve satış öncesi danışmanlık hizmeti sunuyoruz.</p>
+  </div>
+</section>
+
+<!-- Contact Grid: Info Cards + Form -->
+<section class="contact-grid">
+  <!-- Left: Corporate Info -->
+  <div class="info-card">
+    <h3 style="font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 800; color: #d4af37; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(212,175,55,0.2);">Kurumsal İletişim</h3>
+    
+    <div class="info-item">
+      <div class="info-icon">📍</div>
+      <div class="info-text">
+        <h4>Genel Merkez & Servis</h4>
+        <p>Nilüfer / BURSA, Türkiye</p>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-icon">📞</div>
+      <div class="info-text">
+        <h4>GSM & WhatsApp Destek</h4>
+        <p><a href="tel:05332782379">0 (533) 278 23 79</a></p>
+        <p><a href="https://wa.me/905332782379?text=Merhaba,%20destek%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" style="color: #25d366; font-weight: 700; font-size: 13.5px; margin-top: 4px; display: inline-block;">WhatsApp Canlı Destek →</a></p>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-icon">✉</div>
+      <div class="info-text">
+        <h4>E-Posta Adreslerimiz</h4>
+        <p>Genel İletişim: <a href="mailto:edip@sahinbilisim.com.tr">edip@sahinbilisim.com.tr</a></p>
+        <p>Teknik Destek: <a href="mailto:edip@sahinbilisim.com.tr">edip@sahinbilisim.com.tr</a></p>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-icon">⏰</div>
+      <div class="info-text">
+        <h4>Çalışma Saatlerimiz</h4>
+        <p>Hafta İçi: 08:30 - 18:30</p>
+        <p>Cumartesi: 09:00 - 14:00</p>
+        <p style="color: #d4af37; font-size: 13px; font-weight: 700; margin-top: 4px;">* Restoran & Market Müşterilerimize 7/24 Acil Destek</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Request & Consultation Form -->
+  <div class="form-card">
+    <h3 style="font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">Teklif & Danışmanlık Formu</h3>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 24px;">Formu doldurun, uzman ekibimiz sizi 15 dakika içinde arasın.</p>
+    
+    <form id="contact-form">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label>Adınız Soyadınız *</label>
+          <input type="text" id="cf-name" class="form-control" placeholder="Örn: Ahmet Yılmaz" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası *</label>
+          <input type="tel" id="cf-phone" class="form-control" placeholder="0 (5XX) XXX XX XX" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label>E-Posta Adresi</label>
+          <input type="email" id="cf-email" class="form-control" placeholder="ornek@firma.com">
+        </div>
+        <div class="form-group">
+          <label>İlgi Duyduğunuz Sektör / Çözüm</label>
+          <select id="cf-sector" class="form-control" style="background: #0a0c10;">
+            <option>Market & Şarküteri Otomasyonu</option>
+            <option>Restoran & Cafe POS Sistemleri</option>
+            <option>Perakende & Mağaza Çözümleri</option>
+            <option>Fabrika & Üretim Takip</option>
+            <option>E-Ticaret & Entegrasyon</option>
+            <option>Donanım (POS, Barkod, Terazi)</option>
+            <option>Diğer / Özel Yazılım</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Konu</label>
+        <input type="text" id="cf-subject" class="form-control" placeholder="Örn: POS cihazı fiyat teklifi hk.">
+      </div>
+
+      <div class="form-group">
+        <label>Mesajınız</label>
+        <textarea id="cf-message" class="form-control" rows="4" placeholder="İhtiyaçlarınızı veya sormak istediklerinizi buraya yazabilirsiniz..." required></textarea>
+      </div>
+
+      <!-- Honeypot: botlar için görünmez alan, gerçek kullanıcılar bunu görmez/doldurmaz -->
+      <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
+        <label>Website</label>
+        <input type="text" id="cf-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <p id="cf-result" style="font-size: 13.5px; margin-top: 4px; display: none;"></p>
+
+      <button type="submit" id="cf-submit-btn" class="btn btn-gold" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 800; border-radius: 10px; margin-top: 10px;">MESAJ GÖNDER & TEKLİF AL →</button>
+    </form>
+
+    <script>
+    (function() {
+      var form = document.getElementById('contact-form');
+      var resultEl = document.getElementById('cf-result');
+      var btn = document.getElementById('cf-submit-btn');
+      var btnOriginalText = btn.textContent;
+
+      // --- CSRF koruması: rastgele bir token üretip hem çereze hem forma yazıyoruz.
+      // Sunucu tarafında (process-contact.php) ikisinin eşleştiği kontrol edilir.
+      function getOrCreateCsrfToken() {
+        var match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+        if (match) return match[1];
+        var token = (crypto.getRandomValues ? Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b){return b.toString(16).padStart(2,'0');}).join('') : String(Date.now()) + Math.random().toString(36).slice(2));
+        document.cookie = 'csrf_token=' + token + '; path=/; max-age=7200; SameSite=Strict';
+        return token;
+      }
+      var csrfToken = getOrCreateCsrfToken();
+
+      function showResult(success, message) {
+        resultEl.style.display = 'block';
+        resultEl.style.color = success ? '#4ade80' : '#f87171';
+        resultEl.textContent = message;
+      }
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var name = document.getElementById('cf-name').value.trim();
+        var phone = document.getElementById('cf-phone').value.trim();
+        var email = document.getElementById('cf-email').value.trim();
+        var sector = document.getElementById('cf-sector').value;
+        var subject = document.getElementById('cf-subject').value.trim();
+        var message = document.getElementById('cf-message').value.trim();
+        var website = document.getElementById('cf-website').value; // honeypot
+
+        if (!name || !phone || !message) {
+          showResult(false, 'Lütfen zorunlu alanları (Ad Soyad, Telefon, Mesaj) doldurun.');
+          return;
+        }
+
+        var formData = new FormData();
+        formData.append('name', name);
+        formData.append('phone', phone);
+        formData.append('email', email);
+        formData.append('sector', sector);
+        formData.append('subject', subject);
+        formData.append('message', message);
+        formData.append('website', website);
+        formData.append('csrf_token', csrfToken);
+
+        btn.disabled = true;
+        btn.textContent = 'GÖNDERİLİYOR...';
+        resultEl.style.display = 'none';
+
+        fetch('process-contact.php', {
+          method: 'POST',
+          body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          showResult(data.success, data.message);
+          if (data.success) {
+            form.reset();
+          }
+        })
+        .catch(function() {
+          showResult(false, 'Bağlantı hatası oluştu. Lütfen bizi doğrudan arayın: 0533 278 23 79');
+        })
+        .finally(function() {
+          btn.disabled = false;
+          btn.textContent = btnOriginalText;
+        });
+      });
+    })();
+    </script>
+  </div>
+</section>
+
+<!-- Google Maps Section -->
+<section class="map-section">
+  <div style="text-align: center; margin-bottom: 24px;">
+    <span style="color: #d4af37; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">✦ KONUM & HARİTA</span>
+    <h3 style="font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; margin-top: 6px;">Ofisimize Ulaşım</h3>
+  </div>
+  <div class="map-wrapper">
+    <iframe title="ŞahinSoft Konum - Google Haritalar" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d48722.25986873138!2d28.9328225!3d40.2185449!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14ca15ce0d47343b%3A0xb35ec85d564cfef6!2zTmlsw7NmZXIvQnVyc2E!5e0!3m2!1str!2str!4v1700000000000!5m2!1str!2str" width="100%" height="450" style="border:0; filter: invert(90%) hue-rotate(180deg);" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+</section>
+
+<!-- Floating WhatsApp Button -->
+<a href="https://wa.me/905332782379?text=Merhaba,%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" style="position: fixed; bottom: 30px; right: 30px; width: 62px; height: 62px; background: #25d366; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 10px 25px rgba(37,211,102,0.5); z-index: 9999; text-decoration: none; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)';" onmouseout="this.style.transform='scale(1)';">
+  💬
+</a>
+
+<!-- Corporate Footer -->
+</main>
+
+<footer class="site-footer-minimal" style="background: #06070a; border-top: 1px solid rgba(212,175,55,0.25); padding: 24px 20px; color: #94a3b8; text-align: center; font-family: 'Manrope', sans-serif;">
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+    
+    <!-- Logo & Brand Title -->
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 2px;">
+      <a href="index.html" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
+        <img src="assets/extracted/a902b7b6dbf20bb1.png" alt="ŞahinSoft Logo" style="height: 36px !important; max-height: 36px !important; width: auto !important; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(212,175,55,0.4));" loading="lazy" decoding="async">
+        <span style="font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;"><span style="color: #d4af37;">ŞAHİN</span>SOFT</span>
+      </a>
+    </div>
+
+    <!-- Copyright Line -->
+    <div style="font-size: 13.5px; color: #cbd5e1; font-weight: 500;">
+      © 2026 <strong style="color: #ffffff; font-weight: 800;">ŞahinSoft Bilgi Teknolojileri</strong>. Tüm Hakkı Saklıdır.
+    </div>
+
+    <!-- Contact Info Line -->
+    <div style="font-size: 12.5px; color: #94a3b8; font-weight: 500; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 2px;">
+      <span>Nilüfer / BURSA</span>
+      <span style="color: rgba(212,175,55,0.5);">|</span>
+      <span>Telefon: <a href="tel:05332782379" style="color: #d4af37; text-decoration: none; font-weight: 700;">0 (533) 278 23 79</a></span>
+      <span style="color: rgba(212,175,55,0.5);">|</span>
+      <span>E-Posta: <a href="mailto:edip@sahinbilisim.com.tr" style="color: #cbd5e1; text-decoration: none;">edip@sahinbilisim.com.tr</a></span>
+    </div>
+
+  </div>
+</footer>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      const link = item.querySelector('.nav-link');
+      const dropdown = item.querySelector('.dropdown-menu');
+      if (dropdown && link) {
+        link.addEventListener('click', function(e) {
+          if (link.getAttribute('href') === '#') {
+            e.preventDefault();
+            e.stopPropagation();
+            const isVisible = getComputedStyle(dropdown).visibility === 'visible' && getComputedStyle(dropdown).opacity === '1';
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+              d.style.opacity = '0';
+              d.style.visibility = 'hidden';
+              d.style.transform = 'translateY(10px)';
+            });
+
+            if (!isVisible) {
+              dropdown.style.opacity = '1';
+              dropdown.style.visibility = 'visible';
+              dropdown.style.transform = 'translateY(0)';
+            }
+          }
+        });
+      }
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-item')) {
+        document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+          d.style.opacity = '0';
+          d.style.visibility = 'hidden';
+          d.style.transform = 'translateY(10px)';
+        });
+      }
+    });
+  });
+</script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.has-dd').forEach(function(dd) {
+      const trigger = dd.querySelector('span');
+      const menu = dd.querySelector('.dropdown');
+      if (trigger && menu) {
+        dd.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const isOpen = menu.classList.contains('active') || getComputedStyle(menu).visibility === 'visible';
+          
+          document.querySelectorAll('.has-dd .dropdown').forEach(function(m) {
+            m.classList.remove('active');
+            m.style.opacity = '0';
+            m.style.visibility = 'hidden';
+            
+          });
+
+          if (!isOpen) {
+            menu.classList.add('active');
+            menu.style.opacity = '1';
+            menu.style.visibility = 'visible';
+            
+          }
+        });
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.has-dd')) {
+        document.querySelectorAll('.has-dd .dropdown').forEach(function(m) {
+          m.classList.remove('active');
+          m.style.opacity = '0';
+          m.style.visibility = 'hidden';
+          
+        });
+      }
+    });
+  });
+</script>
+
+
+
+
+
+<script>
+// ŞahinSoft Mobil Menü Kontrolcüsü (birleştirilmiş, çakışmasız tek versiyon)
+document.addEventListener('DOMContentLoaded', function() {
+  const mainNav = document.querySelector('nav.main-nav') || document.querySelector('nav');
+  if (!mainNav) return;
+
+  // 1) Hamburger butonunu oluştur (yoksa)
+  let toggleBtn = mainNav.querySelector('.mobile-toggle');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.className = 'mobile-toggle';
+    toggleBtn.setAttribute('aria-label', 'Mobil Menü');
+    toggleBtn.innerHTML = '☰';
+    const navLinksEl = mainNav.querySelector('.nav-links');
+    if (navLinksEl) {
+      mainNav.insertBefore(toggleBtn, navLinksEl);
+    } else {
+      mainNav.appendChild(toggleBtn);
+    }
+  }
+
+  // 2) Kayar mobil menü modalını + arka planını oluştur (yoksa)
+  let modal = document.querySelector('.mobile-menu-modal');
+  let backdrop = document.querySelector('.mobile-menu-backdrop');
+  if (!modal) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'mobile-menu-backdrop';
+
+    modal = document.createElement('div');
+    modal.className = 'mobile-menu-modal';
+    modal.innerHTML = `
+      <div class="mobile-menu-header">
+        <button class="mobile-close-btn" aria-label="Kapat">✕</button>
+        <a href="index.html" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:#fff; font-weight:800; font-size:18px;">
+          <span style="color:#d4af37;">ŞAHİN</span>SOFT
+        </a>
+      </div>
+      <ul class="mobile-nav-list">
+        <li class="mobile-nav-item"><a href="index.html">Anasayfa</a></li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Ürünler <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="dokunmatik-pos.html">Dokunmatik POS Terminali</a>
+            <a href="yazarkasa-pos.html">Yazarkasa POS</a>
+            <a href="barkod-okuyucular.html">Barkod Okuyucular</a>
+            <a href="yazicilar.html">Termal Fiş Yazıcılar</a>
+            <a href="teraziler.html">Hassas Teraziler</a>
+            <a href="el-terminali.html">El Terminalleri</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Çözümlerimiz <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="cafe-restoran-cozumleri.html">Cafe & Restoran Otomasyonu</a>
+            <a href="perakende-magaza-cozumleri.html">Perakende & Mağaza Çözümleri</a>
+            <a href="market-sarkuteri-cozumleri.html">Market & Şarküteri Otomasyonu</a>
+            <a href="depo-lojistik-cozumleri.html">Depo & Lojistik Çözümleri</a>
+            <a href="fabrika-uretim-cozumleri.html">Fabrika & Üretim Çözümleri</a>
+            <a href="e-ticaret-pazaryeri-cozumleri.html">E-Ticaret & Pazaryeri Entegrasyonu</a>
+            <a href="pavo-vuk507-entegrasyonu.html">Pavo VUK 507 Entegrasyonu</a>
+            <a href="inpos-gmp3-entegrasyonu.html">Inpos GMP3 Entegrasyonu</a>
+            <a href="ingenico-gmp3-entegrasyonu.html">Ingenico GMP3 Entegrasyonu</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Hizmetlerimiz <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="web-gelistirme.html">Web Geliştirme</a>
+            <a href="mobil-uygulama.html">Mobil Uygulama</a>
+            <a href="kurumsal-yazilim.html">Kurumsal Yazılım</a>
+            <a href="bakim-destek.html">Bakım & Destek</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item"><a href="iletisim.html">İletişim</a></li>
+      </ul>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+  }
+
+  function openMenu() {
+    modal.classList.add('active');
+    backdrop.classList.add('active');
+    document.body.classList.add('menu-open');
+  }
+  function closeMenu() {
+    modal.classList.remove('active');
+    backdrop.classList.remove('active');
+    document.body.classList.remove('menu-open');
+  }
+
+  // 3) TÜM hamburger butonlarına TEK bir click handler (çakışma yok)
+  document.querySelectorAll('.mobile-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (modal.classList.contains('active')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+  });
+
+  // 4) Kapatma tetikleyicileri
+  const closeBtn = modal.querySelector('.mobile-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+  backdrop.addEventListener('click', closeMenu);
+
+  // 5) Modal içindeki alt menü accordion (Ürünler / Çözümlerimiz / Hizmetlerimiz)
+  modal.querySelectorAll('.mobile-nav-item.has-sub > a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const item = link.closest('.mobile-nav-item');
+      item.classList.toggle('open');
+      const span = link.querySelector('span');
+      if (span) span.textContent = item.classList.contains('open') ? '−' : '+';
+    });
+  });
+});
+</script>
+
+
+<!-- Panel Giriş Modalı -->
+<div id="panel-login-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999998; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:linear-gradient(145deg,#12161f,#090b0f); border:1px solid rgba(212,175,55,0.3); border-radius:20px; padding:32px; max-width:380px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+    <h3 style="font-family:'Sora',sans-serif; color:#fff; font-size:20px; font-weight:800; margin:0 0 4px 0;">Yönetim Paneli Girişi</h3>
+    <p style="color:#94a3b8; font-size:13px; margin:0 0 20px 0;">Devam etmek için kullanıcı adı ve şifrenizi girin.</p>
+    <div style="margin-bottom:14px;">
+      <label style="display:block; color:#cbd5e1; font-size:12.5px; font-weight:600; margin-bottom:6px;">Kullanıcı Adı</label>
+      <input type="text" id="panel-username" autocomplete="username" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,0.3); background:#0a0c10; color:#fff; font-size:14px; box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="display:block; color:#cbd5e1; font-size:12.5px; font-weight:600; margin-bottom:6px;">Şifre</label>
+      <input type="password" id="panel-password" autocomplete="current-password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,0.3); background:#0a0c10; color:#fff; font-size:14px; box-sizing:border-box;">
+    </div>
+    <p id="panel-login-error" style="display:none; color:#f87171; font-size:12.5px; margin:8px 0 0 0;">Kullanıcı adı veya şifre hatalı.</p>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button type="button" id="panel-login-cancel" style="flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; font-weight:700; cursor:pointer; font-size:14px;">Vazgeç</button>
+      <button type="button" id="panel-login-submit" style="flex:1; padding:10px; border-radius:8px; border:none; background:linear-gradient(135deg,#d4af37,#b8912e); color:#0a0c10; font-weight:800; cursor:pointer; font-size:14px;">Giriş Yap</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var overlay = document.getElementById('panel-login-overlay');
+  if (!overlay) return;
+  var userInput = document.getElementById('panel-username');
+  var passInput = document.getElementById('panel-password');
+  var errorEl = document.getElementById('panel-login-error');
+  var submitBtn = document.getElementById('panel-login-submit');
+  var cancelBtn = document.getElementById('panel-login-cancel');
+
+  function openModal() {
+    overlay.style.display = 'flex';
+    errorEl.style.display = 'none';
+    userInput.value = '';
+    passInput.value = '';
+    setTimeout(function(){ userInput.focus(); }, 50);
+  }
+  function closeModal() {
+    overlay.style.display = 'none';
+  }
+
+  document.querySelectorAll('.panel-login-trigger').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+
+  cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
+  });
+
+  function attemptLogin() {
+    var u = userInput.value.trim();
+    var p = passInput.value;
+    if (u === 'admin' && p === '145353') {
+      window.location.href = 'https://admin.sahinbilisim.com.tr';
+    } else {
+      errorEl.style.display = 'block';
+      passInput.value = '';
+      passInput.focus();
+    }
+  }
+
+  submitBtn.addEventListener('click', attemptLogin);
+  passInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') attemptLogin();
+  });
+  userInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); passInput.focus(); }
+  });
+})();
+</script>
+
+  <script src="assets/js/flair.js" defer></script>
+</body>
+</html>

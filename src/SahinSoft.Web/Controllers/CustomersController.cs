@@ -1,0 +1,229 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Entities;
+using SahinSoft.Web.Data;
+using SahinSoft.Web.Models;
+
+namespace SahinSoft.Web.Controllers;
+
+[Authorize]
+public sealed class CustomersController(ApplicationDbContext dbContext) : Controller
+{
+    public async Task<IActionResult> Index(string? search)
+    {
+        var query = dbContext.Customers
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(x =>
+                x.Code.Contains(search) ||
+                x.Name.Contains(search) ||
+                (x.TaxNumber != null && x.TaxNumber.Contains(search)));
+        }
+
+        ViewBag.Search = search;
+        return View(await query.ToListAsync());
+    }
+
+    public IActionResult Create()
+    {
+        return View("Form", new CustomerFormViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CustomerFormViewModel form)
+    {
+        await ValidateUniqueCodeAsync(form);
+        if (!ModelState.IsValid)
+        {
+            return View("Form", form);
+        }
+
+        var customer = new Customer();
+        Map(form, customer);
+        dbContext.Customers.Add(customer);
+
+        if (!await TrySaveAsync())
+        {
+            return View("Form", form);
+        }
+
+        TempData["Success"] = "Cari kaydedildi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    public async Task<IActionResult> Edit(int id)
+    {
+        var customer = await dbContext.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var model = new CustomerFormViewModel
+        {
+            Id = customer.Id,
+            Code = customer.Code,
+            Name = customer.Name,
+            TaxOffice = customer.TaxOffice,
+            TaxNumber = customer.TaxNumber,
+            IdentityNumber = customer.IdentityNumber,
+            Phone = customer.Phone,
+            Email = customer.Email,
+            Address = customer.Address,
+            City = customer.City,
+            District = customer.District,
+            Notes = customer.Notes,
+            IsCustomer = customer.IsCustomer,
+            IsSupplier = customer.IsSupplier,
+            IsActive = customer.IsActive
+        };
+
+        return View("Form", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, CustomerFormViewModel form)
+    {
+        if (id != form.Id)
+        {
+            return BadRequest();
+        }
+
+        await ValidateUniqueCodeAsync(form);
+        if (!ModelState.IsValid)
+        {
+            return View("Form", form);
+        }
+
+        var customer = await dbContext.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        Map(form, customer);
+        customer.UpdatedAtUtc = DateTime.UtcNow;
+
+        if (!await TrySaveAsync())
+        {
+            return View("Form", form);
+        }
+
+        TempData["Success"] = "Cari güncellendi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to)
+    {
+        var customer = await dbContext.Customers
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var transactionsQuery = dbContext.CurrentAccountTransactions
+            .AsNoTracking()
+            .Where(x => x.CustomerId == id);
+
+        var openingBalance = from.HasValue
+            ? await transactionsQuery
+                .Where(x => x.TransactionDateUtc < from.Value)
+                .SumAsync(x => (decimal?)(x.Debit - x.Credit)) ?? 0
+            : 0;
+
+        var rangeQuery = transactionsQuery;
+        if (from.HasValue)
+        {
+            rangeQuery = rangeQuery.Where(x => x.TransactionDateUtc >= from.Value);
+        }
+        if (to.HasValue)
+        {
+            rangeQuery = rangeQuery.Where(x => x.TransactionDateUtc < to.Value.AddDays(1));
+        }
+
+        var transactions = await rangeQuery
+            .OrderBy(x => x.TransactionDateUtc)
+            .ThenBy(x => x.Id)
+            .ToListAsync();
+
+        var runningBalance = openingBalance;
+        var lines = new List<CustomerStatementLineViewModel>();
+        foreach (var transaction in transactions)
+        {
+            runningBalance += transaction.Debit - transaction.Credit;
+            lines.Add(new CustomerStatementLineViewModel
+            {
+                TransactionDateUtc = transaction.TransactionDateUtc,
+                TransactionType = transaction.TransactionType.ToString(),
+                DocumentNumber = transaction.DocumentNumber,
+                Description = transaction.Description,
+                Debit = transaction.Debit,
+                Credit = transaction.Credit,
+                RunningBalance = runningBalance
+            });
+        }
+
+        var model = new CustomerStatementViewModel
+        {
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            CustomerCode = customer.Code,
+            From = from,
+            To = to,
+            OpeningBalance = openingBalance,
+            ClosingBalance = runningBalance,
+            Lines = lines
+        };
+
+        return View(model);
+    }
+
+    private async Task ValidateUniqueCodeAsync(CustomerFormViewModel model)
+    {
+        if (await dbContext.Customers.AnyAsync(x => x.Code == model.Code && x.Id != model.Id))
+        {
+            ModelState.AddModelError(nameof(model.Code), "Bu cari kodu zaten kullanılıyor.");
+        }
+    }
+
+    private static void Map(CustomerFormViewModel source, Customer target)
+    {
+        target.Code = source.Code.Trim();
+        target.Name = source.Name.Trim();
+        target.TaxOffice = source.TaxOffice?.Trim();
+        target.TaxNumber = source.TaxNumber?.Trim();
+        target.IdentityNumber = source.IdentityNumber?.Trim();
+        target.Phone = source.Phone?.Trim();
+        target.Email = source.Email?.Trim();
+        target.Address = source.Address?.Trim();
+        target.City = source.City?.Trim();
+        target.District = source.District?.Trim();
+        target.Notes = source.Notes?.Trim();
+        target.IsCustomer = source.IsCustomer;
+        target.IsSupplier = source.IsSupplier;
+        target.IsActive = source.IsActive;
+    }
+
+    private async Task<bool> TrySaveAsync()
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(nameof(CustomerFormViewModel.Code), "Bu cari kodu başka bir kayıtta kullanılıyor.");
+            return false;
+        }
+    }
+}

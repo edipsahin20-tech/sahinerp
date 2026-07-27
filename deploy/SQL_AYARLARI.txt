@@ -1,0 +1,40 @@
+ŞAHİNSOFT SQL SERVER AYARLARI
+=============================
+
+1. Yanındaki "appsettings.Production.json.ornek" dosyasını Not Defteri ile açın.
+
+2. Aşağıdaki iki alanı değiştirin:
+
+   User Id=SQL_KULLANICI_ADI
+   Password=SQL_SIFRESI
+
+   Örnek:
+
+   User Id=sa
+   Password=BurayaGercekSifreniz
+
+3. Dosyayı şu adla kaydedin:
+
+   appsettings.Production.json
+
+4. Oluşan appsettings.Production.json dosyasını şuraya kopyalayın:
+
+   C:\SitesSahinSoft\appsettings.Production.json
+
+5. IIS Yöneticisi > Uygulama Havuzları > SahinSoft > Geri Dönüştür
+   işlemini uygulayın.
+
+6. Tarayıcıdan açın:
+
+   http://localhost:1666
+
+ÖNEMLİ GÜVENLİK NOTLARI
+=======================
+
+- Gerçek parolanızı ekran görüntüsünde veya mesajda paylaşmayın.
+- appsettings.Production.json dosyasını internetten erişilebilen wwwroot
+  klasörüne koymayın. C:\SitesSahinSoft ana klasöründe kalmalıdır.
+- İlk kurulumda sa kullanılabilir. Canlı kullanımdan önce yalnızca
+  SahinSoftDb veritabanına yetkili ayrı bir SQL kullanıcısı oluşturulmalıdır.
+- JSON içindeki şifrede ters eğik çizgi (\) veya çift tırnak (") varsa
+  JSON kaçış kurallarına uygun yazılmalıdır.

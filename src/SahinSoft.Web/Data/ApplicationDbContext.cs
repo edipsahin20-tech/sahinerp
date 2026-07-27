@@ -1,0 +1,1226 @@
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Entities;
+using SahinSoft.Domain.Enums;
+
+namespace SahinSoft.Web.Data;
+
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    : IdentityDbContext<ApplicationUser>(options)
+{
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Quote> Quotes => Set<Quote>();
+    public DbSet<QuoteLine> QuoteLines => Set<QuoteLine>();
+    public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<PurchasePriceList> PurchasePriceLists => Set<PurchasePriceList>();
+    public DbSet<PurchasePriceListItem> PurchasePriceListItems => Set<PurchasePriceListItem>();
+    public DbSet<CurrentAccountTransaction> CurrentAccountTransactions => Set<CurrentAccountTransaction>();
+    public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
+    public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
+    public DbSet<CustomerContact> CustomerContacts => Set<CustomerContact>();
+    public DbSet<CostCenter> CostCenters => Set<CostCenter>();
+    public DbSet<BusinessProject> BusinessProjects => Set<BusinessProject>();
+    public DbSet<PaymentReceipt> PaymentReceipts => Set<PaymentReceipt>();
+    public DbSet<PaymentReceiptLine> PaymentReceiptLines => Set<PaymentReceiptLine>();
+    public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<ProductColor> ProductColors => Set<ProductColor>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<ProductBarcode> ProductBarcodes => Set<ProductBarcode>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
+    public DbSet<StockTransferLine> StockTransferLines => Set<StockTransferLine>();
+    public DbSet<ScaleProductSettings> ScaleProductSettings => Set<ScaleProductSettings>();
+    public DbSet<InventorySettings> InventorySettings => Set<InventorySettings>();
+    public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
+    public DbSet<UnitOfMeasure> UnitsOfMeasure => Set<UnitOfMeasure>();
+    public DbSet<ProductUnitConversion> ProductUnitConversions => Set<ProductUnitConversion>();
+    public DbSet<SalesPriceList> SalesPriceLists => Set<SalesPriceList>();
+    public DbSet<SalesPriceListItem> SalesPriceListItems => Set<SalesPriceListItem>();
+    public DbSet<ProductSerialNumber> ProductSerialNumbers => Set<ProductSerialNumber>();
+    public DbSet<StockReservation> StockReservations => Set<StockReservation>();
+    public DbSet<InventoryCount> InventoryCounts => Set<InventoryCount>();
+    public DbSet<InventoryCountLine> InventoryCountLines => Set<InventoryCountLine>();
+    public DbSet<ExternalRecordMapping> ExternalRecordMappings => Set<ExternalRecordMapping>();
+    public DbSet<IntegrationOutboxMessage> IntegrationOutboxMessages => Set<IntegrationOutboxMessage>();
+    public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<BusinessOrder> BusinessOrders => Set<BusinessOrder>();
+    public DbSet<BusinessOrderLine> BusinessOrderLines => Set<BusinessOrderLine>();
+    public DbSet<DispatchNote> DispatchNotes => Set<DispatchNote>();
+    public DbSet<DispatchNoteLine> DispatchNoteLines => Set<DispatchNoteLine>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<NegotiableInstrument> NegotiableInstruments => Set<NegotiableInstrument>();
+    public DbSet<InvoicePaymentSchedule> InvoicePaymentSchedules => Set<InvoicePaymentSchedule>();
+    public DbSet<StockSlip> StockSlips => Set<StockSlip>();
+    public DbSet<StockSlipLine> StockSlipLines => Set<StockSlipLine>();
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        builder.Entity<ApplicationUser>().Property(x => x.Id).HasMaxLength(128);
+        builder.Entity<IdentityRole>().Property(x => x.Id).HasMaxLength(128);
+        builder.Entity<IdentityUserRole<string>>().Property(x => x.UserId).HasMaxLength(128);
+        builder.Entity<IdentityUserRole<string>>().Property(x => x.RoleId).HasMaxLength(128);
+        builder.Entity<IdentityUserClaim<string>>().Property(x => x.UserId).HasMaxLength(128);
+        builder.Entity<IdentityRoleClaim<string>>().Property(x => x.RoleId).HasMaxLength(128);
+        builder.Entity<IdentityUserLogin<string>>().Property(x => x.UserId).HasMaxLength(128);
+        builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);
+        builder.Entity<IdentityUserLogin<string>>().Property(x => x.ProviderKey).HasMaxLength(128);
+        builder.Entity<IdentityUserToken<string>>().Property(x => x.UserId).HasMaxLength(128);
+        builder.Entity<IdentityUserToken<string>>().Property(x => x.LoginProvider).HasMaxLength(128);
+        builder.Entity<IdentityUserToken<string>>().Property(x => x.Name).HasMaxLength(128);
+
+        builder.Entity<ProductCategory>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.WebsitePath).HasMaxLength(250);
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<TaxRate>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Rate).HasPrecision(5, 2);
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<Product>(entity =>
+        {
+            entity.Property(x => x.StockCode).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Brand).HasMaxLength(100);
+            entity.Property(x => x.Model).HasMaxLength(100);
+            entity.Property(x => x.Barcode).HasMaxLength(50);
+            entity.Property(x => x.Unit).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.ProductType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.PurchasePrice).HasPrecision(18, 2);
+            entity.Property(x => x.SalePrice).HasPrecision(18, 2);
+            entity.Property(x => x.StockQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.MinimumStockQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.ImagePath).HasMaxLength(500);
+            entity.Property(x => x.WebsitePath).HasMaxLength(250);
+            entity.HasIndex(x => x.StockCode).IsUnique();
+            entity.HasIndex(x => x.Barcode)
+                .IsUnique()
+                .HasFilter("[Barcode] IS NOT NULL");
+            entity.HasOne(x => x.Category)
+                .WithMany(x => x.Products)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.TaxRate)
+                .WithMany()
+                .HasForeignKey(x => x.TaxRateId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Products_Prices", "[PurchasePrice] >= 0 AND [SalePrice] >= 0");
+                table.HasCheckConstraint("CK_Products_Quantities", "[MinimumStockQuantity] >= 0");
+            });
+        });
+
+        builder.Entity<Customer>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.TaxOffice).HasMaxLength(100);
+            entity.Property(x => x.TaxNumber).HasMaxLength(11);
+            entity.Property(x => x.IdentityNumber).HasMaxLength(11);
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.Email).HasMaxLength(200);
+            entity.Property(x => x.City).HasMaxLength(100);
+            entity.Property(x => x.District).HasMaxLength(100);
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.TaxNumber);
+            entity.HasIndex(x => x.Name);
+        });
+
+        builder.Entity<Warehouse>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => new { x.BranchId, x.Name });
+            entity.HasOne(x => x.Branch)
+                .WithMany(x => x.Warehouses)
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockMovement>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitCost).HasPrecision(18, 4);
+            entity.Property(x => x.DocumentNumber).HasMaxLength(50);
+            entity.HasIndex(x => new { x.ProductId, x.WarehouseId, x.MovementDateUtc });
+            entity.HasIndex(x => x.DocumentNumber);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.StockMovements)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Warehouse)
+                .WithMany(x => x.StockMovements)
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.InvoiceLine)
+                .WithMany(x => x.StockMovements)
+                .HasForeignKey(x => x.InvoiceLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.CostCenter)
+                .WithMany()
+                .HasForeignKey(x => x.CostCenterId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BusinessProject)
+                .WithMany()
+                .HasForeignKey(x => x.BusinessProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.StockTransferLine)
+                .WithMany(x => x.StockMovements)
+                .HasForeignKey(x => x.StockTransferLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.StockSlipLine)
+                .WithMany()
+                .HasForeignKey(x => x.StockSlipLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.InventoryCountLine)
+                .WithMany()
+                .HasForeignKey(x => x.InventoryCountLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.ReversalOf)
+                .WithMany()
+                .HasForeignKey(x => x.ReversalOfId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Quote>(entity =>
+        {
+            entity.Property(x => x.QuoteNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.Subtotal).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
+            entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => x.QuoteNumber).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.QuoteDateUtc });
+            entity.HasIndex(x => x.Status);
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.Quotes)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint(
+                    "CK_Quotes_Totals",
+                    "[Subtotal] >= 0 AND [DiscountTotal] >= 0 AND [TaxTotal] >= 0 AND [GrandTotal] >= 0"));
+        });
+
+        builder.Entity<QuoteLine>(entity =>
+        {
+            entity.Property(x => x.ProductCodeSnapshot).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.DiscountRate).HasPrecision(5, 2);
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TaxRate).HasPrecision(5, 2);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
+            entity.Property(x => x.LineTotal).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.QuoteId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.Quote)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.QuoteId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.QuoteLines)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CompanySettings>(entity =>
+        {
+            entity.Property(x => x.CompanyName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.TaxOffice).HasMaxLength(100);
+            entity.Property(x => x.TaxNumber).HasMaxLength(11);
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.Email).HasMaxLength(200);
+            entity.Property(x => x.Website).HasMaxLength(250);
+            entity.Property(x => x.BankName).HasMaxLength(150);
+            entity.Property(x => x.Iban).HasMaxLength(34);
+            entity.Property(x => x.LogoPath).HasMaxLength(500);
+        });
+
+        builder.Entity<AuditLog>(entity =>
+        {
+            entity.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.Action).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.EntityId).HasMaxLength(100);
+            entity.Property(x => x.IpAddress).HasMaxLength(64);
+            entity.Property(x => x.UserAgent).HasMaxLength(500);
+            entity.HasIndex(x => new { x.EntityName, x.EntityId });
+            entity.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+        });
+
+        builder.Entity<PurchasePriceList>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.ValidFromUtc, x.ValidUntilUtc });
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.PurchasePriceLists)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PurchasePriceListItem>(entity =>
+        {
+            entity.Property(x => x.MinimumQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.SupplierProductCode).HasMaxLength(80);
+            entity.HasIndex(x => new
+            {
+                x.PurchasePriceListId,
+                x.ProductId,
+                x.MinimumQuantity
+            }).IsUnique();
+            entity.HasOne(x => x.PurchasePriceList)
+                .WithMany(x => x.Items)
+                .HasForeignKey(x => x.PurchasePriceListId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.PurchasePriceListItems)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CurrentAccountTransaction>(entity =>
+        {
+            entity.Property(x => x.DocumentNumber).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.Debit).HasPrecision(18, 2);
+            entity.Property(x => x.Credit).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.CustomerId, x.TransactionDateUtc });
+            entity.HasIndex(x => x.DocumentNumber);
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.AccountTransactions)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Quote)
+                .WithMany(x => x.AccountTransactions)
+                .HasForeignKey(x => x.QuoteId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Invoice)
+                .WithMany(x => x.AccountTransactions)
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.ReversalOf)
+                .WithMany()
+                .HasForeignKey(x => x.ReversalOfId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint(
+                    "CK_CurrentAccountTransactions_DebitCredit",
+                    "([Debit] > 0 AND [Credit] = 0) OR ([Credit] > 0 AND [Debit] = 0)"));
+        });
+
+        builder.Entity<FinancialAccount>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.BankName).HasMaxLength(150);
+            entity.Property(x => x.BranchName).HasMaxLength(150);
+            entity.Property(x => x.Iban).HasMaxLength(34);
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Iban);
+        });
+
+        builder.Entity<FinancialTransaction>(entity =>
+        {
+            entity.Property(x => x.DocumentNumber).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.HasIndex(x => new { x.FinancialAccountId, x.TransactionDateUtc });
+            entity.HasIndex(x => x.DocumentNumber);
+            entity.HasOne(x => x.FinancialAccount)
+                .WithMany(x => x.Transactions)
+                .HasForeignKey(x => x.FinancialAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.FinancialTransactions)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.CurrentAccountTransaction)
+                .WithMany()
+                .HasForeignKey(x => x.CurrentAccountTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.ReversalOf)
+                .WithMany()
+                .HasForeignKey(x => x.ReversalOfId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_FinancialTransactions_Amount", "[Amount] > 0"));
+        });
+
+        builder.Entity<Invoice>(entity =>
+        {
+            entity.Property(x => x.InvoiceNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.Subtotal).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
+            entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(x => new { x.InvoiceType, x.InvoiceNumber }).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.InvoiceDateUtc });
+            entity.HasIndex(x => new { x.InvoiceType, x.Status, x.InvoiceDateUtc });
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.Invoices)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Warehouse)
+                .WithMany()
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Quote)
+                .WithMany(x => x.Invoices)
+                .HasForeignKey(x => x.QuoteId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.PurchasePriceList)
+                .WithMany(x => x.Invoices)
+                .HasForeignKey(x => x.PurchasePriceListId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.CostCenter)
+                .WithMany()
+                .HasForeignKey(x => x.CostCenterId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BusinessProject)
+                .WithMany()
+                .HasForeignKey(x => x.BusinessProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint(
+                    "CK_Invoices_Totals",
+                    "[Subtotal] >= 0 AND [DiscountTotal] >= 0 AND [TaxTotal] >= 0 AND [GrandTotal] >= 0"));
+        });
+
+        builder.Entity<InvoiceLine>(entity =>
+        {
+            entity.Property(x => x.ProductCodeSnapshot).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.DiscountRate).HasPrecision(5, 2);
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TaxRate).HasPrecision(5, 2);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
+            entity.Property(x => x.LineTotal).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.InvoiceId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.Invoice)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.InvoiceLines)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CustomerAddress>(entity =>
+        {
+            entity.Property(x => x.Title).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AddressType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.AddressLine).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.District).HasMaxLength(100);
+            entity.Property(x => x.City).HasMaxLength(100);
+            entity.Property(x => x.PostalCode).HasMaxLength(20);
+            entity.Property(x => x.CountryCode).HasMaxLength(2).IsRequired();
+            entity.HasIndex(x => new { x.CustomerId, x.AddressType });
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.Addresses)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CustomerContact>(entity =>
+        {
+            entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(100);
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.Email).HasMaxLength(200);
+            entity.HasIndex(x => x.CustomerId);
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.Contacts)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CostCenter>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<BusinessProject>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<PaymentReceipt>(entity =>
+        {
+            entity.Property(x => x.ReceiptNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.DocumentNumber).HasMaxLength(50);
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(x => new { x.ReceiptType, x.ReceiptNumber }).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.ReceiptDateUtc });
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.PaymentReceipts)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CostCenter)
+                .WithMany()
+                .HasForeignKey(x => x.CostCenterId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BusinessProject)
+                .WithMany()
+                .HasForeignKey(x => x.BusinessProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<PaymentReceiptLine>(entity =>
+        {
+            entity.Property(x => x.ReferenceNumber).HasMaxLength(80);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.PaymentReceiptId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.PaymentReceipt)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.PaymentReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.FinancialAccount)
+                .WithMany(x => x.PaymentReceiptLines)
+                .HasForeignKey(x => x.FinancialAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CurrentAccountTransaction)
+                .WithMany(x => x.PaymentReceiptLines)
+                .HasForeignKey(x => x.CurrentAccountTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.FinancialTransaction)
+                .WithMany(x => x.PaymentReceiptLines)
+                .HasForeignKey(x => x.FinancialTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<Branch>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<ProductColor>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.HexCode).HasMaxLength(7);
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<ProductVariant>(entity =>
+        {
+            entity.Property(x => x.VariantCode).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.VariantName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.AdditionalPurchasePrice).HasPrecision(18, 2);
+            entity.Property(x => x.AdditionalSalePrice).HasPrecision(18, 2);
+            entity.HasIndex(x => x.VariantCode).IsUnique();
+            entity.HasIndex(x => new { x.ProductId, x.ColorId });
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.Variants)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Color)
+                .WithMany(x => x.Variants)
+                .HasForeignKey(x => x.ColorId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<ProductBarcode>(entity =>
+        {
+            entity.Property(x => x.Barcode).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.BarcodeType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.UnitMultiplier).HasPrecision(18, 3);
+            entity.HasIndex(x => x.Barcode).IsUnique();
+            entity.HasIndex(x => new { x.ProductId, x.ProductVariantId });
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.Barcodes)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany(x => x.Barcodes)
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ProductBarcodes_Length",
+                    "([BarcodeType] = N'EAN13' AND LEN([Barcode]) = 13) OR " +
+                    "([BarcodeType] = N'EAN8' AND LEN([Barcode]) = 8) OR " +
+                    "([BarcodeType] = N'SCALE' AND LEN([Barcode]) = 7) OR " +
+                    "[BarcodeType] = N'OTHER'");
+                table.HasCheckConstraint(
+                    "CK_ProductBarcodes_Numeric",
+                    "[BarcodeType] = N'OTHER' OR [Barcode] NOT LIKE '%[^0-9]%'");
+            });
+        });
+
+        builder.Entity<ScaleProductSettings>(entity =>
+        {
+            entity.Property(x => x.Prefix).HasMaxLength(2).IsRequired();
+            entity.Property(x => x.PluCode).HasMaxLength(5).IsRequired();
+            entity.HasIndex(x => x.ProductId).IsUnique();
+            entity.HasIndex(x => new { x.Prefix, x.PluCode }).IsUnique();
+            entity.HasOne(x => x.Product)
+                .WithOne(x => x.ScaleSettings)
+                .HasForeignKey<ScaleProductSettings>(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ScaleProductSettings_Prefix",
+                    "[Prefix] IN (N'27', N'28', N'29')");
+                table.HasCheckConstraint(
+                    "CK_ScaleProductSettings_PluLength",
+                    "LEN([PluCode]) = 5 AND [PluCode] NOT LIKE '%[^0-9]%'");
+            });
+        });
+
+        builder.Entity<InventorySettings>(entity =>
+        {
+            entity.Property(x => x.DefaultBarcodeType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.DefaultScalePrefix).HasMaxLength(2).IsRequired();
+        });
+
+        builder.Entity<NumberSequence>(entity =>
+        {
+            entity.Property(x => x.Key).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Prefix).HasMaxLength(20).IsRequired();
+            entity.HasIndex(x => x.Key).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_NumberSequences_NextNumber", "[NextNumber] > 0");
+                table.HasCheckConstraint("CK_NumberSequences_Padding", "[Padding] BETWEEN 1 AND 12");
+            });
+        });
+
+        builder.Entity<UnitOfMeasure>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_UnitsOfMeasure_DecimalPlaces", "[DecimalPlaces] BETWEEN 0 AND 6"));
+        });
+
+        builder.Entity<ProductUnitConversion>(entity =>
+        {
+            entity.Property(x => x.MultiplierToBaseUnit).HasPrecision(18, 6);
+            entity.HasIndex(x => new { x.ProductId, x.UnitOfMeasureId }).IsUnique();
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.UnitConversions)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.UnitOfMeasure)
+                .WithMany(x => x.ProductConversions)
+                .HasForeignKey(x => x.UnitOfMeasureId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_ProductUnitConversions_Multiplier", "[MultiplierToBaseUnit] > 0"));
+        });
+
+        builder.Entity<SalesPriceList>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.ValidFromUtc, x.ValidUntilUtc });
+            entity.HasOne(x => x.Customer)
+                .WithMany(x => x.SalesPriceLists)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<SalesPriceListItem>(entity =>
+        {
+            entity.Property(x => x.MinimumQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.HasIndex(x => new
+            {
+                x.SalesPriceListId,
+                x.ProductId,
+                x.ProductVariantId,
+                x.MinimumQuantity
+            }).IsUnique();
+            entity.HasOne(x => x.SalesPriceList)
+                .WithMany(x => x.Items)
+                .HasForeignKey(x => x.SalesPriceListId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.SalesPriceListItems)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_SalesPriceListItems_Quantity", "[MinimumQuantity] > 0");
+                table.HasCheckConstraint("CK_SalesPriceListItems_Price", "[UnitPrice] >= 0");
+            });
+        });
+
+        builder.Entity<ProductSerialNumber>(entity =>
+        {
+            entity.Property(x => x.SerialNumber).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.LotNumber).HasMaxLength(100);
+            entity.HasIndex(x => x.SerialNumber).IsUnique();
+            entity.HasIndex(x => new { x.ProductId, x.LotNumber, x.ExpirationDateUtc });
+            entity.HasIndex(x => new { x.WarehouseId, x.IsInStock });
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Warehouse)
+                .WithMany()
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockReservation>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.HasIndex(x => new { x.ProductId, x.ProductVariantId, x.WarehouseId, x.Status });
+            entity.HasIndex(x => new { x.Status, x.ReservedUntilUtc });
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Warehouse)
+                .WithMany()
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.QuoteLine)
+                .WithMany()
+                .HasForeignKey(x => x.QuoteLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_StockReservations_Quantity", "[Quantity] > 0"));
+        });
+
+        builder.Entity<InventoryCount>(entity =>
+        {
+            entity.Property(x => x.CountNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.HasIndex(x => x.CountNumber).IsUnique();
+            entity.HasIndex(x => new { x.WarehouseId, x.CountDateUtc });
+            entity.HasOne(x => x.Warehouse)
+                .WithMany()
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<InventoryCountLine>(entity =>
+        {
+            entity.Property(x => x.SystemQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.CountedQuantity).HasPrecision(18, 3);
+            entity.Ignore(x => x.DifferenceQuantity);
+            entity.HasIndex(x => new { x.InventoryCountId, x.ProductId, x.ProductVariantId }).IsUnique();
+            entity.HasOne(x => x.InventoryCount)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.InventoryCountId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_InventoryCountLines_Quantities", "[SystemQuantity] >= 0 AND [CountedQuantity] >= 0"));
+        });
+
+        builder.Entity<StockSlip>(entity =>
+        {
+            entity.Property(x => x.SlipNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.HasIndex(x => x.SlipNumber).IsUnique();
+            entity.HasIndex(x => new { x.WarehouseId, x.SlipDateUtc });
+            entity.HasOne(x => x.Warehouse)
+                .WithMany()
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CostCenter)
+                .WithMany()
+                .HasForeignKey(x => x.CostCenterId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BusinessProject)
+                .WithMany()
+                .HasForeignKey(x => x.BusinessProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<StockSlipLine>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitCost).HasPrecision(18, 4);
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => new { x.StockSlipId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.StockSlip)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.StockSlipId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_StockSlipLines_Values", "[Quantity] > 0 AND [UnitCost] >= 0"));
+        });
+
+        builder.Entity<ExternalRecordMapping>(entity =>
+        {
+            entity.Property(x => x.SourceSystem).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ExternalId).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.InternalId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ExternalCode).HasMaxLength(100);
+            entity.Property(x => x.ContentHash).HasMaxLength(128);
+            entity.HasIndex(x => new { x.SourceSystem, x.EntityType, x.ExternalId }).IsUnique();
+            entity.HasIndex(x => new { x.EntityType, x.InternalId });
+        });
+
+        builder.Entity<IntegrationOutboxMessage>(entity =>
+        {
+            entity.Property(x => x.EventType).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => new { x.ProcessedAtUtc, x.OccurredAtUtc });
+        });
+
+        builder.Entity<Currency>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Symbol).HasMaxLength(10).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<ExchangeRate>(entity =>
+        {
+            entity.Property(x => x.BuyingRate).HasPrecision(18, 6);
+            entity.Property(x => x.SellingRate).HasPrecision(18, 6);
+            entity.HasIndex(x => new { x.CurrencyId, x.RateDateUtc }).IsUnique();
+            entity.HasOne(x => x.Currency)
+                .WithMany(x => x.ExchangeRates)
+                .HasForeignKey(x => x.CurrencyId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_ExchangeRates_Positive", "[BuyingRate] > 0 AND [SellingRate] > 0"));
+        });
+
+        builder.Entity<BusinessOrder>(entity =>
+        {
+            entity.Property(x => x.OrderNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.Subtotal).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
+            entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => new { x.OrderType, x.OrderNumber }).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.OrderDateUtc });
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Quote).WithMany().HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<BusinessOrderLine>(entity =>
+        {
+            entity.Property(x => x.ProductCodeSnapshot).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.FulfilledQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.DiscountRate).HasPrecision(5, 2);
+            entity.Property(x => x.TaxRate).HasPrecision(5, 2);
+            entity.Property(x => x.LineTotal).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.BusinessOrderId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.BusinessOrder).WithMany(x => x.Lines).HasForeignKey(x => x.BusinessOrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant).WithMany().HasForeignKey(x => x.ProductVariantId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_BusinessOrderLines_Quantity", "[Quantity] > 0 AND [FulfilledQuantity] >= 0 AND [FulfilledQuantity] <= [Quantity]"));
+        });
+
+        builder.Entity<DispatchNote>(entity =>
+        {
+            entity.Property(x => x.DispatchNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.VehiclePlate).HasMaxLength(20);
+            entity.Property(x => x.CarrierName).HasMaxLength(150);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => new { x.DispatchType, x.DispatchNumber }).IsUnique();
+            entity.HasIndex(x => new { x.CustomerId, x.DispatchDateUtc });
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BusinessOrder).WithMany().HasForeignKey(x => x.BusinessOrderId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Invoice).WithMany(x => x.DispatchNotes).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<DispatchNoteLine>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.HasIndex(x => new { x.DispatchNoteId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.DispatchNote).WithMany(x => x.Lines).HasForeignKey(x => x.DispatchNoteId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant).WithMany().HasForeignKey(x => x.ProductVariantId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_DispatchNoteLines_Quantity", "[Quantity] > 0"));
+        });
+
+        builder.Entity<ExpenseCategory>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        builder.Entity<Expense>(entity =>
+        {
+            entity.Property(x => x.DocumentNumber).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+            entity.Property(x => x.NetAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.ExpenseCategoryId, x.ExpenseDateUtc });
+            entity.HasIndex(x => x.DocumentNumber);
+            entity.HasOne(x => x.ExpenseCategory).WithMany(x => x.Expenses).HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.TaxRate).WithMany().HasForeignKey(x => x.TaxRateId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.CostCenter).WithMany().HasForeignKey(x => x.CostCenterId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BusinessProject).WithMany().HasForeignKey(x => x.BusinessProjectId).OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_Expenses_Amounts", "[NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]"));
+        });
+
+        builder.Entity<NegotiableInstrument>(entity =>
+        {
+            entity.Property(x => x.InstrumentNumber).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.BankName).HasMaxLength(150);
+            entity.Property(x => x.BranchName).HasMaxLength(150);
+            entity.Property(x => x.AccountNumber).HasMaxLength(80);
+            entity.Property(x => x.DrawerName).HasMaxLength(200);
+            entity.HasIndex(x => new { x.InstrumentType, x.InstrumentNumber }).IsUnique();
+            entity.HasIndex(x => new { x.Status, x.DueDateUtc });
+            entity.HasIndex(x => new { x.CustomerId, x.DueDateUtc });
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_NegotiableInstruments_Amount", "[Amount] > 0"));
+        });
+
+        builder.Entity<InvoicePaymentSchedule>(entity =>
+        {
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.PaidAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.InvoiceId, x.InstallmentNumber }).IsUnique();
+            entity.HasIndex(x => x.DueDateUtc);
+            entity.HasOne(x => x.Invoice).WithMany(x => x.PaymentSchedules).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+                table.HasCheckConstraint("CK_InvoicePaymentSchedules_Amounts", "[Amount] > 0 AND [PaidAmount] >= 0 AND [PaidAmount] <= [Amount]"));
+        });
+
+        builder.Entity<ProductImage>(entity =>
+        {
+            entity.Property(x => x.FilePath).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.AltText).HasMaxLength(200);
+            entity.HasIndex(x => new { x.ProductId, x.DisplayOrder });
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.Images)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany(x => x.Images)
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<StockTransfer>(entity =>
+        {
+            entity.Property(x => x.TransferNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.HasIndex(x => x.TransferNumber).IsUnique();
+            entity.HasIndex(x => new { x.FromWarehouseId, x.TransferDateUtc });
+            entity.HasIndex(x => new { x.ToWarehouseId, x.TransferDateUtc });
+            entity.HasOne(x => x.FromWarehouse)
+                .WithMany()
+                .HasForeignKey(x => x.FromWarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ToWarehouse)
+                .WithMany()
+                .HasForeignKey(x => x.ToWarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+                table.HasCheckConstraint(
+                    "CK_StockTransfers_DifferentWarehouses",
+                    "[FromWarehouseId] <> [ToWarehouseId]"));
+        });
+
+        builder.Entity<StockTransferLine>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.HasIndex(x => new { x.StockTransferId, x.LineNumber }).IsUnique();
+            entity.HasOne(x => x.StockTransfer)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.StockTransferId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.StockTransferLines)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductVariant)
+                .WithMany()
+                .HasForeignKey(x => x.ProductVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(table =>
+                table.HasCheckConstraint(
+                    "CK_StockTransferLines_PositiveQuantity",
+                    "[Quantity] > 0"));
+        });
+
+        builder.Entity<TaxRate>().HasData(CatalogSeedData.TaxRates);
+        builder.Entity<ProductCategory>().HasData(CatalogSeedData.Categories);
+        builder.Entity<Product>().HasData(CatalogSeedData.Products);
+        builder.Entity<ProductBarcode>().HasData(CatalogSeedData.Barcodes);
+        builder.Entity<InventorySettings>().HasData(new InventorySettings
+        {
+            Id = 1,
+            RequireBarcode = true,
+            AutoGenerateBarcode = true,
+            DefaultBarcodeType = "EAN13",
+            DefaultScalePrefix = "27",
+            EnforceStockLevel = true,
+            AllowNegativeStock = false,
+            AllowSaleWhenOutOfStock = false,
+            EnableMinimumStockWarning = true,
+            RequireTransferApproval = true,
+            TrackStockByVariant = false,
+            RequireProductVariant = false,
+            AllowSaleBelowCost = false,
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+        builder.Entity<NumberSequence>().HasData(
+            new NumberSequence
+            {
+                Id = 1,
+                Key = "STOCK",
+                Prefix = "SHN.",
+                NextNumber = 1,
+                Padding = 3,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 2,
+                Key = "SALES_INVOICE",
+                Prefix = "SF.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 3,
+                Key = "PURCHASE_INVOICE",
+                Prefix = "AF.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 4,
+                Key = "COLLECTION_RECEIPT",
+                Prefix = "TAH.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 5,
+                Key = "PAYMENT_RECEIPT",
+                Prefix = "TED.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+        builder.Entity<UnitOfMeasure>().HasData(
+            new UnitOfMeasure
+            {
+                Id = 1,
+                Code = "ADET",
+                Name = "Adet",
+                DecimalPlaces = 0,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UnitOfMeasure
+            {
+                Id = 2,
+                Code = "KG",
+                Name = "Kilogram",
+                DecimalPlaces = 3,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UnitOfMeasure
+            {
+                Id = 3,
+                Code = "PAKET",
+                Name = "Paket",
+                DecimalPlaces = 0,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+        builder.Entity<Currency>().HasData(
+            new Currency
+            {
+                Id = 1,
+                Code = "TRY",
+                Name = "Türk Lirası",
+                Symbol = "₺",
+                IsBaseCurrency = true,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new Currency
+            {
+                Id = 2,
+                Code = "USD",
+                Name = "Amerikan Doları",
+                Symbol = "$",
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new Currency
+            {
+                Id = 3,
+                Code = "EUR",
+                Name = "Euro",
+                Symbol = "€",
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+        foreach (var entityType in builder.Model.GetEntityTypes()
+                     .Where(x => typeof(SahinSoft.Domain.Common.EntityBase).IsAssignableFrom(x.ClrType)))
+        {
+            builder.Entity(entityType.ClrType)
+                .Property(nameof(SahinSoft.Domain.Common.EntityBase.RecordId))
+                .HasDefaultValueSql("NEWSEQUENTIALID()")
+                .ValueGeneratedOnAdd();
+            builder.Entity(entityType.ClrType)
+                .HasIndex(nameof(SahinSoft.Domain.Common.EntityBase.RecordId))
+                .IsUnique();
+        }
+        builder.Entity<Branch>().HasData(new Branch
+        {
+            Id = 1,
+            Code = "MERKEZ",
+            Name = "Merkez Şube",
+            IsHeadOffice = true,
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+        builder.Entity<Warehouse>().HasData(new Warehouse
+        {
+            Id = 1,
+            Code = "MERKEZ",
+            Name = "Merkez Depo",
+            BranchId = 1,
+            IsDefault = true,
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+        builder.Entity<CompanySettings>().HasData(new CompanySettings
+        {
+            Id = 1,
+            CompanyName = "ŞahinSoft",
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+        builder.Entity<FinancialAccount>().HasData(new FinancialAccount
+        {
+            Id = 1,
+            Code = "KASA",
+            Name = "Merkez Kasa",
+            AccountType = FinancialAccountType.Cash,
+            CurrencyCode = "TRY",
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+    }
+}

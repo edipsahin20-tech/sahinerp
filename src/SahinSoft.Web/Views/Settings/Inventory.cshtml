@@ -1,0 +1,69 @@
+@model SahinSoft.Web.Models.InventorySettingsViewModel
+@{
+    ViewData["Title"] = "Stok Parametreleri";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Stok Parametreleri</h1>
+        <p class="text-secondary mb-0">Buradaki değişiklikler fatura, stok fişi, transfer ve sayım kontrollerine uygulanır.</p>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Barkod</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label asp-for="DefaultBarcodeType" class="form-label"></label>
+                <select asp-for="DefaultBarcodeType" class="form-select">
+                    <option value="EAN13">EAN-13</option>
+                    <option value="EAN8">EAN-8</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="DefaultScalePrefix" class="form-label"></label>
+                <select asp-for="DefaultScalePrefix" class="form-select">
+                    <option value="27">27</option>
+                    <option value="28">28</option>
+                    <option value="29">29</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-4">
+                <div class="form-check form-switch"><input asp-for="RequireBarcode" class="form-check-input" /><label asp-for="RequireBarcode" class="form-check-label"></label></div>
+                <div class="form-check form-switch"><input asp-for="AutoGenerateBarcode" class="form-check-input" /><label asp-for="AutoGenerateBarcode" class="form-check-label"></label></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Stok kontrolü</div>
+        <div class="card-body d-flex flex-column gap-3">
+            <div class="form-check form-switch"><input asp-for="EnforceStockLevel" class="form-check-input" /><label asp-for="EnforceStockLevel" class="form-check-label"></label></div>
+            <div class="form-check form-switch"><input asp-for="AllowNegativeStock" class="form-check-input" /><label asp-for="AllowNegativeStock" class="form-check-label"></label></div>
+            <div class="form-check form-switch"><input asp-for="AllowSaleWhenOutOfStock" class="form-check-input" /><label asp-for="AllowSaleWhenOutOfStock" class="form-check-label"></label></div>
+            <div class="form-check form-switch"><input asp-for="EnableMinimumStockWarning" class="form-check-input" /><label asp-for="EnableMinimumStockWarning" class="form-check-label"></label></div>
+            <div class="form-check form-switch"><input asp-for="RequireTransferApproval" class="form-check-input" /><label asp-for="RequireTransferApproval" class="form-check-label"></label></div>
+            <div class="form-check form-switch"><input asp-for="AllowSaleBelowCost" class="form-check-input" /><label asp-for="AllowSaleBelowCost" class="form-check-label"></label></div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Renk ve varyant <span class="badge text-bg-secondary ms-2">Varsayılan kapalı</span></div>
+        <div class="card-body">
+            <p class="text-secondary small">Varyant takibi öncelikli değildir. Gerektiğinde buradan açılabilir.</p>
+            <div class="d-flex flex-column gap-3">
+                <div class="form-check form-switch"><input asp-for="TrackStockByVariant" class="form-check-input" /><label asp-for="TrackStockByVariant" class="form-check-label"></label></div>
+                <div class="form-check form-switch"><input asp-for="RequireProductVariant" class="form-check-input" /><label asp-for="RequireProductVariant" class="form-check-label"></label></div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary px-4" type="submit">Parametreleri Kaydet</button>
+</form>

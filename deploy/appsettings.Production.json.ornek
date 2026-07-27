@@ -1,0 +1,5 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=SahinSoftDb;User Id=SQL_KULLANICI_ADI;Password=SQL_SIFRESI;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+  }
+}

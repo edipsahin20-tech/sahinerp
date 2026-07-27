@@ -1,0 +1,32 @@
+# ŞahinSoft — Performans ve Güvenlik Ayarları
+# ---------------------------------------------
+# Bu dosya Apache (cPanel/paylaşımlı hosting) için yazılmıştır.
+# İlgili modüller hosting'de kapalıysa bu bloklar sessizce yok sayılır,
+# siteyi bozmaz.
+
+# --- 1) GZIP / Sıkıştırma ---
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/json
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# --- 2) Tarayıcı Önbellekleme (statik dosyalar) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# --- 3) Güvenlik Başlıkları ---
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

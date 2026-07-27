@@ -1,0 +1,156 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.InvoiceDetailsViewModel
+@{
+    ViewData["Title"] = $"Fatura {Model.InvoiceNumber}";
+    var badgeClass = Model.Status switch
+    {
+        InvoiceStatus.Draft => "text-bg-secondary-subtle text-secondary-emphasis",
+        InvoiceStatus.Approved => "text-bg-success-subtle text-success-emphasis",
+        _ => "text-bg-danger-subtle text-danger-emphasis"
+    };
+    var statusText = Model.Status switch
+    {
+        InvoiceStatus.Draft => "Taslak",
+        InvoiceStatus.Approved => "Onaylı",
+        _ => "İptal"
+    };
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">@(Model.InvoiceType == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası") @Model.InvoiceNumber</h1>
+        <p class="text-secondary mb-0">
+            @Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")
+            <span class="badge @badgeClass ms-2">@statusText</span>
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">Fatura listesi</a>
+        @if (Model.Status == InvoiceStatus.Draft)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Düzenle</a>
+            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-primary">Onayla</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (Model.Status == InvoiceStatus.Cancelled)
+{
+    <div class="alert alert-danger">
+        <strong>İptal edildi</strong> &middot; @Model.CancelledAtUtc?.ToString("dd.MM.yyyy HH:mm")<br />
+        Gerekçe: @Model.CancellationReason
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Ürün</th>
+                    <th class="text-end">Miktar</th>
+                    <th class="text-end">Birim fiyat</th>
+                    <th class="text-end">İskonto %</th>
+                    <th class="text-end">KDV %</th>
+                    <th class="text-end">Tutar</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr>
+                    <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
+                    <td class="text-end">@line.Quantity.ToString("N3")</td>
+                    <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                    <td class="text-end">@line.DiscountRate.ToString("N2")</td>
+                    <td class="text-end">@line.TaxRate.ToString("N2")</td>
+                    <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-end fw-semibold">Ara toplam</td>
+                    <td class="text-end">@Model.Subtotal.ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="text-end fw-semibold">İskonto</td>
+                    <td class="text-end">@Model.DiscountTotal.ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="text-end fw-semibold">KDV</td>
+                    <td class="text-end">@Model.TaxTotal.ToString("N2")</td>
+                </tr>
+                <tr class="table-light">
+                    <td colspan="5" class="text-end fw-bold">Genel toplam</td>
+                    <td class="text-end fw-bold">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+@if (Model.PaymentSchedules.Count > 0)
+{
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">Vade planı</div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Taksit</th>
+                        <th>Vade tarihi</th>
+                        <th class="text-end">Tutar</th>
+                        <th class="text-end">Tahsil edilen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var schedule in Model.PaymentSchedules)
+                {
+                    <tr>
+                        <td>@schedule.InstallmentNumber</td>
+                        <td>@schedule.DueDateUtc.ToString("dd.MM.yyyy")</td>
+                        <td class="text-end">@schedule.Amount.ToString("N2")</td>
+                        <td class="text-end">@schedule.PaidAmount.ToString("N2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.Notes is not null)
+{
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="text-secondary small">Notlar</div>
+            <div>@Model.Notes</div>
+        </div>
+    </div>
+}
+
+@if (Model.Status == InvoiceStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h2 class="h6">Faturayı iptal et</h2>
+            <p class="text-secondary small">İptal işlemi kaydı silmez; stok ve cari için ters hareket üretir.</p>
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
+                <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
+                <button type="submit" class="btn btn-outline-danger text-nowrap">İptal et</button>
+            </form>
+        </div>
+    </div>
+}

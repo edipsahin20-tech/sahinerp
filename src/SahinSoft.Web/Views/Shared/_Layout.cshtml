@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ŞahinSoft</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SahinSoft.Web.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">ŞahinSoft</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Index">Panel</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Customers" asp-action="Index">Cariler</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Products" asp-action="Index">Ürünler</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Invoices" asp-action="Index">Faturalar</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="PaymentReceipts" asp-action="Index">Tahsilat/Tediye</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50" href="#">Teklifler</a>
+                        </li>
+                    </ul>
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container-fluid">
+        <div class="row g-0">
+            <aside class="col-lg-2 d-none d-lg-block pe-4">
+                <div class="list-group shadow-sm sticky-top" style="top: 1rem;">
+                    <a class="list-group-item list-group-item-action" asp-controller="Home" asp-action="Index">Ana sayfa</a>
+                    <a class="list-group-item list-group-item-action" asp-controller="Customers" asp-action="Index">Cari yönetimi</a>
+                    <a class="list-group-item list-group-item-action" asp-controller="Products" asp-action="Index">Stok yönetimi</a>
+                    <a class="list-group-item list-group-item-action" asp-controller="Invoices" asp-action="Index">Fatura yönetimi</a>
+                    <a class="list-group-item list-group-item-action" asp-controller="PaymentReceipts" asp-action="Index">Tahsilat/Tediye</a>
+                    <span class="list-group-item text-secondary">Teklif yönetimi</span>
+                    @if (User.IsInRole("Administrator"))
+                    {
+                        <a class="list-group-item list-group-item-action" asp-controller="Settings" asp-action="Inventory">Stok parametreleri</a>
+                    }
+                </div>
+            </aside>
+            <main role="main" class="col-12 col-lg-10 pb-4 px-2 px-lg-3">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2026 ŞahinSoft · Cari, ürün ve teklif yönetimi
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

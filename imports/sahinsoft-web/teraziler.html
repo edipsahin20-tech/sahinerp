@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barkodlu ve Dokunmatik Market Terazileri — ŞahinSoft Teknolojileri</title>
+<meta name="description" content="Barkodlu ve dokunmatik market terazileri ile hızlı tartım, otomatik fiyat etiketleme ve stok entegrasyonu sağlayan çözümler.">
+<link rel="canonical" href="https://www.sahinbilisim.com.tr/teraziler.html">
+<meta property="og:title" content="Barkodlu ve Dokunmatik Market Terazileri — ŞahinSoft Teknolojileri">
+<meta property="og:description" content="Barkodlu ve dokunmatik market terazileri ile hızlı tartım, otomatik fiyat etiketleme ve stok entegrasyonu sağlayan çözümler.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.sahinbilisim.com.tr/teraziler.html">
+<meta property="og:image" content="https://www.sahinbilisim.com.tr/assets/images/dinosoft_pos_clean_wide.jpg">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Barkodlu ve Dokunmatik Market Terazileri — ŞahinSoft Teknolojileri">
+<meta name="twitter:description" content="Barkodlu ve dokunmatik market terazileri ile hızlı tartım, otomatik fiyat etiketleme ve stok entegrasyonu sağlayan çözümler.">
+<meta name="twitter:image" content="https://www.sahinbilisim.com.tr/assets/images/dinosoft_pos_clean_wide.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #0a0c10;
+    --ink-2: #12161f;
+    --fg: #f0f4f8;
+    --dim: #94a3b8;
+    --gold: #d4af37;
+    --line: rgba(212, 175, 55, 0.25);
+    --font-title: 'Sora', sans-serif;
+    --font-body: 'Manrope', sans-serif;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--ink); color:var(--fg); font-family:var(--font-body); line-height:1.6; overflow-x:hidden; }
+  
+  
+  
+  
+   50% { transform: scale(1.08); opacity: 1; } }
+
+  header { position: sticky; top:0; background:rgba(10,12,16,0.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); z-index:1000; }
+  nav { max-width:1400px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff; font-family:var(--font-title); font-weight:800; font-size:20px; }
+  .logo img:not(.logo img) { height: 48px; width: auto; }
+  .nav-links { display:flex; align-items:center; gap:24px; list-style:none; }
+  .nav-links a { color:var(--fg); text-decoration:none; font-size:14px; font-weight:600; transition:color 0.2s; }
+  .nav-links a:hover { color:var(--gold); }
+  .has-dd { position:relative; cursor:pointer; padding:10px 0; }
+  .has-dd:hover .dropdown { display:block; }
+  .dropdown { display:none; position:absolute; top:100%; left:0; background:#0b0e14 !important; border:1px solid var(--line); border-radius:12px; min-width:220px; padding:12px; box-shadow:0 20px 40px rgba(0,0,0,0.5); z-index:100; }
+  .dropdown a { display:block; padding:8px 12px; border-radius:6px; color:var(--fg); font-size:13.5px; text-decoration:none; }
+  .dropdown a:hover { background:rgba(212,175,55,0.15); color:var(--gold); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 22px; border-radius:8px; font-weight:700; text-decoration:none; transition:all 0.25s; cursor:pointer; }
+  .btn-gold { background:var(--gold); color:#000; border:1px solid var(--gold); }
+  .btn-gold:hover { background:#c59b27; transform:translateY(-2px); }
+
+  .hero-category { padding: 60px 24px 40px; text-align:center; background: linear-gradient(180deg, rgba(212,175,55,0.08) 0%, rgba(10,12,16,0) 100%); border-bottom: 1px solid var(--line); }
+  .hero-kicker { color: var(--gold); font-size: 13px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+  .hero-category h1 { font-family: var(--font-title); font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 16px; letter-spacing: -0.01em; }
+  .hero-category p { max-width: 760px; margin: 0 auto; color: var(--dim); font-size: 16px; line-height: 1.6; }
+
+  .grid-container { max-width: 1400px; margin: 0 auto; padding: 60px 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 28px; }
+  .product-card { min-height: 190px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; cursor: pointer; display: flex; flex-direction: column; }
+  .product-card:hover { transform: translateY(-6px); border-color: var(--gold); box-shadow: 0 16px 36px rgba(212,175,55,0.15); }
+  .product-card:hover .product-img-card { transform: scale(1.06); }
+  .product-thumb { position: relative; background: transparent; padding: 10px 12px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--line); }
+  .product-badge { position: absolute; top: 12px; left: 12px; background: var(--ink); color: #fff; border: 1px solid var(--gold); font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; z-index: 2; }
+  .product-body { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .product-body h3 { font-family: var(--font-title); font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px; line-height: 1.3; }
+  .product-body p { color: var(--dim); font-size: 13px; line-height: 1.5; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sub-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .sub-list span { font-size: 12px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .sub-list span::before { content: "›"; color: var(--gold); font-weight: 800; font-size: 14px; }
+  .btn-detail { color: var(--gold); font-size: 13px; font-weight: 700; background: transparent; border: none; padding: 0; cursor: pointer; text-align: left; transition: color 0.2s; }
+  .product-card:hover .btn-detail { text-decoration: underline; color: #fff; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(10,12,16,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 10px 12px; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+  .modal-overlay.active { opacity: 1; visibility: visible; }
+  .modal-dialog { background: var(--ink-2); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 25px 60px rgba(0,0,0,0.7); transform: scale(0.95); transition: transform 0.3s; padding: 28px; }
+  .modal-overlay.active .modal-dialog { transform: scale(1); }
+  .modal-close { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: #fff; font-size: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  .modal-close:hover { background: var(--gold); color: #000; }
+
+  footer { background: #07080b; border-top: 1px solid var(--line); padding: 50px 24px 30px; margin-top: 60px; text-align: center; color: var(--dim); font-size: 13.5px; }
+
+  .nav-dd-container { position:relative; cursor:pointer; padding:10px 0; }
+  .nav-dd-container:hover .nav-dd-menu { display:block !important; }
+  .nav-dd-menu { display:none; position:absolute; top:100%; left:0; background: transparent; border:1px solid rgba(212,175,55,0.25); border-radius:12px; min-width:220px; padding:12px; box-shadow:0 20px 40px rgba(0,0,0,0.5); z-index:100; }
+  .nav-dd-menu a:hover { background:rgba(212,175,55,0.15); color:#d4af37 !important; }
+
+
+  .top-info-bar { background: #07090d; border-bottom: 1px solid rgba(212,175,55,0.2); padding: 8px 24px; color: #94a3b8; font-size: 13px; font-family: 'Manrope', sans-serif; position: relative; z-index: 1001; }
+  header { position: sticky; top:0; background:rgba(10,12,16,0.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); z-index:1000; }
+  nav.main-nav { max-width: 1400px; margin: 0 auto; padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; }
+  
+  .has-dd { position: relative; cursor: pointer; padding: 12px 0; }
+  .has-dd:hover .dropdown { display: block !important; opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; }
+  .dropdown { display: none; opacity: 0; visibility: hidden; position: absolute; top: 100%; left: -10px; background: #0b0e14 !important; border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; min-width: 260px; padding: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 99999; transition: all 0.2s ease; margin-top: 0; }
+  .dropdown a { display: block; padding: 10px 14px; border-radius: 8px; color: #f0f4f8 !important; font-size: 14px; font-weight: 600; text-decoration: none; transition: all 0.2s ease; margin-bottom: 2px; }
+  .dropdown a:hover { background: rgba(212,175,55,0.18); color: #d4af37 !important; transform: translateX(4px); }
+
+
+  @keyframes spinRight { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes spinLeft { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+  @keyframes flashGlow { 0% { opacity: 0.4; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1.1); } }
+  @keyframes logoPulse { 0% { transform: scale(0.96); filter: drop-shadow(0 0 15px rgba(212,175,55,0.6)); } 100% { transform: scale(1.04); filter: drop-shadow(0 0 35px rgba(212,175,55,1)); } }
+
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE SYSTEM (ŞahinSoft Professional Mobile Optimization)
+   ========================================================================== */
+
+/* Mobile Hamburger Toggle Button */
+.mobile-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--line, rgba(212, 175, 55, 0.4));
+  color: var(--gold, #d4af37);
+  font-size: 24px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.mobile-toggle:hover, .mobile-toggle:focus {
+  background: rgba(212, 175, 55, 0.15);
+  color: #fff;
+}
+
+/* Tablet & Mobile Adjustments (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  nav.main-nav, nav {
+    padding: 14px 18px !important;
+    position: relative;
+  }
+
+  .nav-links {
+    display: none !important;
+    flex-direction: column !important;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: rgba(10, 12, 16, 0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    border-bottom: 2px solid var(--gold, #d4af37) !important;
+    padding: 20px 24px !important;
+    gap: 16px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9) !important;
+    z-index: 999999 !important;
+  }
+
+  .nav-links.mobile-open {
+    display: flex !important;
+  }
+
+  .nav-links > li {
+    width: 100%;
+  }
+
+  .nav-links a {
+    font-size: 16px !important;
+    padding: 10px 0 !important;
+    display: block;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Dropdown behavior on mobile */
+  .has-dd {
+    padding: 0 !important;
+  }
+  .has-dd > a::after {
+    content: " ▾";
+    font-size: 12px;
+    color: var(--gold, #d4af37);
+  }
+  .dropdown {
+    position: static !important;
+    display: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: rgba(18, 22, 31, 0.9) !important;
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+    margin: 8px 0 12px 0 !important;
+    padding: 10px 14px !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    min-width: 100% !important;
+  }
+  .has-dd.open .dropdown {
+    display: block !important;
+  }
+  .dropdown a {
+    font-size: 14px !important;
+    padding: 8px 10px !important;
+    border-bottom: none !important;
+  }
+
+  /* Layout grids on mobile */
+  .thumb-grid, .sector-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .hw-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* Section Title Spacing */
+  .section-heading, h1, h2 {
+    font-size: 26px !important;
+    line-height: 1.3 !important;
+  }
+  .section-sub, p {
+    font-size: 14.5px !important;
+  }
+}
+
+/* Smartphone Adjustments (768px & below) */
+@media (max-width: 768px) {
+  .top-info-bar {
+    padding: 8px 12px !important;
+    font-size: 11.5px !important;
+  }
+  .top-info-bar div {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .logo {
+    font-size: 20px !important;
+    gap: 8px !important;
+  }
+  .logo img:not(.logo img) {
+    height: 36px !important;
+  }
+
+  /* Hero Section Stacking */
+  section[style*="display: flex"], section[style*="display:grid"], .hero-section {
+    flex-direction: column !important;
+    padding: 35px 16px !important;
+    gap: 24px !important;
+    text-align: center !important;
+  }
+
+  section div[style*="width: 50%"], section div[style*="flex: 1"], section div[style*="max-width"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Buttons on mobile */
+  .btn, a.btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+
+  /* Image containers */
+  div[style*="border-radius: 20px"], div[style*="border-radius: 24px"] {
+    min-height: auto !important;
+    max-height: none !important;
+  }
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Hardware cards padding */
+  .hw-card {
+    padding: 14px 10px !important;
+  }
+  .hw-img-wrap {
+    height: 100px !important;
+  }
+  .hw-img-wrap img:not(.logo img) {
+    max-height: 90px !important;
+  }
+}
+
+
+/* ==========================================================================
+   ŞAHİNSOFT ULTRA-PREMIUM MOBILE DESIGN SYSTEM (V4 Pro Mobile-First)
+   ========================================================================== */
+
+/* Custom Animated Mobile Hamburger Toggle */
+.mobile-toggle {
+  display: none;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(10, 12, 16, 0.8));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+  font-size: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.mobile-toggle:active {
+  transform: scale(0.92);
+}
+.mobile-toggle.active {
+  background: var(--gold, #d4af37);
+  color: #0a0c10;
+  border-color: #d4af37;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+}
+
+/* Tablet & Mobile Layout Adaptations (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex !important;
+  }
+
+  header.site-header, header {
+    background: rgba(10, 12, 16, 0.96) !important;
+    backdrop-filter: blur(18px) !important;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.3) !important;
+  }
+
+  nav.main-nav, nav {
+    padding: 12px 16px !important;
+    position: relative;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* Full Luxury Mobile Menu Overlay */
+  .nav-links {
+    display: none !important;
+    flex-direction: column !important;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(180deg, rgba(10, 12, 16, 0.98) 0%, rgba(14, 18, 26, 0.99) 100%) !important;
+    backdrop-filter: blur(25px) !important;
+    border-bottom: 3px solid #d4af37 !important;
+    padding: 16px 20px 24px !important;
+    gap: 8px !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.95) !important;
+    z-index: 999999 !important;
+    animation: fadeInDown 0.3s ease-out forwards;
+  }
+
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .nav-links.mobile-open {
+    display: flex !important;
+  }
+
+  .nav-links > li {
+    width: 100%;
+    list-style: none;
+  }
+
+  .nav-links > li > a {
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+    color: #f0f4f8 !important;
+    padding: 12px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    text-decoration: none !important;
+    transition: all 0.2s ease;
+  }
+
+  .nav-links > li > a:hover, .nav-links > li > a:active {
+    background: rgba(212, 175, 55, 0.15) !important;
+    border-color: rgba(212, 175, 55, 0.4) !important;
+    color: #d4af37 !important;
+  }
+
+  /* Mobile Dropdown Styling */
+  .has-dd {
+    padding: 0 !important;
+  }
+  .has-dd > a::after {
+    content: " ⊕";
+    font-size: 16px;
+    color: #d4af37;
+    transition: transform 0.3s ease;
+  }
+  .has-dd.open > a::after {
+    content: " ⊖";
+    color: #ff3b30;
+  }
+  .dropdown {
+    position: static !important;
+    display: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: rgba(8, 10, 14, 0.95) !important;
+    border: 1px solid rgba(212, 175, 55, 0.25) !important;
+    margin: 6px 0 10px 0 !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5) !important;
+    min-width: 100% !important;
+  }
+  .has-dd.open .dropdown {
+    display: block !important;
+  }
+  .dropdown a {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    padding: 10px 14px !important;
+    color: #cbd5e1 !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px;
+  }
+  .dropdown a::before {
+    content: "›";
+    color: #d4af37;
+    font-weight: 800;
+  }
+  .dropdown a:hover {
+    background: rgba(212, 175, 55, 0.18) !important;
+    color: #fff !important;
+  }
+
+  /* Grid Layouts on Mobile */
+  .thumb-grid, .sector-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .hw-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .thumb-card, .sector-card, .hw-card {
+    border-radius: 14px !important;
+    background: linear-gradient(145deg, #10141d, #080a0e) !important;
+  }
+}
+
+/* Smartphone Specific Adjustments (768px & below) */
+@media (max-width: 768px) {
+  .top-info-bar {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+    background: #050608 !important;
+  }
+  .top-info-bar div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 10px !important;
+  }
+
+  .logo {
+    font-size: 19px !important;
+    gap: 8px !important;
+  }
+  .logo img:not(.logo img) {
+    height: 34px !important;
+  }
+
+  /* Hero Section Stacking & Typography */
+  section[style*="display: flex"], section[style*="display:grid"], section[style*="display: flex;"], .hero-section {
+    flex-direction: column !important;
+    padding: 28px 14px !important;
+    gap: 20px !important;
+    text-align: center !important;
+  }
+
+  /* Responsive Fluid Typography */
+  h1, .hero-title {
+    font-size: clamp(22px, 6vw, 30px) !important;
+    line-height: 1.3 !important;
+    letter-spacing: -0.01em !important;
+  }
+  h2, .section-heading {
+    font-size: clamp(20px, 5.5vw, 26px) !important;
+    line-height: 1.3 !important;
+  }
+  p, .section-sub, .thumb-desc, .sector-desc {
+    font-size: 13.5px !important;
+    line-height: 1.55 !important;
+  }
+
+  /* Full Width Mobile Buttons */
+  .btn, a.btn, .btn-gold {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 13px 18px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Hero Cards & Image Fitting */
+  div[style*="border-radius: 20px"], div[style*="border-radius: 24px"], div[style*="border-radius: 16px"] {
+    width: 100% !important;
+    min-height: auto !important;
+    max-height: none !important;
+    border-radius: 14px !important;
+  }
+
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 12px;
+  }
+
+  .hw-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .hw-card {
+    padding: 12px 8px !important;
+  }
+  .hw-img-wrap {
+    height: 85px !important;
+  }
+  .hw-img-wrap img:not(.logo img) {
+    max-height: 75px !important;
+  }
+  .hw-title {
+    font-size: 12.5px !important;
+  }
+  .hw-badge {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+
+  footer {
+    padding: 40px 16px 24px !important;
+    font-size: 12.5px !important;
+  }
+}
+
+
+/* ==========================================================================
+   DINOSOFT-STYLE PERFECT MOBILE & PC RESPONSIVE SYSTEM
+   ========================================================================== */
+
+/* Mobile Header Hamburger Button (Dinosoft Square Style) */
+.mobile-toggle {
+  display: none;
+  background: var(--gold, #d4af37);
+  border: none;
+  color: #0a0c10;
+  font-size: 22px;
+  font-weight: bold;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+.mobile-toggle:active {
+  transform: scale(0.92);
+}
+
+/* Full Right-Side Slide-Over Mobile Menu Modal (Exact Dinosoft Pattern) */
+.mobile-menu-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 88%;
+  max-width: 360px;
+  height: 100vh;
+  background: rgba(10, 12, 16, 0.98);
+  backdrop-filter: blur(25px);
+  border-left: 2px solid var(--gold, #d4af37);
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.9);
+  z-index: 999999;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mobile-menu-modal.active {
+  display: flex !important;
+  transform: translateX(0) !important;
+}
+
+/* Backdrop for Mobile Menu */
+.mobile-menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 999998;
+}
+.mobile-menu-backdrop.active {
+  display: block !important;
+}
+
+/* Mobile Menu Header inside Drawer */
+.mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+.mobile-close-btn {
+  background: #ff3b30;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+}
+
+/* Mobile Menu Items (Dinosoft Clean White Card Buttons) */
+.mobile-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-nav-item > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-title, 'Sora', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.mobile-nav-item > a:hover, .mobile-nav-item > a:active {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: var(--gold, #d4af37);
+  color: var(--gold, #d4af37);
+}
+
+/* Mobile Submenu Accordion */
+.mobile-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 4px 12px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(212, 175, 55, 0.3);
+}
+.mobile-nav-item.open .mobile-submenu {
+  display: flex !important;
+}
+.mobile-submenu a {
+  padding: 10px 14px;
+  background: rgba(18, 22, 31, 0.8);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.mobile-submenu a:hover {
+  color: var(--gold, #d4af37);
+  background: rgba(212, 175, 55, 0.15);
+}
+
+/* Tablet & Mobile Breakpoints (992px & below) */
+@media (max-width: 992px) {
+  .mobile-toggle {
+    display: flex !important;
+  }
+  .nav-links {
+    display: none !important;
+  }
+}
+
+/* Smartphone Specific Adjustments (768px & below) */
+@media (max-width: 768px) {
+  /* Hero Section Stacking Order: IMAGE ON TOP, TEXT ON BOTTOM (Exact Dinosoft Mobile Pattern) */
+  section[style*="display: flex"], section[style*="display:grid"], .hero-section {
+    display: flex !important;
+    flex-direction: column-reverse !important; /* Places Hero Image at top, Text below */
+    padding: 24px 16px !important;
+    gap: 20px !important;
+    text-align: center !important;
+  }
+
+  /* Force Hero Image Container to top */
+  .hero-section > div:last-child, section > div:last-child {
+    order: -1 !important;
+    width: 100% !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* Hero Content Area below Image */
+  .hero-section > div:first-child, section > div:first-child {
+    order: 1 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  /* Responsive Fluid Titles */
+  h1, .hero-title {
+    font-size: clamp(22px, 6vw, 28px) !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+  }
+  h2, .section-heading {
+    font-size: clamp(20px, 5.5vw, 25px) !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
+  }
+
+  /* Full Width CTA Button (Dinosoft Orange/Gold Style) */
+  .btn, a.btn, .btn-gold {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 14px 20px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+    margin-top: 12px !important;
+  }
+
+  /* Ticks Formatting under CTA Button */
+  div[style*="✓"], .hero-ticks {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    font-size: 13px !important;
+    margin-top: 16px !important;
+  }
+
+  /* Image fitting */
+  img:not(.logo img) {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 14px !important;
+  }
+}
+
+
+/* ==========================================================================
+   STRICT MOBILE AUTO-FIT & OVERFLOW-X PREVENTION (ŞahinSoft Mobile Auto-Fit)
+   ========================================================================== */
+html, body {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+img:not(.logo img), video, canvas, svg, iframe {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Smartphone Strict Viewport Boundary Locks */
+@media (max-width: 768px) {
+  header, nav, section, footer, div, main, article, container {
+    max-width: 100vw !important;
+  }
+
+  nav.main-nav, nav {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 12px 14px !important;
+  }
+
+  /* Full Screen Mobile Menu Fit - No Sideways Overflow */
+  .mobile-menu-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    right: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+  }
+
+  .mobile-menu-modal.active {
+    display: flex !important;
+    transform: translateX(0) !important;
+  }
+
+  /* Prevent Body Scroll when Menu is open */
+  body.menu-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+  }
+}
+
+
+/* ==========================================================================
+   DESKTOP & MOBILE HEADER LOGO FIX (ŞahinSoft PC Header Protection)
+   ========================================================================== */
+
+/* Strict Protection for Logo Image on PC & Desktop View */
+.logo img, a.logo img, nav .logo img {
+  height: 48px !important;
+  max-height: 48px !important;
+  width: auto !important;
+  display: inline-block !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 12px rgba(212, 175, 55, 0.4)) !important;
+}
+
+/* Ensure General Images scale without affecting logo */
+img:not(.logo img) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Desktop Header Flex Alignment */
+header.site-header nav.main-nav, header nav {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: relative !important;
+}
+
+nav .nav-links {
+  display: flex !important;
+  align-items: center !important;
+  gap: 28px !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tablet & Mobile Specific Overrides */
+@media (max-width: 992px) {
+  .logo img, a.logo img, nav .logo img {
+    height: 36px !important;
+    max-height: 36px !important;
+  }
+
+  nav .nav-links {
+    display: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   STABLE & CORPORATE FOOTER DESIGN SYSTEM (ŞahinSoft Corporate Footer)
+   ========================================================================== */
+footer {
+  background: #080a0e !important;
+  border-top: 1px solid rgba(212, 175, 55, 0.25) !important;
+  padding: 60px 24px 30px 24px !important;
+  color: #94a3b8 !important;
+  font-family: 'Manrope', sans-serif !important;
+}
+
+footer .footer-container {
+  max-width: 1400px;
+  margin: 0 auto 45px auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr;
+  gap: 40px;
+}
+
+/* Footer Brand Logo Protection */
+footer img, footer .footer-logo, footer .logo img {
+  height: 44px !important;
+  max-height: 44px !important;
+  width: auto !important;
+  display: inline-block !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 10px rgba(212,175,55,0.3)) !important;
+}
+
+footer h4, footer h3 {
+  font-family: 'Sora', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
+}
+
+footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+footer ul li {
+  margin-bottom: 10px;
+}
+
+footer ul li a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+footer ul li a:hover {
+  color: #d4af37;
+  padding-left: 4px;
+}
+
+footer .footer-bottom {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Tablet Responsive Footer */
+@media (max-width: 992px) {
+  footer .footer-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 30px !important;
+  }
+}
+
+/* Mobile Responsive Footer */
+@media (max-width: 768px) {
+  footer {
+    padding: 40px 18px 24px 18px !important;
+  }
+  footer .footer-container {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+    margin-bottom: 30px !important;
+    text-align: left !important;
+  }
+  footer img, footer .footer-logo, footer .logo img {
+    height: 36px !important;
+    max-height: 36px !important;
+  }
+  footer .footer-bottom {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+  }
+}
+
+</style>
+  <link rel="stylesheet" href="assets/css/flair.css">
+</head>
+<body>
+<div id="preloader" style="position:fixed; inset:0; background:#0a0c10; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999999; transition:opacity 0.6s ease, visibility 0.6s ease;">
+  <style>
+    @keyframes bgPulse { 0% { opacity: 0.5; transform: scale(0.9); } 100% { opacity: 0.9; transform: scale(1.1); } }
+    @keyframes redPulse { 0% { opacity: 0.35; transform: scale(0.95); } 100% { opacity: 0.7; transform: scale(1.12); } }
+  </style>
+  <div style="position:relative; width:220px; height:220px;">
+    <div style="position:absolute; inset:0; margin:auto; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.14) 50%, transparent 78%); filter:blur(18px); animation:redPulse 2.1s ease-in-out infinite alternate;"></div>
+    <div style="position:absolute; inset:15px; margin:auto; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle, rgba(212,175,55,0.55) 0%, rgba(212,175,55,0.18) 50%, transparent 78%); filter:blur(14px); animation:bgPulse 1.8s ease-in-out infinite alternate;"></div>
+    <div style="position:absolute; inset:15px; border:2px dashed rgba(212,175,55,0.5); border-radius:50%; animation:spinRight 12s linear infinite;"></div>
+    <svg style="position:absolute; inset:15px; animation:spinLeft 3.4s linear infinite;" viewBox="0 0 190 190">
+      <circle cx="95" cy="95" r="82" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="110 145 110 145" stroke-linecap="round"/>
+    </svg>
+    <svg style="position:absolute; inset:15px; animation:spinRight 2.1s linear infinite;" viewBox="0 0 190 190">
+      <circle cx="95" cy="95" r="62" fill="none" stroke="#d4af37" stroke-width="3" stroke-dasharray="85 105 85 105" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; animation:flashGlow 1.6s ease-in-out infinite alternate;">
+      <img src="assets/images/logo-s-mark.png" alt="ŞahinSoft" style="width:112px; height:auto; filter:drop-shadow(0 0 18px rgba(212,175,55,0.6));" decoding="async">
+    </div>
+  </div>
+  <div style="margin-top:22px; text-align:center;">
+    <div style="font-family:'Sora',sans-serif; font-weight:800; font-size:18px; letter-spacing:0.03em;">
+      <span style="color:#ffffff;">ŞAHİNSOFT</span> <span style="color:#d4af37;">YAZILIM</span>
+    </div>
+    <div style="font-family:'Manrope',sans-serif; font-size:11px; font-weight:500; letter-spacing:0.28em; color:#94a3b8; text-transform:uppercase; margin-top:4px;">Teknolojileri</div>
+  </div>
+</div>
+
+<!-- Corporate Top Bar -->
+<div class="top-info-bar">
+  <div style="max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+      <a href="mailto:edip@sahinbilisim.com.tr" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; transition: color 0.2s;"><span style="color: #d4af37;">✉</span> edip@sahinbilisim.com.tr</a>
+      <a href="tel:05332782379" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s;"><span style="color: #d4af37;">📞</span> 0 (533) 278 23 79</a>
+      <span style="display: inline-flex; align-items: center; gap: 6px; color: #94a3b8;"><span style="color: #d4af37;">📍</span> Nilüfer / Bursa</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <span style="background: rgba(212,175,55,0.12); color: #d4af37; border: 1px solid rgba(212,175,55,0.3); padding: 2px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">● 7/24 Kesintisiz Destek Hattı</span>
+      <a href="https://wa.me/905332782379?text=Merhaba,%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" style="color: #25d366; text-decoration: none; font-weight: 700; font-size: 12.5px;">WhatsApp İletişim →</a>
+      <a href="#" class="panel-login-trigger" style="color: #d4af37; text-decoration: none; font-weight: 700; font-size: 12.5px;">🔒 Panel Girişi</a>
+    </div>
+  </div>
+</div>
+
+<!-- Sticky Main Header Toolbar -->
+<header class="site-header">
+  <nav class="main-nav">
+    <a href="index.html" class="logo" style="display: flex; align-items: center; gap: 14px; text-decoration: none; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 27px; letter-spacing: -0.02em;">
+      <img src="assets/extracted/a902b7b6dbf20bb1.png" alt="ŞahinSoft Logo" style="height: 48px; width: auto; filter: drop-shadow(0 4px 12px rgba(212,175,55,0.4));" loading="lazy" decoding="async">
+      <span><span style="color: #ffffff;">Şahin</span><span style="color: #d4af37;">Soft</span></span>
+    </a>
+<div class="nav-links" style="display: flex; align-items: center; gap: 32px; list-style: none;">
+      <a href="index.html" style="color: #f0f4f8; text-decoration: none; font-size: 15px; font-weight: 600; transition: color 0.2s;">Ana Sayfa</a>
+      
+      <!-- Ürünler Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Ürünler <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="dokunmatik-pos.html">Dokunmatik POS Sistemleri</a>
+          <a href="yazarkasa-pos.html">Yazarkasa POS</a>
+          <a href="barkod-okuyucular.html">Barkod Okuyucular</a>
+          <a href="yazicilar.html">Termal &amp; Fiş Yazıcılar</a>
+          <a href="teraziler.html">Elektronik Teraziler</a>
+          <a href="el-terminali.html">El Terminalleri</a>
+        </div>
+      </div>
+
+      <!-- Çözümlerimiz Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Çözümlerimiz <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="cafe-restoran-cozumleri.html">Cafe &amp; Restoran Otomasyonu</a>
+          <a href="perakende-magaza-cozumleri.html">Perakende &amp; Mağaza Otomasyonu</a>
+          <a href="market-sarkuteri-cozumleri.html">Market &amp; Şarküteri Otomasyonu</a>
+          <a href="depo-lojistik-cozumleri.html">Depo &amp; Lojistik Çözümleri</a>
+          <a href="fabrika-uretim-cozumleri.html">Fabrika &amp; Üretim Takibi</a>
+          <a href="e-ticaret-pazaryeri-cozumleri.html">E-Ticaret &amp; Pazaryeri Entegrasyonu</a>
+          <div style="border-top: 1px solid rgba(212,175,55,0.2); margin: 8px 6px; padding-top: 8px;">
+            <span style="display:block; padding: 4px 14px; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em;">Ödeme Entegrasyonları</span>
+          </div>
+          <a href="pavo-vuk507-entegrasyonu.html">Pavo VUK 507 Entegrasyonu</a>
+          <a href="inpos-gmp3-entegrasyonu.html">Inpos GMP3 Entegrasyonu</a>
+          <a href="ingenico-gmp3-entegrasyonu.html">Ingenico GMP3 Entegrasyonu</a>
+        </div>
+      </div>
+
+      <!-- Hizmetlerimiz Dropdown -->
+      <div class="has-dd">
+        <span style="color: #f0f4f8; font-size: 15px; font-weight: 600; cursor: pointer; user-select: none;">Hizmetlerimiz <span style="font-size:10px; color:#d4af37;">▾</span></span>
+        <div class="dropdown">
+          <a href="web-gelistirme.html">Web Geliştirme</a>
+          <a href="mobil-uygulama.html">Mobil Uygulama</a>
+          <a href="kurumsal-yazilim.html">Kurumsal Yazılım</a>
+          <a href="bakim-destek.html">Bakım &amp; Destek</a>
+        </div>
+      </div>
+
+      <a href="iletisim.html" style="color: #f0f4f8; text-decoration: none; font-size: 15px; font-weight: 600; transition: color 0.2s;">İletişim</a>
+      <a href="iletisim.html" class="btn btn-gold" style="display: inline-flex; align-items: center; justify-content: center; padding: 11px 24px; border-radius: 8px; font-weight: 700; text-decoration: none; transition: all 0.25s; cursor: pointer; font-size: 14px; background: #d4af37; color: #000; border: 1px solid #d4af37;">Teklif Alın</a>
+    </div>
+    </nav>
+</header>
+
+<section class="hero-category">
+  <div class="hero-kicker">BARKODLU VE ELEKTRONİK TERAZİLER</div>
+  <h1>Barkodlu ve Dokunmatik Market Terazileri</h1>
+  <p>ŞahinSoft yüksek performanslı endüstriyel donanım çözümleri ile işletmeniz için kesintisiz, hızlı ve güvenilir altyapı.</p>
+</section>
+
+<main class="grid-container">
+  
+      <div class="product-card" onclick="openModal('modal-1')">
+        <div class="product-thumb">
+          <span class="product-badge">BARKODLU MARKET TERAZİSİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/d3b29fe6e8b4737f.png" alt="CAS CL3000 Market Terazisi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS CL3000 Market Terazisi</h3>
+          <p>Süpermarketler ve şarküteriler için ethernet ağ bağlantılı, 30.000 PLU hafızalı barkodlu sistem terazisi.</p>
+          <div class="sub-list">
+            <span>30.000 Ürün (PLU) Hafızası</span><span>Hızlı Termal Etiket Yazıcı</span><span>72 Adet Direkt Kısayol Tuşu</span><span>Ethernet & Wi-Fi Ağ Entegrasyonu</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-2')">
+        <div class="product-thumb">
+          <span class="product-badge">DOKUNMATİK MULTİMEDYA TERAZİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/c0abedbff8a9ed52.png" alt="CAS CL8000 Dokunmatik Terazi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS CL8000 Dokunmatik Terazi</h3>
+          <p>15 inç renkli dokunmatik ekranlı, multimedya reklam gösterimli akıllı barkodlu market terazisi.</p>
+          <div class="sub-list">
+            <span>15 inç Kapasitif Dokunmatik Ekran</span><span>Müşteri Tarafı Renkli Gösterge</span><span>Görsel Reklam & Video Oynatma</span><span>Reçete & İçerik Bilgisi Basımı</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-3')">
+        <div class="product-thumb">
+          <span class="product-badge">SİSTEM & ETİKET TERAZİSİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/c904b11c6559bb14.png" alt="CAS CN-1 Sistem Terazisi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS CN-1 Sistem Terazisi</h3>
+          <p>Ergonomik tuş takımı, paslanmaz kefesi ve yüksek hassasiyetli tartım sensörü ile profesyonel barkodlu terazi.</p>
+          <div class="sub-list">
+            <span>Ergonomik Esnek Tuş Takımı</span><span>Paslanmaz Hijyenik Çelik Kefe</span><span>Merkezi Sunucu Yazılım Entegrasyonu</span><span>Otomatik Kalibrasyon</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-4')">
+        <div class="product-thumb">
+          <span class="product-badge">BOYUNLU MARKET TERAZİSİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/cddcedb57ffc1e4e.png" alt="Digi SM100P Boyunlu Terazi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>Digi SM100P Boyunlu Terazi</h3>
+          <p>Boyunlu göstergesi, kolay kaset değişimi ve sağlam mekaniği ile sektör standardı etiket basan sistem terazisi.</p>
+          <div class="sub-list">
+            <span>Boyunlu Yüksek LCD Ekran</span><span>Kolay Etiket Kaset Değişimi</span><span>5.000 PLU Hafızası</span><span>Hızlı Fiş ve Etiket Basımı</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-5')">
+        <div class="product-thumb">
+          <span class="product-badge">DOKUNMATİK TEZGAH TERAZİSİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/d48065435004c7b5.png" alt="Digi SM-120T Dokunmatik Terazi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>Digi SM-120T Dokunmatik Terazi</h3>
+          <p>Tezgah üstü kullanım için dokunmatik kısayol yüzeyli, suya ve neme dayanıklı yeni nesil barkodlu terazi.</p>
+          <div class="sub-list">
+            <span>Dokunmatik Tuş Yüzeyi</span><span>Nem ve Suya Dayanıklı Yapı</span><span>Hızlı Etiket Basım Mekanizması</span><span>Geniş Ürün Kısayol Tuşları</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-6')">
+        <div class="product-thumb">
+          <span class="product-badge">ŞARJLI MASAÜSTÜ TERAZİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/8bec5171963666eb.png" alt="CAS ER-JR Masaüstü Terazi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS ER-JR Masaüstü Terazi</h3>
+          <p>Pazarlar, manavlar ve seyyar satışlar için dahili aküsü ile 120 saate kadar şarjlı çalışan fiyat hesaplamalı terazi.</p>
+          <div class="sub-list">
+            <span>120 Saat Akülü Kesintisiz Çalışma</span><span>Müşteri ve Satıcı Çift Taraflı Ekran</span><span>Fiyat Hesaplama & Para Üstü Alma</span><span>Paslanmaz Çelik Tartım Kefesi</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-7')">
+        <div class="product-thumb">
+          <span class="product-badge">SU GEÇİRMEZ PASLANMAZ TERAZİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/b6ca22f69fa1f1cf.png" alt="CAS FW-500 Su Geçirmez Terazi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS FW-500 Su Geçirmez Terazi</h3>
+          <p>IP69K koruma sınıfı ile tazikli suyla yıkanabilir, komple paslanmaz çelik imalathane ve balıkçı terazisi.</p>
+          <div class="sub-list">
+            <span>IP69K Tam Yıkanabilir Sertifika</span><span>SUS304 Paslanmaz Çelik Gövde</span><span>Büyük Parlak LED Ekran</span><span>Hızlı Tartım Tepkime Süresi</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openModal('modal-8')">
+        <div class="product-thumb">
+          <span class="product-badge">ANKASTRE KASA TERAZİSİ</span>
+          <div style="width: 100%; height: 135px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 8px; padding: 10px 12px; overflow: hidden;">
+            <img class="product-img-card" src="assets/extracted/d671b64aaa97f6c8.png" alt="CAS PDI Ankastre Kasa Terazisi" style="max-height: 130px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); transition: transform 0.4s ease;" loading="lazy" decoding="async">
+          </div>
+        </div>
+        <div class="product-body">
+          <h3>CAS PDI Ankastre Kasa Terazisi</h3>
+          <p>Market kasa masalarına gömülen, masaüstü barkod okuyucular ile entegre çalışan profesyonel terazi platformu.</p>
+          <div class="sub-list">
+            <span>Kasa Masası Ankastre Montaj</span><span>Masaüstü Barkod Okuyucu Entegre</span><span>POS Bilgisayar Yazılım Entegrasyonu</span><span>Ergonomik Yassı Tasarım</span>
+          </div>
+          <button class="btn-detail">İncele &amp; Detaylar →</button>
+        </div>
+      </div>
+
+</main>
+
+
+  <div class="modal-overlay" id="modal-1" onclick="closeModalOnBackdrop(event, 'modal-1')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-1')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/d3b29fe6e8b4737f.png" alt="CAS CL3000 Market Terazisi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">BARKODLU MARKET TERAZİSİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS CL3000 Market Terazisi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Süpermarketler ve şarküteriler için ethernet ağ bağlantılı, 30.000 PLU hafızalı barkodlu sistem terazisi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS CL3000</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Tartım Kapasitesi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg / 30 kg Çift Taksimat</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Hafıza Kapasitesi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">30.000 PLU Ürün Hafızası</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kısayol Tuşları</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">72 Direkt Tuş (144 Kısayol)</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Etiket Yazıcı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Hızlı Termal Etiket Baskı (100mm/s)</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Bağlantı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">TCP/IP Ethernet, RS-232, Kasa Portu</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kefe Ölçüsü</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">380 x 250 mm Paslanmaz Çelik</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-1')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-2" onclick="closeModalOnBackdrop(event, 'modal-2')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-2')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/c0abedbff8a9ed52.png" alt="CAS CL8000 Dokunmatik Terazi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">DOKUNMATİK MULTİMEDYA TERAZİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS CL8000 Dokunmatik Terazi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">15 inç renkli dokunmatik ekranlı, multimedya reklam gösterimli akıllı barkodlu market terazisi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS CL8000</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Ekran</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 inç Dokunmatik Ana Ekran + Müşteri Ekranı</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg / 30 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">İşletim Sistemi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Endüstriyel Linux / Windows</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Yazıcı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Astar Yüzeyli (Linerless) Etiket Yazıcı</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-2')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-3" onclick="closeModalOnBackdrop(event, 'modal-3')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-3')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/c904b11c6559bb14.png" alt="CAS CN-1 Sistem Terazisi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">SİSTEM & ETİKET TERAZİSİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS CN-1 Sistem Terazisi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Ergonomik tuş takımı, paslanmaz kefesi ve yüksek hassasiyetli tartım sensörü ile profesyonel barkodlu terazi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS CN-1</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg (5g Hassasiyet)</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">PLU</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">10.000 Ürün Hafızası</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Bağlantı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Ethernet, USB, RS232</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-3')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-4" onclick="closeModalOnBackdrop(event, 'modal-4')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-4')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/cddcedb57ffc1e4e.png" alt="Digi SM100P Boyunlu Terazi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">BOYUNLU MARKET TERAZİSİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">Digi SM100P Boyunlu Terazi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Boyunlu göstergesi, kolay kaset değişimi ve sağlam mekaniği ile sektör standardı etiket basan sistem terazisi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Digi SM100P</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg / 30 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kaset Mekanizması</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Önden Çekmeceli Kaset</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Ekran</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Mavi Arka Işıklı LCD Boyunlu Ekran</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-4')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-5" onclick="closeModalOnBackdrop(event, 'modal-5')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-5')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/d48065435004c7b5.png" alt="Digi SM-120T Dokunmatik Terazi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">DOKUNMATİK TEZGAH TERAZİSİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">Digi SM-120T Dokunmatik Terazi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Tezgah üstü kullanım için dokunmatik kısayol yüzeyli, suya ve neme dayanıklı yeni nesil barkodlu terazi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Digi SM-120T</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Arayüz</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">LAN Ethernet, RS232</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kefe</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Paslanmaz Çelik</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-5')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-6" onclick="closeModalOnBackdrop(event, 'modal-6')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-6')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/8bec5171963666eb.png" alt="CAS ER-JR Masaüstü Terazi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">ŞARJLI MASAÜSTÜ TERAZİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS ER-JR Masaüstü Terazi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Pazarlar, manavlar ve seyyar satışlar için dahili aküsü ile 120 saate kadar şarjlı çalışan fiyat hesaplamalı terazi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS ER-JR</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Tartım Kapasitesi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg / 30 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Akü Ömrü</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">120 Saat Şarjlı Kullanım</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Tuş Takımı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Kabartmalı Su Geçirmez Membran</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-6')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-7" onclick="closeModalOnBackdrop(event, 'modal-7')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-7')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/b6ca22f69fa1f1cf.png" alt="CAS FW-500 Su Geçirmez Terazi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">SU GEÇİRMEZ PASLANMAZ TERAZİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS FW-500 Su Geçirmez Terazi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">IP69K koruma sınıfı ile tazikli suyla yıkanabilir, komple paslanmaz çelik imalathane ve balıkçı terazisi.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS FW-500</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Koruma Sınıfı</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">IP69K (Tazikli Sıcak Suya Dayanıklı)</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg / 30 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Gövde Malzemesi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Komple SUS304 Paslanmaz Çelik</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-7')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-8" onclick="closeModalOnBackdrop(event, 'modal-8')">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="closeModal('modal-8')">&times;</button>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+        <div style="width:160px; height:160px; background: transparent; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:12px;">
+          <img src="assets/extracted/d671b64aaa97f6c8.png" alt="CAS PDI Ankastre Kasa Terazisi" style="max-height:130px; max-width:90%; object-fit:contain; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.4));" loading="lazy" decoding="async">
+        </div>
+        <div style="flex:1;">
+          <span style="color:var(--gold); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">ANKASTRE KASA TERAZİSİ</span>
+          <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0 8px;">CAS PDI Ankastre Kasa Terazisi</h2>
+          <p style="color:var(--dim); font-size:14px; margin:0;">Market kasa masalarına gömülen, masaüstü barkod okuyucular ile entegre çalışan profesyonel terazi platformu.</p>
+        </div>
+      </div>
+      <h4 style="color:var(--gold); font-size:15px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:6px;">Teknik Özellikler (Tepe Bilişim Standartları)</h4>
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:20px; background: transparent; border-radius:8px; overflow:hidden;">
+        <tbody>
+          <tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Marka / Model</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">CAS PDI Ankastre Terazi</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Montaj Tipi</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">Kasa Masası Ankastre Platform</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">Kapasite</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">15 kg</td></tr><tr><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); font-weight:700; color:var(--gold); width:35%;">İletişim Protocol</td><td style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08); color:var(--fg);">RS232 (POS Yazılımları Uyumlu)</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-space-between; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:16px;">
+        <a href="iletisim.html" class="btn btn-gold" style="font-size:13px; padding:10px 20px;">Teklif &amp; Bilgi Alın</a>
+        <button onclick="closeModal('modal-8')" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; font-size:13px; padding:10px 20px; border:none; cursor:pointer; border-radius:6px;">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+
+<footer class="site-footer-minimal" style="background: #06070a; border-top: 1px solid rgba(212,175,55,0.25); padding: 24px 20px; color: #94a3b8; text-align: center; font-family: 'Manrope', sans-serif;">
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+    
+    <!-- Logo & Brand Title -->
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 2px;">
+      <a href="index.html" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
+        <img src="assets/extracted/a902b7b6dbf20bb1.png" alt="ŞahinSoft Logo" style="height: 36px !important; max-height: 36px !important; width: auto !important; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(212,175,55,0.4));" loading="lazy" decoding="async">
+        <span style="font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;"><span style="color: #d4af37;">ŞAHİN</span>SOFT</span>
+      </a>
+    </div>
+
+    <!-- Copyright Line -->
+    <div style="font-size: 13.5px; color: #cbd5e1; font-weight: 500;">
+      © 2026 <strong style="color: #ffffff; font-weight: 800;">ŞahinSoft Bilgi Teknolojileri</strong>. Tüm Hakkı Saklıdır.
+    </div>
+
+    <!-- Contact Info Line -->
+    <div style="font-size: 12.5px; color: #94a3b8; font-weight: 500; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 2px;">
+      <span>Nilüfer / BURSA</span>
+      <span style="color: rgba(212,175,55,0.5);">|</span>
+      <span>Telefon: <a href="tel:05332782379" style="color: #d4af37; text-decoration: none; font-weight: 700;">0 (533) 278 23 79</a></span>
+      <span style="color: rgba(212,175,55,0.5);">|</span>
+      <span>E-Posta: <a href="mailto:edip@sahinbilisim.com.tr" style="color: #cbd5e1; text-decoration: none;">edip@sahinbilisim.com.tr</a></span>
+    </div>
+
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('load', function() {
+    var preloader = document.getElementById('preloader');
+    if (!preloader) return;
+    setTimeout(function () {
+      preloader.style.opacity = '0';
+      preloader.style.visibility = 'hidden';
+      setTimeout(function () { preloader.style.display = 'none'; }, 600);
+    }, 600);
+  });
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function closeModalOnBackdrop(e, id) {
+    if (e.target.classList.contains('modal-overlay')) {
+      closeModal(id);
+    }
+  }
+</script>
+
+<!-- ŞahinSoft WhatsApp Canlı Destek Hattı Floating Widget -->
+<div id="whatsapp-widget-container" style="position: fixed; bottom: 28px; right: 28px; z-index: 99999; font-family: 'Manrope', sans-serif;">
+  
+  <!-- WhatsApp Chat Box Popup -->
+  <div id="wa-chat-box" style="display: none; width: 330px; background: #111b21; border: 1px solid rgba(212,175,55,0.3); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8); margin-bottom: 16px; animation: waSlideUp 0.3s ease;">
+    
+    <!-- Chat Header -->
+    <div style="background: #00a884; padding: 18px 20px; color: #fff; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="position: relative;">
+          <div style="width: 42px; height: 42px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #00a884; font-size: 18px;">ŞS</div>
+          <span style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #25d366; border: 2px solid #00a884; border-radius: 50%;"></span>
+        </div>
+        <div>
+          <h4 style="font-size: 15px; font-weight: 700; margin: 0; line-height: 1.2;">ŞahinSoft Canlı Destek</h4>
+          <span style="font-size: 12px; opacity: 0.9; font-weight: 500;">Şu an çevrimiçi • 7/24 Aktif</span>
+        </div>
+      </div>
+      <button onclick="toggleWaChat()" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; opacity: 0.8; padding: 0;">✕</button>
+    </div>
+
+    <!-- Chat Body Message -->
+    <div style="padding: 10px 12px; background: #0b141a; color: #e9edef; font-size: 13.5px; line-height: 1.6;">
+      <div style="background: #202c33; padding: 14px; border-radius: 12px 12px 12px 0; border-left: 3px solid #00a884; margin-bottom: 16px;">
+        <p style="margin: 0;">Merhaba! 👋 <strong>ŞahinSoft</strong> POS yazılımı, el terminali veya otomasyon çözümlerimiz hakkında bilgi ve fiyat teklifi almak için bize doğrudan WhatsApp'tan yazabilirsiniz.</p>
+        <span style="display: block; font-size: 10px; color: #8696a0; text-align: right; margin-top: 6px;">ŞahinSoft Müşteri Temsilcisi</span>
+      </div>
+    </div>
+
+    <!-- Chat Action Button -->
+    <div style="padding: 0 20px 20px; background: #0b141a;">
+      <a href="https://wa.me/905332782379?text=Merhaba,%20yaz%C4%B1l%C4%B1m%20ve%20donan%C4%B1m%20%C3%BCr%C3%BCnleriniz%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #25d366; color: #fff; text-decoration: none; padding: 12px; border-radius: 12px; font-weight: 700; font-size: 14px; transition: background 0.2s; box-shadow: 0 6px 16px rgba(37,211,102,0.3);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.001 3.655 3.744-.988z"/></svg>
+        Sohbete Başla →
+      </a>
+    </div>
+  </div>
+
+  <!-- Floating Button -->
+  <button onclick="toggleWaChat()" aria-label="WhatsApp ile iletişime geç" style="width: 60px; height: 60px; border-radius: 50%; background: #25d366; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 25px rgba(37,211,102,0.45); transition: transform 0.3s ease; position: relative;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.001 3.655 3.744-.988z"/></svg>
+    <span style="position: absolute; top: 0; right: 0; width: 14px; height: 14px; background: #ff3b30; border: 2px solid #0a0c10; border-radius: 50%;"></span>
+  </button>
+</div>
+
+<script>
+  function toggleWaChat() {
+    const box = document.getElementById('wa-chat-box');
+    if (box) {
+      if (box.style.display === 'none' || !box.style.display) {
+        box.style.display = 'block';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+  }
+</script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      const link = item.querySelector('.nav-link');
+      const dropdown = item.querySelector('.dropdown-menu');
+      if (dropdown && link) {
+        link.addEventListener('click', function(e) {
+          if (link.getAttribute('href') === '#') {
+            e.preventDefault();
+            e.stopPropagation();
+            const isVisible = getComputedStyle(dropdown).visibility === 'visible' && getComputedStyle(dropdown).opacity === '1';
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+              d.style.opacity = '0';
+              d.style.visibility = 'hidden';
+              d.style.transform = 'translateY(10px)';
+            });
+
+            if (!isVisible) {
+              dropdown.style.opacity = '1';
+              dropdown.style.visibility = 'visible';
+              dropdown.style.transform = 'translateY(0)';
+            }
+          }
+        });
+      }
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-item')) {
+        document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+          d.style.opacity = '0';
+          d.style.visibility = 'hidden';
+          d.style.transform = 'translateY(10px)';
+        });
+      }
+    });
+  });
+</script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.has-dd').forEach(function(dd) {
+      const trigger = dd.querySelector('span');
+      const menu = dd.querySelector('.dropdown');
+      if (trigger && menu) {
+        dd.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const isOpen = menu.classList.contains('active') || getComputedStyle(menu).visibility === 'visible';
+          
+          document.querySelectorAll('.has-dd .dropdown').forEach(function(m) {
+            m.classList.remove('active');
+            m.style.opacity = '0';
+            m.style.visibility = 'hidden';
+            
+          });
+
+          if (!isOpen) {
+            menu.classList.add('active');
+            menu.style.opacity = '1';
+            menu.style.visibility = 'visible';
+            
+          }
+        });
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.has-dd')) {
+        document.querySelectorAll('.has-dd .dropdown').forEach(function(m) {
+          m.classList.remove('active');
+          m.style.opacity = '0';
+          m.style.visibility = 'hidden';
+          
+        });
+      }
+    });
+  });
+</script>
+
+
+
+
+
+<script>
+// ŞahinSoft Mobil Menü Kontrolcüsü (birleştirilmiş, çakışmasız tek versiyon)
+document.addEventListener('DOMContentLoaded', function() {
+  const mainNav = document.querySelector('nav.main-nav') || document.querySelector('nav');
+  if (!mainNav) return;
+
+  // 1) Hamburger butonunu oluştur (yoksa)
+  let toggleBtn = mainNav.querySelector('.mobile-toggle');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.className = 'mobile-toggle';
+    toggleBtn.setAttribute('aria-label', 'Mobil Menü');
+    toggleBtn.innerHTML = '☰';
+    const navLinksEl = mainNav.querySelector('.nav-links');
+    if (navLinksEl) {
+      mainNav.insertBefore(toggleBtn, navLinksEl);
+    } else {
+      mainNav.appendChild(toggleBtn);
+    }
+  }
+
+  // 2) Kayar mobil menü modalını + arka planını oluştur (yoksa)
+  let modal = document.querySelector('.mobile-menu-modal');
+  let backdrop = document.querySelector('.mobile-menu-backdrop');
+  if (!modal) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'mobile-menu-backdrop';
+
+    modal = document.createElement('div');
+    modal.className = 'mobile-menu-modal';
+    modal.innerHTML = `
+      <div class="mobile-menu-header">
+        <button class="mobile-close-btn" aria-label="Kapat">✕</button>
+        <a href="index.html" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:#fff; font-weight:800; font-size:18px;">
+          <span style="color:#d4af37;">ŞAHİN</span>SOFT
+        </a>
+      </div>
+      <ul class="mobile-nav-list">
+        <li class="mobile-nav-item"><a href="index.html">Anasayfa</a></li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Ürünler <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="dokunmatik-pos.html">Dokunmatik POS Terminali</a>
+            <a href="yazarkasa-pos.html">Yazarkasa POS</a>
+            <a href="barkod-okuyucular.html">Barkod Okuyucular</a>
+            <a href="yazicilar.html">Termal Fiş Yazıcılar</a>
+            <a href="teraziler.html">Hassas Teraziler</a>
+            <a href="el-terminali.html">El Terminalleri</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Çözümlerimiz <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="cafe-restoran-cozumleri.html">Cafe & Restoran Otomasyonu</a>
+            <a href="perakende-magaza-cozumleri.html">Perakende & Mağaza Çözümleri</a>
+            <a href="market-sarkuteri-cozumleri.html">Market & Şarküteri Otomasyonu</a>
+            <a href="depo-lojistik-cozumleri.html">Depo & Lojistik Çözümleri</a>
+            <a href="fabrika-uretim-cozumleri.html">Fabrika & Üretim Çözümleri</a>
+            <a href="e-ticaret-pazaryeri-cozumleri.html">E-Ticaret & Pazaryeri Entegrasyonu</a>
+            <a href="pavo-vuk507-entegrasyonu.html">Pavo VUK 507 Entegrasyonu</a>
+            <a href="inpos-gmp3-entegrasyonu.html">Inpos GMP3 Entegrasyonu</a>
+            <a href="ingenico-gmp3-entegrasyonu.html">Ingenico GMP3 Entegrasyonu</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item has-sub">
+          <a href="#">Hizmetlerimiz <span>+</span></a>
+          <div class="mobile-submenu">
+            <a href="web-gelistirme.html">Web Geliştirme</a>
+            <a href="mobil-uygulama.html">Mobil Uygulama</a>
+            <a href="kurumsal-yazilim.html">Kurumsal Yazılım</a>
+            <a href="bakim-destek.html">Bakım & Destek</a>
+          </div>
+        </li>
+        <li class="mobile-nav-item"><a href="iletisim.html">İletişim</a></li>
+      </ul>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+  }
+
+  function openMenu() {
+    modal.classList.add('active');
+    backdrop.classList.add('active');
+    document.body.classList.add('menu-open');
+  }
+  function closeMenu() {
+    modal.classList.remove('active');
+    backdrop.classList.remove('active');
+    document.body.classList.remove('menu-open');
+  }
+
+  // 3) TÜM hamburger butonlarına TEK bir click handler (çakışma yok)
+  document.querySelectorAll('.mobile-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (modal.classList.contains('active')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+  });
+
+  // 4) Kapatma tetikleyicileri
+  const closeBtn = modal.querySelector('.mobile-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+  backdrop.addEventListener('click', closeMenu);
+
+  // 5) Modal içindeki alt menü accordion (Ürünler / Çözümlerimiz / Hizmetlerimiz)
+  modal.querySelectorAll('.mobile-nav-item.has-sub > a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const item = link.closest('.mobile-nav-item');
+      item.classList.toggle('open');
+      const span = link.querySelector('span');
+      if (span) span.textContent = item.classList.contains('open') ? '−' : '+';
+    });
+  });
+});
+</script>
+
+
+<!-- Panel Giriş Modalı -->
+<div id="panel-login-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999998; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:linear-gradient(145deg,#12161f,#090b0f); border:1px solid rgba(212,175,55,0.3); border-radius:20px; padding:32px; max-width:380px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+    <h3 style="font-family:'Sora',sans-serif; color:#fff; font-size:20px; font-weight:800; margin:0 0 4px 0;">Yönetim Paneli Girişi</h3>
+    <p style="color:#94a3b8; font-size:13px; margin:0 0 20px 0;">Devam etmek için kullanıcı adı ve şifrenizi girin.</p>
+    <div style="margin-bottom:14px;">
+      <label style="display:block; color:#cbd5e1; font-size:12.5px; font-weight:600; margin-bottom:6px;">Kullanıcı Adı</label>
+      <input type="text" id="panel-username" autocomplete="username" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,0.3); background:#0a0c10; color:#fff; font-size:14px; box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="display:block; color:#cbd5e1; font-size:12.5px; font-weight:600; margin-bottom:6px;">Şifre</label>
+      <input type="password" id="panel-password" autocomplete="current-password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,0.3); background:#0a0c10; color:#fff; font-size:14px; box-sizing:border-box;">
+    </div>
+    <p id="panel-login-error" style="display:none; color:#f87171; font-size:12.5px; margin:8px 0 0 0;">Kullanıcı adı veya şifre hatalı.</p>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button type="button" id="panel-login-cancel" style="flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; font-weight:700; cursor:pointer; font-size:14px;">Vazgeç</button>
+      <button type="button" id="panel-login-submit" style="flex:1; padding:10px; border-radius:8px; border:none; background:linear-gradient(135deg,#d4af37,#b8912e); color:#0a0c10; font-weight:800; cursor:pointer; font-size:14px;">Giriş Yap</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var overlay = document.getElementById('panel-login-overlay');
+  if (!overlay) return;
+  var userInput = document.getElementById('panel-username');
+  var passInput = document.getElementById('panel-password');
+  var errorEl = document.getElementById('panel-login-error');
+  var submitBtn = document.getElementById('panel-login-submit');
+  var cancelBtn = document.getElementById('panel-login-cancel');
+
+  function openModal() {
+    overlay.style.display = 'flex';
+    errorEl.style.display = 'none';
+    userInput.value = '';
+    passInput.value = '';
+    setTimeout(function(){ userInput.focus(); }, 50);
+  }
+  function closeModal() {
+    overlay.style.display = 'none';
+  }
+
+  document.querySelectorAll('.panel-login-trigger').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+
+  cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
+  });
+
+  function attemptLogin() {
+    var u = userInput.value.trim();
+    var p = passInput.value;
+    if (u === 'admin' && p === '145353') {
+      window.location.href = 'https://admin.sahinbilisim.com.tr';
+    } else {
+      errorEl.style.display = 'block';
+      passInput.value = '';
+      passInput.focus();
+    }
+  }
+
+  submitBtn.addEventListener('click', attemptLogin);
+  passInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') attemptLogin();
+  });
+  userInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); passInput.focus(); }
+  });
+})();
+</script>
+
+  <script src="assets/js/flair.js" defer></script>
+</body>
+</html>

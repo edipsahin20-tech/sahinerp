@@ -1,0 +1,17 @@
+.dotnet/
+.cli-home/
+.nuget/
+**/bin/
+**/obj/
+**/appsettings.Production.json
+*.user
+*.suo
+
+# Build/publish artifacts (compiled output, not source)
+deploy/iis-publish/
+deploy/*.zip
+
+# macOS
+.DS_Store
+**/.DS_Store
+

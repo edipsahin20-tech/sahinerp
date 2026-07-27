@@ -1,0 +1,76 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Constants;
+using SahinSoft.Web.Data;
+using SahinSoft.Web.Models;
+
+namespace SahinSoft.Web.Controllers;
+
+[Authorize(Roles = AppRoles.Administrator)]
+public sealed class SettingsController(ApplicationDbContext dbContext) : Controller
+{
+    [HttpGet]
+    public async Task<IActionResult> Inventory()
+    {
+        var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        return View(Map(settings));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Inventory(InventorySettingsViewModel model)
+    {
+        if (model.DefaultBarcodeType is not ("EAN13" or "EAN8"))
+        {
+            ModelState.AddModelError(nameof(model.DefaultBarcodeType), "Barkod tipi EAN13 veya EAN8 olmalıdır.");
+        }
+        if (model.DefaultScalePrefix is not ("27" or "28" or "29"))
+        {
+            ModelState.AddModelError(nameof(model.DefaultScalePrefix), "Terazi ön eki 27, 28 veya 29 olmalıdır.");
+        }
+        if (!model.TrackStockByVariant)
+        {
+            model.RequireProductVariant = false;
+        }
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var settings = await dbContext.InventorySettings.SingleAsync(x => x.Id == 1);
+        settings.RequireBarcode = model.RequireBarcode;
+        settings.AutoGenerateBarcode = model.AutoGenerateBarcode;
+        settings.DefaultBarcodeType = model.DefaultBarcodeType;
+        settings.DefaultScalePrefix = model.DefaultScalePrefix;
+        settings.EnforceStockLevel = model.EnforceStockLevel;
+        settings.AllowNegativeStock = model.AllowNegativeStock;
+        settings.AllowSaleWhenOutOfStock = model.AllowSaleWhenOutOfStock;
+        settings.EnableMinimumStockWarning = model.EnableMinimumStockWarning;
+        settings.RequireTransferApproval = model.RequireTransferApproval;
+        settings.TrackStockByVariant = model.TrackStockByVariant;
+        settings.RequireProductVariant = model.RequireProductVariant;
+        settings.AllowSaleBelowCost = model.AllowSaleBelowCost;
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+
+        TempData["Success"] = "Stok parametreleri kaydedildi ve işlem servislerine uygulandı.";
+        return RedirectToAction(nameof(Inventory));
+    }
+
+    private static InventorySettingsViewModel Map(SahinSoft.Domain.Entities.InventorySettings settings) => new()
+    {
+        RequireBarcode = settings.RequireBarcode,
+        AutoGenerateBarcode = settings.AutoGenerateBarcode,
+        DefaultBarcodeType = settings.DefaultBarcodeType,
+        DefaultScalePrefix = settings.DefaultScalePrefix,
+        EnforceStockLevel = settings.EnforceStockLevel,
+        AllowNegativeStock = settings.AllowNegativeStock,
+        AllowSaleWhenOutOfStock = settings.AllowSaleWhenOutOfStock,
+        EnableMinimumStockWarning = settings.EnableMinimumStockWarning,
+        RequireTransferApproval = settings.RequireTransferApproval,
+        TrackStockByVariant = settings.TrackStockByVariant,
+        RequireProductVariant = settings.RequireProductVariant,
+        AllowSaleBelowCost = settings.AllowSaleBelowCost
+    };
+}

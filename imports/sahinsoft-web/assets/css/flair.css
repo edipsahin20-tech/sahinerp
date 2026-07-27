@@ -1,0 +1,194 @@
+/* =========================================================================
+   ŞahinSoft — Flair Layer
+   Site genelinde daha canlı, hareketli ve yumuşak bir görünüm için
+   eklenen tamamlayıcı katman. Mevcut tasarımı BOZMADAN üzerine eklenir.
+   ========================================================================= */
+
+:root {
+  --flair-gold: var(--gold, #d4af37);
+  --flair-warm: #ff9f5a;
+  --flair-rose: #ff6b8b;
+  --flair-violet: #b06bff;
+}
+
+/* ---------- Ambient arkaplan blobları (JS ile enjekte edilir) ---------- */
+#flair-blobs {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+#flair-blobs .flair-blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.22;
+  will-change: transform;
+  mix-blend-mode: screen;
+  transform: translateZ(0);
+}
+#flair-blobs .flair-blob:nth-child(1) {
+  width: 620px; height: 620px; top: -160px; left: -140px;
+  background: radial-gradient(circle at 30% 30%, var(--flair-gold), rgba(212,175,55,0.35) 35%, transparent 68%);
+  animation: flairDrift1 26s ease-in-out infinite;
+}
+#flair-blobs .flair-blob:nth-child(2) {
+  width: 660px; height: 660px; top: 30%; right: -220px;
+  background: radial-gradient(circle at 60% 40%, var(--flair-rose), rgba(255,107,139,0.32) 35%, transparent 68%);
+  animation: flairDrift2 30s ease-in-out infinite;
+}
+#flair-blobs .flair-blob:nth-child(3) {
+  width: 560px; height: 560px; bottom: -180px; left: 15%;
+  background: radial-gradient(circle at 50% 50%, var(--flair-violet), rgba(176,107,255,0.30) 35%, transparent 68%);
+  animation: flairDrift3 34s ease-in-out infinite;
+}
+#flair-blobs .flair-blob:nth-child(4) {
+  width: 480px; height: 480px; bottom: 5%; right: 5%;
+  background: radial-gradient(circle at 50% 50%, var(--flair-warm), rgba(255,159,90,0.30) 35%, transparent 68%);
+  animation: flairDrift1 28s ease-in-out infinite reverse;
+}
+
+@keyframes flairDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.12); }
+}
+@keyframes flairDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 60px) scale(1.08); }
+}
+@keyframes flairDrift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -50px) scale(1.15); }
+}
+
+/* Ensure real content stays above the ambient layer (header z-index/position left untouched
+   so sticky positioning and dropdown menus keep working correctly) */
+main, section, footer, .site-footer-minimal { position: relative; z-index: 1; }
+
+/* ---------- Yumuşatılmış köşeler & kartlara canlı hover ---------- */
+.product-card, .sector-card, .feature-card, .hw-card, .thumb-card,
+.step-card, .comparison-card, [class$="-card"] {
+  border-radius: 18px !important;
+  transition: transform 0.35s cubic-bezier(.22,1,.36,1), box-shadow 0.35s ease, border-color 0.35s ease !important;
+}
+.product-card:hover, .sector-card:hover, .feature-card:hover, .hw-card:hover,
+.thumb-card:hover, .step-card:hover {
+  transform: translateY(-8px) scale(1.015) !important;
+  box-shadow: 0 22px 48px rgba(212,175,55,0.18), 0 8px 20px rgba(255,107,139,0.10) !important;
+}
+
+/* ---------- Görsel çerçeveleri: yumuşak parlama ---------- */
+.product-img-card, .thumb-box img, img[src*="assets/products/"], img[src*="assets/images/"] {
+  transition: transform 0.5s cubic-bezier(.22,1,.36,1), filter 0.5s ease;
+}
+
+/* ---------- Buton: parlama sweep + nabız efekti ---------- */
+.btn, a.btn, .btn-gold {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px !important;
+  animation: flairPulseGlow 3.2s ease-in-out infinite;
+}
+.btn-gold::before, a.btn.btn-gold::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -60%;
+  width: 40%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s ease;
+  pointer-events: none;
+}
+.btn-gold:hover::before, a.btn.btn-gold:hover::before { left: 130%; }
+.btn:hover, a.btn:hover, .btn-gold:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 10px 28px rgba(212,175,55,0.45), 0 0 0 3px rgba(212,175,55,0.12) !important;
+}
+@keyframes flairPulseGlow {
+  0%, 100% { box-shadow: 0 4px 15px rgba(212,175,55,0.30); }
+  50% { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
+}
+
+/* ---------- Section kicker: hareketli degrade rozet ---------- */
+.section-kicker {
+  position: relative;
+  background: linear-gradient(90deg, rgba(212,175,55,0.16), rgba(255,107,139,0.14), rgba(176,107,255,0.14), rgba(212,175,55,0.16)) !important;
+  background-size: 300% 100% !important;
+  animation: flairKickerShift 6s ease infinite;
+  border-color: rgba(212,175,55,0.4) !important;
+}
+@keyframes flairKickerShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ---------- Hero görselleri: nazik yüzen animasyon ---------- */
+section img[src*="assets/images/"][style*="max-width"],
+section img[alt*="Ekosistemi"], section img[alt*="Hero"] {
+  animation: flairFloat 6s ease-in-out infinite;
+}
+@keyframes flairFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ---------- Giriş animasyonu (JS'siz de çalışır) ---------- */
+.product-card, .sector-card, .feature-card, .hw-card, .thumb-card, .step-card {
+  animation: flairFadeUp 0.7s cubic-bezier(.22,1,.36,1) both;
+}
+.product-card:nth-child(2), .sector-card:nth-child(2), .feature-card:nth-child(2), .hw-card:nth-child(2), .thumb-card:nth-child(2), .step-card:nth-child(2) { animation-delay: 0.06s; }
+.product-card:nth-child(3), .sector-card:nth-child(3), .feature-card:nth-child(3), .hw-card:nth-child(3), .thumb-card:nth-child(3), .step-card:nth-child(3) { animation-delay: 0.12s; }
+.product-card:nth-child(4), .sector-card:nth-child(4), .feature-card:nth-child(4), .hw-card:nth-child(4), .thumb-card:nth-child(4), .step-card:nth-child(4) { animation-delay: 0.18s; }
+.product-card:nth-child(5), .sector-card:nth-child(5), .feature-card:nth-child(5), .hw-card:nth-child(5), .thumb-card:nth-child(5), .step-card:nth-child(5) { animation-delay: 0.24s; }
+.product-card:nth-child(6), .sector-card:nth-child(6), .feature-card:nth-child(6), .hw-card:nth-child(6), .thumb-card:nth-child(6), .step-card:nth-child(6) { animation-delay: 0.30s; }
+@keyframes flairFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- İstatistik rakamları: nabız parlama ---------- */
+#istatistikler div[style*="font-size: 42px"] {
+  animation: flairStatGlow 2.6s ease-in-out infinite;
+}
+@keyframes flairStatGlow {
+  0%, 100% { text-shadow: 0 0 25px rgba(212,175,55,0.35); }
+  50% { text-shadow: 0 0 38px rgba(212,175,55,0.65), 0 0 14px rgba(255,107,139,0.35); }
+}
+
+/* ---------- İnce, degrade kaydırma çubuğu ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0b0e14; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--flair-gold), var(--flair-rose));
+  border-radius: 10px;
+}
+
+/* ---------- Buton ripple (JS tarafından eklenen span) ---------- */
+.flair-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  transform: scale(0);
+  animation: flairRippleAnim 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes flairRippleAnim {
+  to { transform: scale(3); opacity: 0; }
+}
+
+/* ---------- Erişilebilirlik: hareket azaltma tercihi ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #flair-blobs .flair-blob,
+  .btn, a.btn, .btn-gold,
+  .section-kicker,
+  section img,
+  .product-card, .sector-card, .feature-card, .hw-card, .thumb-card, .step-card,
+  #istatistikler div {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  #flair-blobs .flair-blob { opacity: 0.14; }
+}
