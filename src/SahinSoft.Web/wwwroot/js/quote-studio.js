@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   populateCategoryDropdowns();
   generateNewQuoteNumber();
   setDefaultDates();
+  loadExistingQuoteIfAny();
 
   // Fetch Live ASP.NET Core SQL Database Products and Customers
   loadLiveDbCatalog();
@@ -42,6 +43,56 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePdfPreview();
   });
 });
+
+// "Düzenle" ile kaydedilmiş bir taslak teklif Teklif Stüdyosu'na yüklendiyse (server tarafından
+// gömülen #existing-quote-data JSON'ı), formu ve teklif kalemlerini onunla doldurur.
+function loadExistingQuoteIfAny() {
+  const dataEl = document.getElementById('existing-quote-data');
+  if (!dataEl) return;
+
+  let data;
+  try {
+    data = JSON.parse(dataEl.textContent);
+  } catch (e) {
+    console.error('Kaydedilmiş teklif verisi okunamadı:', e);
+    return;
+  }
+
+  currentSavedQuoteId = data.id;
+  document.getElementById('quote-no').value = data.quoteNumber || '';
+  document.getElementById('pdf-val-no').textContent = data.quoteNumber || '';
+
+  if (data.quoteDate) {
+    document.getElementById('quote-date').value = data.quoteDate;
+    document.getElementById('pdf-val-date').textContent = new Date(data.quoteDate).toLocaleDateString('tr-TR');
+  }
+
+  document.getElementById('cust-company').value = data.company || '';
+  document.getElementById('cust-company').dataset.customerId = data.customerId || '';
+  document.getElementById('cust-contact').value = data.contact || '';
+  document.getElementById('cust-phone').value = data.phone || '';
+  document.getElementById('cust-email').value = data.email || '';
+  document.getElementById('cust-tax-office').value = data.taxOffice || '';
+  document.getElementById('cust-address').value = data.address || '';
+  document.getElementById('quote-note').value = data.notes || '';
+
+  if (data.currencyCode) {
+    document.getElementById('quote-currency').value = data.currencyCode;
+    activeCurrency = data.currencyCode;
+  }
+
+  currentQuoteItems = (data.items || []).map(i => ({
+    id: i.code,
+    dbId: i.dbId,
+    code: i.code,
+    name: i.name,
+    unit: i.unit,
+    qty: i.qty,
+    price: i.price,
+    kdv: i.kdv,
+    discount: i.discount
+  }));
+}
 
 // --- LIVE ASP.NET CORE SQL DATABASE FETCH ---
 // Kataloğu her zaman canlı veritabanından çeker; sahte/örnek veriye asla düşmez.

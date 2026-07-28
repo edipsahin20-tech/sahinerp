@@ -40,10 +40,10 @@ public sealed class QuotesController(
         return View(await query.ToListAsync());
     }
 
-    public async Task<IActionResult> Studio()
+    public async Task<IActionResult> Studio(int? id)
     {
         var settings = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
-        return View(new QuoteStudioViewModel
+        var model = new QuoteStudioViewModel
         {
             CompanyName = settings.CompanyName,
             Website = settings.Website,
@@ -51,7 +51,64 @@ public sealed class QuotesController(
             Phone = settings.Phone,
             BankName = settings.BankName,
             Iban = settings.Iban
-        });
+        };
+
+        if (id is int quoteId)
+        {
+            var quote = await dbContext.Quotes
+                .AsNoTracking()
+                .Include(x => x.Lines)
+                .Include(x => x.Customer).ThenInclude(x => x.Contacts)
+                .SingleOrDefaultAsync(x => x.Id == quoteId);
+
+            if (quote is null)
+            {
+                return NotFound();
+            }
+
+            if (quote.Status != QuoteStatus.Draft)
+            {
+                TempData["Error"] = "Yalnızca taslak teklifler Teklif Stüdyosu'nda düzenlenebilir.";
+                return RedirectToAction(nameof(Details), new { id = quoteId });
+            }
+
+            var primaryContact = quote.Customer.Contacts.FirstOrDefault(c => c.IsPrimary)
+                ?? quote.Customer.Contacts.FirstOrDefault();
+
+            model.Existing = new QuoteStudioExistingData
+            {
+                Id = quote.Id,
+                QuoteNumber = quote.QuoteNumber,
+                CustomerId = quote.CustomerId,
+                Company = quote.Customer.Name,
+                Contact = primaryContact?.FullName,
+                Phone = quote.Customer.Phone,
+                Email = quote.Customer.Email,
+                TaxOffice = quote.Customer.TaxOffice != null && quote.Customer.TaxNumber != null
+                    ? quote.Customer.TaxOffice + " " + quote.Customer.TaxNumber
+                    : quote.Customer.TaxOffice ?? quote.Customer.TaxNumber,
+                Address = quote.Customer.Address,
+                QuoteDate = quote.QuoteDateUtc.ToString("yyyy-MM-dd"),
+                CurrencyCode = quote.CurrencyCode,
+                Notes = quote.Notes,
+                Items = quote.Lines
+                    .OrderBy(x => x.LineNumber)
+                    .Select(x => new QuoteStudioExistingItem
+                    {
+                        DbId = x.ProductId,
+                        Code = x.ProductCodeSnapshot,
+                        Name = x.ProductNameSnapshot,
+                        Unit = x.UnitSnapshot,
+                        Qty = x.Quantity,
+                        Price = x.UnitPrice,
+                        Kdv = x.TaxRate,
+                        Discount = x.DiscountRate
+                    })
+                    .ToList()
+            };
+        }
+
+        return View(model);
     }
 
     public async Task<IActionResult> GetCatalogDataApi()
@@ -285,79 +342,11 @@ public sealed class QuotesController(
         return RedirectToAction(nameof(Studio));
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(QuoteFormViewModel form)
+    // Kaydedilmiş bir taslak teklifi düzenlemek artık Teklif Stüdyosu üzerinden yapılıyor
+    // (ayrı, eski bir form sayfası yerine tek, tutarlı bir düzenleme deneyimi).
+    public IActionResult Edit(int id)
     {
-        ValidateLines(form);
-        if (!ModelState.IsValid)
-        {
-            await PopulateSelectionsAsync(form);
-            return View("Form", form);
-        }
-
-        var quote = new Quote
-        {
-            Status = QuoteStatus.Draft,
-            QuoteNumber = await documentNumberGenerator.GenerateAsync("QUOTE"),
-            CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty
-        };
-        MapHeader(form, quote);
-        await MapLinesAsync(form, quote);
-        ComputeTotals(quote);
-
-        dbContext.Quotes.Add(quote);
-        await dbContext.SaveChangesAsync();
-
-        TempData["Success"] = "Teklif taslağı oluşturuldu.";
-        return RedirectToAction(nameof(Details), new { id = quote.Id });
-    }
-
-    public async Task<IActionResult> Edit(int id)
-    {
-        var quote = await dbContext.Quotes
-            .Include(x => x.Lines)
-            .SingleOrDefaultAsync(x => x.Id == id);
-        if (quote is null)
-        {
-            return NotFound();
-        }
-
-        if (quote.Status != QuoteStatus.Draft)
-        {
-            return BadRequest("Yalnızca taslak teklifler düzenlenebilir.");
-        }
-
-        var model = new QuoteFormViewModel
-        {
-            Id = quote.Id,
-            CustomerId = quote.CustomerId,
-            QuoteDateUtc = quote.QuoteDateUtc,
-            ValidUntilUtc = quote.ValidUntilUtc,
-            CurrencyCode = quote.CurrencyCode,
-            ExchangeRate = quote.ExchangeRate,
-            Notes = quote.Notes,
-            Lines = quote.Lines
-                .OrderBy(x => x.LineNumber)
-                .Select(x => new QuoteLineFormViewModel
-                {
-                    ProductId = x.ProductId,
-                    Quantity = x.Quantity,
-                    UnitPrice = x.UnitPrice,
-                    DiscountRate = x.DiscountRate,
-                    TaxRate = x.TaxRate,
-                    Description = x.Description
-                })
-                .ToList()
-        };
-        if (model.Lines.Count == 0)
-        {
-            model.Lines.Add(new QuoteLineFormViewModel());
-        }
-
-        await PopulateSelectionsAsync(model);
-        await SetToolbarAsync(id);
-        return View("Form", model);
+        return RedirectToAction(nameof(Studio), new { id });
     }
 
     [HttpPost]
@@ -382,62 +371,6 @@ public sealed class QuotesController(
         await dbContext.SaveChangesAsync();
         TempData["Success"] = "Teklif silindi.";
         return RedirectToAction(nameof(Index));
-    }
-
-    private async Task SetToolbarAsync(int id)
-    {
-        var previousId = await dbContext.Quotes.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
-        var nextId = await dbContext.Quotes.Where(x => x.Id > id).OrderBy(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
-
-        ViewBag.Toolbar = new EvrakToolbarViewModel
-        {
-            Id = id,
-            Controller = "Quotes",
-            PreviousId = previousId,
-            NextId = nextId,
-            CanDelete = true,
-            HasDetails = true
-        };
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, QuoteFormViewModel form)
-    {
-        if (id != form.Id)
-        {
-            return BadRequest();
-        }
-
-        ValidateLines(form);
-        if (!ModelState.IsValid)
-        {
-            await PopulateSelectionsAsync(form);
-            return View("Form", form);
-        }
-
-        var quote = await dbContext.Quotes
-            .Include(x => x.Lines)
-            .SingleOrDefaultAsync(x => x.Id == id);
-        if (quote is null)
-        {
-            return NotFound();
-        }
-
-        if (quote.Status != QuoteStatus.Draft)
-        {
-            return BadRequest("Yalnızca taslak teklifler düzenlenebilir.");
-        }
-
-        MapHeader(form, quote);
-        quote.Lines.Clear();
-        await MapLinesAsync(form, quote);
-        ComputeTotals(quote);
-        quote.UpdatedAtUtc = DateTime.UtcNow;
-
-        await dbContext.SaveChangesAsync();
-        TempData["Success"] = "Teklif taslağı güncellendi.";
-        return RedirectToAction(nameof(Details), new { id = quote.Id });
     }
 
     public async Task<IActionResult> Details(int id)
@@ -622,106 +555,5 @@ public sealed class QuotesController(
         return RedirectToAction("Details", "Invoices", new { id = invoice.Id });
     }
 
-    private static void ValidateLines(QuoteFormViewModel form)
-    {
-        form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
-        if (form.Lines.Count == 0)
-        {
-            throw new InvalidOperationException("Teklifte en az bir satır bulunmalıdır.");
-        }
-    }
-
-    private static void MapHeader(QuoteFormViewModel source, Quote target)
-    {
-        target.CustomerId = source.CustomerId!.Value;
-        target.QuoteDateUtc = DateTime.SpecifyKind(source.QuoteDateUtc, DateTimeKind.Utc);
-        target.ValidUntilUtc = source.ValidUntilUtc.HasValue
-            ? DateTime.SpecifyKind(source.ValidUntilUtc.Value, DateTimeKind.Utc)
-            : null;
-        target.CurrencyCode = source.CurrencyCode.Trim().ToUpperInvariant();
-        target.ExchangeRate = source.ExchangeRate;
-        target.Notes = source.Notes?.Trim();
-    }
-
-    private async Task MapLinesAsync(QuoteFormViewModel source, Quote target)
-    {
-        var productIds = source.Lines.Where(x => x.ProductId.HasValue).Select(x => x.ProductId!.Value).Distinct().ToList();
-        var products = await dbContext.Products.Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-
-        var lineNumber = 1;
-        foreach (var line in source.Lines)
-        {
-            if (line.ProductId is null || !products.TryGetValue(line.ProductId.Value, out var product))
-            {
-                continue;
-            }
-
-            var gross = RoundMoney(line.Quantity * line.UnitPrice);
-            var discountAmount = RoundMoney(gross * line.DiscountRate / 100);
-            var net = gross - discountAmount;
-            var taxAmount = RoundMoney(net * line.TaxRate / 100);
-
-            target.Lines.Add(new QuoteLine
-            {
-                LineNumber = lineNumber++,
-                ProductId = product.Id,
-                ProductCodeSnapshot = product.StockCode,
-                ProductNameSnapshot = product.Name,
-                UnitSnapshot = product.Unit,
-                Quantity = line.Quantity,
-                UnitPrice = line.UnitPrice,
-                DiscountRate = line.DiscountRate,
-                DiscountAmount = discountAmount,
-                TaxRate = line.TaxRate,
-                TaxAmount = taxAmount,
-                LineTotal = net + taxAmount,
-                Description = line.Description?.Trim()
-            });
-        }
-    }
-
-    private static void ComputeTotals(Quote quote)
-    {
-        decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
-        foreach (var line in quote.Lines)
-        {
-            var gross = RoundMoney(line.Quantity * line.UnitPrice);
-            subtotal += gross;
-            discountTotal += line.DiscountAmount;
-            taxTotal += line.TaxAmount;
-            grandTotal += line.LineTotal;
-        }
-
-        quote.Subtotal = RoundMoney(subtotal);
-        quote.DiscountTotal = RoundMoney(discountTotal);
-        quote.TaxTotal = RoundMoney(taxTotal);
-        quote.GrandTotal = RoundMoney(grandTotal);
-    }
-
     private static decimal RoundMoney(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
-
-    private async Task PopulateSelectionsAsync(QuoteFormViewModel model)
-    {
-        if (model.CustomerId is int customerId)
-        {
-            model.CustomerDisplay = await dbContext.Customers
-                .Where(x => x.Id == customerId)
-                .Select(x => x.Code + " - " + x.Name)
-                .SingleOrDefaultAsync();
-        }
-
-        var productIds = model.Lines.Where(x => x.ProductId.HasValue).Select(x => x.ProductId!.Value).Distinct().ToList();
-        var productDisplays = await dbContext.Products
-            .Where(x => productIds.Contains(x.Id))
-            .Select(x => new { x.Id, Display = x.StockCode + " - " + x.Name })
-            .ToDictionaryAsync(x => x.Id, x => x.Display);
-
-        foreach (var line in model.Lines)
-        {
-            if (line.ProductId is int productId && productDisplays.TryGetValue(productId, out var display))
-            {
-                line.ProductDisplay = display;
-            }
-        }
-    }
 }

@@ -1,6 +1,35 @@
+@using System.Text.Json
 @model SahinSoft.Web.Models.QuoteStudioViewModel
 @{
     ViewData["Title"] = "Teklif Stüdyosu";
+    var existingJson = Model.Existing is null
+        ? null
+        : JsonSerializer.Serialize(new
+        {
+            id = Model.Existing.Id,
+            quoteNumber = Model.Existing.QuoteNumber,
+            customerId = Model.Existing.CustomerId,
+            company = Model.Existing.Company,
+            contact = Model.Existing.Contact,
+            phone = Model.Existing.Phone,
+            email = Model.Existing.Email,
+            taxOffice = Model.Existing.TaxOffice,
+            address = Model.Existing.Address,
+            quoteDate = Model.Existing.QuoteDate,
+            currencyCode = Model.Existing.CurrencyCode,
+            notes = Model.Existing.Notes,
+            items = Model.Existing.Items.Select(x => new
+            {
+                dbId = x.DbId,
+                code = x.Code,
+                name = x.Name,
+                unit = x.Unit,
+                qty = x.Qty,
+                price = x.Price,
+                kdv = x.Kdv,
+                discount = x.Discount
+            })
+        });
 }
 
 @section Head {
@@ -523,6 +552,11 @@
   </div>
 
 </div>
+
+@if (existingJson is not null)
+{
+    <script id="existing-quote-data" type="application/json">@Html.Raw(existingJson)</script>
+}
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>

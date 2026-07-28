@@ -38,6 +38,37 @@ public sealed class QuoteStudioViewModel
     public string? Phone { get; set; }
     public string? BankName { get; set; }
     public string? Iban { get; set; }
+    public QuoteStudioExistingData? Existing { get; set; }
+}
+
+// "Düzenle" ile kaydedilmiş bir taslak teklif Teklif Stüdyosu'na yüklendiğinde formu doldurmak için kullanılır.
+public sealed class QuoteStudioExistingData
+{
+    public int Id { get; set; }
+    public string QuoteNumber { get; set; } = string.Empty;
+    public int? CustomerId { get; set; }
+    public string Company { get; set; } = string.Empty;
+    public string? Contact { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? TaxOffice { get; set; }
+    public string? Address { get; set; }
+    public string QuoteDate { get; set; } = string.Empty;
+    public string CurrencyCode { get; set; } = "TRY";
+    public string? Notes { get; set; }
+    public List<QuoteStudioExistingItem> Items { get; set; } = [];
+}
+
+public sealed class QuoteStudioExistingItem
+{
+    public int? DbId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+    public decimal Price { get; set; }
+    public decimal Kdv { get; set; }
+    public decimal Discount { get; set; }
 }
 
 public sealed class CustomProductRequest
