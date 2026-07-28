@@ -1,0 +1,38 @@
+@model SahinSoft.Web.Models.RoleFormViewModel
+@{
+    var isEdit = !string.IsNullOrEmpty(Model.Id);
+    ViewData["Title"] = isEdit ? "Yetkiyi Düzenle" : "Yeni Yetki";
+}
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>@ViewData["Title"]</h1>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Yetki Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+        <div class="erp-action-bar">
+            <a asp-action="Index" class="btn btn-erp-outline">Vazgeç</a>
+            <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

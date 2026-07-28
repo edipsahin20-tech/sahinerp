@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -67,6 +67,11 @@ public sealed class PaymentReceiptsController(
             Lines = [new PaymentReceiptLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Controller = "PaymentReceipts",
+            CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
+        };
         return View("Form", model);
     }
 
@@ -142,7 +147,49 @@ public sealed class PaymentReceiptsController(
         }
 
         await PopulateSelectionsAsync(model);
+        await SetToolbarAsync(id, receipt.ReceiptType);
         return View("Form", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var receipt = await dbContext.PaymentReceipts
+            .Include(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (receipt is null)
+        {
+            return NotFound();
+        }
+
+        if (receipt.Status != PaymentReceiptStatus.Draft)
+        {
+            TempData["Error"] = "Yalnızca taslak fişler silinebilir.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        dbContext.PaymentReceipts.Remove(receipt);
+        await dbContext.SaveChangesAsync();
+        TempData["Success"] = "Fiş silindi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task SetToolbarAsync(int id, ReceiptType type)
+    {
+        var previousId = await dbContext.PaymentReceipts.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var nextId = await dbContext.PaymentReceipts.Where(x => x.Id > id).OrderBy(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Id = id,
+            Controller = "PaymentReceipts",
+            CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() },
+            PreviousId = previousId,
+            NextId = nextId,
+            CanDelete = true,
+            HasDetails = true
+        };
     }
 
     [HttpPost]
@@ -218,7 +265,7 @@ public sealed class PaymentReceiptsController(
                 .Select(x => new PaymentReceiptDetailsLineViewModel
                 {
                     LineNumber = x.LineNumber,
-                    PaymentMethod = x.PaymentMethod.ToString(),
+                    PaymentMethod = x.PaymentMethod.GetDisplayName(),
                     ReferenceNumber = x.ReferenceNumber,
                     Amount = x.Amount,
                     FinancialAccountName = x.FinancialAccount.Name,
@@ -310,18 +357,26 @@ public sealed class PaymentReceiptsController(
 
     private async Task PopulateSelectionsAsync(PaymentReceiptFormViewModel model)
     {
-        model.Customers = await dbContext.Customers
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem($"{x.Code} - {x.Name}", x.Id.ToString()))
-            .ToListAsync();
+        if (model.CustomerId is int customerId)
+        {
+            model.CustomerDisplay = await dbContext.Customers
+                .Where(x => x.Id == customerId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
 
-        model.FinancialAccounts = await dbContext.FinancialAccounts
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-            .ToListAsync();
+        var accountIds = model.Lines.Where(x => x.FinancialAccountId.HasValue).Select(x => x.FinancialAccountId!.Value).Distinct().ToList();
+        var accountDisplays = await dbContext.FinancialAccounts
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(x => new { x.Id, Display = x.Code + " - " + x.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Display);
+
+        foreach (var line in model.Lines)
+        {
+            if (line.FinancialAccountId is int accountId && accountDisplays.TryGetValue(accountId, out var display))
+            {
+                line.FinancialAccountDisplay = display;
+            }
+        }
     }
 }

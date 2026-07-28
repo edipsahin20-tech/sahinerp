@@ -1,0 +1,20 @@
+@page
+@model LogoutModel
+@{
+    ViewData["Title"] = "Çıkış Yap";
+    ViewData["Subtitle"] = "";
+}
+
+@{
+    if (User.Identity?.IsAuthenticated ?? false)
+    {
+        <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+            <button type="submit" class="btn btn-auth-primary">Çıkış Yap</button>
+        </form>
+    }
+    else
+    {
+        <p class="text-center text-secondary mb-3">Oturumunuz başarıyla kapatıldı.</p>
+        <a asp-page="./Login" class="btn btn-auth-primary d-block text-decoration-none">Giriş sayfasına dön</a>
+    }
+}

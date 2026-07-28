@@ -1,0 +1,79 @@
+@model SahinSoft.Web.Models.CompanySettingsViewModel
+@{
+    ViewData["Title"] = "Şirket Parametreleri";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Şirket Parametreleri</h1>
+        <span class="erp-toolbar-meta">Giriş ekranı, fatura başlığı ve raporlarda kullanılan genel bilgiler</span>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+    <div class="erp-panel">
+        <div class="erp-panel-header">Şirket Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="CompanyName"></label>
+                    <input asp-for="CompanyName" class="form-control" />
+                    <span asp-validation-for="CompanyName" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TaxOffice"></label>
+                    <input asp-for="TaxOffice" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TaxNumber"></label>
+                    <input asp-for="TaxNumber" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Phone"></label>
+                    <input asp-for="Phone" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Email"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Website"></label>
+                    <input asp-for="Website" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Address"></label>
+                    <input asp-for="Address" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BankName"></label>
+                    <input asp-for="BankName" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Iban"></label>
+                    <input asp-for="Iban" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="LogoPath"></label>
+                    <input asp-for="LogoPath" class="form-control" placeholder="/images/logo.png" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="erp-evrak-toolbar" style="justify-content: flex-end;">
+        <button type="submit" class="erp-evrak-btn erp-evrak-btn-primary" style="min-width: 140px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8" /><path d="M7 3v5h8" /></svg>
+            <span>Sakla</span>
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

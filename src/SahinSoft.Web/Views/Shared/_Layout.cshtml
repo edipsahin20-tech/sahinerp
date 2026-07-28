@@ -1,79 +1,95 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ŞahinSoft</title>
     <script type="importmap"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/erp.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SahinSoft.Web.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+        <nav class="navbar navbar-expand-lg navbar-light navbar-erp">
             <div class="container-fluid">
-                <a class="navbar-brand fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">ŞahinSoft</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar" aria-label="Menüyü aç">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Index">Panel</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Customers" asp-action="Index">Cariler</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Products" asp-action="Index">Ürünler</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="Invoices" asp-action="Index">Faturalar</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" asp-controller="PaymentReceipts" asp-action="Index">Tahsilat/Tediye</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white-50" href="#">Teklifler</a>
-                        </li>
-                    </ul>
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/images/logo-icon.png" alt="ŞahinSoft" class="navbar-logo" />
+                    <span class="navbar-wordmark">Şahin<span class="navbar-wordmark-accent">Soft</span></span>
+                </a>
+
+                <!-- CANLI GARANTİ BBVA DÖVİZ KURU ÜST MENÜ BARI -->
+                <div class="d-flex align-items-center gap-2 ms-auto me-3">
+                    <div class="d-flex align-items-center gap-2 bg-dark rounded px-2 py-1 border border-secondary">
+                        <span class="text-warning small fw-bold" title="Garanti BBVA Dolar Satış Kuru">
+                            <i class="fa-solid fa-dollar-sign"></i> USD Satış: <strong id="global-rate-usd" class="text-white rate-value-usd">36.50 ₺</strong>
+                        </span>
+                        <span class="text-secondary">|</span>
+                        <span class="text-warning small fw-bold" title="Garanti BBVA Euro Satış Kuru">
+                            <i class="fa-solid fa-euro-sign"></i> EUR Satış: <strong id="global-rate-eur" class="text-white rate-value-eur">39.80 ₺</strong>
+                        </span>
+                        <button id="global-sync-rates-btn" type="button" class="btn btn-xs btn-outline-warning text-nowrap ms-1 py-0 px-2" style="font-size: 0.75rem;" onclick="window.fetchGlobalExchangeRates(true)" title="Garanti BBVA Canlı Kurları Şimdi Yenile (15 dk Otomatik)">
+                            <i class="fa-solid fa-rotate-right" id="global-sync-icon"></i> Canlı Kur Al
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-none d-lg-flex align-items-center gap-3">
+                    <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Panel</a>
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container-fluid">
-        <div class="row g-0">
-            <aside class="col-lg-2 d-none d-lg-block pe-4">
-                <div class="list-group shadow-sm sticky-top" style="top: 1rem;">
-                    <a class="list-group-item list-group-item-action" asp-controller="Home" asp-action="Index">Ana sayfa</a>
-                    <a class="list-group-item list-group-item-action" asp-controller="Customers" asp-action="Index">Cari yönetimi</a>
-                    <a class="list-group-item list-group-item-action" asp-controller="Products" asp-action="Index">Stok yönetimi</a>
-                    <a class="list-group-item list-group-item-action" asp-controller="Invoices" asp-action="Index">Fatura yönetimi</a>
-                    <a class="list-group-item list-group-item-action" asp-controller="PaymentReceipts" asp-action="Index">Tahsilat/Tediye</a>
-                    <span class="list-group-item text-secondary">Teklif yönetimi</span>
-                    @if (User.IsInRole("Administrator"))
-                    {
-                        <a class="list-group-item list-group-item-action" asp-controller="Settings" asp-action="Inventory">Stok parametreleri</a>
-                    }
-                </div>
+
+    <div class="offcanvas offcanvas-start erp-mobile-sidebar" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header">
+            <a class="d-flex align-items-center gap-2 text-decoration-none" asp-controller="Home" asp-action="Index" data-bs-dismiss="offcanvas">
+                <img src="~/images/logo-icon.png" alt="ŞahinSoft" class="navbar-logo" />
+                <span class="navbar-wordmark" id="mobileSidebarLabel">Şahin<span class="navbar-wordmark-accent">Soft</span></span>
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Kapat"></button>
+        </div>
+        <div class="offcanvas-body p-0 d-flex flex-column">
+            <nav class="erp-sidebar erp-sidebar-mobile flex-grow-1">
+                <partial name="_SidebarNav" model="@("-m")" />
+            </nav>
+            <div class="erp-mobile-account">
+                <partial name="_LoginPartial" />
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid erp-shell">
+        <div class="row g-0 h-100">
+            <aside class="col-lg-3 d-none d-lg-block erp-shell-aside">
+                <nav class="erp-sidebar">
+                    <partial name="_SidebarNav" model="@("")" />
+                </nav>
             </aside>
-            <main role="main" class="col-12 col-lg-10 pb-4 px-2 px-lg-3">
+            <main role="main" class="col-12 col-lg-9 px-2 px-lg-3 erp-shell-main">
                 @RenderBody()
             </main>
         </div>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 ŞahinSoft · Cari, ürün ve teklif yönetimi
-        </div>
+    <footer class="erp-footer-fixed text-muted">
+        &copy; 2026 ŞahinSoft · Cari, ürün ve teklif yönetimi
     </footer>
+
+    <partial name="_LookupModal" />
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/lookup-picker.js" asp-append-version="true"></script>
+    <script src="~/js/currency_sync.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

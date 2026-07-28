@@ -1,17 +1,22 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Web.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IHttpContextAccessor httpContextAccessor)
     : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
@@ -70,6 +75,24 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         base.OnModelCreating(builder);
 
         builder.Entity<ApplicationUser>().Property(x => x.Id).HasMaxLength(128);
+        builder.Entity<ApplicationUser>().Property(x => x.Salary).HasPrecision(18, 2);
+        builder.Entity<ApplicationUser>().Property(x => x.Deduction).HasPrecision(18, 2);
+        builder.Entity<ApplicationUser>().Property(x => x.CommissionRate).HasPrecision(5, 2);
+        builder.Entity<ApplicationUser>()
+            .HasOne(x => x.Branch)
+            .WithMany()
+            .HasForeignKey(x => x.BranchId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ApplicationUser>()
+            .HasOne(x => x.DefaultFinancialAccount)
+            .WithMany()
+            .HasForeignKey(x => x.DefaultFinancialAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ApplicationUser>()
+            .HasOne(x => x.DefaultPriceList)
+            .WithMany()
+            .HasForeignKey(x => x.DefaultPriceListId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.Entity<IdentityRole>().Property(x => x.Id).HasMaxLength(128);
         builder.Entity<IdentityUserRole<string>>().Property(x => x.UserId).HasMaxLength(128);
         builder.Entity<IdentityUserRole<string>>().Property(x => x.RoleId).HasMaxLength(128);
@@ -88,6 +111,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
             entity.Property(x => x.WebsitePath).HasMaxLength(250);
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
         });
 
         builder.Entity<TaxRate>(entity =>
@@ -96,6 +120,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Rate).HasPrecision(5, 2);
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
+        });
+
+        builder.Entity<PriceList>(entity =>
+        {
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
         });
 
         builder.Entity<Product>(entity =>
@@ -113,7 +146,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.MinimumStockQuantity).HasPrecision(18, 3);
             entity.Property(x => x.ImagePath).HasMaxLength(500);
             entity.Property(x => x.WebsitePath).HasMaxLength(250);
+            entity.Property(x => x.AlternateName).HasMaxLength(200);
+            entity.Property(x => x.CountryOfOrigin).HasMaxLength(100);
             entity.HasIndex(x => x.StockCode).IsUnique();
+            entity.HasIndex(x => x.Name);
             entity.HasIndex(x => x.Barcode)
                 .IsUnique()
                 .HasFilter("[Barcode] IS NOT NULL");
@@ -125,6 +161,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.TaxRateId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UnitOfMeasure)
+                .WithMany()
+                .HasForeignKey(x => x.UnitOfMeasureId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint("CK_Products_Prices", "[PurchasePrice] >= 0 AND [SalePrice] >= 0");
@@ -202,6 +242,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.InventoryCountLine)
                 .WithMany()
                 .HasForeignKey(x => x.InventoryCountLineId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.DispatchNoteLine)
+                .WithMany()
+                .HasForeignKey(x => x.DispatchNoteLineId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.ReversalOf)
                 .WithMany()
@@ -355,6 +399,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Iban).HasMaxLength(34);
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.Iban);
+            entity.HasIndex(x => x.Name);
         });
 
         builder.Entity<FinancialTransaction>(entity =>
@@ -556,6 +601,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Phone).HasMaxLength(30);
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
         });
 
         builder.Entity<ProductColor>(entity =>
@@ -657,6 +703,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
             entity.ToTable(table =>
                 table.HasCheckConstraint("CK_UnitsOfMeasure_DecimalPlaces", "[DecimalPlaces] BETWEEN 0 AND 6"));
         });
@@ -771,6 +818,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CountNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.CountNumber).IsUnique();
             entity.HasIndex(x => new { x.WarehouseId, x.CountDateUtc });
             entity.HasOne(x => x.Warehouse)
@@ -807,6 +856,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Description).HasMaxLength(500);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.SlipNumber).IsUnique();
             entity.HasIndex(x => new { x.WarehouseId, x.SlipDateUtc });
             entity.HasOne(x => x.Warehouse)
@@ -925,6 +976,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.VehiclePlate).HasMaxLength(20);
             entity.Property(x => x.CarrierName).HasMaxLength(150);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => new { x.DispatchType, x.DispatchNumber }).IsUnique();
             entity.HasIndex(x => new { x.CustomerId, x.DispatchDateUtc });
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
@@ -949,6 +1003,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name);
         });
 
         builder.Entity<Expense>(entity =>
@@ -1021,6 +1076,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.TransferNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.TransferNumber).IsUnique();
             entity.HasIndex(x => new { x.FromWarehouseId, x.TransferDateUtc });
             entity.HasIndex(x => new { x.ToWarehouseId, x.TransferDateUtc });
@@ -1126,6 +1183,151 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 NextNumber = 1,
                 Padding = 5,
                 CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 6,
+                Key = "STOCK_RECEIPT",
+                Prefix = "SGF.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 7,
+                Key = "STOCK_ISSUE",
+                Prefix = "SCF.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 8,
+                Key = "STOCK_COUNT",
+                Prefix = "SAY.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 9,
+                Key = "SALES_DISPATCH",
+                Prefix = "SIRS.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 10,
+                Key = "PURCHASE_DISPATCH",
+                Prefix = "AIRS.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 11,
+                Key = "STOCK_TRANSFER",
+                Prefix = "TRF.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 12,
+                Key = "EXPENSE",
+                Prefix = "MAS.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 13,
+                Key = "NEGOTIABLE_CHEQUE",
+                Prefix = "CEK.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 14,
+                Key = "NEGOTIABLE_NOTE",
+                Prefix = "SEN.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 15,
+                Key = "SALES_ORDER",
+                Prefix = "SSIP.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 16,
+                Key = "PURCHASE_ORDER",
+                Prefix = "ASIP.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 17,
+                Key = "QUOTE",
+                Prefix = "TEK.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+        builder.Entity<NumberSequence>().HasData(
+            new NumberSequence
+            {
+                Id = 18,
+                Key = "PERSONNEL",
+                Prefix = "PRSNL.",
+                NextNumber = 1,
+                Padding = 3,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 19,
+                Key = "CUSTOMER",
+                Prefix = "CARI.",
+                NextNumber = 1,
+                Padding = 5,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 20,
+                Key = "FINANCIAL_ACCOUNT_CASH",
+                Prefix = "KASA.",
+                NextNumber = 1,
+                Padding = 3,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 21,
+                Key = "FINANCIAL_ACCOUNT_BANK",
+                Prefix = "BANKA.",
+                NextNumber = 1,
+                Padding = 3,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
             });
         builder.Entity<UnitOfMeasure>().HasData(
             new UnitOfMeasure
@@ -1151,6 +1353,39 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Name = "Paket",
                 DecimalPlaces = 0,
                 CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+        builder.Entity<UnitOfMeasure>().HasData(
+            new UnitOfMeasure
+            {
+                Id = 4,
+                Code = "OZEL",
+                Name = "Özel Fiyat",
+                DecimalPlaces = 2,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UnitOfMeasure
+            {
+                Id = 5,
+                Code = "METRE",
+                Name = "Metre",
+                DecimalPlaces = 2,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UnitOfMeasure
+            {
+                Id = 6,
+                Code = "KOLI",
+                Name = "Koli",
+                DecimalPlaces = 0,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UnitOfMeasure
+            {
+                Id = 7,
+                Code = "LITRE",
+                Name = "Litre",
+                DecimalPlaces = 2,
+                CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
             });
         builder.Entity<Currency>().HasData(
             new Currency
@@ -1207,10 +1442,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             IsDefault = true,
             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
         });
+        builder.Entity<PriceList>().HasData(
+            new PriceList
+            {
+                Id = 1,
+                Code = "MERKEZ",
+                Name = "Merkez Fiyat",
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new PriceList
+            {
+                Id = 2,
+                Code = "SUBE",
+                Name = "Şube Fiyat",
+                CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
         builder.Entity<CompanySettings>().HasData(new CompanySettings
         {
             Id = 1,
             CompanyName = "ŞahinSoft",
+            LogoPath = "/images/logo.png",
             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
         });
         builder.Entity<FinancialAccount>().HasData(new FinancialAccount
@@ -1223,4 +1474,67 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
         });
     }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var pendingAudits = CapturePendingAudits();
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        if (pendingAudits.Count > 0)
+        {
+            var userId = httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
+                ?? httpContextAccessor.HttpContext?.User?.Identity?.Name
+                ?? string.Empty;
+            var ipAddress = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+            var userAgent = httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
+
+            foreach (var pending in pendingAudits)
+            {
+                AuditLogs.Add(new AuditLog
+                {
+                    UserId = userId,
+                    Action = pending.Action,
+                    EntityName = pending.EntityName,
+                    EntityId = pending.Entry.Property(nameof(EntityBase.Id)).CurrentValue?.ToString(),
+                    OldValuesJson = pending.OldValuesJson,
+                    NewValuesJson = pending.NewValuesJson,
+                    IpAddress = ipAddress,
+                    UserAgent = userAgent
+                });
+            }
+
+            await base.SaveChangesAsync(cancellationToken);
+        }
+
+        return result;
+    }
+
+    private List<PendingAudit> CapturePendingAudits()
+    {
+        var pending = new List<PendingAudit>();
+
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(e => e.Entity is EntityBase && e.Entity is not AuditLog
+                                 && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            var oldValues = entry.State is EntityState.Modified or EntityState.Deleted
+                ? SerializeValues(entry.OriginalValues)
+                : null;
+            var newValues = entry.State is EntityState.Added or EntityState.Modified
+                ? SerializeValues(entry.CurrentValues)
+                : null;
+
+            pending.Add(new PendingAudit(entry, entry.State.ToString(), entry.Entity.GetType().Name, oldValues, newValues));
+        }
+
+        return pending;
+    }
+
+    private static string SerializeValues(PropertyValues values)
+    {
+        var dictionary = values.Properties.ToDictionary(p => p.Name, p => values[p]);
+        return JsonSerializer.Serialize(dictionary);
+    }
+
+    private sealed record PendingAudit(EntityEntry Entry, string Action, string EntityName, string? OldValuesJson, string? NewValuesJson);
 }

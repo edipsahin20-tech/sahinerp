@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Web.Models;
@@ -33,8 +32,7 @@ public sealed class PaymentReceiptFormViewModel
 
     public List<PaymentReceiptLineFormViewModel> Lines { get; set; } = [];
 
-    public IReadOnlyList<SelectListItem> Customers { get; set; } = [];
-    public IReadOnlyList<SelectListItem> FinancialAccounts { get; set; } = [];
+    public string? CustomerDisplay { get; set; }
 }
 
 public sealed class PaymentReceiptLineFormViewModel
@@ -61,4 +59,6 @@ public sealed class PaymentReceiptLineFormViewModel
     [Required(ErrorMessage = "Kasa/banka hesabı seçilmelidir.")]
     [Display(Name = "Kasa/Banka")]
     public int? FinancialAccountId { get; set; }
+
+    public string? FinancialAccountDisplay { get; set; }
 }

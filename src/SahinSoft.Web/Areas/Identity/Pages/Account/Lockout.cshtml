@@ -1,0 +1,10 @@
+@page
+@{
+    ViewData["Title"] = "Hesap Kilitlendi";
+    ViewData["Subtitle"] = "";
+}
+
+<p class="text-center text-secondary mb-3">
+    Çok sayıda başarısız giriş denemesi nedeniyle hesabınız geçici olarak kilitlendi. Lütfen birkaç dakika sonra tekrar deneyin.
+</p>
+<a asp-page="./Login" class="btn btn-auth-primary d-block text-decoration-none">Giriş sayfasına dön</a>

@@ -1,0 +1,175 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.BusinessOrderFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    var isSales = Model.OrderType == InvoiceType.Sales;
+    ViewData["Title"] = (isEdit ? "Düzenle: " : "Yeni ") + (isSales ? "Satış Siparişi" : "Alış Siparişi");
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="OrderType" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>@(isSales ? "Satış Siparişi" : "Alış Siparişi")</h1>
+            <span class="erp-toolbar-meta">@(isEdit ? "Taslak düzenleniyor" : "Yeni sipariş")</span>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Sipariş Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="CustomerId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                        Value = Model.CustomerId?.ToString(),
+                        DisplayValue = Model.CustomerDisplay,
+                        Endpoint = Url.Action("Customers", "Lookup", new { type = isSales ? "Customer" : "Supplier" })!,
+                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="OrderDateUtc"></label>
+                    <input asp-for="OrderDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="RequestedDeliveryDateUtc"></label>
+                    <input asp-for="RequestedDeliveryDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CurrencyCode"></label>
+                    <input asp-for="CurrencyCode" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ExchangeRate"></label>
+                    <input asp-for="ExchangeRate" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Notes"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header d-flex justify-content-between align-items-center">
+            <span>Satırlar</span>
+            <button type="button" id="add-line" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.75rem;">+ Satır Ekle</button>
+        </div>
+        <div class="erp-panel-body p-0">
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="lines-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 220px;">Ürün</th>
+                            <th style="width: 100px;">Miktar</th>
+                            <th style="width: 110px;">Birim Fiyat</th>
+                            <th style="width: 90px;">İsk. %</th>
+                            <th style="width: 90px;">KDV %</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lines-body">
+                    @for (var i = 0; i < Model.Lines.Count; i++)
+                    {
+                        <tr class="line-row">
+                            <input type="hidden" name="Lines.Index" value="@i" />
+                            <td>
+                                <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                    Name = $"Lines[{i}].ProductId", Id = $"Lines_{i}__ProductId",
+                                    Value = Model.Lines[i].ProductId?.ToString(),
+                                    DisplayValue = Model.Lines[i].ProductDisplay,
+                                    Endpoint = Url.Action("Products", "Lookup")!,
+                                    Title = "Ürün Seç", Placeholder = "Ürün adı/kod/barkod",
+                                    AllowQuickSearch = true })" />
+                            </td>
+                            <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control" /></td>
+                            <td><input type="text" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" class="form-control price-input" /></td>
+                            <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control" /></td>
+                            <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
+                            <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+<template id="line-row-template">
+    <tr class="line-row">
+        <input type="hidden" name="Lines.Index" value="__index__" />
+        <td>
+            <div class="input-group">
+                <input type="hidden" name="Lines[__index__].ProductId" id="Lines___index____ProductId" value="" />
+                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch"
+                       placeholder="Ürün adı/kod/barkod" autocomplete="off"
+                       data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                       data-lookup-title="Ürün Seç"
+                       data-target-hidden="Lines___index____ProductId"
+                       data-target-display="Lines___index____ProductId_display" />
+                <button type="button" class="btn btn-outline-secondary lookup-trigger"
+                        data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                        data-lookup-title="Ürün Seç"
+                        data-target-hidden="Lines___index____ProductId"
+                        data-target-display="Lines___index____ProductId_display">
+                    ...
+                </button>
+            </div>
+        </td>
+        <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control" /></td>
+        <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
+        <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control" /></td>
+        <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
+        <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var linesBody = document.getElementById('lines-body');
+            var template = document.getElementById('line-row-template');
+            var addButton = document.getElementById('add-line');
+            var nextIndex = @Model.Lines.Count;
+            var isSales = @Json.Serialize(isSales);
+
+            addButton.addEventListener('click', function () {
+                var html = template.innerHTML.split('__index__').join(nextIndex);
+                var wrapper = document.createElement('tbody');
+                wrapper.innerHTML = html;
+                linesBody.appendChild(wrapper.firstElementChild);
+                nextIndex++;
+            });
+
+            linesBody.addEventListener('click', function (event) {
+                if (event.target.classList.contains('remove-line')) {
+                    var row = event.target.closest('tr');
+                    if (linesBody.querySelectorAll('.line-row').length > 1) {
+                        row.remove();
+                    }
+                }
+            });
+
+            linesBody.addEventListener('lookup:selected', function (event) {
+                var row = event.target.closest('tr');
+                if (!row) {
+                    return;
+                }
+                var item = event.detail.item;
+                row.querySelector('.price-input').value = isSales ? item.salePrice : item.purchasePrice;
+                row.querySelector('.tax-input').value = item.taxRate;
+            });
+        })();
+    </script>
+}

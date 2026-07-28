@@ -10,6 +10,8 @@
 # Build/publish artifacts (compiled output, not source)
 deploy/iis-publish/
 deploy/*.zip
+publish-fresh/
+**/publish-fresh/
 
 # macOS
 .DS_Store

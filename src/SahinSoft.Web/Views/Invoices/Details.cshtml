@@ -2,11 +2,11 @@
 @model SahinSoft.Web.Models.InvoiceDetailsViewModel
 @{
     ViewData["Title"] = $"Fatura {Model.InvoiceNumber}";
-    var badgeClass = Model.Status switch
+    var statusClass = Model.Status switch
     {
-        InvoiceStatus.Draft => "text-bg-secondary-subtle text-secondary-emphasis",
-        InvoiceStatus.Approved => "text-bg-success-subtle text-success-emphasis",
-        _ => "text-bg-danger-subtle text-danger-emphasis"
+        InvoiceStatus.Draft => "erp-status-draft",
+        InvoiceStatus.Approved => "erp-status-approved",
+        _ => "erp-status-cancelled"
     };
     var statusText = Model.Status switch
     {
@@ -16,21 +16,20 @@
     };
 }
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-    <div>
-        <h1 class="h3 mb-1">@(Model.InvoiceType == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası") @Model.InvoiceNumber</h1>
-        <p class="text-secondary mb-0">
-            @Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")
-            <span class="badge @badgeClass ms-2">@statusText</span>
-        </p>
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>@(Model.InvoiceType == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası")</h1>
+        <span class="erp-doc-no">@Model.InvoiceNumber</span>
+        <span class="erp-status-badge @statusClass">@statusText</span>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary">Fatura listesi</a>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        <button type="button" class="btn btn-erp-outline btn-sm" onclick="window.print()">Yazdır</button>
         @if (Model.Status == InvoiceStatus.Draft)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Düzenle</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>
             <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
-                <button type="submit" class="btn btn-primary">Onayla</button>
+                <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
             </form>
         }
     </div>
@@ -38,119 +37,267 @@
 
 @if (TempData["Success"] is string success)
 {
-    <div class="alert alert-success">@success</div>
+    <div class="alert alert-success py-2">@success</div>
 }
 @if (TempData["Error"] is string error)
 {
-    <div class="alert alert-danger">@error</div>
+    <div class="alert alert-danger py-2">@error</div>
 }
-
 @if (Model.Status == InvoiceStatus.Cancelled)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger py-2">
         <strong>İptal edildi</strong> &middot; @Model.CancelledAtUtc?.ToString("dd.MM.yyyy HH:mm")<br />
         Gerekçe: @Model.CancellationReason
     </div>
 }
 
-<div class="card border-0 shadow-sm mb-3">
-    <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Ürün</th>
-                    <th class="text-end">Miktar</th>
-                    <th class="text-end">Birim fiyat</th>
-                    <th class="text-end">İskonto %</th>
-                    <th class="text-end">KDV %</th>
-                    <th class="text-end">Tutar</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var line in Model.Lines)
-            {
-                <tr>
-                    <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
-                    <td class="text-end">@line.Quantity.ToString("N3")</td>
-                    <td class="text-end">@line.UnitPrice.ToString("N2")</td>
-                    <td class="text-end">@line.DiscountRate.ToString("N2")</td>
-                    <td class="text-end">@line.TaxRate.ToString("N2")</td>
-                    <td class="text-end">@line.LineTotal.ToString("N2")</td>
-                </tr>
-            }
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="5" class="text-end fw-semibold">Ara toplam</td>
-                    <td class="text-end">@Model.Subtotal.ToString("N2")</td>
-                </tr>
-                <tr>
-                    <td colspan="5" class="text-end fw-semibold">İskonto</td>
-                    <td class="text-end">@Model.DiscountTotal.ToString("N2")</td>
-                </tr>
-                <tr>
-                    <td colspan="5" class="text-end fw-semibold">KDV</td>
-                    <td class="text-end">@Model.TaxTotal.ToString("N2")</td>
-                </tr>
-                <tr class="table-light">
-                    <td colspan="5" class="text-end fw-bold">Genel toplam</td>
-                    <td class="text-end fw-bold">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</td>
-                </tr>
-            </tfoot>
-        </table>
+<div class="erp-panel">
+    <div class="erp-panel-header">@Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")</div>
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Ürün</th>
+                        <th class="text-end">Miktar</th>
+                        <th class="text-end">Birim Fiyat</th>
+                        <th class="text-end">İsk. %</th>
+                        <th class="text-end">KDV %</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
+                        <td class="text-end">@line.Quantity.ToString("N3")</td>
+                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@line.DiscountRate.ToString("N2")</td>
+                        <td class="text-end">@line.TaxRate.ToString("N2")</td>
+                        <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="p-3 d-flex">
+            <div class="erp-totals">
+                <div class="erp-totals-row"><span>Ara toplam</span><span>@Model.Subtotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>İskonto</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>KDV</span><span>@Model.TaxTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
+            </div>
+        </div>
     </div>
 </div>
 
 @if (Model.PaymentSchedules.Count > 0)
 {
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">Vade planı</div>
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Taksit</th>
-                        <th>Vade tarihi</th>
-                        <th class="text-end">Tutar</th>
-                        <th class="text-end">Tahsil edilen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var schedule in Model.PaymentSchedules)
-                {
-                    <tr>
-                        <td>@schedule.InstallmentNumber</td>
-                        <td>@schedule.DueDateUtc.ToString("dd.MM.yyyy")</td>
-                        <td class="text-end">@schedule.Amount.ToString("N2")</td>
-                        <td class="text-end">@schedule.PaidAmount.ToString("N2")</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+    <div class="erp-panel">
+        <div class="erp-panel-header">Vade Planı</div>
+        <div class="erp-panel-body p-0">
+            <div class="erp-table-wrap">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Taksit</th>
+                            <th>Vade Tarihi</th>
+                            <th class="text-end">Tutar</th>
+                            <th class="text-end">Tahsil Edilen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var schedule in Model.PaymentSchedules)
+                    {
+                        <tr>
+                            <td>@schedule.InstallmentNumber</td>
+                            <td>@schedule.DueDateUtc.ToString("dd.MM.yyyy")</td>
+                            <td class="text-end">@schedule.Amount.ToString("N2")</td>
+                            <td class="text-end">@schedule.PaidAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 }
 
 @if (Model.Notes is not null)
 {
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body">
-            <div class="text-secondary small">Notlar</div>
-            <div>@Model.Notes</div>
-        </div>
+    <div class="erp-panel">
+        <div class="erp-panel-header">Notlar</div>
+        <div class="erp-panel-body">@Model.Notes</div>
     </div>
 }
 
 @if (Model.Status == InvoiceStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
 {
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
-            <h2 class="h6">Faturayı iptal et</h2>
-            <p class="text-secondary small">İptal işlemi kaydı silmez; stok ve cari için ters hareket üretir.</p>
+    <div class="erp-panel">
+        <div class="erp-panel-header">Faturayı İptal Et</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small mb-2">İptal işlemi kaydı silmez; stok ve cari için ters hareket üretir.</p>
             <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
                 <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
-                <button type="submit" class="btn btn-outline-danger text-nowrap">İptal et</button>
+                <button type="submit" class="btn btn-erp-danger text-nowrap">İptal Et</button>
             </form>
         </div>
     </div>
 }
+
+@{
+    var docTitle = Model.InvoiceType == InvoiceType.Sales ? "SATIŞ FATURASI" : "ALIŞ FATURASI";
+    var webEmailParts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.Company.Website)) { webEmailParts.Add($"Web: {Model.Company.Website}"); }
+    if (!string.IsNullOrWhiteSpace(Model.Company.Email)) { webEmailParts.Add($"E-posta: {Model.Company.Email}"); }
+    var taxParts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.CustomerTaxOffice)) { taxParts.Add(Model.CustomerTaxOffice!); }
+    if (!string.IsNullOrWhiteSpace(Model.CustomerTaxNumber)) { taxParts.Add(Model.CustomerTaxNumber!); }
+}
+
+<div class="pdf-export-scope print-only">
+    <div id="invoice-pdf-template" class="pdf-document">
+        <div class="pdf-watermark">ŞAHİNSOFT</div>
+
+        <div class="pdf-header">
+            <div class="pdf-brand">
+                <div class="pdf-logo-box">
+                    <img src="~/images/logo-icon.png" alt="Logo" class="pdf-logo-img">
+                </div>
+                <div class="pdf-brand-sub">
+                    <strong>@Model.Company.CompanyName</strong><br>
+                    @if (webEmailParts.Count > 0)
+                    {
+                        <span>@string.Join(" | ", webEmailParts)</span>
+                        <br>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Company.Phone))
+                    {
+                        <span>Tel: @Model.Company.Phone</span>
+                    }
+                </div>
+            </div>
+            <div class="pdf-doc-title-box">
+                <h2 class="pdf-doc-title">@docTitle</h2>
+                <div class="pdf-meta-pill"><span>Fatura No:</span> <strong>@Model.InvoiceNumber</strong></div>
+                <div class="pdf-meta-pill"><span>Tarih:</span> <strong>@Model.InvoiceDateUtc.ToString("dd.MM.yyyy")</strong></div>
+                @if (Model.DueDateUtc.HasValue)
+                {
+                    <div class="pdf-meta-pill"><span>Vade:</span> <strong>@Model.DueDateUtc.Value.ToString("dd.MM.yyyy")</strong></div>
+                }
+            </div>
+        </div>
+
+        <hr class="pdf-divider">
+
+        <div class="pdf-info-grid">
+            <div class="pdf-info-block customer">
+                <div class="block-head">@(Model.InvoiceType == InvoiceType.Sales ? "FATURA KESİLEN MÜŞTERİ" : "FATURA ALINAN TEDARİKÇİ")</div>
+                <div class="block-body">
+                    <h4>@Model.CustomerName</h4>
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerPhone))
+                    {
+                        <p><strong>Telefon:</strong> @Model.CustomerPhone</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerEmail))
+                    {
+                        <p><strong>E-posta:</strong> @Model.CustomerEmail</p>
+                    }
+                    @if (taxParts.Count > 0)
+                    {
+                        <p><strong>Vergi Dairesi/No:</strong> @string.Join(" ", taxParts)</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerAddress))
+                    {
+                        <p><strong>Adres:</strong> @Model.CustomerAddress</p>
+                    }
+                    <p><strong>Depo:</strong> @Model.WarehouseName</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-table-wrapper">
+            <table class="pdf-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;">#</th>
+                        <th>Ürün & Hizmet Açıklaması</th>
+                        <th style="width: 50px;">Birim</th>
+                        <th style="width: 45px;">Mkt</th>
+                        <th style="width: 90px; text-align: right;">B. Fiyat</th>
+                        <th style="width: 45px; text-align: center;">KDV</th>
+                        <th style="width: 45px; text-align: center;">İsk.</th>
+                        <th style="width: 100px; text-align: right;">Toplam Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td style="text-align: center;">@line.LineNumber</td>
+                            <td>@line.ProductNameSnapshot</td>
+                            <td>@line.UnitSnapshot</td>
+                            <td style="text-align: center;">@line.Quantity.ToString("N2")</td>
+                            <td style="text-align: right;">@line.UnitPrice.ToString("N2") @Model.CurrencyCode</td>
+                            <td style="text-align: center;">%@line.TaxRate.ToString("N0")</td>
+                            <td style="text-align: center;">@(line.DiscountRate > 0 ? "%" + line.DiscountRate.ToString("N0") : "-")</td>
+                            <td style="text-align: right;"><strong>@line.LineTotal.ToString("N2") @Model.CurrencyCode</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pdf-bottom-grid">
+            <div class="pdf-terms-box">
+                <div class="terms-title">FATURA BİLGİLERİ</div>
+                <ul class="terms-list">
+                    <li><strong>Para Birimi:</strong> @Model.CurrencyCode</li>
+                    @if (!string.IsNullOrWhiteSpace(Model.Company.Iban))
+                    {
+                        <li><strong>Banka Hesabı:</strong> @(string.IsNullOrWhiteSpace(Model.Company.BankName) ? Model.Company.Iban : $"{Model.Company.BankName} - {Model.Company.Iban}")</li>
+                    }
+                </ul>
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <div class="pdf-note-box"><strong>Not:</strong> @Model.Notes</div>
+                }
+            </div>
+            <div class="pdf-totals-box">
+                <div class="pdf-total-row"><span>Ara Toplam:</span><strong>@Model.Subtotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                @if (Model.DiscountTotal > 0)
+                {
+                    <div class="pdf-total-row discount"><span>İskonto Tutarı:</span><strong>-@Model.DiscountTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                }
+                <div class="pdf-total-row"><span>KDV Tutarı:</span><strong>@Model.TaxTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                <div class="pdf-total-row grand"><span>GENEL TOPLAM:</span><strong>@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+            </div>
+        </div>
+
+        <div class="pdf-footer-signatures">
+            <div class="sig-box">
+                <span class="sig-title">FATURAYI DÜZENLEYEN</span>
+                <span class="sig-company">@Model.Company.CompanyName</span>
+                <div class="sig-space"><span class="stamp-badge">ONAYLI</span></div>
+                <span class="sig-name">Satış & Muhasebe Departmanı</span>
+            </div>
+            <div class="sig-box">
+                <span class="sig-title">MÜŞTERİ ONAY / İMZA</span>
+                <span class="sig-company">@Model.CustomerName</span>
+                <div class="sig-space"><span class="sig-placeholder">Kaşe / İmza / Tarih</span></div>
+                <span class="sig-name">Yetkili İmzası</span>
+            </div>
+        </div>
+
+        <div class="pdf-page-footer">
+            <span>@Model.Company.CompanyName — Fatura Sistemi</span>
+            <span>Sayfa 1 / 1</span>
+        </div>
+    </div>
+</div>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/pdf-document.css" asp-append-version="true" />
+}
+

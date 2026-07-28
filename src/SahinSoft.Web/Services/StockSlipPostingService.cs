@@ -92,4 +92,70 @@ public sealed class StockSlipPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
+
+    public async Task CancelAsync(
+        int stockSlipId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        var slip = await dbContext.StockSlips
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.Product)
+            .SingleOrDefaultAsync(x => x.Id == stockSlipId, cancellationToken)
+            ?? throw new InvalidOperationException("Stok fişi bulunamadı.");
+
+        if (slip.Status != StockSlipStatus.Approved)
+        {
+            throw new InvalidOperationException("Yalnızca onaylanmış fişler iptal edilebilir.");
+        }
+
+        var reversalDocumentNumber = $"IPTAL-{slip.SlipNumber}";
+
+        foreach (var line in slip.Lines)
+        {
+            var originalMovement = await dbContext.StockMovements
+                .SingleOrDefaultAsync(x => x.StockSlipLineId == line.Id, cancellationToken);
+            if (originalMovement is null)
+            {
+                continue;
+            }
+
+            dbContext.StockMovements.Add(new StockMovement
+            {
+                MovementDateUtc = DateTime.UtcNow,
+                MovementType = originalMovement.MovementType,
+                Quantity = -originalMovement.Quantity,
+                UnitCost = originalMovement.UnitCost,
+                DocumentNumber = reversalDocumentNumber,
+                Description = $"Stok fişi iptali - {reason}",
+                ProductId = originalMovement.ProductId,
+                ProductVariantId = originalMovement.ProductVariantId,
+                WarehouseId = originalMovement.WarehouseId,
+                StockSlipLineId = line.Id,
+                ReversalOfId = originalMovement.Id
+            });
+
+            line.Product.StockQuantity -= originalMovement.Quantity;
+            line.Product.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        slip.Status = StockSlipStatus.Cancelled;
+        slip.CancelledByUserId = cancelledByUserId;
+        slip.CancelledAtUtc = DateTime.UtcNow;
+        slip.CancellationReason = reason;
+        slip.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 }

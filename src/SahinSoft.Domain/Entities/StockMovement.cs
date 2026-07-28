@@ -30,6 +30,8 @@ public sealed class StockMovement : EntityBase
     public StockSlipLine? StockSlipLine { get; set; }
     public int? InventoryCountLineId { get; set; }
     public InventoryCountLine? InventoryCountLine { get; set; }
+    public int? DispatchNoteLineId { get; set; }
+    public DispatchNoteLine? DispatchNoteLine { get; set; }
     public int? ReversalOfId { get; set; }
     public StockMovement? ReversalOf { get; set; }
 }

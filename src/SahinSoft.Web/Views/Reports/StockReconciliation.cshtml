@@ -1,0 +1,58 @@
+@model SahinSoft.Web.Models.StockReconciliationReportViewModel
+@{
+    ViewData["Title"] = "Stok Mutabakatı";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Stok Mutabakatı</h1>
+        <span class="erp-toolbar-meta">Stok kartındaki miktar ile stok hareketleri toplamı karşılaştırılır</span>
+    </div>
+</div>
+
+<div class="erp-summary-row">
+    <div class="erp-summary-box">
+        <div class="erp-summary-label">Kontrol Edilen Ürün</div>
+        <div class="erp-summary-value">@Model.CheckedProductCount</div>
+    </div>
+    <div class="erp-summary-box" style="border-color: @(Model.Lines.Count > 0 ? "#8a2a2a" : "var(--erp-gold));")">
+        <div class="erp-summary-label">Uyuşmayan Ürün</div>
+        <div class="erp-summary-value" style="color: @(Model.Lines.Count > 0 ? "#8a2a2a" : "#1f7a4d");">@Model.Lines.Count</div>
+    </div>
+</div>
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Stok Kodu</th>
+                    <th>Ürün</th>
+                    <th class="text-end">Stok Kartı Miktarı</th>
+                    <th class="text-end">Hareket Toplamı</th>
+                    <th class="text-end">Fark</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr>
+                    <td>@line.StockCode</td>
+                    <td><a asp-controller="Products" asp-action="Edit" asp-route-id="@line.ProductId">@line.ProductName</a></td>
+                    <td class="text-end">@line.RecordedQuantity.ToString("N3")</td>
+                    <td class="text-end">@line.MovementQuantity.ToString("N3")</td>
+                    <td class="text-end fw-semibold" style="color: #8a2a2a;">
+                        @(line.Difference > 0 ? "+" : "")@line.Difference.ToString("N3")
+                    </td>
+                </tr>
+            }
+            @if (Model.Lines.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-secondary py-4">Tüm stok kartları hareketleriyle uyumlu. Uyuşmazlık bulunamadı.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

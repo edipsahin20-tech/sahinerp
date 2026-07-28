@@ -6,10 +6,25 @@ namespace SahinSoft.Web.Services;
 public sealed class BarcodeGeneratorService(ApplicationDbContext dbContext)
 {
     public Task<string> GenerateEan13Async(CancellationToken cancellationToken = default) =>
-        GenerateAsync(12, "20", cancellationToken);
+        GenerateAsync(12, "1989", cancellationToken);
 
     public Task<string> GenerateEan8Async(CancellationToken cancellationToken = default) =>
-        GenerateAsync(7, "20", cancellationToken);
+        GenerateAsync(7, "1989", cancellationToken);
+
+    public async Task<string> GenerateAsciiAsync(CancellationToken cancellationToken = default)
+    {
+        const string prefix = "AS";
+        for (var sequence = 1; sequence <= 999999; sequence++)
+        {
+            var candidate = $"{prefix}{sequence:D6}";
+            if (!await ExistsAsync(candidate, cancellationToken))
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException("Kullanılabilir ASCII barkod kalmadı.");
+    }
 
     public async Task<string> GenerateScaleBarcodeAsync(
         string prefix,

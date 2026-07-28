@@ -10,7 +10,13 @@ public sealed class Product : EntityBase
     public string? Model { get; set; }
     public string? Barcode { get; set; }
     public string Unit { get; set; } = "Adet";
+    public int? UnitOfMeasureId { get; set; }
+    public UnitOfMeasure? UnitOfMeasure { get; set; }
     public string ProductType { get; set; } = "Donanım";
+    public string? AlternateName { get; set; }
+    public int? ShelfLifeDays { get; set; }
+    public string? CountryOfOrigin { get; set; }
+    public bool PricesIncludeTax { get; set; }
     public string? Description { get; set; }
     public decimal PurchasePrice { get; set; }
     public decimal SalePrice { get; set; }

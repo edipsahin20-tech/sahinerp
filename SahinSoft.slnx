@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/SahinSoft.Application/SahinSoft.Application.csproj" />
+    <Project Path="src/SahinSoft.ConfigTool/SahinSoft.ConfigTool.csproj" />
     <Project Path="src/SahinSoft.Domain/SahinSoft.Domain.csproj" />
     <Project Path="src/SahinSoft.Infrastructure/SahinSoft.Infrastructure.csproj" />
     <Project Path="src/SahinSoft.Web/SahinSoft.Web.csproj" />

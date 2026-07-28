@@ -1,0 +1,87 @@
+@model SahinSoft.Web.Models.ExpenseFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Masrafı Düzenle" : "Yeni Masraf";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Masraf Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="ExpenseCategoryId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.ExpenseCategoryId), Id = nameof(Model.ExpenseCategoryId),
+                        Value = Model.ExpenseCategoryId?.ToString(),
+                        DisplayValue = Model.ExpenseCategoryDisplay,
+                        Endpoint = Url.Action("ExpenseCategories", "Lookup")!,
+                        Title = "Masraf Kategorisi Seç", Placeholder = "Kategori seçin" })" />
+                    <span asp-validation-for="ExpenseCategoryId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ExpenseDateUtc"></label>
+                    <input asp-for="ExpenseDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CurrencyCode"></label>
+                    <input asp-for="CurrencyCode" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Description"></label>
+                    <input asp-for="Description" class="form-control" />
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="NetAmount"></label>
+                    <input asp-for="NetAmount" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TaxAmount"></label>
+                    <input asp-for="TaxAmount" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TaxRateId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.TaxRateId), Id = nameof(Model.TaxRateId),
+                        Value = Model.TaxRateId?.ToString(),
+                        DisplayValue = Model.TaxRateDisplay,
+                        Endpoint = Url.Action("TaxRates", "Lookup")!,
+                        Title = "KDV Oranı Seç", Placeholder = "KDV oranı yok" })" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CustomerId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                        Value = Model.CustomerId?.ToString(),
+                        DisplayValue = Model.CustomerDisplay,
+                        Endpoint = Url.Action("Customers", "Lookup")!,
+                        Title = "Cari Seç", Placeholder = "Cari yok" })" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="FinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.FinancialAccountId), Id = nameof(Model.FinancialAccountId),
+                        Value = Model.FinancialAccountId?.ToString(),
+                        DisplayValue = Model.FinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Ödeme Hesabı Seç", Placeholder = "Ödeme hesabı yok" })" />
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

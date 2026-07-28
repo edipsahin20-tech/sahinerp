@@ -11,8 +11,15 @@ public sealed class InvoiceDetailsViewModel
     public DateTime InvoiceDateUtc { get; set; }
     public DateTime? DueDateUtc { get; set; }
     public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerCode { get; set; }
+    public string? CustomerTaxOffice { get; set; }
+    public string? CustomerTaxNumber { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? CustomerEmail { get; set; }
+    public string? CustomerAddress { get; set; }
     public string WarehouseName { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
+    public PdfCompanyInfoViewModel Company { get; set; } = new();
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }
     public decimal TaxTotal { get; set; }

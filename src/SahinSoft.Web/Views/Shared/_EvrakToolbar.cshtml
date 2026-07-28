@@ -1,0 +1,80 @@
+@model SahinSoft.Web.Models.EvrakToolbarViewModel
+
+@if (Model is null)
+{
+    return;
+}
+
+<div class="erp-evrak-toolbar">
+    <form method="post" asp-controller="@Model.Controller" asp-action="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Bu kaydı silmek istediğinize emin misiniz?');">
+        @if (Model.Id is null || !Model.CanDelete)
+        {
+            <button type="button" class="erp-evrak-btn" disabled title="@Model.DeleteBlockedReason">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                <span>Sil</span>
+            </button>
+        }
+        else
+        {
+            <button type="submit" class="erp-evrak-btn erp-evrak-btn-danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                <span>Sil</span>
+            </button>
+        }
+    </form>
+
+    @if (Model.PreviousId is int previousId)
+    {
+        <a class="erp-evrak-btn" asp-controller="@Model.Controller" asp-action="Edit" asp-route-id="@previousId">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            <span>Önce</span>
+        </a>
+    }
+    else
+    {
+        <button type="button" class="erp-evrak-btn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            <span>Önce</span>
+        </button>
+    }
+
+    <a class="erp-evrak-btn" asp-controller="@Model.Controller" asp-action="Create" asp-all-route-data="Model.CreateRouteValues">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" /></svg>
+        <span>Yeni</span>
+    </a>
+
+    <button type="submit" form="evrak-form" class="erp-evrak-btn erp-evrak-btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8" /><path d="M7 3v5h8" /></svg>
+        <span>Sakla</span>
+    </button>
+
+    @if (Model.HasDetails && Model.Id is int detailsId)
+    {
+        <a class="erp-evrak-btn" asp-controller="@Model.Controller" asp-action="Details" asp-route-id="@detailsId">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+            <span>Detay</span>
+        </a>
+    }
+    else
+    {
+        <button type="button" class="erp-evrak-btn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+            <span>Detay</span>
+        </button>
+    }
+
+    @if (Model.NextId is int nextId)
+    {
+        <a class="erp-evrak-btn" asp-controller="@Model.Controller" asp-action="Edit" asp-route-id="@nextId">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            <span>Sonra</span>
+        </a>
+    }
+    else
+    {
+        <button type="button" class="erp-evrak-btn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            <span>Sonra</span>
+        </button>
+    }
+</div>

@@ -1,0 +1,96 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.InventoryCountDetailsViewModel
+@{
+    ViewData["Title"] = $"Sayım {Model.CountNumber}";
+    var statusClass = Model.Status switch
+    {
+        InventoryCountStatus.Draft => "erp-status-draft",
+        InventoryCountStatus.Counting => "erp-status-draft",
+        InventoryCountStatus.Approved => "erp-status-approved",
+        _ => "erp-status-cancelled"
+    };
+    var statusText = Model.Status switch
+    {
+        InventoryCountStatus.Draft => "Taslak",
+        InventoryCountStatus.Counting => "Sayılıyor",
+        InventoryCountStatus.Approved => "Onaylı",
+        _ => "İptal"
+    };
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Sayım</h1>
+        <span class="erp-doc-no">@Model.CountNumber</span>
+        <span class="erp-status-badge @statusClass">@statusText</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        @if (Model.Status == InventoryCountStatus.Draft)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>
+            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-header">@Model.WarehouseName &middot; @Model.CountDateUtc.ToString("dd.MM.yyyy")</div>
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Ürün</th>
+                        <th class="text-end">Sistem Miktarı</th>
+                        <th class="text-end">Sayılan Miktar</th>
+                        <th class="text-end">Fark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductName</td>
+                        <td class="text-end">@line.SystemQuantity.ToString("N3")</td>
+                        <td class="text-end">@line.CountedQuantity.ToString("N3")</td>
+                        <td class="text-end fw-semibold" style="color: @(line.DifferenceQuantity < 0 ? "#8a2a2a" : line.DifferenceQuantity > 0 ? "#1f7a4d" : "inherit");">
+                            @(line.DifferenceQuantity > 0 ? "+" : "")@line.DifferenceQuantity.ToString("N3")
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (Model.Status != InventoryCountStatus.Approved)
+{
+    <p class="text-secondary small">Sistem miktarı onay anında hesaplanır; taslak/sayılıyor durumunda 0 görünür.</p>
+}
+
+@if (Model.Status == InventoryCountStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Sayımı İptal Et</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small mb-2">İptal işlemi kaydı silmez; stok için ters hareket üretir.</p>
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
+                <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
+                <button type="submit" class="btn btn-erp-danger text-nowrap">İptal Et</button>
+            </form>
+        </div>
+    </div>
+}

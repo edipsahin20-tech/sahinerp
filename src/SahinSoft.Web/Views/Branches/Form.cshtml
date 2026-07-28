@@ -1,0 +1,57 @@
+@model SahinSoft.Web.Models.BranchFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Şubeyi Düzenle" : "Yeni Şube";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Şube Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="Code"></label>
+                    <input asp-for="Code" class="form-control" autofocus />
+                    <span asp-validation-for="Code" class="text-danger small"></span>
+                </div>
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Phone"></label>
+                    <input asp-for="Phone" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Address"></label>
+                    <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 mt-3">
+                <div class="form-check form-switch">
+                    <input asp-for="IsHeadOffice" class="form-check-input" />
+                    <label asp-for="IsHeadOffice" class="form-check-label"></label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,224 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.DispatchNoteDetailsViewModel
+@{
+    ViewData["Title"] = $"İrsaliye {Model.DispatchNumber}";
+    var statusClass = Model.Status switch
+    {
+        BusinessDocumentStatus.Draft => "erp-status-draft",
+        BusinessDocumentStatus.Approved or BusinessDocumentStatus.Fulfilled => "erp-status-approved",
+        _ => "erp-status-cancelled"
+    };
+    var statusText = Model.Status switch
+    {
+        BusinessDocumentStatus.Draft => "Taslak",
+        BusinessDocumentStatus.Approved => "Onaylı",
+        BusinessDocumentStatus.PartiallyFulfilled => "Kısmi",
+        BusinessDocumentStatus.Fulfilled => "Tamamlandı",
+        _ => "İptal"
+    };
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>@(Model.DispatchType == InvoiceType.Sales ? "Satış İrsaliyesi" : "Alış İrsaliyesi")</h1>
+        <span class="erp-doc-no">@Model.DispatchNumber</span>
+        <span class="erp-status-badge @statusClass">@statusText</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        <button type="button" class="btn btn-erp-outline btn-sm" onclick="window.print()">Yazdır</button>
+        @if (Model.Status == BusinessDocumentStatus.Draft)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>
+            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-header">
+        @Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.DispatchDateUtc.ToString("dd.MM.yyyy")
+        @if (!string.IsNullOrEmpty(Model.VehiclePlate)) { <span>&middot; @Model.VehiclePlate</span> }
+        @if (!string.IsNullOrEmpty(Model.CarrierName)) { <span>&middot; @Model.CarrierName</span> }
+    </div>
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Ürün</th>
+                        <th class="text-end">Miktar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductName</td>
+                        <td class="text-end">@line.Quantity.ToString("N3")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (Model.Notes is not null)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Notlar</div>
+        <div class="erp-panel-body">@Model.Notes</div>
+    </div>
+}
+
+@if (Model.Status == BusinessDocumentStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">İrsaliyeyi İptal Et</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small mb-2">İptal işlemi kaydı silmez; stok için ters hareket üretir.</p>
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
+                <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
+                <button type="submit" class="btn btn-erp-danger text-nowrap">İptal Et</button>
+            </form>
+        </div>
+    </div>
+}
+
+@{
+    var docTitle = Model.DispatchType == InvoiceType.Sales ? "SATIŞ İRSALİYESİ" : "ALIŞ İRSALİYESİ";
+    var webEmailParts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.Company.Website)) { webEmailParts.Add($"Web: {Model.Company.Website}"); }
+    if (!string.IsNullOrWhiteSpace(Model.Company.Email)) { webEmailParts.Add($"E-posta: {Model.Company.Email}"); }
+}
+
+<div class="pdf-export-scope print-only">
+    <div id="dispatch-pdf-template" class="pdf-document">
+        <div class="pdf-watermark">ŞAHİNSOFT</div>
+
+        <div class="pdf-header">
+            <div class="pdf-brand">
+                <div class="pdf-logo-box">
+                    <img src="~/images/logo-icon.png" alt="Logo" class="pdf-logo-img">
+                </div>
+                <div class="pdf-brand-sub">
+                    <strong>@Model.Company.CompanyName</strong><br>
+                    @if (webEmailParts.Count > 0)
+                    {
+                        <span>@string.Join(" | ", webEmailParts)</span>
+                        <br>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Company.Phone))
+                    {
+                        <span>Tel: @Model.Company.Phone</span>
+                    }
+                </div>
+            </div>
+            <div class="pdf-doc-title-box">
+                <h2 class="pdf-doc-title">@docTitle</h2>
+                <div class="pdf-meta-pill"><span>İrsaliye No:</span> <strong>@Model.DispatchNumber</strong></div>
+                <div class="pdf-meta-pill"><span>Tarih:</span> <strong>@Model.DispatchDateUtc.ToString("dd.MM.yyyy")</strong></div>
+                @if (!string.IsNullOrWhiteSpace(Model.VehiclePlate))
+                {
+                    <div class="pdf-meta-pill"><span>Araç:</span> <strong>@Model.VehiclePlate</strong></div>
+                }
+            </div>
+        </div>
+
+        <hr class="pdf-divider">
+
+        <div class="pdf-info-grid">
+            <div class="pdf-info-block customer">
+                <div class="block-head">@(Model.DispatchType == InvoiceType.Sales ? "SEVK EDİLEN MÜŞTERİ" : "TESLİM ALINAN TEDARİKÇİ")</div>
+                <div class="block-body">
+                    <h4>@Model.CustomerName</h4>
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerPhone))
+                    {
+                        <p><strong>Telefon:</strong> @Model.CustomerPhone</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerEmail))
+                    {
+                        <p><strong>E-posta:</strong> @Model.CustomerEmail</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerAddress))
+                    {
+                        <p><strong>Adres:</strong> @Model.CustomerAddress</p>
+                    }
+                    <p><strong>Depo:</strong> @Model.WarehouseName</p>
+                    @if (!string.IsNullOrWhiteSpace(Model.CarrierName))
+                    {
+                        <p><strong>Nakliyeci:</strong> @Model.CarrierName</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-table-wrapper">
+            <table class="pdf-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Ürün Adı</th>
+                        <th style="width: 100px; text-align: right;">Miktar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var lineNo = 1; }
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td style="text-align: center;">@(lineNo++)</td>
+                            <td>@line.ProductName</td>
+                            <td style="text-align: right;">@line.Quantity.ToString("N3")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="pdf-terms-box">
+                <div class="terms-title">NOTLAR</div>
+                <div class="pdf-note-box">@Model.Notes</div>
+            </div>
+        }
+
+        <div class="pdf-footer-signatures">
+            <div class="sig-box">
+                <span class="sig-title">TESLİM EDEN</span>
+                <span class="sig-company">@Model.Company.CompanyName</span>
+                <div class="sig-space"><span class="sig-placeholder">Kaşe / İmza / Tarih</span></div>
+                <span class="sig-name">Depo & Sevkiyat Departmanı</span>
+            </div>
+            <div class="sig-box">
+                <span class="sig-title">TESLİM ALAN</span>
+                <span class="sig-company">@Model.CustomerName</span>
+                <div class="sig-space"><span class="sig-placeholder">Kaşe / İmza / Tarih</span></div>
+                <span class="sig-name">Yetkili İmzası</span>
+            </div>
+        </div>
+
+        <div class="pdf-page-footer">
+            <span>@Model.Company.CompanyName — İrsaliye Sistemi</span>
+            <span>Sayfa 1 / 1</span>
+        </div>
+    </div>
+</div>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/pdf-document.css" asp-append-version="true" />
+}
+

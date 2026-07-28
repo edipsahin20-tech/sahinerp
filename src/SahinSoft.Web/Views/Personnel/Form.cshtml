@@ -1,0 +1,156 @@
+@model SahinSoft.Web.Models.PersonnelFormViewModel
+@{
+    var isEdit = !string.IsNullOrEmpty(Model.Id);
+    ViewData["Title"] = isEdit ? "Personeli Düzenle" : "Yeni Personel";
+}
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>Personel Tanıtım Kartı</h1>
+        </div>
+        <div class="erp-toolbar-actions">
+            <a asp-action="Index" class="btn btn-erp-outline btn-sm">Personel Listesi</a>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Personel Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="row g-4">
+                <div class="col-12 col-lg-6">
+                    <div class="erp-field-grid">
+                        <div class="erp-field">
+                            <label asp-for="PersonnelCode"></label>
+                            <input asp-for="PersonnelCode" class="form-control" placeholder="Boş bırakılırsa otomatik atanır" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="FullName"></label>
+                            <input asp-for="FullName" class="form-control" autofocus />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="RoleName"></label>
+                            <select asp-for="RoleName" asp-items="Model.Roles" class="form-select">
+                                <option value="">Kullanıcı grubu seçin</option>
+                            </select>
+                            <span asp-validation-for="RoleName" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Password"></label>
+                            <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" placeholder="@(isEdit ? "Değiştirmek için doldurun" : "")" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="JobTitle"></label>
+                            <select asp-for="JobTitle" asp-items="Model.JobTitleOptions" class="form-select">
+                                <option value="">Seçiniz...</option>
+                            </select>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="BranchId"></label>
+                            <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                Name = nameof(Model.BranchId), Id = nameof(Model.BranchId),
+                                Value = Model.BranchId?.ToString(),
+                                DisplayValue = Model.BranchDisplay,
+                                Endpoint = Url.Action("Branches", "Lookup")!,
+                                Title = "Şube Seç", Placeholder = "Seçiniz..." })" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="DefaultFinancialAccountId"></label>
+                            <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                Name = nameof(Model.DefaultFinancialAccountId), Id = nameof(Model.DefaultFinancialAccountId),
+                                Value = Model.DefaultFinancialAccountId?.ToString(),
+                                DisplayValue = Model.FinancialAccountDisplay,
+                                Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                                Title = "Kasa/Banka Seç", Placeholder = "Seçiniz..." })" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="DefaultPriceListId"></label>
+                            <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                Name = nameof(Model.DefaultPriceListId), Id = nameof(Model.DefaultPriceListId),
+                                Value = Model.DefaultPriceListId?.ToString(),
+                                DisplayValue = Model.PriceListDisplay,
+                                Endpoint = Url.Action("PriceLists", "Lookup")!,
+                                Title = "Fiyat Tanımı Seç", Placeholder = "Seçiniz..." })" />
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="erp-field-grid">
+                        <div class="erp-field">
+                            <label asp-for="Address"></label>
+                            <input asp-for="Address" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="PhoneNumber"></label>
+                            <input asp-for="PhoneNumber" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Email"></label>
+                            <input asp-for="Email" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="HireDateUtc"></label>
+                            <input asp-for="HireDateUtc" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="TerminationDateUtc"></label>
+                            <input asp-for="TerminationDateUtc" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Salary"></label>
+                            <input asp-for="Salary" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Deduction"></label>
+                            <input asp-for="Deduction" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="DeductionNote"></label>
+                            <input asp-for="DeductionNote" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Iban"></label>
+                            <input asp-for="Iban" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="BankAccountNumber"></label>
+                            <input asp-for="BankAccountNumber" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="CommissionRate"></label>
+                            <input asp-for="CommissionRate" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="BreakDurationMinutes"></label>
+                            <input asp-for="BreakDurationMinutes" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="LicensePlate"></label>
+                            <input asp-for="LicensePlate" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="erp-action-bar">
+            <a asp-action="Index" class="btn btn-erp-outline">Vazgeç</a>
+            <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

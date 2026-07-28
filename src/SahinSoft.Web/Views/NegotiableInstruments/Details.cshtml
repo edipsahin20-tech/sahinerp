@@ -1,0 +1,90 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Domain.Entities.NegotiableInstrument
+@{
+    ViewData["Title"] = $"{(Model.InstrumentType == NegotiableInstrumentType.Cheque ? "Çek" : "Senet")} {Model.InstrumentNumber}";
+    var statusClass = Model.Status switch
+    {
+        InstrumentStatus.Portfolio => "erp-status-draft",
+        InstrumentStatus.Collected or InstrumentStatus.Paid or InstrumentStatus.Endorsed => "erp-status-approved",
+        _ => "erp-status-cancelled"
+    };
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>@(Model.InstrumentType == NegotiableInstrumentType.Cheque ? "Çek" : "Senet")</h1>
+        <span class="erp-doc-no">@Model.InstrumentNumber</span>
+        <span class="erp-status-badge @statusClass">@Model.Status.GetDisplayName()</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        @if (Model.Status == InstrumentStatus.Portfolio)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-header">@Model.Customer.Name &middot; @(Model.Direction == InstrumentDirection.Received ? "Alınan" : "Verilen")</div>
+    <div class="erp-panel-body">
+        <div class="erp-field-grid">
+            <div class="erp-field"><label>Düzenleme Tarihi</label><div>@Model.IssueDateUtc.ToString("dd.MM.yyyy")</div></div>
+            <div class="erp-field"><label>Vade Tarihi</label><div>@Model.DueDateUtc.ToString("dd.MM.yyyy")</div></div>
+            <div class="erp-field"><label>Tutar</label><div class="fw-semibold">@Model.Amount.ToString("N2") @Model.CurrencyCode</div></div>
+            <div class="erp-field"><label>Banka</label><div>@Model.BankName</div></div>
+            <div class="erp-field"><label>Şube</label><div>@Model.BranchName</div></div>
+            <div class="erp-field"><label>Hesap No</label><div>@Model.AccountNumber</div></div>
+            <div class="erp-field"><label>Keşideci</label><div>@Model.DrawerName</div></div>
+            <div class="erp-field" style="grid-column: 1 / -1;"><label>Açıklama</label><div>@Model.Description</div></div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Status is InstrumentStatus.Portfolio or InstrumentStatus.Endorsed)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Durum Güncelle</div>
+        <div class="erp-panel-body d-flex flex-wrap gap-2">
+            @if (Model.Direction == InstrumentDirection.Received)
+            {
+                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                    <input type="hidden" name="status" value="@InstrumentStatus.Collected" />
+                    <button type="submit" class="btn btn-erp-primary">Tahsil Edildi</button>
+                </form>
+                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                    <input type="hidden" name="status" value="@InstrumentStatus.Endorsed" />
+                    <button type="submit" class="btn btn-erp-outline">Ciro Edildi</button>
+                </form>
+                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                    <input type="hidden" name="status" value="@InstrumentStatus.Protested" />
+                    <button type="submit" class="btn btn-erp-danger">Karşılıksız/Protesto</button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                    <input type="hidden" name="status" value="@InstrumentStatus.Paid" />
+                    <button type="submit" class="btn btn-erp-primary">Ödendi</button>
+                </form>
+            }
+            <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                <input type="hidden" name="status" value="@InstrumentStatus.Returned" />
+                <button type="submit" class="btn btn-erp-outline">İade Edildi</button>
+            </form>
+            <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
+                <input type="hidden" name="status" value="@InstrumentStatus.Cancelled" />
+                <button type="submit" class="btn btn-erp-danger">İptal Et</button>
+            </form>
+        </div>
+    </div>
+}

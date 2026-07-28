@@ -289,6 +289,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -631,6 +633,7 @@ namespace SahinSoft.Web.Data.Migrations
                             Id = 1,
                             CompanyName = "ŞahinSoft",
                             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LogoPath = "/images/logo.png",
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
                             RowVersion = new byte[0]
                         });
@@ -1104,8 +1107,26 @@ namespace SahinSoft.Web.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApprovedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int?>("BusinessOrderId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("CarrierName")
                         .HasMaxLength(150)
@@ -1439,6 +1460,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -1578,6 +1601,8 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("Iban");
+
+                    b.HasIndex("Name");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
@@ -1747,6 +1772,17 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ApprovedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledByUserId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
@@ -2459,6 +2495,182 @@ namespace SahinSoft.Web.Data.Migrations
                             Prefix = "TED.",
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
                             RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "STOCK_RECEIPT",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SGF.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "STOCK_ISSUE",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SCF.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "STOCK_COUNT",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SAY.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "SALES_DISPATCH",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SIRS.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "PURCHASE_DISPATCH",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "AIRS.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "STOCK_TRANSFER",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "TRF.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "EXPENSE",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "MAS.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "NEGOTIABLE_CHEQUE",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "CEK.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "NEGOTIABLE_NOTE",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SEN.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "SALES_ORDER",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "SSIP.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "PURCHASE_ORDER",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "ASIP.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "QUOTE",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "TEK.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "PERSONNEL",
+                            NextNumber = 1L,
+                            Padding = 3,
+                            Prefix = "PRSNL.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "CUSTOMER",
+                            NextNumber = 1L,
+                            Padding = 5,
+                            Prefix = "CARI.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "FINANCIAL_ACCOUNT_CASH",
+                            NextNumber = 1L,
+                            Padding = 3,
+                            Prefix = "KASA.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "FINANCIAL_ACCOUNT_BANK",
+                            NextNumber = 1L,
+                            Padding = 3,
+                            Prefix = "BANKA.",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
                         });
                 });
 
@@ -2644,6 +2856,79 @@ namespace SahinSoft.Web.Data.Migrations
                     b.ToTable("PaymentReceiptLines");
                 });
 
+            modelBuilder.Entity("SahinSoft.Domain.Entities.PriceList", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("RecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("RecordId")
+                        .IsUnique();
+
+                    b.ToTable("PriceLists");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "MERKEZ",
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Merkez Fiyat",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "SUBE",
+                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Şube Fiyat",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        });
+                });
+
             modelBuilder.Entity("SahinSoft.Domain.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -2651,6 +2936,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AlternateName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Barcode")
                         .HasMaxLength(50)
@@ -2662,6 +2951,10 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CountryOfOrigin")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -2689,6 +2982,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("PricesIncludeTax")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ProductType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -2712,6 +3008,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<decimal>("SalePrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("ShelfLifeDays")
+                        .HasColumnType("int");
 
                     b.Property<string>("StockCode")
                         .IsRequired()
@@ -2739,6 +3038,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("UnitOfMeasureId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -2754,6 +3056,8 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -2761,6 +3065,8 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("TaxRateId");
+
+                    b.HasIndex("UnitOfMeasureId");
 
                     b.ToTable("Products", t =>
                         {
@@ -2781,6 +3087,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "IDE280",
                             Name = "Ingenico IDE280",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2806,6 +3113,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Move 5000F",
                             Name = "Ingenico Move 5000F",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2831,6 +3139,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "SP630PRO ECR",
                             Name = "PAYGO SP630PRO ECR",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2856,6 +3165,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "S900",
                             Name = "Profilo S900",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2881,6 +3191,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "m530",
                             Name = "inPOS m530 Mobil POS",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2906,6 +3217,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "CL3000",
                             Name = "CAS CL3000 Market Terazisi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2931,6 +3243,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "CL8000",
                             Name = "CAS CL8000 Dokunmatik Terazi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2956,6 +3269,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "CN-1",
                             Name = "CAS CN-1 Sistem Terazisi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -2981,6 +3295,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "SM100P",
                             Name = "Digi SM100P Boyunlu Terazi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3006,6 +3321,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "SM-120T",
                             Name = "Digi SM-120T Dokunmatik Terazi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3031,6 +3347,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "ER-JR",
                             Name = "CAS ER-JR Masaüstü Terazi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3056,6 +3373,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "FW-500",
                             Name = "CAS FW-500 Su Geçirmez Terazi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3081,6 +3399,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "PDI",
                             Name = "CAS PDI Ankastre Kasa Terazisi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3106,6 +3425,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HRS-28",
                             Name = "Hillpos HRS-28",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3131,6 +3451,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HSC-82",
                             Name = "Hillpos HSC-82",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3156,6 +3477,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HSD-92",
                             Name = "Hillpos HSD-92",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3181,6 +3503,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "TP-13",
                             Name = "Newland TP-13",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3206,6 +3529,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "TP-14",
                             Name = "Newland TP-14",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3231,6 +3555,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HS-6700",
                             Name = "Hillpos HS-6700",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3256,6 +3581,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "VS-6800",
                             Name = "Hillpos VS-6800",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3281,6 +3607,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "OS-214 Plus",
                             Name = "Argox OS-214 Plus Barkod Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3306,6 +3633,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HDT-400",
                             Name = "Hillpos HDT-400 Barkod Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3331,6 +3659,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HTT-440",
                             Name = "Hillpos HTT-440 Barkod Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3356,6 +3685,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "TTP-244CE",
                             Name = "TSC TTP-244CE Barkod Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3381,6 +3711,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "XP-470B",
                             Name = "Xprinter XP-470B Barkod Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3406,6 +3737,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "H380",
                             Name = "Hillpos H380 Fiş Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3431,6 +3763,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Q800",
                             Name = "Hillpos Q800 Fiş Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3456,6 +3789,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "SPP-R310",
                             Name = "Bixolon SPP-R310 Mobil Fiş Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3481,6 +3815,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "C61",
                             Name = "Chainway C61",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3506,6 +3841,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "C66",
                             Name = "Chainway C66",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3531,6 +3867,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "C7X",
                             Name = "Hillpos C7X Tablet",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3556,6 +3893,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "CM550X",
                             Name = "Hillpos CM550X",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3581,6 +3919,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HT42",
                             Name = "Hillpos HT42",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3606,6 +3945,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HT42K",
                             Name = "Hillpos HT42K",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3631,6 +3971,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "HT44",
                             Name = "Hillpos HT44",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3656,6 +3997,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Touch Pro 15",
                             Name = "Hillpos Touch Pro 15",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3681,6 +4023,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "All-in-One Dual POS",
                             Name = "Hillpos All-in-One Dual POS",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3706,6 +4049,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Slim Touch 15",
                             Name = "Hillpos Slim Touch 15",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3731,6 +4075,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Kiosk POS 21.5",
                             Name = "Hillpos Kiosk POS 21.5",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3754,6 +4099,7 @@ namespace SahinSoft.Web.Data.Migrations
                             IsActive = true,
                             MinimumStockQuantity = 0m,
                             Name = "Özel ERP & CRM Yazılımları",
+                            PricesIncludeTax = false,
                             ProductType = "Yazılım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3777,6 +4123,7 @@ namespace SahinSoft.Web.Data.Migrations
                             IsActive = true,
                             MinimumStockQuantity = 0m,
                             Name = "Stok ve Depo Yönetimi Yazılımı",
+                            PricesIncludeTax = false,
                             ProductType = "Yazılım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3800,6 +4147,7 @@ namespace SahinSoft.Web.Data.Migrations
                             IsActive = true,
                             MinimumStockQuantity = 0m,
                             Name = "Fabrika ve Üretim Takibi Yazılımı",
+                            PricesIncludeTax = false,
                             ProductType = "Yazılım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3823,6 +4171,7 @@ namespace SahinSoft.Web.Data.Migrations
                             IsActive = true,
                             MinimumStockQuantity = 0m,
                             Name = "API ve Donanım Entegrasyonları",
+                            PricesIncludeTax = false,
                             ProductType = "Yazılım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3846,6 +4195,7 @@ namespace SahinSoft.Web.Data.Migrations
                             IsActive = true,
                             MinimumStockQuantity = 0m,
                             Name = "GİB & E-Fatura Çözümleri",
+                            PricesIncludeTax = false,
                             ProductType = "Yazılım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3871,6 +4221,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Metal Kasa",
                             Name = "Para Çekmecesi",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3896,6 +4247,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Fiyat Sorgulama Terminali",
                             Name = "Fiyat Gör Cihazı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -3921,6 +4273,7 @@ namespace SahinSoft.Web.Data.Migrations
                             MinimumStockQuantity = 0m,
                             Model = "Mobil Fiş Yazıcı",
                             Name = "Mobil Yazıcı",
+                            PricesIncludeTax = false,
                             ProductType = "Donanım",
                             PurchasePrice = 0m,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
@@ -4667,6 +5020,8 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("Name");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
@@ -5592,6 +5947,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("DispatchNoteLineId")
+                        .HasColumnType("int");
+
                     b.Property<string>("DocumentNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -5653,6 +6011,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("BusinessProjectId");
 
                     b.HasIndex("CostCenterId");
+
+                    b.HasIndex("DispatchNoteLineId");
 
                     b.HasIndex("DocumentNumber");
 
@@ -5763,6 +6123,17 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Property<int?>("BusinessProjectId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int?>("CostCenterId")
                         .HasColumnType("int");
@@ -5906,6 +6277,17 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ApprovedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledByUserId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
@@ -6081,6 +6463,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -6183,6 +6567,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -6222,6 +6608,50 @@ namespace SahinSoft.Web.Data.Migrations
                             DecimalPlaces = 0,
                             IsActive = true,
                             Name = "Paket",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "OZEL",
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DecimalPlaces = 2,
+                            IsActive = true,
+                            Name = "Özel Fiyat",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "METRE",
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DecimalPlaces = 2,
+                            IsActive = true,
+                            Name = "Metre",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "KOLI",
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DecimalPlaces = 0,
+                            IsActive = true,
+                            Name = "Koli",
+                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            RowVersion = new byte[0]
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "LITRE",
+                            CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DecimalPlaces = 2,
+                            IsActive = true,
+                            Name = "Litre",
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
                             RowVersion = new byte[0]
                         });
@@ -6307,9 +6737,38 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BreakDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CommissionRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Deduction")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("DeductionNote")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("DefaultFinancialAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DefaultPriceListId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -6322,8 +6781,20 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("HireDateUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Iban")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<string>("JobTitle")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LicensePlate")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -6342,14 +6813,24 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PersonnelCode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<decimal?>("Salary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("TerminationDateUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
@@ -6359,6 +6840,12 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("DefaultFinancialAccountId");
+
+                    b.HasIndex("DefaultPriceListId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -6877,9 +7364,16 @@ namespace SahinSoft.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SahinSoft.Domain.Entities.UnitOfMeasure", "UnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("UnitOfMeasureId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Category");
 
                     b.Navigation("TaxRate");
+
+                    b.Navigation("UnitOfMeasure");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductBarcode", b =>
@@ -7099,6 +7593,11 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasForeignKey("CostCenterId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SahinSoft.Domain.Entities.DispatchNoteLine", "DispatchNoteLine")
+                        .WithMany()
+                        .HasForeignKey("DispatchNoteLineId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SahinSoft.Domain.Entities.InventoryCountLine", "InventoryCountLine")
                         .WithMany()
                         .HasForeignKey("InventoryCountLineId")
@@ -7144,6 +7643,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("BusinessProject");
 
                     b.Navigation("CostCenter");
+
+                    b.Navigation("DispatchNoteLine");
 
                     b.Navigation("InventoryCountLine");
 
@@ -7300,6 +7801,30 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Branch");
+                });
+
+            modelBuilder.Entity("SahinSoft.Web.Data.ApplicationUser", b =>
+                {
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SahinSoft.Domain.Entities.FinancialAccount", "DefaultFinancialAccount")
+                        .WithMany()
+                        .HasForeignKey("DefaultFinancialAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SahinSoft.Domain.Entities.PriceList", "DefaultPriceList")
+                        .WithMany()
+                        .HasForeignKey("DefaultPriceListId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("DefaultFinancialAccount");
+
+                    b.Navigation("DefaultPriceList");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.Branch", b =>

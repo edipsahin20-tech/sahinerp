@@ -1,0 +1,51 @@
+@model IReadOnlyList<SahinSoft.Domain.Entities.NumberSequence>
+@{
+    ViewData["Title"] = "Numaralandırma Parametreleri";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Numaralandırma Parametreleri</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Belge Türü</th>
+                    <th>Ön Ek</th>
+                    <th class="text-end">Sıradaki Numara</th>
+                    <th class="text-end">Basamak Sayısı</th>
+                    <th>Örnek</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                var label = SahinSoft.Web.Controllers.NumberSequencesController.KeyLabels.GetValueOrDefault(item.Key, item.Key);
+                <tr>
+                    <td class="fw-semibold">@label</td>
+                    <td>@item.Prefix</td>
+                    <td class="text-end">@item.NextNumber</td>
+                    <td class="text-end">@item.Padding</td>
+                    <td class="text-secondary">@item.Prefix@(item.NextNumber.ToString($"D{item.Padding}"))</td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

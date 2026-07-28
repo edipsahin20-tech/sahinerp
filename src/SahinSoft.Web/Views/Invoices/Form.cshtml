@@ -6,82 +6,84 @@
     ViewData["Title"] = (isEdit ? "Düzenle: " : "Yeni ") + (isSales ? "Satış Faturası" : "Alış Faturası");
 }
 
-<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
     <input asp-for="Id" type="hidden" />
     <input asp-for="InvoiceType" type="hidden" />
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
-        <div>
-            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
-            <p class="text-secondary mb-0">Fatura taslağını oluşturun; kesinleşen tutarlar onay anında hesaplanır.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-            <button type="submit" class="btn btn-primary px-4">Taslağı kaydet</button>
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>@(isSales ? "Satış Faturası" : "Alış Faturası")</h1>
+            <span class="erp-toolbar-meta">@(isEdit ? "Taslak düzenleniyor" : "Yeni evrak")</span>
         </div>
     </div>
 
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-3 p-lg-4">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label asp-for="CustomerId" class="form-label"></label>
-                    <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
-                        <option value="">Cari seçin</option>
-                    </select>
+    <div class="erp-panel">
+        <div class="erp-panel-header">Evrak Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="CustomerId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                        Value = Model.CustomerId?.ToString(),
+                        DisplayValue = Model.CustomerDisplay,
+                        Endpoint = Url.Action("Customers", "Lookup", new { type = isSales ? "Customer" : "Supplier" })!,
+                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="WarehouseId" class="form-label"></label>
-                    <select asp-for="WarehouseId" asp-items="Model.Warehouses" class="form-select">
-                        <option value="">Depo seçin</option>
-                    </select>
+                <div class="erp-field">
+                    <label asp-for="WarehouseId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.WarehouseId), Id = nameof(Model.WarehouseId),
+                        Value = Model.WarehouseId?.ToString(),
+                        DisplayValue = Model.WarehouseDisplay,
+                        Endpoint = Url.Action("Warehouses", "Lookup")!,
+                        Title = "Depo Seç", Placeholder = "Depo seçin" })" />
                     <span asp-validation-for="WarehouseId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="CurrencyCode" class="form-label"></label>
-                    <input asp-for="CurrencyCode" class="form-control" />
-                </div>
-
-                <div class="col-md-3">
-                    <label asp-for="InvoiceDateUtc" class="form-label"></label>
+                <div class="erp-field">
+                    <label asp-for="InvoiceDateUtc"></label>
                     <input asp-for="InvoiceDateUtc" class="form-control" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="DueDateUtc" class="form-label"></label>
+                <div class="erp-field">
+                    <label asp-for="DueDateUtc"></label>
                     <input asp-for="DueDateUtc" class="form-control" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="ExchangeRate" class="form-label"></label>
+                <div class="erp-field">
+                    <label asp-for="CurrencyCode"></label>
+                    <input asp-for="CurrencyCode" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ExchangeRate"></label>
                     <input asp-for="ExchangeRate" class="form-control" />
                 </div>
-
-                <div class="col-12">
-                    <label asp-for="Notes" class="form-label"></label>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Notes"></label>
                     <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-3 p-lg-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h5 mb-0">Satırlar</h2>
-                <button type="button" id="add-line" class="btn btn-sm btn-outline-primary">+ Satır ekle</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table align-middle mb-0" id="lines-table">
-                    <thead class="table-light">
+    <div class="erp-panel">
+        <div class="erp-panel-header d-flex justify-content-between align-items-center">
+            <span>Satırlar</span>
+            <button type="button" id="add-line" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.75rem;">+ Satır Ekle</button>
+        </div>
+        <div class="erp-panel-body p-0">
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="lines-table">
+                    <thead>
                         <tr>
                             <th style="min-width: 220px;">Ürün</th>
-                            <th style="width: 110px;">Miktar</th>
-                            <th style="width: 130px;">Birim fiyat</th>
-                            <th style="width: 100px;">İskonto %</th>
-                            <th style="width: 100px;">KDV %</th>
+                            <th style="width: 100px;">Miktar</th>
+                            <th style="width: 110px;">Birim Fiyat</th>
+                            <th style="width: 90px;">İsk. %</th>
+                            <th style="width: 90px;">KDV %</th>
                             <th>Açıklama</th>
-                            <th></th>
+                            <th style="width: 40px;"></th>
                         </tr>
                     </thead>
                     <tbody id="lines-body">
@@ -90,62 +92,58 @@
                         <tr class="line-row">
                             <input type="hidden" name="Lines.Index" value="@i" />
                             <td>
-                                <select name="Lines[@i].ProductId" class="form-select product-select">
-                                    <option value="">Ürün seçin</option>
-                                    @foreach (var product in Model.Products)
-                                    {
-                                        <option value="@product.Id"
-                                                selected="@(Model.Lines[i].ProductId == product.Id)"
-                                                data-price="@(isSales ? product.SalePrice : product.PurchasePrice)"
-                                                data-tax-rate="@product.TaxRate"
-                                                data-unit="@product.Unit">
-                                            @product.StockCode - @product.Name
-                                        </option>
-                                    }
-                                </select>
+                                <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                    Name = $"Lines[{i}].ProductId", Id = $"Lines_{i}__ProductId",
+                                    Value = Model.Lines[i].ProductId?.ToString(),
+                                    DisplayValue = Model.Lines[i].ProductDisplay,
+                                    Endpoint = Url.Action("Products", "Lookup")!,
+                                    Title = "Ürün Seç", Placeholder = "Ürün adı/kod/barkod",
+                                    AllowQuickSearch = true })" />
                             </td>
                             <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
                             <td><input type="text" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" class="form-control price-input" /></td>
                             <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
                             <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control" /></td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>
+                            <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
                         </tr>
                     }
                     </tbody>
                 </table>
             </div>
         </div>
-        <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-            <button type="submit" class="btn btn-primary px-4">Taslağı kaydet</button>
-        </div>
     </div>
 </form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
 
 <template id="line-row-template">
     <tr class="line-row">
         <input type="hidden" name="Lines.Index" value="__index__" />
         <td>
-            <select name="Lines[__index__].ProductId" class="form-select product-select">
-                <option value="">Ürün seçin</option>
-                @foreach (var product in Model.Products)
-                {
-                    <option value="@product.Id"
-                            data-price="@(isSales ? product.SalePrice : product.PurchasePrice)"
-                            data-tax-rate="@product.TaxRate"
-                            data-unit="@product.Unit">
-                        @product.StockCode - @product.Name
-                    </option>
-                }
-            </select>
+            <div class="input-group">
+                <input type="hidden" name="Lines[__index__].ProductId" id="Lines___index____ProductId" value="" />
+                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch"
+                       placeholder="Ürün adı/kod/barkod" autocomplete="off"
+                       data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                       data-lookup-title="Ürün Seç"
+                       data-target-hidden="Lines___index____ProductId"
+                       data-target-display="Lines___index____ProductId_display" />
+                <button type="button" class="btn btn-outline-secondary lookup-trigger"
+                        data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                        data-lookup-title="Ürün Seç"
+                        data-target-hidden="Lines___index____ProductId"
+                        data-target-display="Lines___index____ProductId_display">
+                    ...
+                </button>
+            </div>
         </td>
         <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
         <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
         <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
         <td><input type="text" name="Lines[__index__].Description" value="" class="form-control" /></td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">Sil</button></td>
+        <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
     </tr>
 </template>
 
@@ -157,6 +155,7 @@
             var template = document.getElementById('line-row-template');
             var addButton = document.getElementById('add-line');
             var nextIndex = @Model.Lines.Count;
+            var isSales = @Json.Serialize(isSales);
 
             addButton.addEventListener('click', function () {
                 var html = template.innerHTML.split('__index__').join(nextIndex);
@@ -175,17 +174,14 @@
                 }
             });
 
-            linesBody.addEventListener('change', function (event) {
-                if (!event.target.classList.contains('product-select')) {
-                    return;
-                }
+            linesBody.addEventListener('lookup:selected', function (event) {
                 var row = event.target.closest('tr');
-                var option = event.target.selectedOptions[0];
-                if (!option || !option.dataset.price) {
+                if (!row) {
                     return;
                 }
-                row.querySelector('.price-input').value = option.dataset.price;
-                row.querySelector('.tax-input').value = option.dataset.taxRate;
+                var item = event.detail.item;
+                row.querySelector('.price-input').value = isSales ? item.salePrice : item.purchasePrice;
+                row.querySelector('.tax-input').value = item.taxRate;
             });
         })();
     </script>

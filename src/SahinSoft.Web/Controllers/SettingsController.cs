@@ -11,6 +11,52 @@ namespace SahinSoft.Web.Controllers;
 public sealed class SettingsController(ApplicationDbContext dbContext) : Controller
 {
     [HttpGet]
+    public async Task<IActionResult> Company()
+    {
+        var settings = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        return View(new CompanySettingsViewModel
+        {
+            CompanyName = settings.CompanyName,
+            TaxOffice = settings.TaxOffice,
+            TaxNumber = settings.TaxNumber,
+            Address = settings.Address,
+            Phone = settings.Phone,
+            Email = settings.Email,
+            Website = settings.Website,
+            BankName = settings.BankName,
+            Iban = settings.Iban,
+            LogoPath = settings.LogoPath
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Company(CompanySettingsViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var settings = await dbContext.CompanySettings.SingleAsync(x => x.Id == 1);
+        settings.CompanyName = model.CompanyName.Trim();
+        settings.TaxOffice = model.TaxOffice?.Trim();
+        settings.TaxNumber = model.TaxNumber?.Trim();
+        settings.Address = model.Address?.Trim();
+        settings.Phone = model.Phone?.Trim();
+        settings.Email = model.Email?.Trim();
+        settings.Website = model.Website?.Trim();
+        settings.BankName = model.BankName?.Trim();
+        settings.Iban = model.Iban?.Trim();
+        settings.LogoPath = string.IsNullOrWhiteSpace(model.LogoPath) ? settings.LogoPath : model.LogoPath.Trim();
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+
+        TempData["Success"] = "Şirket parametreleri kaydedildi.";
+        return RedirectToAction(nameof(Company));
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Inventory()
     {
         var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);

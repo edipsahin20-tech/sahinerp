@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
@@ -68,6 +67,11 @@ public sealed class InvoicesController(
             Lines = [new InvoiceLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Controller = "Invoices",
+            CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
+        };
         return View("Form", model);
     }
 
@@ -145,7 +149,50 @@ public sealed class InvoicesController(
         }
 
         await PopulateSelectionsAsync(model);
+        await SetToolbarAsync(id, invoice.InvoiceType);
         return View("Form", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var invoice = await dbContext.Invoices
+            .Include(x => x.Lines)
+            .Include(x => x.PaymentSchedules)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (invoice is null)
+        {
+            return NotFound();
+        }
+
+        if (invoice.Status != InvoiceStatus.Draft)
+        {
+            TempData["Error"] = "Yalnızca taslak faturalar silinebilir.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        dbContext.Invoices.Remove(invoice);
+        await dbContext.SaveChangesAsync();
+        TempData["Success"] = "Fatura silindi.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task SetToolbarAsync(int id, InvoiceType type)
+    {
+        var previousId = await dbContext.Invoices.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var nextId = await dbContext.Invoices.Where(x => x.Id > id).OrderBy(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Id = id,
+            Controller = "Invoices",
+            CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() },
+            PreviousId = previousId,
+            NextId = nextId,
+            CanDelete = true,
+            HasDetails = true
+        };
     }
 
     [HttpPost]
@@ -201,6 +248,8 @@ public sealed class InvoicesController(
             return NotFound();
         }
 
+        var settings = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+
         var model = new InvoiceDetailsViewModel
         {
             Id = invoice.Id,
@@ -210,8 +259,23 @@ public sealed class InvoicesController(
             InvoiceDateUtc = invoice.InvoiceDateUtc,
             DueDateUtc = invoice.DueDateUtc,
             CustomerName = invoice.Customer.Name,
+            CustomerCode = invoice.Customer.Code,
+            CustomerTaxOffice = invoice.Customer.TaxOffice,
+            CustomerTaxNumber = invoice.Customer.TaxNumber,
+            CustomerPhone = invoice.Customer.Phone,
+            CustomerEmail = invoice.Customer.Email,
+            CustomerAddress = invoice.Customer.Address,
             WarehouseName = invoice.Warehouse.Name,
             CurrencyCode = invoice.CurrencyCode,
+            Company = new PdfCompanyInfoViewModel
+            {
+                CompanyName = settings.CompanyName,
+                Website = settings.Website,
+                Email = settings.Email,
+                Phone = settings.Phone,
+                BankName = settings.BankName,
+                Iban = settings.Iban
+            },
             Subtotal = invoice.Subtotal,
             DiscountTotal = invoice.DiscountTotal,
             TaxTotal = invoice.TaxTotal,
@@ -350,38 +414,38 @@ public sealed class InvoicesController(
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {
-        var customerQuery = dbContext.Customers.AsNoTracking().Where(x => x.IsActive);
-        customerQuery = model.InvoiceType == InvoiceType.Sales
-            ? customerQuery.Where(x => x.IsCustomer)
-            : customerQuery.Where(x => x.IsSupplier);
+        if (model.CustomerId is int customerId)
+        {
+            model.CustomerDisplay = await dbContext.Customers
+                .Where(x => x.Id == customerId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
 
-        model.Customers = await customerQuery
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem($"{x.Code} - {x.Name}", x.Id.ToString()))
-            .ToListAsync();
+        if (model.WarehouseId is int warehouseId)
+        {
+            model.WarehouseDisplay = await dbContext.Warehouses
+                .Where(x => x.Id == warehouseId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
 
-        model.Warehouses = await dbContext.Warehouses
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-            .ToListAsync();
+        var productIds = model.Lines
+            .Where(x => x.ProductId.HasValue)
+            .Select(x => x.ProductId!.Value)
+            .Distinct()
+            .ToList();
+        var productDisplays = await dbContext.Products
+            .Where(x => productIds.Contains(x.Id))
+            .Select(x => new { x.Id, Display = x.StockCode + " - " + x.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Display);
 
-        model.Products = await dbContext.Products
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .Include(x => x.TaxRate)
-            .OrderBy(x => x.Name)
-            .Select(x => new ProductOption
+        foreach (var line in model.Lines)
+        {
+            if (line.ProductId is int productId && productDisplays.TryGetValue(productId, out var display))
             {
-                Id = x.Id,
-                StockCode = x.StockCode,
-                Name = x.Name,
-                Unit = x.Unit,
-                SalePrice = x.SalePrice,
-                PurchasePrice = x.PurchasePrice,
-                TaxRate = x.TaxRate.Rate
-            })
-            .ToListAsync();
+                line.ProductDisplay = display;
+            }
+        }
     }
 }

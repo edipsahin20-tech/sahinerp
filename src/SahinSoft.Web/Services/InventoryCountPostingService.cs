@@ -88,4 +88,69 @@ public sealed class InventoryCountPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
+
+    public async Task CancelAsync(
+        int inventoryCountId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        var count = await dbContext.InventoryCounts
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.Product)
+            .SingleOrDefaultAsync(x => x.Id == inventoryCountId, cancellationToken)
+            ?? throw new InvalidOperationException("Sayım fişi bulunamadı.");
+
+        if (count.Status != InventoryCountStatus.Approved)
+        {
+            throw new InvalidOperationException("Yalnızca onaylanmış sayımlar iptal edilebilir.");
+        }
+
+        var reversalDocumentNumber = $"IPTAL-{count.CountNumber}";
+
+        foreach (var line in count.Lines)
+        {
+            var originalMovement = await dbContext.StockMovements
+                .SingleOrDefaultAsync(x => x.InventoryCountLineId == line.Id, cancellationToken);
+            if (originalMovement is null)
+            {
+                continue;
+            }
+
+            dbContext.StockMovements.Add(new StockMovement
+            {
+                MovementDateUtc = DateTime.UtcNow,
+                MovementType = originalMovement.MovementType,
+                Quantity = -originalMovement.Quantity,
+                DocumentNumber = reversalDocumentNumber,
+                Description = $"Sayım iptali - {reason}",
+                ProductId = originalMovement.ProductId,
+                ProductVariantId = originalMovement.ProductVariantId,
+                WarehouseId = originalMovement.WarehouseId,
+                InventoryCountLineId = line.Id,
+                ReversalOfId = originalMovement.Id
+            });
+
+            line.Product.StockQuantity -= originalMovement.Quantity;
+            line.Product.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        count.Status = InventoryCountStatus.Cancelled;
+        count.CancelledByUserId = cancelledByUserId;
+        count.CancelledAtUtc = DateTime.UtcNow;
+        count.CancellationReason = reason;
+        count.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 }

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -16,8 +15,50 @@ public sealed class ProductsController(
     BarcodeGeneratorService barcodeGenerator,
     StockCodeGeneratorService stockCodeGenerator) : Controller
 {
+    public async Task<IActionResult> GenerateBarcodeApi(string type)
+    {
+        string barcode;
+        switch (type)
+        {
+            case "EAN8":
+                barcode = await barcodeGenerator.GenerateEan8Async();
+                break;
+            case "ASCII":
+                barcode = await barcodeGenerator.GenerateAsciiAsync();
+                break;
+            case "TERAZI":
+                var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+                barcode = await barcodeGenerator.GenerateScaleBarcodeAsync(settings.DefaultScalePrefix);
+                break;
+            default:
+                barcode = await barcodeGenerator.GenerateEan13Async();
+                break;
+        }
+
+        return Json(new { barcode });
+    }
+
     public async Task<IActionResult> Index(string? search)
     {
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var barcodeMatchId = await dbContext.Products
+                .Where(x => x.Barcode == search)
+                .Select(x => (int?)x.Id)
+                .SingleOrDefaultAsync();
+            if (barcodeMatchId is null)
+            {
+                barcodeMatchId = await dbContext.ProductBarcodes
+                    .Where(x => x.Barcode == search)
+                    .Select(x => (int?)x.ProductId)
+                    .SingleOrDefaultAsync();
+            }
+            if (barcodeMatchId is int productId)
+            {
+                return RedirectToAction(nameof(Edit), new { id = productId });
+            }
+        }
+
         var query = dbContext.Products
             .AsNoTracking()
             .Include(x => x.Category)
@@ -28,19 +69,46 @@ public sealed class ProductsController(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(x =>
-                x.StockCode.Contains(search) ||
-                x.Name.Contains(search) ||
-                (x.Brand != null && x.Brand.Contains(search)));
+                EF.Functions.Collate(x.StockCode, "Turkish_CI_AI").Contains(search) ||
+                EF.Functions.Collate(x.Name, "Turkish_CI_AI").Contains(search) ||
+                (x.Brand != null && EF.Functions.Collate(x.Brand, "Turkish_CI_AI").Contains(search)) ||
+                (x.Barcode != null && x.Barcode.Contains(search)));
         }
 
         ViewBag.Search = search;
         return View(await query.ToListAsync());
     }
 
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create(int? carryOverFromId)
     {
         var model = new ProductFormViewModel();
+
+        if (carryOverFromId is int sourceId)
+        {
+            var source = await dbContext.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == sourceId);
+            if (source is not null)
+            {
+                model.CategoryId = source.CategoryId;
+                model.TaxRateId = source.TaxRateId;
+                model.UnitOfMeasureId = source.UnitOfMeasureId;
+                model.Brand = source.Brand;
+                model.Model = source.Model;
+                model.ProductType = source.ProductType;
+                model.AlternateName = source.AlternateName;
+                model.ShelfLifeDays = source.ShelfLifeDays;
+                model.CountryOfOrigin = source.CountryOfOrigin;
+                model.TrackSerialNumbers = source.TrackSerialNumbers;
+                model.PricesIncludeTax = source.PricesIncludeTax;
+                model.MinimumStockQuantity = source.MinimumStockQuantity;
+                model.TrackStock = source.TrackStock;
+                model.IsActive = source.IsActive;
+                model.Description = source.Description;
+                // Stok kodu, barkod, fiyatlar ve miktar bilinçli olarak boş bırakılır.
+            }
+        }
+
         await PopulateSelectionsAsync(model);
+        ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "Products" };
         return View("Form", model);
     }
 
@@ -58,7 +126,7 @@ public sealed class ProductsController(
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
         var product = new Product();
-        Map(form, product);
+        await MapAsync(form, product, dbContext);
         SyncPrimaryBarcode(product, form.Barcode);
         dbContext.Products.Add(product);
         if (!await TrySaveAsync(nameof(form.Barcode)))
@@ -88,7 +156,12 @@ public sealed class ProductsController(
         }
         await transaction.CommitAsync();
         TempData["Success"] = "Stok kartı kaydedildi.";
-        return RedirectToAction(nameof(Index));
+
+        if (Request.Form["saveMode"] == "saveAndNew")
+        {
+            return RedirectToAction(nameof(Create), new { carryOverFromId = product.Id });
+        }
+        return RedirectToAction(nameof(Create));
     }
 
     public async Task<IActionResult> Edit(int id)
@@ -111,8 +184,13 @@ public sealed class ProductsController(
             Brand = product.Brand,
             Model = product.Model,
             Barcode = product.Barcode,
-            Unit = product.Unit,
+            UnitOfMeasureId = product.UnitOfMeasureId,
             ProductType = product.ProductType,
+            AlternateName = product.AlternateName,
+            ShelfLifeDays = product.ShelfLifeDays,
+            CountryOfOrigin = product.CountryOfOrigin,
+            TrackSerialNumbers = product.TrackSerialNumbers,
+            PricesIncludeTax = product.PricesIncludeTax,
             PurchasePrice = product.PurchasePrice,
             SalePrice = product.SalePrice,
             StockQuantity = product.StockQuantity,
@@ -124,7 +202,57 @@ public sealed class ProductsController(
         };
 
         await PopulateSelectionsAsync(model);
+        await SetToolbarAsync(id);
         return View("Form", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var product = await dbContext.Products
+            .Include(x => x.Barcodes)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        if (await dbContext.StockMovements.AnyAsync(x => x.ProductId == id))
+        {
+            TempData["Error"] = "Bu ürüne ait stok hareketleri var, silinemez.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        dbContext.Products.Remove(product);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+            TempData["Success"] = "Stok kartı silindi.";
+        }
+        catch (DbUpdateException)
+        {
+            TempData["Error"] = "Bu ürüne bağlı kayıtlar var, silinemez.";
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task SetToolbarAsync(int id)
+    {
+        var previousId = await dbContext.Products.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var nextId = await dbContext.Products.Where(x => x.Id > id).OrderBy(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var hasMovements = await dbContext.StockMovements.AnyAsync(x => x.ProductId == id);
+
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Id = id,
+            Controller = "Products",
+            PreviousId = previousId,
+            NextId = nextId,
+            CanDelete = !hasMovements,
+            DeleteBlockedReason = hasMovements ? "Bu ürüne ait stok hareketleri var, silinemez." : null
+        };
     }
 
     [HttpPost]
@@ -153,7 +281,7 @@ public sealed class ProductsController(
         }
 
         var currentStockQuantity = product.StockQuantity;
-        Map(form, product);
+        await MapAsync(form, product, dbContext);
         product.StockQuantity = currentStockQuantity;
         SyncPrimaryBarcode(product, form.Barcode);
         product.UpdatedAtUtc = DateTime.UtcNow;
@@ -163,7 +291,7 @@ public sealed class ProductsController(
             return View("Form", form);
         }
         TempData["Success"] = "Stok kartı güncellendi.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Create));
     }
 
     private async Task ValidateUniqueFieldsAsync(ProductFormViewModel model)
@@ -186,56 +314,70 @@ public sealed class ProductsController(
 
     private async Task ApplyIdentifierPolicyAsync(ProductFormViewModel form)
     {
-        var stockCodeWasEntered = !string.IsNullOrWhiteSpace(form.StockCode);
+        var stockCodeEntered = !string.IsNullOrWhiteSpace(form.StockCode);
+        var barcodeEntered = !string.IsNullOrWhiteSpace(form.Barcode);
 
-        if (!stockCodeWasEntered)
+        if (stockCodeEntered && barcodeEntered)
         {
-            form.StockCode = await stockCodeGenerator.GenerateAsync();
-            ModelState.Remove(nameof(form.StockCode));
+            // İkisi de girilmiş: dokunma.
+            return;
         }
+
+        if (stockCodeEntered && !barcodeEntered)
+        {
+            // Sadece stok kodu girilmiş: barkod eksikliğini bildir.
+            ModelState.AddModelError(nameof(form.Barcode), "Barkod zorunludur.");
+            return;
+        }
+
+        if (!stockCodeEntered && barcodeEntered)
+        {
+            // Sadece barkod girilmiş: stok kodu eksikliğini bildir.
+            ModelState.AddModelError(nameof(form.StockCode), "Stok kodu zorunludur.");
+            return;
+        }
+
+        // İkisi de boş: her ikisini de otomatik/varsayılan ayarla doldur.
+        form.StockCode = await stockCodeGenerator.GenerateAsync();
+        ModelState.Remove(nameof(form.StockCode));
 
         var settings = await dbContext.InventorySettings
             .AsNoTracking()
             .SingleAsync(x => x.Id == 1);
-
-        if (!string.IsNullOrWhiteSpace(form.Barcode))
-        {
-            return;
-        }
-
-        if (!stockCodeWasEntered && settings.AutoGenerateBarcode)
-        {
-            form.Barcode = settings.DefaultBarcodeType == "EAN8"
-                ? await barcodeGenerator.GenerateEan8Async()
-                : await barcodeGenerator.GenerateEan13Async();
-            ModelState.Remove(nameof(form.Barcode));
-            return;
-        }
-
-        if (stockCodeWasEntered || settings.RequireBarcode)
-        {
-            ModelState.AddModelError(nameof(form.Barcode), "Barkod zorunludur.");
-        }
+        form.Barcode = settings.DefaultBarcodeType == "EAN8"
+            ? await barcodeGenerator.GenerateEan8Async()
+            : await barcodeGenerator.GenerateEan13Async();
+        ModelState.Remove(nameof(form.Barcode));
     }
 
     private async Task PopulateSelectionsAsync(ProductFormViewModel model)
     {
-        model.Categories = await dbContext.ProductCategories
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-            .ToListAsync();
+        if (model.CategoryId > 0)
+        {
+            model.CategoryDisplay = await dbContext.ProductCategories
+                .Where(x => x.Id == model.CategoryId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
 
-        model.TaxRates = await dbContext.TaxRates
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Rate)
-            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-            .ToListAsync();
+        if (model.TaxRateId > 0)
+        {
+            model.TaxRateDisplay = await dbContext.TaxRates
+                .Where(x => x.Id == model.TaxRateId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
+
+        if (model.UnitOfMeasureId is int unitOfMeasureId)
+        {
+            model.UnitOfMeasureDisplay = await dbContext.UnitsOfMeasure
+                .Where(x => x.Id == unitOfMeasureId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
     }
 
-    private static void Map(ProductFormViewModel source, Product target)
+    private static async Task MapAsync(ProductFormViewModel source, Product target, ApplicationDbContext dbContext)
     {
         target.StockCode = source.StockCode.Trim();
         target.Name = source.Name.Trim();
@@ -244,8 +386,20 @@ public sealed class ProductsController(
         target.Brand = source.Brand?.Trim();
         target.Model = source.Model?.Trim();
         target.Barcode = string.IsNullOrWhiteSpace(source.Barcode) ? null : source.Barcode.Trim();
-        target.Unit = source.Unit.Trim();
+        target.UnitOfMeasureId = source.UnitOfMeasureId;
+        if (source.UnitOfMeasureId is int unitOfMeasureId)
+        {
+            target.Unit = await dbContext.UnitsOfMeasure
+                .Where(x => x.Id == unitOfMeasureId)
+                .Select(x => x.Name)
+                .SingleAsync();
+        }
         target.ProductType = source.ProductType.Trim();
+        target.AlternateName = source.AlternateName?.Trim();
+        target.ShelfLifeDays = source.ShelfLifeDays;
+        target.CountryOfOrigin = source.CountryOfOrigin?.Trim();
+        target.TrackSerialNumbers = source.TrackSerialNumbers;
+        target.PricesIncludeTax = source.PricesIncludeTax;
         target.PurchasePrice = source.PurchasePrice;
         target.SalePrice = source.SalePrice;
         target.StockQuantity = source.StockQuantity;

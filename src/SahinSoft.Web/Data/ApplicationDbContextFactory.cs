@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -12,6 +13,6 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
                 "Server=.\\SQLEXPRESS;Database=SahinSoftDb;Trusted_Connection=True;TrustServerCertificate=True")
             .Options;
 
-        return new ApplicationDbContext(options);
+        return new ApplicationDbContext(options, new HttpContextAccessor());
     }
 }

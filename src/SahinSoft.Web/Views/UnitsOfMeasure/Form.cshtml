@@ -1,0 +1,50 @@
+@model SahinSoft.Web.Models.UnitOfMeasureFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Birim Tanımını Düzenle" : "Yeni Birim Tanımı";
+}
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Birim Tanımı Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="Code"></label>
+                    <input asp-for="Code" class="form-control" autofocus />
+                    <span asp-validation-for="Code" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DecimalPlaces"></label>
+                    <input asp-for="DecimalPlaces" class="form-control" />
+                    <span asp-validation-for="DecimalPlaces" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="form-check form-switch mt-3">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+        <div class="erp-action-bar">
+            <a asp-action="Index" class="btn btn-erp-outline">Vazgeç</a>
+            <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

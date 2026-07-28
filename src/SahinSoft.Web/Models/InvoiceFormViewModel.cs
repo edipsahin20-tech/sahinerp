@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Web.Models;
@@ -41,9 +40,8 @@ public sealed class InvoiceFormViewModel
 
     public List<InvoiceLineFormViewModel> Lines { get; set; } = [];
 
-    public IReadOnlyList<SelectListItem> Customers { get; set; } = [];
-    public IReadOnlyList<SelectListItem> Warehouses { get; set; } = [];
-    public IReadOnlyList<ProductOption> Products { get; set; } = [];
+    public string? CustomerDisplay { get; set; }
+    public string? WarehouseDisplay { get; set; }
 }
 
 public sealed class InvoiceLineFormViewModel
@@ -51,6 +49,8 @@ public sealed class InvoiceLineFormViewModel
     [Required(ErrorMessage = "Ürün seçilmelidir.")]
     [Display(Name = "Ürün")]
     public int? ProductId { get; set; }
+
+    public string? ProductDisplay { get; set; }
 
     [Range(0.001, 999999999)]
     [Display(Name = "Miktar")]
@@ -71,15 +71,4 @@ public sealed class InvoiceLineFormViewModel
     [StringLength(500)]
     [Display(Name = "Açıklama")]
     public string? Description { get; set; }
-}
-
-public sealed class ProductOption
-{
-    public int Id { get; set; }
-    public string StockCode { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Unit { get; set; } = "Adet";
-    public decimal SalePrice { get; set; }
-    public decimal PurchasePrice { get; set; }
-    public decimal TaxRate { get; set; }
 }

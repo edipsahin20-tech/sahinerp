@@ -1,6 +1,9 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Web.Data;
+using SahinSoft.Web.Filters;
 using SahinSoft.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +14,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sql =>
         sql.EnableRetryOnFailure()));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -26,7 +30,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+    options.Filters.Add<ConcurrencyExceptionFilter>());
 builder.Services.AddScoped<StockTransferService>();
 builder.Services.AddScoped<BarcodeGeneratorService>();
 builder.Services.AddScoped<StockCodeGeneratorService>();
@@ -36,6 +41,7 @@ builder.Services.AddScoped<StockSlipPostingService>();
 builder.Services.AddScoped<InventoryCountPostingService>();
 builder.Services.AddScoped<InventoryBalanceService>();
 builder.Services.AddScoped<PaymentReceiptPostingService>();
+builder.Services.AddScoped<DispatchNotePostingService>();
 
 var app = builder.Build();
 
@@ -51,7 +57,15 @@ else
     app.UseHsts();
 }
 
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(culture: "en-US", uiCulture: "tr-TR"),
+    SupportedCultures = [new CultureInfo("en-US")],
+    SupportedUICultures = [new CultureInfo("tr-TR")]
+});
+
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
@@ -67,6 +81,13 @@ app.MapControllerRoute(
 app.MapRazorPages()
    .WithStaticAssets();
 
-await IdentitySeed.InitializeAsync(app.Services, app.Configuration);
+try
+{
+    await IdentitySeed.InitializeAsync(app.Services, app.Configuration);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Database seed error on startup.");
+}
 
 app.Run();

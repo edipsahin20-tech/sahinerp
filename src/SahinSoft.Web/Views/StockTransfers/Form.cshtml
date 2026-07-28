@@ -1,0 +1,150 @@
+@model SahinSoft.Web.Models.StockTransferFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Transferi Düzenle" : "Yeni Transfer";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>Depolar Arası Transfer</h1>
+            <span class="erp-toolbar-meta">@(isEdit ? "Taslak düzenleniyor" : "Yeni transfer")</span>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Transfer Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="FromWarehouseId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.FromWarehouseId), Id = nameof(Model.FromWarehouseId),
+                        Value = Model.FromWarehouseId?.ToString(),
+                        DisplayValue = Model.FromWarehouseDisplay,
+                        Endpoint = Url.Action("Warehouses", "Lookup")!,
+                        Title = "Çıkış Deposu Seç", Placeholder = "Depo seçin" })" />
+                    <span asp-validation-for="FromWarehouseId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ToWarehouseId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.ToWarehouseId), Id = nameof(Model.ToWarehouseId),
+                        Value = Model.ToWarehouseId?.ToString(),
+                        DisplayValue = Model.ToWarehouseDisplay,
+                        Endpoint = Url.Action("Warehouses", "Lookup")!,
+                        Title = "Giriş Deposu Seç", Placeholder = "Depo seçin" })" />
+                    <span asp-validation-for="ToWarehouseId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TransferDateUtc"></label>
+                    <input asp-for="TransferDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Description"></label>
+                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header d-flex justify-content-between align-items-center">
+            <span>Satırlar</span>
+            <button type="button" id="add-line" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.75rem;">+ Satır Ekle</button>
+        </div>
+        <div class="erp-panel-body p-0">
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="lines-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 260px;">Ürün</th>
+                            <th style="width: 140px;">Miktar</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lines-body">
+                    @for (var i = 0; i < Model.Lines.Count; i++)
+                    {
+                        <tr class="line-row">
+                            <input type="hidden" name="Lines.Index" value="@i" />
+                            <td>
+                                <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                    Name = $"Lines[{i}].ProductId", Id = $"Lines_{i}__ProductId",
+                                    Value = Model.Lines[i].ProductId?.ToString(),
+                                    DisplayValue = Model.Lines[i].ProductDisplay,
+                                    Endpoint = Url.Action("Products", "Lookup")!,
+                                    Title = "Ürün Seç", Placeholder = "Ürün adı/kod/barkod",
+                                    AllowQuickSearch = true })" />
+                            </td>
+                            <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control" /></td>
+                            <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+<template id="line-row-template">
+    <tr class="line-row">
+        <input type="hidden" name="Lines.Index" value="__index__" />
+        <td>
+            <div class="input-group">
+                <input type="hidden" name="Lines[__index__].ProductId" id="Lines___index____ProductId" value="" />
+                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch"
+                       placeholder="Ürün adı/kod/barkod" autocomplete="off"
+                       data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                       data-lookup-title="Ürün Seç"
+                       data-target-hidden="Lines___index____ProductId"
+                       data-target-display="Lines___index____ProductId_display" />
+                <button type="button" class="btn btn-outline-secondary lookup-trigger"
+                        data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                        data-lookup-title="Ürün Seç"
+                        data-target-hidden="Lines___index____ProductId"
+                        data-target-display="Lines___index____ProductId_display">
+                    ...
+                </button>
+            </div>
+        </td>
+        <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control" /></td>
+        <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var linesBody = document.getElementById('lines-body');
+            var template = document.getElementById('line-row-template');
+            var addButton = document.getElementById('add-line');
+            var nextIndex = @Model.Lines.Count;
+
+            addButton.addEventListener('click', function () {
+                var html = template.innerHTML.split('__index__').join(nextIndex);
+                var wrapper = document.createElement('tbody');
+                wrapper.innerHTML = html;
+                linesBody.appendChild(wrapper.firstElementChild);
+                nextIndex++;
+            });
+
+            linesBody.addEventListener('click', function (event) {
+                if (event.target.classList.contains('remove-line')) {
+                    var row = event.target.closest('tr');
+                    if (linesBody.querySelectorAll('.line-row').length > 1) {
+                        row.remove();
+                    }
+                }
+            });
+        })();
+    </script>
+}

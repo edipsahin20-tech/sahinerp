@@ -12,6 +12,9 @@ public sealed class StockTransfer : EntityBase
     public string CreatedByUserId { get; set; } = string.Empty;
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
+    public DateTime? CancelledAtUtc { get; set; }
+    public string? CancelledByUserId { get; set; }
+    public string? CancellationReason { get; set; }
 
     public int FromWarehouseId { get; set; }
     public Warehouse FromWarehouse { get; set; } = null!;

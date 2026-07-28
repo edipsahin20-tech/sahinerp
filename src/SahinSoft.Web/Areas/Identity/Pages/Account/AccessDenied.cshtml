@@ -1,0 +1,10 @@
+@page
+@{
+    ViewData["Title"] = "Erişim Engellendi";
+    ViewData["Subtitle"] = "";
+}
+
+<p class="text-center text-secondary mb-3">
+    Bu sayfaya erişim yetkiniz bulunmuyor. Yetki gerektiğini düşünüyorsanız yöneticinizle iletişime geçin.
+</p>
+<a asp-controller="Home" asp-action="Index" class="btn btn-auth-primary d-block text-decoration-none">Ana sayfaya dön</a>

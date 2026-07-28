@@ -1,0 +1,92 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.NegotiableInstrumentFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    var isCheque = Model.InstrumentType == NegotiableInstrumentType.Cheque;
+    ViewData["Title"] = (isEdit ? "Düzenle: " : "Yeni ") + (isCheque ? "Çek" : "Senet");
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="InstrumentType" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@(isCheque ? "Çek" : "Senet")</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Belge Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="Direction"></label>
+                    <select asp-for="Direction" asp-items="Html.GetEnumSelectList<InstrumentDirection>()" class="form-select"></select>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CustomerId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                        Value = Model.CustomerId?.ToString(),
+                        DisplayValue = Model.CustomerDisplay,
+                        Endpoint = Url.Action("Customers", "Lookup")!,
+                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="FinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.FinancialAccountId), Id = nameof(Model.FinancialAccountId),
+                        Value = Model.FinancialAccountId?.ToString(),
+                        DisplayValue = Model.FinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Kasa/Banka Hesabı Seç", Placeholder = "Hesap yok" })" />
+                    </select>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="IssueDateUtc"></label>
+                    <input asp-for="IssueDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DueDateUtc"></label>
+                    <input asp-for="DueDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Amount"></label>
+                    <input asp-for="Amount" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CurrencyCode"></label>
+                    <input asp-for="CurrencyCode" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BankName"></label>
+                    <input asp-for="BankName" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BranchName"></label>
+                    <input asp-for="BranchName" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="AccountNumber"></label>
+                    <input asp-for="AccountNumber" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DrawerName"></label>
+                    <input asp-for="DrawerName" class="form-control" />
+                </div>
+                <div class="erp-field" style="grid-column: 1 / -1;">
+                    <label asp-for="Description"></label>
+                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

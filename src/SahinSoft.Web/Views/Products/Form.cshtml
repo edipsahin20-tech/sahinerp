@@ -4,16 +4,12 @@
     ViewData["Title"] = isEdit ? "Stok Kartını Düzenle" : "Yeni Stok Kartı";
 }
 
-<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
     <input asp-for="Id" type="hidden" />
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
         <div>
             <h1 class="h3 mb-1">@ViewData["Title"]</h1>
             <p class="text-secondary mb-0">Ürünün tüm temel bilgilerini tek ekrandan yönetin.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-            <button type="submit" class="btn btn-primary px-4">Kaydet</button>
         </div>
     </div>
 
@@ -35,16 +31,22 @@
 
                 <div class="col-md-4">
                     <label asp-for="CategoryId" class="form-label"></label>
-                    <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select">
-                        <option value="">Kategori seçin</option>
-                    </select>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CategoryId), Id = nameof(Model.CategoryId),
+                        Value = Model.CategoryId > 0 ? Model.CategoryId.ToString() : null,
+                        DisplayValue = Model.CategoryDisplay,
+                        Endpoint = Url.Action("Categories", "Lookup")!,
+                        Title = "Kategori Seç", Placeholder = "Kategori seçin" })" />
                     <span asp-validation-for="CategoryId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="TaxRateId" class="form-label"></label>
-                    <select asp-for="TaxRateId" asp-items="Model.TaxRates" class="form-select">
-                        <option value="">KDV seçin</option>
-                    </select>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.TaxRateId), Id = nameof(Model.TaxRateId),
+                        Value = Model.TaxRateId > 0 ? Model.TaxRateId.ToString() : null,
+                        DisplayValue = Model.TaxRateDisplay,
+                        Endpoint = Url.Action("TaxRates", "Lookup")!,
+                        Title = "KDV Oranı Seç", Placeholder = "KDV seçin" })" />
                     <span asp-validation-for="TaxRateId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
@@ -66,18 +68,42 @@
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Barcode" class="form-label"></label>
-                    <input asp-for="Barcode" class="form-control" inputmode="numeric" />
+                    <div class="input-group">
+                        <input asp-for="Barcode" class="form-control" inputmode="numeric" id="barcode-input" />
+                        <select id="barcode-type-select" class="form-select" style="max-width: 8.5rem; flex: 0 0 auto;">
+                            <option value="EAN13">EAN13</option>
+                            <option value="EAN8">EAN8</option>
+                            <option value="ASCII">ASCII</option>
+                            <option value="TERAZI">Terazi</option>
+                        </select>
+                        <button type="button" class="btn btn-erp-outline" onclick="generateBarcode()">Barkod Üret</button>
+                    </div>
                     <span asp-validation-for="Barcode" class="text-danger small"></span>
                 </div>
 
+                <div class="col-md-4">
+                    <label asp-for="AlternateName" class="form-label"></label>
+                    <input asp-for="AlternateName" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ShelfLifeDays" class="form-label"></label>
+                    <input asp-for="ShelfLifeDays" class="form-control" />
+                    <span asp-validation-for="ShelfLifeDays" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CountryOfOrigin" class="form-label"></label>
+                    <input asp-for="CountryOfOrigin" class="form-control" />
+                </div>
+
                 <div class="col-md-3">
-                    <label asp-for="Unit" class="form-label"></label>
-                    <select asp-for="Unit" class="form-select">
-                        <option>Adet</option>
-                        <option>Paket</option>
-                        <option>Takım</option>
-                        <option>Hizmet</option>
-                    </select>
+                    <label asp-for="UnitOfMeasureId" class="form-label"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.UnitOfMeasureId), Id = nameof(Model.UnitOfMeasureId),
+                        Value = Model.UnitOfMeasureId?.ToString(),
+                        DisplayValue = Model.UnitOfMeasureDisplay,
+                        Endpoint = Url.Action("UnitsOfMeasure", "Lookup")!,
+                        Title = "Birim Seç", Placeholder = "Birim seçin" })" />
+                    <span asp-validation-for="UnitOfMeasureId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-3">
                     <label asp-for="PurchasePrice" class="form-label"></label>
@@ -130,16 +156,47 @@
                         <input asp-for="IsActive" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label"></label>
                     </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="TrackSerialNumbers" class="form-check-input" />
+                        <label asp-for="TrackSerialNumbers" class="form-check-label"></label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="PricesIncludeTax" class="form-check-input" />
+                        <label asp-for="PricesIncludeTax" class="form-check-label"></label>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-            <button type="submit" class="btn btn-primary px-4">Kaydet</button>
-        </div>
     </div>
+
+    @if (!isEdit)
+    {
+        <div class="d-flex justify-content-end mt-3">
+            <button type="submit" form="evrak-form" name="saveMode" value="saveAndNew" class="btn btn-erp-outline">
+                Kaydet ve Yeni Ekle
+            </button>
+        </div>
+    }
 </form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function generateBarcode() {
+            var type = document.getElementById('barcode-type-select').value;
+            fetch('@Url.Action("GenerateBarcodeApi", "Products")?type=' + encodeURIComponent(type))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.barcode) {
+                        document.getElementById('barcode-input').value = data.barcode;
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Barkod üretme hatası:', err);
+                    alert('Barkod üretilirken bir hata oluştu.');
+                });
+        }
+    </script>
 }

@@ -1,0 +1,23 @@
+@model SahinSoft.Web.Models.LookupFieldViewModel
+
+<div class="input-group">
+    <input type="hidden" name="@Model.Name" id="@Model.Id" value="@Model.Value" />
+    <input type="text"
+           id="@(Model.Id)_display"
+           class="form-control @(Model.AllowQuickSearch ? "lookup-quicksearch" : "")"
+           value="@Model.DisplayValue"
+           placeholder="@Model.Placeholder"
+           autocomplete="off"
+           data-lookup-endpoint="@Model.Endpoint"
+           data-lookup-title="@Model.Title"
+           data-target-hidden="@Model.Id"
+           data-target-display="@(Model.Id)_display"
+           @(Model.AllowQuickSearch ? "" : "readonly") />
+    <button type="button" class="btn btn-outline-secondary lookup-trigger"
+            data-lookup-endpoint="@Model.Endpoint"
+            data-lookup-title="@Model.Title"
+            data-target-hidden="@Model.Id"
+            data-target-display="@(Model.Id)_display">
+        ...
+    </button>
+</div>

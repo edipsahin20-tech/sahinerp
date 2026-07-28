@@ -1,0 +1,65 @@
+@using SahinSoft.Domain.Enums
+@model IReadOnlyList<SahinSoft.Domain.Entities.FinancialAccount>
+@{
+    ViewData["Title"] = "Kasa/Banka Hesapları";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Kasa/Banka Hesapları</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Hesap</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Kod</th>
+                    <th>Ad</th>
+                    <th>Tür</th>
+                    <th>Para Birimi</th>
+                    <th>Banka</th>
+                    <th>IBAN</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="@(item.IsActive ? "" : "text-secondary")">
+                    <td class="fw-semibold">@item.Code</td>
+                    <td>@item.Name</td>
+                    <td>@(item.AccountType == FinancialAccountType.Cash ? "Kasa" : "Banka")</td>
+                    <td>@item.CurrencyCode</td>
+                    <td>@item.BankName</td>
+                    <td>@item.Iban</td>
+                    <td>
+                        @if (item.IsActive) { <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span> }
+                        else { <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span> }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

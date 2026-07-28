@@ -84,6 +84,67 @@ public sealed class StockTransferService(
         await transaction.CommitAsync(cancellationToken);
     }
 
+    public async Task CancelAsync(
+        int transferId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        var transfer = await dbContext.StockTransfers
+            .Include(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.Id == transferId, cancellationToken)
+            ?? throw new InvalidOperationException("Sevk belgesi bulunamadı.");
+
+        if (transfer.Status != StockTransferStatus.Approved)
+        {
+            throw new InvalidOperationException("Yalnızca onaylanmış transferler iptal edilebilir.");
+        }
+
+        var reversalDocumentNumber = $"IPTAL-{transfer.TransferNumber}";
+
+        foreach (var line in transfer.Lines)
+        {
+            var originalMovements = await dbContext.StockMovements
+                .Where(x => x.StockTransferLineId == line.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var originalMovement in originalMovements)
+            {
+                dbContext.StockMovements.Add(new StockMovement
+                {
+                    MovementDateUtc = DateTime.UtcNow,
+                    MovementType = originalMovement.MovementType,
+                    Quantity = -originalMovement.Quantity,
+                    DocumentNumber = reversalDocumentNumber,
+                    Description = $"Transfer iptali - {reason}",
+                    ProductId = originalMovement.ProductId,
+                    ProductVariantId = originalMovement.ProductVariantId,
+                    WarehouseId = originalMovement.WarehouseId,
+                    StockTransferLineId = line.Id,
+                    ReversalOfId = originalMovement.Id
+                });
+            }
+        }
+
+        transfer.Status = StockTransferStatus.Cancelled;
+        transfer.CancelledByUserId = cancelledByUserId;
+        transfer.CancelledAtUtc = DateTime.UtcNow;
+        transfer.CancellationReason = reason;
+        transfer.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private static StockMovement Movement(
         StockTransferLine line,
         StockTransfer transfer,

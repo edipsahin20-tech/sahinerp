@@ -1,0 +1,53 @@
+@model SahinSoft.Web.Models.NumberSequenceFormViewModel
+@{
+    var label = SahinSoft.Web.Controllers.NumberSequencesController.KeyLabels.GetValueOrDefault(Model.Key, Model.Key);
+    ViewData["Title"] = $"{label} - Numaralandırma";
+}
+
+<form method="post" asp-action="Edit" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="Key" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>@label</h1>
+        </div>
+        <div class="erp-toolbar-actions">
+            <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Numaralandırma Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="Prefix"></label>
+                    <input asp-for="Prefix" class="form-control" autofocus />
+                    <span asp-validation-for="Prefix" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="NextNumber"></label>
+                    <input asp-for="NextNumber" class="form-control" />
+                    <span asp-validation-for="NextNumber" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Padding"></label>
+                    <input asp-for="Padding" class="form-control" />
+                    <span asp-validation-for="Padding" class="text-danger small"></span>
+                </div>
+            </div>
+            <p class="text-secondary small mt-3 mb-0">Bir sonraki oluşturulacak kod/numara: <strong>@Model.Prefix@(Model.NextNumber.ToString($"D{Model.Padding}"))</strong></p>
+        </div>
+        <div class="erp-action-bar">
+            <a asp-action="Index" class="btn btn-erp-outline">Vazgeç</a>
+            <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

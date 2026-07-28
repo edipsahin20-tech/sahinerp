@@ -1,0 +1,92 @@
+@using SahinSoft.Domain.Enums
+@model IReadOnlyList<SahinSoft.Domain.Entities.InventoryCount>
+@{
+    ViewData["Title"] = "Sayımlar";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Sayım Girişi</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Sayım</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<form method="get" class="erp-filter-bar">
+    <div class="erp-field">
+        <label>Durum</label>
+        <select name="status" class="form-select" style="max-width: 160px;" asp-items="Html.GetEnumSelectList<InventoryCountStatus>()">
+            <option value="">Tüm durumlar</option>
+        </select>
+    </div>
+    <div class="erp-field flex-grow-1">
+        <label>Ara</label>
+        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Sayım no ara..." />
+    </div>
+    <button class="btn btn-erp-primary">Ara</button>
+</form>
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Sayım No</th>
+                    <th>Tarih</th>
+                    <th>Depo</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@item.CountNumber</td>
+                    <td>@item.CountDateUtc.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Warehouse.Name</td>
+                    <td>
+                        @{
+                            var badgeClass = item.Status switch
+                            {
+                                InventoryCountStatus.Draft => "text-bg-secondary-subtle text-secondary-emphasis",
+                                InventoryCountStatus.Counting => "text-bg-warning-subtle text-warning-emphasis",
+                                InventoryCountStatus.Approved => "text-bg-success-subtle text-success-emphasis",
+                                _ => "text-bg-danger-subtle text-danger-emphasis"
+                            };
+                            var statusText = item.Status switch
+                            {
+                                InventoryCountStatus.Draft => "Taslak",
+                                InventoryCountStatus.Counting => "Sayılıyor",
+                                InventoryCountStatus.Approved => "Onaylı",
+                                _ => "İptal"
+                            };
+                        }
+                        <span class="badge @badgeClass">@statusText</span>
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Görüntüle</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

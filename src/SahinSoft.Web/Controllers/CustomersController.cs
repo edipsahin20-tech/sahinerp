@@ -1,14 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
+using SahinSoft.Web.Services;
 
 namespace SahinSoft.Web.Controllers;
 
 [Authorize]
-public sealed class CustomersController(ApplicationDbContext dbContext) : Controller
+public sealed class CustomersController(
+    ApplicationDbContext dbContext,
+    DocumentNumberGeneratorService documentNumberGenerator) : Controller
 {
     public async Task<IActionResult> Index(string? search)
     {
@@ -31,6 +35,7 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
 
     public IActionResult Create()
     {
+        ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "Customers" };
         return View("Form", new CustomerFormViewModel());
     }
 
@@ -38,6 +43,10 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CustomerFormViewModel form)
     {
+        if (string.IsNullOrWhiteSpace(form.Code))
+        {
+            form.Code = await documentNumberGenerator.GenerateAsync("CUSTOMER");
+        }
         await ValidateUniqueCodeAsync(form);
         if (!ModelState.IsValid)
         {
@@ -54,7 +63,7 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
         }
 
         TempData["Success"] = "Cari kaydedildi.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Create));
     }
 
     public async Task<IActionResult> Edit(int id)
@@ -84,7 +93,56 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
             IsActive = customer.IsActive
         };
 
+        await SetToolbarAsync(id);
         return View("Form", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var customer = await dbContext.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var hasMovements = await dbContext.CurrentAccountTransactions.AnyAsync(x => x.CustomerId == id);
+        if (hasMovements)
+        {
+            TempData["Error"] = "Bu cariye ait hareketler var, silinemez.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        dbContext.Customers.Remove(customer);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+            TempData["Success"] = "Cari silindi.";
+        }
+        catch (DbUpdateException)
+        {
+            TempData["Error"] = "Bu cariye bağlı kayıtlar var, silinemez.";
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task SetToolbarAsync(int id)
+    {
+        var previousId = await dbContext.Customers.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var nextId = await dbContext.Customers.Where(x => x.Id > id).OrderBy(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        var hasMovements = await dbContext.CurrentAccountTransactions.AnyAsync(x => x.CustomerId == id);
+
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Id = id,
+            Controller = "Customers",
+            PreviousId = previousId,
+            NextId = nextId,
+            CanDelete = !hasMovements,
+            DeleteBlockedReason = hasMovements ? "Bu cariye ait hareketler var, silinemez." : null
+        };
     }
 
     [HttpPost]
@@ -117,7 +175,7 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
         }
 
         TempData["Success"] = "Cari güncellendi.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Create));
     }
 
     public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to)
@@ -163,7 +221,7 @@ public sealed class CustomersController(ApplicationDbContext dbContext) : Contro
             lines.Add(new CustomerStatementLineViewModel
             {
                 TransactionDateUtc = transaction.TransactionDateUtc,
-                TransactionType = transaction.TransactionType.ToString(),
+                TransactionType = transaction.TransactionType.GetDisplayName(),
                 DocumentNumber = transaction.DocumentNumber,
                 Description = transaction.Description,
                 Debit = transaction.Debit,

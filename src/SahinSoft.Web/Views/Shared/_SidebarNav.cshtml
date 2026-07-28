@@ -1,0 +1,177 @@
+@model string
+@{
+    var suffix = Model ?? "";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    string NavClass(string controllerName) => currentController == controllerName ? "nav-link active" : "nav-link";
+    bool InGroup(params string[] controllers) => controllers.Contains(currentController);
+    string GroupToggleClass(params string[] controllers) => InGroup(controllers) ? "erp-sidebar-group-toggle active-group" : "erp-sidebar-group-toggle";
+    string CollapseClass(params string[] controllers) => InGroup(controllers) ? "collapse show" : "collapse";
+    string Expanded(params string[] controllers) => InGroup(controllers) ? "true" : "false";
+    string Id(string baseId) => baseId + suffix;
+    var chevron = "<svg class=\"chevron\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 6l6 6-6 6\" /></svg>";
+}
+<div id="@Id("sidebar-accordion")">
+<a class="@NavClass("Home")" asp-controller="Home" asp-action="Index">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9" /><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" /></svg>
+    Ana sayfa
+</a>
+
+<button type="button" class="@GroupToggleClass("Customers", "PaymentReceipts")" data-bs-toggle="collapse" data-bs-target="#@Id("group-cari")" aria-expanded="@Expanded("Customers", "PaymentReceipts")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+        Cari yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Customers", "PaymentReceipts")" id="@Id("group-cari")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Customers" asp-action="Create">Cari Hesap Tanıtım Kartı</a>
+        <a class="nav-link" asp-controller="Customers" asp-action="Index">Cari Listesi</a>
+        <a class="nav-link" asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Collection">Cari Tahsilat Makbuzu</a>
+        <a class="nav-link" asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Payment">Cari Tediye Makbuzu</a>
+        <a class="nav-link" asp-controller="Customers" asp-action="Index">Cari Hesap Ekstresi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("Products", "Categories", "StockSlips", "InventoryCounts", "StockTransfers")" data-bs-toggle="collapse" data-bs-target="#@Id("group-stok")" aria-expanded="@Expanded("Products", "Categories", "StockSlips", "InventoryCounts", "StockTransfers")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="M3.27 6.96 12 12l8.73-5.04" /><path d="M12 22.08V12" /></svg>
+        Stok yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Products", "Categories", "StockSlips", "InventoryCounts", "StockTransfers")" id="@Id("group-stok")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Products" asp-action="Create">Stok Tanıtım Kartı</a>
+        <a class="nav-link" asp-controller="Categories" asp-action="Index">Kategori Tanımla</a>
+        <a class="nav-link" asp-controller="Products" asp-action="Index">Stok Listesi</a>
+        <a class="nav-link" asp-controller="StockSlips" asp-action="Create" asp-route-type="Receipt">Stok Giriş Fişi</a>
+        <a class="nav-link" asp-controller="StockSlips" asp-action="Create" asp-route-type="Issue">Stok Çıkış Fişi</a>
+        <a class="nav-link" asp-controller="StockSlips" asp-action="Index">Stok Fişi Listesi</a>
+        <a class="nav-link" asp-controller="StockTransfers" asp-action="Create">Depolar Arası Transfer</a>
+        <a class="nav-link" asp-controller="StockTransfers" asp-action="Index">Transfer Listesi</a>
+        <a class="nav-link" asp-controller="InventoryCounts" asp-action="Create">Sayım Girişi</a>
+        <a class="nav-link" asp-controller="InventoryCounts" asp-action="Index">Sayım Listesi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("Invoices", "DispatchNotes")" data-bs-toggle="collapse" data-bs-target="#@Id("group-fatura")" aria-expanded="@Expanded("Invoices", "DispatchNotes")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+        Fatura yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Invoices", "DispatchNotes")" id="@Id("group-fatura")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Invoices" asp-action="Create" asp-route-type="Purchase">Alış Faturası</a>
+        <a class="nav-link" asp-controller="Invoices" asp-action="Create" asp-route-type="Sales">Satış Faturası</a>
+        <a class="nav-link" asp-controller="Invoices" asp-action="Index">Fatura Listesi</a>
+        <a class="nav-link" asp-controller="DispatchNotes" asp-action="Create" asp-route-type="Purchase">Alış İrsaliyesi</a>
+        <a class="nav-link" asp-controller="DispatchNotes" asp-action="Create" asp-route-type="Sales">Satış İrsaliyesi</a>
+        <a class="nav-link" asp-controller="DispatchNotes" asp-action="Index">İrsaliye Listesi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("Quotes")" data-bs-toggle="collapse" data-bs-target="#@Id("group-teklif")" aria-expanded="@Expanded("Quotes")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" /></svg>
+        Teklif yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Quotes")" id="@Id("group-teklif")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Quotes" asp-action="Studio">Yeni Teklif</a>
+        <a class="nav-link" asp-controller="Quotes" asp-action="Index">Teklif Listesi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("BusinessOrders")" data-bs-toggle="collapse" data-bs-target="#@Id("group-siparis")" aria-expanded="@Expanded("BusinessOrders")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+        Sipariş yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("BusinessOrders")" id="@Id("group-siparis")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="BusinessOrders" asp-action="Create" asp-route-type="Purchase">Alış Siparişi</a>
+        <a class="nav-link" asp-controller="BusinessOrders" asp-action="Create" asp-route-type="Sales">Satış Siparişi</a>
+        <a class="nav-link" asp-controller="BusinessOrders" asp-action="Index">Sipariş Listesi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("Expenses", "ExpenseCategories")" data-bs-toggle="collapse" data-bs-target="#@Id("group-masraf")" aria-expanded="@Expanded("Expenses", "ExpenseCategories")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+        Masraf yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Expenses", "ExpenseCategories")" id="@Id("group-masraf")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Expenses" asp-action="Create">Yeni Masraf</a>
+        <a class="nav-link" asp-controller="Expenses" asp-action="Index">Masraf Listesi</a>
+        <a class="nav-link" asp-controller="ExpenseCategories" asp-action="Index">Masraf Kategorileri</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("NegotiableInstruments")" data-bs-toggle="collapse" data-bs-target="#@Id("group-ceksenet")" aria-expanded="@Expanded("NegotiableInstruments")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /><path d="M6 15h4" /></svg>
+        Çek/Senet yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("NegotiableInstruments")" id="@Id("group-ceksenet")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="NegotiableInstruments" asp-action="Create" asp-route-type="Cheque">Yeni Çek</a>
+        <a class="nav-link" asp-controller="NegotiableInstruments" asp-action="Create" asp-route-type="PromissoryNote">Yeni Senet</a>
+        <a class="nav-link" asp-controller="NegotiableInstruments" asp-action="Index">Çek/Senet Listesi</a>
+    </div>
+</div>
+
+<button type="button" class="@GroupToggleClass("Reports")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18.7 8 13 13.7l-4-4L3 16" /></svg>
+        Raporlar
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("Reports")" id="@Id("group-raporlar")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Customers" asp-action="Index">Cari Hesap Hareketleri</a>
+        <a class="nav-link" asp-controller="Reports" asp-action="StockMovements">Stok Hareketleri</a>
+        <a class="nav-link" asp-controller="Reports" asp-action="StockReconciliation">Stok Mutabakatı</a>
+        <a class="nav-link" asp-controller="PaymentReceipts" asp-action="Index" asp-route-type="Collection">Tahsilat Raporları</a>
+        <a class="nav-link" asp-controller="PaymentReceipts" asp-action="Index" asp-route-type="Payment">Tediye Raporları</a>
+    </div>
+</div>
+
+@if (User.IsInRole("Administrator"))
+{
+    <button type="button" class="@GroupToggleClass("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" data-bs-toggle="collapse" data-bs-target="#@Id("group-tanimlar")" aria-expanded="@Expanded("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")">
+        <span class="toggle-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
+            Sistem Yönetimi
+        </span>
+        @Html.Raw(chevron)
+    </button>
+    <div class="@CollapseClass("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
+        <div class="erp-sidebar-subnav">
+            <a class="nav-link" asp-controller="Settings" asp-action="Company">Parametreler</a>
+            <a class="nav-link" asp-controller="Personnel" asp-action="Index">Personel Yönetimi</a>
+            <a class="nav-link" asp-controller="Roles" asp-action="Index">Yetkiler</a>
+            <a class="nav-link" asp-controller="PriceLists" asp-action="Index">Fiyat Tanımları</a>
+            <a class="nav-link" asp-controller="UnitsOfMeasure" asp-action="Index">Birim Tanımlamaları</a>
+            <a class="nav-link" asp-controller="NumberSequences" asp-action="Index">Numaralandırma Parametreleri</a>
+            <a class="nav-link" asp-controller="Branches" asp-action="Index">Şubeler</a>
+            <a class="nav-link" asp-controller="Warehouses" asp-action="Index">Depolar</a>
+            <a class="nav-link" asp-controller="TaxRates" asp-action="Index">KDV Oranları</a>
+            <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index">Kasa/Banka Hesapları</a>
+            <a class="nav-link" asp-controller="Settings" asp-action="Inventory">Stok Parametreleri</a>
+        </div>
+    </div>
+}
+</div>

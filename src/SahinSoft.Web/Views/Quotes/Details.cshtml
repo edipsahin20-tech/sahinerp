@@ -1,0 +1,131 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.QuoteDetailsViewModel
+@{
+    ViewData["Title"] = $"Teklif {Model.QuoteNumber}";
+    var statusClass = Model.Status switch
+    {
+        QuoteStatus.Draft => "erp-status-draft",
+        QuoteStatus.Sent => "erp-status-draft",
+        QuoteStatus.Approved => "erp-status-approved",
+        _ => "erp-status-cancelled"
+    };
+    var statusText = Model.Status switch
+    {
+        QuoteStatus.Draft => "Taslak",
+        QuoteStatus.Sent => "Gönderildi",
+        QuoteStatus.Approved => "Onaylı",
+        _ => "Reddedildi"
+    };
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Teklif</h1>
+        <span class="erp-doc-no">@Model.QuoteNumber</span>
+        <span class="erp-status-badge @statusClass">@statusText</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
+        @if (Model.Status == QuoteStatus.Draft)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>
+            <form method="post" asp-action="Send" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-erp-outline btn-sm">Gönderildi İşaretle</button>
+            </form>
+        }
+        @if (Model.Status is QuoteStatus.Draft or QuoteStatus.Sent)
+        {
+            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
+            </form>
+            <form method="post" asp-action="Reject" asp-route-id="@Model.Id" class="d-inline">
+                <button type="submit" class="btn btn-erp-danger btn-sm">Reddet</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-header">@Model.CustomerName &middot; @Model.QuoteDateUtc.ToString("dd.MM.yyyy") @(Model.ValidUntilUtc.HasValue ? $"· Geçerlilik: {Model.ValidUntilUtc.Value:dd.MM.yyyy}" : "")</div>
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Ürün</th>
+                        <th class="text-end">Miktar</th>
+                        <th class="text-end">Birim Fiyat</th>
+                        <th class="text-end">İsk. %</th>
+                        <th class="text-end">KDV %</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
+                        <td class="text-end">@line.Quantity.ToString("N3")</td>
+                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@line.DiscountRate.ToString("N2")</td>
+                        <td class="text-end">@line.TaxRate.ToString("N2")</td>
+                        <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="p-3 d-flex">
+            <div class="erp-totals">
+                <div class="erp-totals-row"><span>Ara toplam</span><span>@Model.Subtotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>İskonto</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>KDV</span><span>@Model.TaxTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Notes is not null)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Notlar</div>
+        <div class="erp-panel-body">@Model.Notes</div>
+    </div>
+}
+
+@if (Model.Status == QuoteStatus.Approved)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Faturaya Dönüştür</div>
+        <div class="erp-panel-body">
+            @if (Model.HasConvertedInvoice)
+            {
+                <p class="text-secondary small mb-0">Bu teklif için zaten bir fatura oluşturulmuş.</p>
+            }
+            else
+            {
+                <p class="text-secondary small mb-2">Teklif satırlarından taslak bir satış faturası oluşturulur; depo seçmeniz gerekir.</p>
+                <form method="post" asp-action="ConvertToInvoice" asp-route-id="@Model.Id" class="d-flex gap-2">
+                    <select name="warehouseId" class="form-select" style="max-width: 260px;" required>
+                        <option value="">Depo seçin</option>
+                        @foreach (var warehouse in Model.Warehouses)
+                        {
+                            <option value="@warehouse.Value">@warehouse.Text</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-erp-primary text-nowrap">Faturaya Dönüştür</button>
+                </form>
+            }
+        </div>
+    </div>
+}

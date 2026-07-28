@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace SahinSoft.Web.Models;
 
@@ -35,13 +34,31 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Barkod")]
     public string? Barcode { get; set; }
 
-    [Required, StringLength(20)]
+    [Required]
     [Display(Name = "Birim")]
-    public string Unit { get; set; } = "Adet";
+    public int? UnitOfMeasureId { get; set; }
 
     [Required, StringLength(30)]
     [Display(Name = "Stok cinsi")]
     public string ProductType { get; set; } = "Donanım";
+
+    [StringLength(200)]
+    [Display(Name = "Ek Ad")]
+    public string? AlternateName { get; set; }
+
+    [Range(0, 3650)]
+    [Display(Name = "Raf Ömrü (gün)")]
+    public int? ShelfLifeDays { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Ülke")]
+    public string? CountryOfOrigin { get; set; }
+
+    [Display(Name = "Seri No Zorunlu mu?")]
+    public bool TrackSerialNumbers { get; set; }
+
+    [Display(Name = "Fiyatlara KDV Dahil mi?")]
+    public bool PricesIncludeTax { get; set; } = true;
 
     [Display(Name = "Alış fiyatı")]
     [Range(0, 999999999999)]
@@ -73,8 +90,9 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Açıklama")]
     public string? Description { get; set; }
 
-    public IReadOnlyList<SelectListItem> Categories { get; set; } = [];
-    public IReadOnlyList<SelectListItem> TaxRates { get; set; } = [];
+    public string? CategoryDisplay { get; set; }
+    public string? TaxRateDisplay { get; set; }
+    public string? UnitOfMeasureDisplay { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -88,5 +106,9 @@ public sealed class ProductFormViewModel : IValidatableObject
             yield return new ValidationResult("KDV seçilmelidir.", [nameof(TaxRateId)]);
         }
 
+        if (UnitOfMeasureId is null or <= 0)
+        {
+            yield return new ValidationResult("Birim seçilmelidir.", [nameof(UnitOfMeasureId)]);
+        }
     }
 }

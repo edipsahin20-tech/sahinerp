@@ -3,48 +3,124 @@
     ViewData["Title"] = "Yönetim Paneli";
 }
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
     <div>
-        <p class="text-primary fw-semibold mb-1">ŞAHİNSOFT YÖNETİM SİSTEMİ</p>
+        <p class="text-primary fw-semibold mb-1" style="letter-spacing: 0.04em; font-size: 0.78rem;">ŞAHİNSOFT YÖNETİM SİSTEMİ</p>
         <h1 class="h2 mb-1">Yönetim Paneli</h1>
-        <p class="text-secondary mb-0">Cari, ürün, stok, fatura ve tahsilat süreçlerinizi tek yerden yönetin.</p>
     </div>
-    <a asp-controller="Invoices" asp-action="Create" asp-route-type="Sales" class="btn btn-primary btn-lg">+ Yeni satış faturası</a>
+    <form method="get" class="d-flex flex-wrap align-items-end gap-2">
+        <div class="erp-field mb-0">
+            <label>Başlangıç Tarihi</label>
+            <input type="date" name="from" value="@(Model.FilterFrom?.ToString("yyyy-MM-dd"))" class="form-control" style="max-width: 160px;" />
+        </div>
+        <div class="erp-field mb-0">
+            <label>Bitiş Tarihi</label>
+            <input type="date" name="to" value="@(Model.FilterTo?.ToString("yyyy-MM-dd"))" class="form-control" style="max-width: 160px;" />
+        </div>
+        <button type="submit" class="btn btn-erp-primary">Uygula</button>
+        @if (Model.FilterFrom.HasValue || Model.FilterTo.HasValue)
+        {
+            <a asp-controller="Home" asp-action="Index" class="btn btn-erp-outline">Temizle</a>
+        }
+    </form>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-status="Approved" class="erp-kpi-card erp-kpi-pink">
+            <div class="erp-kpi-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+            </div>
+            <div>
+                <div class="erp-kpi-label">Alış Faturası Toplamı</div>
+                <div class="erp-kpi-value">@Model.PurchaseInvoiceTotal.ToString("N2") ₺</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-status="Approved" class="erp-kpi-card erp-kpi-teal">
+            <div class="erp-kpi-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+            </div>
+            <div>
+                <div class="erp-kpi-label">Satış Faturası Toplamı</div>
+                <div class="erp-kpi-value">@Model.SalesInvoiceTotal.ToString("N2") ₺</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a asp-controller="Customers" asp-action="Index" class="erp-kpi-card erp-kpi-amber">
+            <div class="erp-kpi-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <div>
+                <div class="erp-kpi-label">Toplam Borç</div>
+                <div class="erp-kpi-value">@Model.TotalDebt.ToString("N2") ₺</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a asp-controller="Customers" asp-action="Index" class="erp-kpi-card erp-kpi-violet">
+            <div class="erp-kpi-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <div>
+                <div class="erp-kpi-label">Toplam Alacak</div>
+                <div class="erp-kpi-value">@Model.TotalReceivable.ToString("N2") ₺</div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <div class="row g-3">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Customers" asp-action="Index" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm"><div class="card-body">
-                <div class="text-secondary small">Aktif cari</div>
-                <div class="display-6 fw-semibold">@Model.ActiveCustomerCount</div>
-            </div></div>
-        </a>
+    <div class="col-12 col-lg-7">
+        <div class="erp-panel h-100">
+            <div class="erp-panel-header">Son 14 Gün &middot; Fatura Hareketleri</div>
+            <div class="erp-panel-body">
+                @{
+                    var maxDailyTotal = Model.DailyInvoiceStats.Count > 0
+                        ? Math.Max(1, Model.DailyInvoiceStats.Max(x => Math.Max(x.SalesTotal, x.PurchaseTotal)))
+                        : 1;
+                }
+                <div class="erp-chart">
+                    @foreach (var day in Model.DailyInvoiceStats)
+                    {
+                        var salesHeight = Math.Round((double)(day.SalesTotal / maxDailyTotal) * 100, 1);
+                        var purchaseHeight = Math.Round((double)(day.PurchaseTotal / maxDailyTotal) * 100, 1);
+                        <div class="erp-chart-col" title="@day.DateUtc.ToString("dd.MM.yyyy") &#10;Satış: @day.SalesTotal.ToString("N2") (@day.SalesCount) &#10;Alış: @day.PurchaseTotal.ToString("N2") (@day.PurchaseCount)">
+                            <div class="erp-chart-bars">
+                                <div class="erp-chart-bar erp-chart-bar-sales" style="height: @(salesHeight)%;"></div>
+                                <div class="erp-chart-bar erp-chart-bar-purchase" style="height: @(purchaseHeight)%;"></div>
+                            </div>
+                            <div class="erp-chart-label">@day.DateUtc.ToString("dd.MM")</div>
+                        </div>
+                    }
+                </div>
+                <div class="erp-chart-legend">
+                    <span><i class="erp-legend-dot erp-legend-sales"></i>Satış Faturası</span>
+                    <span><i class="erp-legend-dot erp-legend-purchase"></i>Alış Faturası</span>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Products" asp-action="Index" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm"><div class="card-body">
-                <div class="text-secondary small">Aktif ürün</div>
-                <div class="display-6 fw-semibold">@Model.ActiveProductCount</div>
-            </div></div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Invoices" asp-action="Index" asp-route-status="Draft" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm"><div class="card-body">
-                <div class="text-secondary small">Taslak fatura</div>
-                <div class="display-6 fw-semibold">@Model.DraftInvoiceCount</div>
-                <span class="badge text-bg-warning">Taslak</span>
-            </div></div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Invoices" asp-action="Index" asp-route-status="Approved" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm"><div class="card-body">
-                <div class="text-secondary small">Onaylı fatura</div>
-                <div class="display-6 fw-semibold">@Model.ApprovedInvoiceCount</div>
-                <span class="badge text-bg-success">Onaylandı</span>
-            </div></div>
-        </a>
+    <div class="col-12 col-lg-5">
+        <div class="erp-panel h-100">
+            <div class="erp-panel-header">En Çok Borçlu Cariler</div>
+            <div class="erp-panel-body">
+                @if (Model.TopCustomers.Count == 0)
+                {
+                    <p class="text-secondary small mb-0">Henüz cari hareketi bulunmuyor.</p>
+                }
+                else
+                {
+                    @foreach (var customer in Model.TopCustomers)
+                    {
+                        <div class="erp-top-customer-row">
+                            <span>@customer.CustomerName</span>
+                            <span class="fw-semibold" style="color: var(--erp-gold-dark);">@customer.Balance.ToString("N2") ₺</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
     </div>
 </div>
