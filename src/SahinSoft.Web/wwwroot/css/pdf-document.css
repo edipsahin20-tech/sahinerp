@@ -62,10 +62,13 @@
 }
 
 .pdf-export-scope .pdf-logo-img{
-  height: 100px;
-  max-width: 280px;
-  width: auto;
-  object-fit: contain;
+  /* html2canvas (Teklif Stüdyosu'nun "PDF'ye Dönüştür" çıktısı) object-fit'i güvenilir
+     desteklemiyor ve logoyu doğal boyutunda (1024x1024 kaynak) devasa basıyordu.
+     Sabit genişlik + height:auto hem gerçek tarayıcı yazdırmasında hem html2canvas'ta
+     doğru ölçekleniyor. */
+  width: 68px;
+  height: auto;
+  max-height: 100px;
 }
 
 .pdf-export-scope .pdf-brand-sub{
