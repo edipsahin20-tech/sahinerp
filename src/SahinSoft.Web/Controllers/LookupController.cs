@@ -18,7 +18,7 @@ public sealed class LookupController(
 
     public async Task<IActionResult> Products(string? q)
     {
-        var query = dbContext.Products.AsNoTracking().Include(x => x.TaxRate).Where(x => x.IsActive);
+        var query = dbContext.Products.AsNoTracking().Include(x => x.TaxRate).Include(x => x.Category).Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
@@ -35,10 +35,12 @@ public sealed class LookupController(
                 id = x.Id,
                 code = x.StockCode,
                 name = x.Name,
+                category = x.Category.Name,
                 salePrice = x.SalePrice,
                 purchasePrice = x.PurchasePrice,
                 taxRate = x.TaxRate.Rate,
-                unit = x.Unit
+                unit = x.Unit,
+                stock = x.StockQuantity
             })
             .ToListAsync();
 
@@ -66,7 +68,14 @@ public sealed class LookupController(
         var items = await query
             .OrderBy(x => x.Name)
             .Take(MaxResults)
-            .Select(x => new { id = x.Id, code = x.Code, name = x.Name })
+            .Select(x => new
+            {
+                id = x.Id,
+                code = x.Code,
+                name = x.Name,
+                debit = dbContext.CurrentAccountTransactions.Where(t => t.CustomerId == x.Id).Sum(t => (decimal?)t.Debit) ?? 0,
+                credit = dbContext.CurrentAccountTransactions.Where(t => t.CustomerId == x.Id).Sum(t => (decimal?)t.Credit) ?? 0
+            })
             .ToListAsync();
 
         return Json(new { items });

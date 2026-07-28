@@ -889,3 +889,84 @@ table.erp-table .form-select {
         display: block !important;
     }
 }
+
+/* Site geneli arama penceresi (LookupModal) - kompakt, koyu başlıklı görünüm */
+.lookup-modal-dialog {
+    max-width: 720px;
+}
+
+.lookup-modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+    border: none;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+}
+
+.lookup-modal-header {
+    background: var(--erp-navy-dark);
+    border-bottom: 2px solid var(--erp-gold);
+    padding: 14px 20px;
+}
+
+.lookup-modal-header .lookup-modal-title {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.lookup-modal-header .lookup-modal-title i {
+    color: var(--erp-gold);
+}
+
+.lookup-modal-search-box {
+    position: relative;
+    margin-bottom: 14px;
+}
+
+.lookup-modal-search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.lookup-modal-search-box .form-control {
+    padding-left: 36px;
+    border-radius: 8px;
+}
+
+.lookup-modal-results-wrap {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.lookup-results-table thead th {
+    background: #f8fafc;
+    position: sticky;
+    top: 0;
+}
+
+.lookup-results-table tbody tr {
+    cursor: pointer;
+}
+
+.lookup-results-table tbody tr.highlighted,
+.lookup-results-table tbody tr:hover {
+    background: rgba(212, 164, 55, 0.15);
+}
+
+.lookup-code-badge {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 11px;
+    color: var(--erp-gold-dark);
+    background: rgba(212, 164, 55, 0.15);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-block;
+}

@@ -7,14 +7,19 @@
 @section Head {
     <style>
         .quote-list-panel { border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); border: 1px solid #e5e7eb; }
-        .quote-list-header { padding: 16px 22px; background: #0f172a; border-bottom: 2px solid #d4af37; display: flex; align-items: center; gap: 10px; }
+        .quote-list-header { padding: 16px 22px; background: #0f172a; border-bottom: 2px solid #d4af37; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
         .quote-list-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
         .quote-list-header h2 i { color: #d4af37; }
+        .btn-quote-new { background: #d4af37; border: 1px solid #d4af37; color: #1f2937; font-weight: 600; padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: 6px; display: inline-block; }
+        .btn-quote-new:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
         .quote-list-body { background: #fff; padding: 18px 22px 22px; }
         .quote-list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .quote-list-topbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1 1 auto; }
         .quote-list-search { position: relative; flex: 1 1 320px; max-width: 420px; }
         .quote-list-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
         .quote-list-search input { padding-left: 36px; border-radius: 8px; }
+        .quote-status-filter { margin: 0; }
+        .quote-status-filter select { border-radius: 8px; max-width: 170px; }
         .quote-code-badge { font-family: 'Fira Code', monospace; font-size: 11px; color: #a3760f; background: rgba(212, 175, 55, 0.15); padding: 3px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
         .quote-status-pill { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; border: 1px solid transparent; }
         .quote-status-pill.draft { background: rgba(100, 116, 139, 0.12); color: #475569; border-color: rgba(100, 116, 139, 0.35); }
@@ -29,16 +34,6 @@
     </style>
 }
 
-<div class="erp-toolbar">
-    <div class="erp-toolbar-title">
-        <h1>Teklifler</h1>
-        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
-    </div>
-    <div class="erp-toolbar-actions">
-        <a asp-action="Studio" class="btn btn-erp-primary btn-sm">+ Yeni Teklif</a>
-    </div>
-</div>
-
 @if (TempData["Success"] is string success)
 {
     <div class="alert alert-success py-2">@success</div>
@@ -48,29 +43,23 @@
     <div class="alert alert-danger py-2">@error</div>
 }
 
-<form method="get" class="erp-filter-bar">
-    <div class="erp-field">
-        <label>Durum</label>
-        <select name="status" class="form-select" style="max-width: 160px;" asp-items="Html.GetEnumSelectList<QuoteStatus>()">
-            <option value="">Tüm durumlar</option>
-        </select>
-    </div>
-    <div class="erp-field flex-grow-1">
-        <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Teklif no veya cari ara..." />
-    </div>
-    <button class="btn btn-erp-primary">Ara</button>
-</form>
-
 <div class="quote-list-panel">
     <div class="quote-list-header">
-        <h2><i class="fa-solid fa-folder-open"></i> Kaydedilen Teklifler</h2>
+        <h2><i class="fa-solid fa-folder-open"></i> Teklifler</h2>
+        <a asp-action="Studio" class="btn-quote-new">+ Yeni Teklif</a>
     </div>
     <div class="quote-list-body">
         <div class="quote-list-topbar">
-            <div class="quote-list-search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="quote-list-quicksearch" class="form-control" placeholder="Teklif no veya firma adı ara...">
+            <div class="quote-list-topbar-left">
+                <div class="quote-list-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="quote-list-quicksearch" class="form-control" placeholder="Teklif no veya firma adı ara...">
+                </div>
+                <form method="get" class="quote-status-filter">
+                    <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<QuoteStatus>()" onchange="this.form.submit()">
+                        <option value="">Tüm durumlar</option>
+                    </select>
+                </form>
             </div>
             <span class="text-secondary">Toplam <strong>@Model.Count</strong> teklif kayıtlı.</span>
         </div>

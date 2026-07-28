@@ -6,6 +6,8 @@
     var activeTrigger = null;
     var searchTimer = null;
     var searchSeq = 0;
+    var currentItems = [];
+    var highlightIndex = -1;
 
     function ensureModal() {
         if (modalEl) return;
@@ -13,20 +15,36 @@
         if (!modalEl) return;
         bsModal = new bootstrap.Modal(modalEl);
 
-        modalEl.querySelector(".lookup-modal-search").addEventListener("input", function () {
+        var searchInput = modalEl.querySelector(".lookup-modal-search");
+        searchInput.addEventListener("input", function () {
             scheduleSearch(this.value);
         });
-        modalEl.querySelector(".lookup-modal-search").addEventListener("keydown", function (e) {
+        searchInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
                 e.preventDefault();
                 clearTimeout(searchTimer);
-                runSearch(this.value);
+                if (highlightIndex >= 0 && currentItems[highlightIndex]) {
+                    selectItem(currentItems[highlightIndex]);
+                } else {
+                    runSearch(this.value);
+                }
+                return;
+            }
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                moveHighlight(1);
+                return;
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                moveHighlight(-1);
             }
         });
         modalEl.querySelector(".lookup-modal-results").addEventListener("click", function (e) {
-            var row = e.target.closest("[data-lookup-item]");
+            var row = e.target.closest("[data-lookup-idx]");
             if (!row) return;
-            selectItem(JSON.parse(row.getAttribute("data-lookup-item")));
+            var item = currentItems[Number(row.getAttribute("data-lookup-idx"))];
+            if (item) selectItem(item);
         });
         modalEl.addEventListener("shown.bs.modal", function () {
             modalEl.querySelector(".lookup-modal-search").focus();
@@ -36,6 +54,14 @@
     function scheduleSearch(term) {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(function () { runSearch(term); }, 250);
+    }
+
+    function currentMode() {
+        var endpoint = (activeTrigger && activeTrigger.getAttribute("data-lookup-endpoint")) || "";
+        if (endpoint.indexOf("/Lookup/Products") !== -1) return "product";
+        if (endpoint.indexOf("/Lookup/Customers") !== -1) return "customer";
+        if (endpoint.indexOf("/Lookup/TaxRates") !== -1) return "taxrate";
+        return "generic";
     }
 
     function runSearch(term) {
@@ -57,22 +83,81 @@
             });
     }
 
+    function formatMoney(amount) {
+        return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function renderResults(items) {
+        currentItems = items;
+        highlightIndex = items.length > 0 ? 0 : -1;
+
         var resultsEl = modalEl.querySelector(".lookup-modal-results");
         if (!items.length) {
             resultsEl.innerHTML = '<div class="text-center text-secondary py-3">Sonuç bulunamadı.</div>';
             return;
         }
 
-        var html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Kod</th><th>Ad</th></tr></thead><tbody>';
-        items.forEach(function (item) {
-            html += '<tr data-lookup-item=\'' + JSON.stringify(item).replace(/'/g, "&#39;") + '\' style="cursor:pointer">' +
-                '<td>' + escapeHtml(item.code || "") + '</td>' +
-                '<td>' + escapeHtml(item.name || "") + '</td>' +
-                '</tr>';
+        var mode = currentMode();
+        var headHtml, rowsHtml;
+
+        if (mode === "product") {
+            headHtml = '<tr><th>Stok Kodu</th><th>Stok İsmi</th><th>Kategori</th><th class="text-end">Fiyat</th><th class="text-end">Miktar</th></tr>';
+            rowsHtml = items.map(function (item, idx) {
+                return '<tr data-lookup-idx="' + idx + '">' +
+                    '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
+                    '<td>' + escapeHtml(item.name || '') + '</td>' +
+                    '<td>' + escapeHtml(item.category || '') + '</td>' +
+                    '<td class="text-end">' + formatMoney(item.salePrice) + ' ₺</td>' +
+                    '<td class="text-end">' + formatMoney(item.stock) + '</td>' +
+                    '</tr>';
+            }).join('');
+        } else if (mode === "customer") {
+            headHtml = '<tr><th>Cari Kodu</th><th>Cari İsmi</th><th class="text-end">Borç</th><th class="text-end">Alacak</th></tr>';
+            rowsHtml = items.map(function (item, idx) {
+                var debit = item.debit || 0, credit = item.credit || 0;
+                return '<tr data-lookup-idx="' + idx + '">' +
+                    '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
+                    '<td>' + escapeHtml(item.name || '') + '</td>' +
+                    '<td class="text-end">' + formatMoney(Math.max(debit - credit, 0)) + ' ₺</td>' +
+                    '<td class="text-end">' + formatMoney(Math.max(credit - debit, 0)) + ' ₺</td>' +
+                    '</tr>';
+            }).join('');
+        } else if (mode === "taxrate") {
+            headHtml = '<tr><th>Kod</th><th>Ad</th><th class="text-end">Oran</th></tr>';
+            rowsHtml = items.map(function (item, idx) {
+                return '<tr data-lookup-idx="' + idx + '">' +
+                    '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
+                    '<td>' + escapeHtml(item.name || '') + '</td>' +
+                    '<td class="text-end">%' + escapeHtml(String(item.rate != null ? item.rate : '')) + '</td>' +
+                    '</tr>';
+            }).join('');
+        } else {
+            headHtml = '<tr><th>Kod</th><th>Ad</th></tr>';
+            rowsHtml = items.map(function (item, idx) {
+                return '<tr data-lookup-idx="' + idx + '">' +
+                    '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
+                    '<td>' + escapeHtml(item.name || '') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        resultsEl.innerHTML = '<table class="table table-sm table-hover mb-0 lookup-results-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table>';
+        highlightRow();
+    }
+
+    function highlightRow() {
+        var resultsEl = modalEl.querySelector(".lookup-modal-results");
+        resultsEl.querySelectorAll("tr[data-lookup-idx]").forEach(function (row) {
+            row.classList.toggle("highlighted", Number(row.getAttribute("data-lookup-idx")) === highlightIndex);
         });
-        html += '</tbody></table>';
-        resultsEl.innerHTML = html;
+        var activeRow = resultsEl.querySelector("tr.highlighted");
+        if (activeRow) activeRow.scrollIntoView({ block: "nearest" });
+    }
+
+    function moveHighlight(delta) {
+        if (currentItems.length === 0) return;
+        highlightIndex = Math.max(0, Math.min(currentItems.length - 1, highlightIndex + delta));
+        highlightRow();
     }
 
     function escapeHtml(s) {
@@ -103,10 +188,12 @@
         ensureModal();
         if (!modalEl) return;
         activeTrigger = trigger;
-        modalEl.querySelector(".lookup-modal-title").textContent = trigger.getAttribute("data-lookup-title") || "Kayıt Seç";
+        modalEl.querySelector(".lookup-modal-title").innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ' + escapeHtml(trigger.getAttribute("data-lookup-title") || "Kayıt Seç");
         var searchInput = modalEl.querySelector(".lookup-modal-search");
         searchInput.value = "";
         modalEl.querySelector(".lookup-modal-results").innerHTML = "";
+        currentItems = [];
+        highlightIndex = -1;
         bsModal.show();
         runSearch("");
     }
@@ -120,7 +207,7 @@
     });
 
     // Quicksearch inputs: e.g. barcode scanner into product name/code field.
-    // Enter or F9 (Mikro tarzı arama tuşu) tetikler; tek eşleşme varsa otomatik seçilir (barkod davranışı).
+    // Enter veya F9 (Mikro tarzı arama tuşu) tetikler; tek eşleşme varsa otomatik seçilir (barkod davranışı).
     // Sonuna * konması da desteklenir (kozmetik, arama zaten "içerir" mantığında).
     document.addEventListener("keydown", function (e) {
         if (e.key !== "Enter" && e.key !== "F9") return;
@@ -129,8 +216,6 @@
         e.preventDefault();
 
         var endpoint = input.getAttribute("data-lookup-endpoint");
-        var hiddenId = input.getAttribute("data-target-hidden");
-        var hiddenEl = document.getElementById(hiddenId);
         var value = input.value.trim().replace(/\*+$/, "");
         if (!value) return;
 
@@ -144,7 +229,7 @@
                     var fakeTrigger = pseudoTriggerFor(input);
                     ensureModal();
                     activeTrigger = fakeTrigger;
-                    modalEl.querySelector(".lookup-modal-title").textContent = input.getAttribute("data-lookup-title") || "Kayıt Seç";
+                    modalEl.querySelector(".lookup-modal-title").innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ' + escapeHtml(input.getAttribute("data-lookup-title") || "Kayıt Seç");
                     modalEl.querySelector(".lookup-modal-search").value = value;
                     bsModal.show();
                     runSearch(value);
