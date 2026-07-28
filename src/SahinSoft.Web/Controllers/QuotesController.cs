@@ -201,6 +201,11 @@ public sealed class QuotesController(
                 return Json(new { success = false, message = "Varsayılan kategori veya KDV oranı bulunamadı." });
             }
 
+            // Teklif Stüdyosu'nda "Birim Fiyat" olarak girilen tutar KDV hariçtir; ürün kartına
+            // sitenin genel kuralına (PricesIncludeTax = true, fiyatlar KDV dahil saklanır) uygun
+            // şekilde KDV dahil hale çevrilerek kaydedilir.
+            var salePriceInclTax = RoundMoney(request.Price * (1 + taxRate.Rate / 100));
+
             var product = new Product
             {
                 StockCode = await documentNumberGenerator.GenerateAsync("STOCK"),
@@ -211,7 +216,8 @@ public sealed class QuotesController(
                 ProductType = "Hizmet",
                 Unit = "Adet",
                 TrackStock = false,
-                SalePrice = request.Price,
+                SalePrice = salePriceInclTax,
+                PricesIncludeTax = true,
                 PurchasePrice = 0,
                 IsActive = true
             };
