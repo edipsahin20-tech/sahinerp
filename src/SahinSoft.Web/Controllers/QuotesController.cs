@@ -330,6 +330,14 @@ public sealed class QuotesController(
             quote.Notes = request.Notes?.Trim();
             quote.CustomerId = customer.Id;
 
+            // Teklife eklenen ürünün stok kartındaki Satış Fiyatı, teklifte kullanılan (KDV hariç)
+            // Birim Fiyat'a göre güncellenir — stok kartı her zaman güncel/son teklif edilen KDV
+            // dahil fiyatı yansıtsın diye.
+            var linkedProductIds = request.Items.Where(x => x.DbId.HasValue).Select(x => x.DbId!.Value).Distinct().ToList();
+            var linkedProducts = linkedProductIds.Count > 0
+                ? await dbContext.Products.Where(x => linkedProductIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id)
+                : new Dictionary<int, Product>();
+
             var lineNumber = 1;
             decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
             foreach (var item in request.Items)
@@ -360,6 +368,12 @@ public sealed class QuotesController(
                     TaxAmount = taxAmount,
                     LineTotal = lineTotal
                 });
+
+                if (item.DbId is int productId && linkedProducts.TryGetValue(productId, out var linkedProduct))
+                {
+                    linkedProduct.SalePrice = RoundMoney(item.Price * (1 + item.Kdv / 100));
+                    linkedProduct.UpdatedAtUtc = DateTime.UtcNow;
+                }
             }
 
             quote.Subtotal = RoundMoney(subtotal);
