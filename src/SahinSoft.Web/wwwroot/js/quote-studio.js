@@ -379,7 +379,7 @@ function runQuickSearch(rawQuery) {
         <td>${escapeHtml(i.name)}</td>
         <td>${escapeHtml(i.category || '')}</td>
         <td class="text-end">${formatMoney(i.price)} ₺</td>
-        <td class="text-end">${formatMoney(i.stock)}</td>
+        <td class="text-end">${stockCell(i.stock)}</td>
       </tr>`).join('');
   }
 
@@ -1003,6 +1003,15 @@ function resetFormWithNewNo() {
 // --- HELPER UTILS ---
 function formatMoney(amount) {
   return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Mikro tarzı: stok 0 ise arama sonucunda kırmızı "Stokta Yok" uyarısı gösterir (seçimi engellemez).
+function stockCell(stock) {
+  const qty = Number(stock || 0);
+  if (qty <= 0) {
+    return '<span style="color:#b91c1c;font-weight:600;">Stokta Yok</span>';
+  }
+  return formatMoney(qty);
 }
 
 function escapeHtml(str) {

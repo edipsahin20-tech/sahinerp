@@ -87,6 +87,15 @@
         return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    // Mikro tarzı: stok 0 ise arama sonucunda kırmızı "Stokta Yok" uyarısı gösterir (seçimi engellemez).
+    function stockCell(stock) {
+        var qty = Number(stock || 0);
+        if (qty <= 0) {
+            return '<span style="color:#b91c1c;font-weight:600;">Stokta Yok</span>';
+        }
+        return formatMoney(qty);
+    }
+
     function renderResults(items) {
         currentItems = items;
         highlightIndex = items.length > 0 ? 0 : -1;
@@ -108,7 +117,7 @@
                     '<td>' + escapeHtml(item.name || '') + '</td>' +
                     '<td>' + escapeHtml(item.category || '') + '</td>' +
                     '<td class="text-end">' + formatMoney(item.salePrice) + ' ₺</td>' +
-                    '<td class="text-end">' + formatMoney(item.stock) + '</td>' +
+                    '<td class="text-end">' + stockCell(item.stock) + '</td>' +
                     '</tr>';
             }).join('');
         } else if (mode === "customer") {
