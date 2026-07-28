@@ -264,7 +264,7 @@ function selectProductFromSearch(prodId) {
   selectedCatalogItem = item;
   document.getElementById('picker-product-value').value = item.id;
   document.getElementById('picker-product-search').value = `${item.id} - ${item.name}`;
-  document.getElementById('item-price').value = item.price;
+  document.getElementById('item-price').value = item.unitPrice != null ? item.unitPrice : item.price;
   document.getElementById('item-unit').value = item.unit || 'Adet';
   document.getElementById('item-kdv').value = item.kdv || 20;
 
@@ -538,7 +538,8 @@ async function addCustomLineItem() {
     dbId: newProduct.id,
     category: 'Yazılımlar',
     unit: newProduct.unit,
-    price: price,
+    price: newProduct.salePrice, // KDV dahil (arama sonuçlarında gösterilecek)
+    unitPrice: price, // KDV hariç (teklif satırına yazılacak)
     stock: 0,
     kdv: newProduct.taxRate,
     name: name

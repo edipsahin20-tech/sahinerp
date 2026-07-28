@@ -228,7 +228,7 @@
                     return;
                 }
                 var item = event.detail.item;
-                row.querySelector('.price-input').value = isSales ? item.salePrice : item.purchasePrice;
+                row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
             });
         })();

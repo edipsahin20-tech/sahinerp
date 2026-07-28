@@ -19,33 +19,46 @@ public sealed class QuotesController(
 {
     public async Task<IActionResult> Index(QuoteStatus? status, string? search)
     {
-        var query = dbContext.Quotes
-            .AsNoTracking()
-            .Include(x => x.Customer)
-            .Include(x => x.Invoices)
-            .OrderByDescending(x => x.QuoteDateUtc)
-            .ThenByDescending(x => x.Id)
-            .AsQueryable();
-
-        if (status.HasValue)
-        {
-            query = query.Where(x => x.Status == status.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            query = query.Where(x => x.QuoteNumber.Contains(search) || x.Customer.Name.Contains(search));
-        }
-
         ViewBag.Status = status;
         ViewBag.Search = search;
-        ViewBag.Warehouses = await dbContext.Warehouses
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-            .ToListAsync();
-        return View(await query.ToListAsync());
+        ViewBag.Warehouses = new List<SelectListItem>();
+
+        try
+        {
+            var query = dbContext.Quotes
+                .AsNoTracking()
+                .Include(x => x.Customer)
+                .Include(x => x.Invoices)
+                .OrderByDescending(x => x.QuoteDateUtc)
+                .ThenByDescending(x => x.Id)
+                .AsQueryable();
+
+            if (status.HasValue)
+            {
+                query = query.Where(x => x.Status == status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(x => x.QuoteNumber.Contains(search) || x.Customer.Name.Contains(search));
+            }
+
+            var quotes = await query.ToListAsync();
+
+            ViewBag.Warehouses = await dbContext.Warehouses
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+                .ToListAsync();
+
+            return View(quotes);
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "Teklif listesi yüklenirken hata oluştu: " + (ex.InnerException?.Message ?? ex.Message);
+            return View(new List<Quote>());
+        }
     }
 
     public async Task<IActionResult> Studio(int? id)
@@ -134,9 +147,10 @@ public sealed class QuotesController(
                 name = x.Name,
                 category = x.Category.Name,
                 unit = x.Unit,
-                // Stok kartındaki Satış Fiyatı KDV dahildir; teklif/fatura satırındaki Birim Fiyat
-                // her zaman KDV hariçtir — burada stok kartının KDV oranına göre net tutara çevriliyor.
-                price = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
+                // price: arama sonuçlarında gösterilen, stok kartındaki KDV dahil Satış Fiyatı.
+                // unitPrice: Birim Fiyat alanına yazılacak KDV hariç tutar (stok kartının KDV oranına göre).
+                price = x.SalePrice,
+                unitPrice = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
                 stock = x.StockQuantity,
                 kdv = x.TaxRate.Rate
             })
