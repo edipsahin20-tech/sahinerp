@@ -4,6 +4,31 @@
     ViewData["Title"] = "Teklifler";
 }
 
+@section Head {
+    <style>
+        .quote-list-panel { border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); border: 1px solid #e5e7eb; }
+        .quote-list-header { padding: 16px 22px; background: #0f172a; border-bottom: 2px solid #d4af37; display: flex; align-items: center; gap: 10px; }
+        .quote-list-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .quote-list-header h2 i { color: #d4af37; }
+        .quote-list-body { background: #fff; padding: 18px 22px 22px; }
+        .quote-list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .quote-list-search { position: relative; flex: 1 1 320px; max-width: 420px; }
+        .quote-list-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .quote-list-search input { padding-left: 36px; border-radius: 8px; }
+        .quote-code-badge { font-family: 'Fira Code', monospace; font-size: 11px; color: #a3760f; background: rgba(212, 175, 55, 0.15); padding: 3px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
+        .quote-status-pill { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; border: 1px solid transparent; }
+        .quote-status-pill.draft { background: rgba(100, 116, 139, 0.12); color: #475569; border-color: rgba(100, 116, 139, 0.35); }
+        .quote-status-pill.sent { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; border-color: rgba(37, 99, 235, 0.35); }
+        .quote-status-pill.approved { background: rgba(5, 150, 105, 0.12); color: #047857; border-color: rgba(5, 150, 105, 0.35); }
+        .quote-status-pill.rejected { background: rgba(220, 38, 38, 0.12); color: #b91c1c; border-color: rgba(220, 38, 38, 0.35); }
+        .quote-list-panel table.erp-table thead th { background: #f8fafc; }
+        .btn-quote-load { background: #d4af37; border-color: #d4af37; color: #1f2937; font-weight: 600; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; display: inline-block; }
+        .btn-quote-load:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
+        .btn-quote-delete { color: #b91c1c; border: 1px solid #b91c1c; background: #fff; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; margin-left: 6px; }
+        .btn-quote-delete:hover { background: #fef2f2; color: #b91c1c; }
+    </style>
+}
+
 <div class="erp-toolbar">
     <div class="erp-toolbar-title">
         <h1>Teklifler</h1>
@@ -37,58 +62,82 @@
     <button class="btn btn-erp-primary">Ara</button>
 </form>
 
-<div class="erp-panel">
-    <div class="erp-panel-body p-0">
-    <div class="erp-table-wrap">
-        <table class="erp-table">
-            <thead>
-                <tr>
-                    <th>Teklif No</th>
-                    <th>Tarih</th>
-                    <th>Cari</th>
-                    <th>Durum</th>
-                    <th class="text-end">Tutar</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td class="fw-semibold">@item.QuoteNumber</td>
-                    <td>@item.QuoteDateUtc.ToString("dd.MM.yyyy")</td>
-                    <td>@item.Customer.Name</td>
-                    <td>
-                        @{
-                            var badgeClass = item.Status switch
-                            {
-                                QuoteStatus.Draft => "text-bg-secondary-subtle text-secondary-emphasis",
-                                QuoteStatus.Sent => "text-bg-warning-subtle text-warning-emphasis",
-                                QuoteStatus.Approved => "text-bg-success-subtle text-success-emphasis",
-                                _ => "text-bg-danger-subtle text-danger-emphasis"
-                            };
-                            var statusText = item.Status switch
-                            {
-                                QuoteStatus.Draft => "Taslak",
-                                QuoteStatus.Sent => "Gönderildi",
-                                QuoteStatus.Approved => "Onaylı",
-                                _ => "Reddedildi"
-                            };
-                        }
-                        <span class="badge @badgeClass">@statusText</span>
-                    </td>
-                    <td class="text-end">@item.GrandTotal.ToString("N2") ₺</td>
-                    <td class="text-end">
-                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Görüntüle</a>
-                    </td>
-                </tr>
-            }
-            @if (Model.Count == 0)
-            {
-                <tr><td colspan="6" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
-            }
-            </tbody>
-        </table>
+<div class="quote-list-panel">
+    <div class="quote-list-header">
+        <h2><i class="fa-solid fa-folder-open"></i> Kaydedilen Teklifler</h2>
     </div>
+    <div class="quote-list-body">
+        <div class="quote-list-topbar">
+            <div class="quote-list-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="quote-list-quicksearch" class="form-control" placeholder="Teklif no veya firma adı ara...">
+            </div>
+            <span class="text-secondary">Toplam <strong>@Model.Count</strong> teklif kayıtlı.</span>
+        </div>
+
+        <div class="erp-table-wrap">
+            <table class="erp-table" id="quote-list-table">
+                <thead>
+                    <tr>
+                        <th>Teklif No</th>
+                        <th>Tarih</th>
+                        <th>Cari</th>
+                        <th>Durum</th>
+                        <th class="text-end">Tutar</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model)
+                {
+                    var statusClass = item.Status switch
+                    {
+                        QuoteStatus.Draft => "draft",
+                        QuoteStatus.Sent => "sent",
+                        QuoteStatus.Approved => "approved",
+                        _ => "rejected"
+                    };
+                    var statusText = item.Status switch
+                    {
+                        QuoteStatus.Draft => "Taslak",
+                        QuoteStatus.Sent => "Gönderildi",
+                        QuoteStatus.Approved => "Onaylı",
+                        _ => "Reddedildi"
+                    };
+                    <tr data-search="@($"{item.QuoteNumber} {item.Customer.Name}".ToLowerInvariant())">
+                        <td><span class="quote-code-badge">@item.QuoteNumber</span></td>
+                        <td>@item.QuoteDateUtc.ToString("dd.MM.yyyy")</td>
+                        <td class="fw-semibold">@item.Customer.Name</td>
+                        <td><span class="quote-status-pill @statusClass">@statusText</span></td>
+                        <td class="text-end fw-semibold">@item.GrandTotal.ToString("N2") ₺</td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn-quote-load">Görüntüle / Düzenle</a>
+                            @if (item.Status == QuoteStatus.Draft)
+                            {
+                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bu teklifi kalıcı olarak silmek istediğinize emin misiniz?');">
+                                    <button type="submit" class="btn-quote-delete">Sil</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('quote-list-quicksearch').addEventListener('input', function () {
+            var q = this.value.trim().toLocaleLowerCase('tr-TR');
+            document.querySelectorAll('#quote-list-table tbody tr[data-search]').forEach(function (row) {
+                row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+            });
+        });
+    </script>
+}
