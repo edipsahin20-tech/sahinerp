@@ -686,6 +686,23 @@
   max-width: 1000px;
 }
 
+.quote-studio-page .modal-content.modal-md{
+  max-width: 720px;
+}
+
+.quote-studio-page .quick-search-table-wrap{
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.quote-studio-page .quick-search-table tbody tr{
+  cursor: pointer;
+}
+
+.quote-studio-page .quick-search-table tbody tr.highlighted{
+  background: rgba(212, 175, 55, 0.15);
+}
+
 @keyframes modalFadeIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }

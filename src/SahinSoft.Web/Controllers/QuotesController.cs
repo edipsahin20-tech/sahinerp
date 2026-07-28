@@ -88,6 +88,7 @@ public sealed class QuotesController(
             .Select(x => new
             {
                 id = x.Id,
+                code = x.Code,
                 name = x.Name,
                 company = x.Name,
                 contact = x.Contacts.Where(c => c.IsPrimary).Select(c => c.FullName).FirstOrDefault()
@@ -97,11 +98,22 @@ public sealed class QuotesController(
                 taxOffice = x.TaxOffice != null && x.TaxNumber != null
                     ? x.TaxOffice + " " + x.TaxNumber
                     : x.TaxOffice ?? x.TaxNumber,
-                address = x.Address
+                address = x.Address,
+                debit = dbContext.CurrentAccountTransactions.Where(t => t.CustomerId == x.Id).Sum(t => (decimal?)t.Debit) ?? 0,
+                credit = dbContext.CurrentAccountTransactions.Where(t => t.CustomerId == x.Id).Sum(t => (decimal?)t.Credit) ?? 0
             })
             .ToListAsync();
 
         return Json(customers);
+    }
+
+    public async Task<IActionResult> GetQuoteMetricsApi()
+    {
+        var totalCount = await dbContext.Quotes.CountAsync();
+        var approvedCount = await dbContext.Quotes.CountAsync(x => x.Status == QuoteStatus.Approved || x.Status == QuoteStatus.Sent);
+        var totalVolume = await dbContext.Quotes.SumAsync(x => (decimal?)x.GrandTotal) ?? 0;
+
+        return Json(new { totalCount, approvedCount, totalVolume });
     }
 
     [HttpPost]

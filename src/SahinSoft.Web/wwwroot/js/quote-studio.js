@@ -6,7 +6,6 @@
 // --- GLOBAL STATE ---
 let sahinCatalog = [];
 let currentQuoteItems = [];
-let savedProposals = [];
 let activeCurrency = 'TRY';
 let liveCustomers = [];
 let selectedCatalogItem = null;
@@ -23,29 +22,8 @@ function turkishNormalize(str) {
     .toLowerCase();
 }
 
-// INITIAL STOCK CATALOG SEEDED FROM sahinbilisim.com.tr
-const DEFAULT_SAHIN_CATALOG = [
-  { id: 'SHN-POS-101', dbId: 1, name: 'ŞahinSoft 15.6" Çift Ekran Dokunmatik POS PC (Intel i5, 8GB RAM, 128GB SSD)', category: 'Dokunmatik POS PC', unit: 'Adet', price: 18500.00, stock: 45, kdv: 20 },
-  { id: 'SHN-POS-102', dbId: 2, name: 'ŞahinSoft Endüstriyel Dokunmatik Kasa POS PC Terminali (Kapasitif Dokunmatik)', category: 'Dokunmatik POS PC', unit: 'Adet', price: 15200.00, stock: 30, kdv: 20 },
-  { id: 'SHN-TERM-201', dbId: 3, name: 'Android 11 Endüstriyel El Terminali (2D Zebra Barkod Okuyuculu, IP67)', category: 'El Terminalleri', unit: 'Adet', price: 21000.00, stock: 25, kdv: 20 },
-  { id: 'SHN-TERM-202', dbId: 4, name: 'Android Restoran & Garson PDA Sipariş Terminali (Dahili Termal Yazıcılı)', category: 'Restoran PDA', unit: 'Adet', price: 12500.00, stock: 60, kdv: 20 },
-  { id: 'SHN-BAR-301', dbId: 5, name: 'ŞahinSoft 2D Kablosuz Bluetooth Barkod Okuyucu (Şarj Stantlı)', category: 'Barkod Okuyucular', unit: 'Adet', price: 3400.00, stock: 120, kdv: 20 },
-  { id: 'SHN-BAR-302', dbId: 6, name: 'Çok Yönlü Masaüstü OMNI Barkod Okuyucu (Market & Perakende)', category: 'Barkod Okuyucular', unit: 'Adet', price: 4200.00, stock: 85, kdv: 20 },
-  { id: 'SHN-PRN-401', dbId: 7, name: '80mm Otomatik Kesmeli Termal Fiş Yazıcısı (USB + Ethernet + RS232)', category: 'Termal Yazıcılar', unit: 'Adet', price: 3800.00, stock: 95, kdv: 20 },
-  { id: 'SHN-PRN-402', dbId: 8, name: 'Endüstriyel Barkod & Etiket Yazıcı (Termal Transfer / Direkt Termal)', category: 'Termal Yazıcılar', unit: 'Adet', price: 9500.00, stock: 40, kdv: 20 },
-  { id: 'SHN-SCL-501', dbId: 9, name: 'Barkodlu Elektronik Terazi (30 kg Kapasite, Fiyat Hesablı)', category: 'Elektronik Teraziler', unit: 'Adet', price: 14500.00, stock: 20, kdv: 20 },
-  { id: 'SHN-SOFT-601', dbId: 10, name: 'ŞahinSoft Perakende & Hızlı Satış Otomasyon Yazılımı (Süresiz Lisans)', category: 'Yazılımlar', unit: 'Lisans', price: 9500.00, stock: 999, kdv: 20 },
-  { id: 'SHN-SOFT-602', dbId: 11, name: 'ŞahinSoft Depo WMS & Sevkiyat Yönetim Otomasyonu (El Terminali Modüllü)', category: 'Yazılımlar', unit: 'Lisans', price: 24000.00, stock: 999, kdv: 20 },
-  { id: 'SHN-SOFT-603', dbId: 12, name: 'ŞahinSoft Restoran & Kafe Adisyon Yazılımı (Garson PDA & Mutfak Entegre)', category: 'Yazılımlar', unit: 'Lisans', price: 11000.00, stock: 999, kdv: 20 },
-  { id: 'SHN-SOFT-604', dbId: 13, name: 'Mikro ERP / Ticari Yazılım Çift Yönlü Canlı Entegrasyon Modülü', category: 'Yazılımlar', unit: 'Lisans', price: 16500.00, stock: 999, kdv: 20 },
-  { id: 'SHN-EDON-701', dbId: 14, name: 'GİB Uyumlu e-Fatura & e-Arşiv Entegrasyon Paketi (1.000 Kontör Dahil)', category: 'E-Dönüşüm', unit: 'Paket', price: 2500.00, stock: 999, kdv: 20 },
-  { id: 'SHN-EDON-702', dbId: 15, name: 'e-İrsaliye ve e-Müstahsil Makbuzu Entegrasyon Modülü', category: 'E-Dönüşüm', unit: 'Paket', price: 3200.00, stock: 999, kdv: 20 },
-  { id: 'SHN-ACC-801', dbId: 16, name: 'Ağır Hizmet Tipi Ağaç / Çelik Para Çekmecesi (5 Banknot, RJ11 Bağlantılı)', category: 'Dokunmatik POS PC', unit: 'Adet', price: 2100.00, stock: 110, kdv: 20 }
-];
-
 // INITIALIZE APP ON DOM READY
 document.addEventListener('DOMContentLoaded', () => {
-  initStorage();
   populateCategoryDropdowns();
   generateNewQuoteNumber();
   setDefaultDates();
@@ -53,10 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch Live ASP.NET Core SQL Database Products and Customers
   loadLiveDbCatalog();
   loadLiveDbCustomers();
+  refreshDashboardMetrics();
 
   updateCalculations();
   updatePdfPreview();
-  renderDashboardMetrics();
 
   // Canlı kur, sayfa geneli currency_sync.js tarafından yönetilir (15 dk otomatik + Canlı Kur Al butonu).
   window.addEventListener('garantiRatesUpdated', () => {
@@ -66,20 +44,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- LIVE ASP.NET CORE SQL DATABASE FETCH ---
+// Kataloğu her zaman canlı veritabanından çeker; sahte/örnek veriye asla düşmez.
 async function loadLiveDbCatalog() {
   try {
     const res = await fetch('/Quotes/GetCatalogDataApi');
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.products && data.products.length > 0) {
-        sahinCatalog = data.products;
-        populateCategoryDropdowns();
-        renderStockManagementTable();
-        renderDashboardMetrics();
-      }
-    }
+    const data = res.ok ? await res.json() : null;
+    sahinCatalog = (data && data.products) || [];
   } catch (err) {
-    console.log('ASP.NET SQL veritabanı stok servis bilgisi (fallback aktif):', err);
+    sahinCatalog = [];
+    console.error('Stok kataloğu yüklenemedi:', err);
+  }
+  populateCategoryDropdowns();
+  renderStockManagementTable();
+}
+
+async function refreshDashboardMetrics() {
+  try {
+    const res = await fetch('/Quotes/GetQuoteMetricsApi');
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('metric-total-proposals').textContent = data.totalCount;
+    document.getElementById('metric-total-volume').textContent = `${formatMoney(data.totalVolume)} ₺`;
+    document.getElementById('metric-approved-count').textContent = data.approvedCount;
+  } catch (err) {
+    console.error('Teklif metrikleri yüklenemedi:', err);
   }
 }
 
@@ -111,34 +99,20 @@ function setupCustomerAutocomplete() {
     const val = turkishNormalize(companyInput.value);
     const found = liveCustomers.find(c => turkishNormalize(c.name) === val) ||
                   liveCustomers.find(c => turkishNormalize(c.name).includes(val) || turkishNormalize(c.company).includes(val));
-    if (found) {
-      document.getElementById('cust-contact').value = found.contact || found.name;
-      document.getElementById('cust-phone').value = found.phone || '';
-      document.getElementById('cust-email').value = found.email || '';
-      document.getElementById('cust-tax-office').value = found.taxOffice || '';
-      document.getElementById('cust-address').value = found.address || '';
-      document.getElementById('cust-company').dataset.customerId = found.id;
-      updatePdfPreview();
-    }
+    if (found) applySelectedCustomer(found);
   });
 }
 
-// --- 1. STORAGE & INIT FUNCTIONS ---
-function initStorage() {
-  const localCatalog = localStorage.getItem('sahin_admin_catalog');
-  if (localCatalog) {
-    try { sahinCatalog = JSON.parse(localCatalog); } catch(e) { sahinCatalog = [...DEFAULT_SAHIN_CATALOG]; }
-  } else {
-    sahinCatalog = [...DEFAULT_SAHIN_CATALOG];
-    localStorage.setItem('sahin_admin_catalog', JSON.stringify(sahinCatalog));
-  }
-
-  const localHistory = localStorage.getItem('sahin_admin_proposals');
-  if (localHistory) {
-    try { savedProposals = JSON.parse(localHistory); } catch(e) { savedProposals = []; }
-  } else {
-    savedProposals = [];
-  }
+// Bulunan/seçilen cariyi Müşteri & Firma Bilgileri alanlarına doldurur (datalist ve F9 arama penceresi ortak kullanır).
+function applySelectedCustomer(found) {
+  document.getElementById('cust-company').value = found.company || found.name;
+  document.getElementById('cust-contact').value = found.contact || found.name;
+  document.getElementById('cust-phone').value = found.phone || '';
+  document.getElementById('cust-email').value = found.email || '';
+  document.getElementById('cust-tax-office').value = found.taxOffice || '';
+  document.getElementById('cust-address').value = found.address || '';
+  document.getElementById('cust-company').dataset.customerId = found.id;
+  updatePdfPreview();
 }
 
 function generateNewQuoteNumber() {
@@ -259,7 +233,7 @@ function selectProductFromSearch(prodId) {
 function handleProductSearchKeydown(e, input) {
   if (e.key === 'F9') {
     e.preventDefault();
-    openFullProductLookup(input.value);
+    openQuickSearchModal('product', input.value);
     return;
   }
   if (e.key === 'ArrowDown') {
@@ -288,50 +262,127 @@ function handleProductSearchKeydown(e, input) {
   }
 }
 
-// F9: Mikro tarzı tam ekran arama penceresi (sitenin genelindeki paylaşılan arama modalı).
-// Şu ana kadar yazılmış olan metni de modaldaki arama kutusuna aktarır.
-function openFullProductLookup(currentText) {
-  const trigger = document.getElementById('picker-product-lookup-trigger');
-  if (!trigger) return;
+// F9: küçük, kompakt arama penceresi (Mikro tarzı). Ürün ve cari aramasında ortak kullanılır.
+// Boş alanda da açılır (o an seçili kategori/tüm liste taranır); ok tuşlarıyla gezinilir.
+let quickSearchMode = 'product';
+let quickSearchResults = [];
+let quickSearchHighlightIndex = -1;
 
-  document.getElementById('picker-product-results').classList.remove('active');
-  trigger.click();
+function openQuickSearchModal(mode, initialQuery) {
+  quickSearchMode = mode;
+  const modal = document.getElementById('quick-search-modal');
+  const title = document.getElementById('quick-search-title');
+  const thead = document.getElementById('quick-search-thead');
+  const input = document.getElementById('quick-search-input');
+  if (!modal || !input) return;
 
-  const query = (currentText || '').trim().replace(/\*+$/, '');
-  setTimeout(() => {
-    const modalSearch = document.querySelector('#lookupModal .lookup-modal-search');
-    if (modalSearch) {
-      modalSearch.value = query;
-      modalSearch.dispatchEvent(new Event('input', { bubbles: true }));
-      modalSearch.focus();
-    }
-  }, 50);
+  document.getElementById('picker-product-results')?.classList.remove('active');
+
+  if (mode === 'customer') {
+    title.textContent = 'Cari Ara (F9)';
+    thead.innerHTML = '<tr><th>Cari Kodu</th><th>Cari İsmi</th><th class="text-end">Borç</th><th class="text-end">Alacak</th></tr>';
+  } else {
+    title.textContent = 'Ürün / Stok Ara (F9)';
+    thead.innerHTML = '<tr><th>Stok Kodu</th><th>Stok İsmi</th><th>Kategori</th><th class="text-end">Fiyat</th><th class="text-end">Miktar</th></tr>';
+  }
+
+  modal.classList.add('active');
+  input.value = (initialQuery || '').trim().replace(/\*+$/, '');
+  runQuickSearch(input.value);
+  setTimeout(() => { input.focus(); input.select(); }, 30);
 }
 
-// Paylaşılan arama penceresinden (F9) bir ürün seçildiğinde, fiyat/birim/KDV alanlarını doldurur.
-document.addEventListener('lookup:selected', function (e) {
-  if (!e.detail || !e.detail.hiddenEl || e.detail.hiddenEl.id !== 'picker-product-value') {
+function closeQuickSearchModal() {
+  document.getElementById('quick-search-modal')?.classList.remove('active');
+  quickSearchResults = [];
+  quickSearchHighlightIndex = -1;
+}
+
+function runQuickSearch(rawQuery) {
+  const query = turkishNormalize((rawQuery || '').trim());
+  const tbody = document.getElementById('quick-search-tbody');
+  let rowsHtml = '';
+
+  if (quickSearchMode === 'customer') {
+    quickSearchResults = liveCustomers.filter(c =>
+      !query || turkishNormalize(c.code || '').includes(query) || turkishNormalize(c.name).includes(query)
+    ).slice(0, 100);
+
+    rowsHtml = quickSearchResults.map((c, idx) => `
+      <tr data-idx="${idx}" onclick="selectQuickSearchItem(${idx})">
+        <td><span class="item-code-badge">${escapeHtml(c.code || '')}</span></td>
+        <td>${escapeHtml(c.name)}</td>
+        <td class="text-end">${formatMoney(Math.max(c.debit - c.credit, 0))} ₺</td>
+        <td class="text-end">${formatMoney(Math.max(c.credit - c.debit, 0))} ₺</td>
+      </tr>`).join('');
+  } else {
+    const category = document.getElementById('picker-category').value;
+    const pool = category === 'ALL' ? sahinCatalog : sahinCatalog.filter(i => i.category === category);
+    quickSearchResults = pool.filter(i =>
+      !query || turkishNormalize(i.id).includes(query) || turkishNormalize(i.name).includes(query)
+    ).slice(0, 100);
+
+    rowsHtml = quickSearchResults.map((i, idx) => `
+      <tr data-idx="${idx}" onclick="selectQuickSearchItem(${idx})">
+        <td><span class="item-code-badge">${escapeHtml(i.id)}</span></td>
+        <td>${escapeHtml(i.name)}</td>
+        <td>${escapeHtml(i.category || '')}</td>
+        <td class="text-end">${formatMoney(i.price)} ₺</td>
+        <td class="text-end">${formatMoney(i.stock)}</td>
+      </tr>`).join('');
+  }
+
+  const colCount = quickSearchMode === 'customer' ? 4 : 5;
+  tbody.innerHTML = rowsHtml || `<tr><td colspan="${colCount}" class="text-center text-secondary py-3">Sonuç bulunamadı.</td></tr>`;
+  quickSearchHighlightIndex = quickSearchResults.length > 0 ? 0 : -1;
+  highlightQuickSearchRow();
+}
+
+function highlightQuickSearchRow() {
+  const tbody = document.getElementById('quick-search-tbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('tr[data-idx]').forEach(row => {
+    row.classList.toggle('highlighted', Number(row.dataset.idx) === quickSearchHighlightIndex);
+  });
+  tbody.querySelector('tr.highlighted')?.scrollIntoView({ block: 'nearest' });
+}
+
+function moveQuickSearchHighlight(delta) {
+  if (quickSearchResults.length === 0) return;
+  quickSearchHighlightIndex = Math.max(0, Math.min(quickSearchResults.length - 1, quickSearchHighlightIndex + delta));
+  highlightQuickSearchRow();
+}
+
+function selectQuickSearchItem(idx) {
+  const item = quickSearchResults[idx];
+  if (!item) return;
+  if (quickSearchMode === 'customer') {
+    applySelectedCustomer(item);
+  } else {
+    selectProductFromSearch(item.id);
+  }
+  closeQuickSearchModal();
+}
+
+function handleQuickSearchKeydown(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeQuickSearchModal(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveQuickSearchHighlight(1); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); moveQuickSearchHighlight(-1); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (quickSearchHighlightIndex >= 0) selectQuickSearchItem(quickSearchHighlightIndex);
+  }
+}
+
+// Müşteri & Firma alanlarında F9 ile cari arama penceresi açılır; Enter sıradaki alana geçer.
+function handleCustomerFieldKeydown(e, input, nextId) {
+  if (e.key === 'F9') {
+    e.preventDefault();
+    openQuickSearchModal('customer', input.value);
     return;
   }
-  const item = e.detail.item;
-  selectedCatalogItem = {
-    id: item.code,
-    dbId: item.id,
-    name: item.name,
-    unit: item.unit || 'Adet',
-    price: item.salePrice,
-    kdv: item.taxRate
-  };
-  document.getElementById('item-price').value = selectedCatalogItem.price;
-  document.getElementById('item-unit').value = selectedCatalogItem.unit;
-  document.getElementById('item-kdv').value = selectedCatalogItem.kdv;
-  document.getElementById('picker-product-value').value = selectedCatalogItem.id;
-  document.getElementById('picker-product-search').value = `${selectedCatalogItem.id} - ${selectedCatalogItem.name}`;
-
-  const qtyInput = document.getElementById('item-qty');
-  qtyInput.focus();
-  qtyInput.select();
-});
+  focusNextOnEnter(e, nextId);
+}
 
 // Miktar/Birim/Fiyat/KDV/İskonto alanlarında Enter, sıradaki alana geçer.
 function focusNextOnEnter(e, nextId) {
@@ -419,34 +470,32 @@ async function addCustomLineItem() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name, price: price })
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success) {
-        newProduct = data;
-      } else {
-        console.warn('Otomatik stok kartı oluşturulamadı:', data && data.message);
-      }
+    const data = await res.json().catch(() => null);
+    if (res.ok && data && data.success) {
+      newProduct = data;
+    } else {
+      alert('Özel kalem stok kartı olarak oluşturulamadı: ' + ((data && data.message) || 'Sunucu hatası. Lütfen tekrar deneyin.'));
+      return;
     }
   } catch (err) {
-    console.warn('Otomatik stok kartı oluşturma uyarısı:', err);
+    alert('Özel kalem stok kartı olarak oluşturulamadı: bağlantı hatası. Lütfen tekrar deneyin.');
+    return;
   }
 
   const catalogEntry = {
-    id: newProduct ? newProduct.code : ('CUST-' + Math.floor(Math.random() * 1000)),
-    dbId: newProduct ? newProduct.id : null,
+    id: newProduct.code,
+    dbId: newProduct.id,
     category: 'Yazılımlar',
-    unit: newProduct ? newProduct.unit : 'Hizmet',
+    unit: newProduct.unit,
     price: price,
     stock: 0,
-    kdv: newProduct ? newProduct.taxRate : 20,
+    kdv: newProduct.taxRate,
     name: name
   };
 
   // Yeni oluşan stok kartını kataloğa da ekle, sonraki tekliflerde aramada çıksın.
-  if (newProduct) {
-    sahinCatalog.push(catalogEntry);
-    populateCategoryDropdowns();
-  }
+  sahinCatalog.push(catalogEntry);
+  populateCategoryDropdowns();
 
   currentQuoteItems.push({
     id: catalogEntry.id,
@@ -704,58 +753,94 @@ function updatePdfPreview() {
 }
 
 // --- 6. SAVE & HIGH QUALITY PDF EXPORT ENGINE ---
-function saveAndExportPdf() {
+function validateQuoteBeforeSave() {
   const company = document.getElementById('cust-company').value;
   const contact = document.getElementById('cust-contact').value;
 
   if (!company || !contact) {
     alert('Lütfen teklif oluşturmak için Firma Unvanı ve İlgili Kişi alanlarını doldurunuz.');
-    return;
+    return false;
   }
 
   if (currentQuoteItems.length === 0) {
     alert('Teklif oluşturmak için en az 1 adet ürün eklemelisiniz.');
-    return;
+    return false;
   }
+
+  return true;
+}
+
+async function saveAndExportPdf() {
+  if (!validateQuoteBeforeSave()) return;
 
   updatePdfPreview();
 
-  // Save proposal to storage history & SQL Database API
-  saveProposalToHistory('Onaylandı / PDF İndirildi');
+  let result;
+  try {
+    result = await saveQuoteToDatabase('Onaylandı / PDF İndirildi');
+  } catch (err) {
+    alert('Teklif veritabanına kaydedilemedi: ' + err.message);
+    return;
+  }
 
   const quoteNo = document.getElementById('quote-no').value;
+  const company = document.getElementById('cust-company').value;
   const sanitizedCompany = company.replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `Sahin_Bilisim_Teklif_${quoteNo}_${sanitizedCompany}.pdf`;
 
-  exportElementToPdf('pdf-template', filename).then(() => {
-    alert(`"${filename}" başarıyla oluşturuldu, SQL veritabanına kaydedildi ve cihazınıza indirildi!`);
-    renderDashboardMetrics();
-  }).catch(err => {
+  try {
+    await exportElementToPdf('pdf-template', filename);
+    alert(`"${filename}" başarıyla oluşturuldu, veritabanına kaydedildi ve cihazınıza indirildi!`);
+  } catch (err) {
     console.error('PDF Generation Error:', err);
-    alert('PDF oluşturulurken bir uyarı oluştu. Doğrudan yazdır butonu ile PDF olarak yazdırabilirsiniz.');
-  });
+    alert('Teklif veritabanına kaydedildi, ancak PDF oluşturulurken bir uyarı oluştu. "Doğrudan Yazdır" butonuyla yazdırabilirsiniz.');
+  }
+
+  refreshDashboardMetrics();
+  offerInvoiceConversion(result);
 }
 
-function saveAsDraft() {
-  const company = document.getElementById('cust-company').value;
-  const contact = document.getElementById('cust-contact').value;
+async function saveAsDraft() {
+  if (!validateQuoteBeforeSave()) return;
 
-  if (!company || !contact) {
-    alert('Lütfen teklif oluşturmak için Firma Unvanı ve İlgili Kişi alanlarını doldurunuz.');
+  let result;
+  try {
+    result = await saveQuoteToDatabase('Taslak');
+  } catch (err) {
+    alert('Teklif veritabanına kaydedilemedi: ' + err.message);
     return;
   }
 
-  if (currentQuoteItems.length === 0) {
-    alert('Teklif oluşturmak için en az 1 adet ürün eklemelisiniz.');
+  alert('Teklifiniz başarıyla veritabanına taslak olarak kaydedildi!');
+  refreshDashboardMetrics();
+  offerInvoiceConversion(result);
+}
+
+async function saveAndPrint() {
+  if (!validateQuoteBeforeSave()) return;
+
+  updatePdfPreview();
+
+  try {
+    await saveQuoteToDatabase('Onaylandı / Yazdırıldı');
+  } catch (err) {
+    alert('Teklif kaydedilemediği için yazdırma iptal edildi: ' + err.message);
     return;
   }
 
-  saveProposalToHistory('Taslak');
-  alert('Teklifiniz başarıyla SQL veritabanına taslak olarak kaydedildi!');
-  renderDashboardMetrics();
+  refreshDashboardMetrics();
+  window.print();
 }
 
-function saveProposalToHistory(status = 'Taslak') {
+function offerInvoiceConversion(result) {
+  if (result && result.id && confirm(`Teklif ${result.quoteNumber || ''} kaydedildi. Teklif detayına gidip satış faturasına dönüştürmek ister misiniz?`)) {
+    window.location.href = '/Quotes/Details/' + result.id;
+  }
+}
+
+// Teklifi gerçek SQL veritabanına kaydeder (SaveQuoteApi). Başarısız olursa hatayı fırlatır,
+// hiçbir zaman sessizce başarılıymış gibi davranmaz.
+async function saveQuoteToDatabase(status) {
   const quoteNo = document.getElementById('quote-no').value;
   const company = document.getElementById('cust-company').value;
   const contact = document.getElementById('cust-contact').value;
@@ -763,7 +848,6 @@ function saveProposalToHistory(status = 'Taslak') {
   const companyInput = document.getElementById('cust-company');
   const customerId = companyInput ? parseInt(companyInput.dataset.customerId || '0') : 0;
 
-  // Calculate totals
   let subtotal = 0;
   let totalDiscount = 0;
   let totalKdv = 0;
@@ -780,7 +864,6 @@ function saveProposalToHistory(status = 'Taslak') {
   const grandTotal = (subtotal - totalDiscount) + totalKdv;
 
   const proposalObj = {
-    no: quoteNo,
     quoteNumber: quoteNo,
     customerId: customerId > 0 ? customerId : null,
     company: company,
@@ -789,78 +872,40 @@ function saveProposalToHistory(status = 'Taslak') {
     email: document.getElementById('cust-email').value || '',
     taxOffice: document.getElementById('cust-tax-office').value || '',
     address: document.getElementById('cust-address').value || '',
-    date: date,
     quoteDate: date ? new Date(date).toISOString() : new Date().toISOString(),
-    currency: activeCurrency,
     currencyCode: activeCurrency,
     exchangeRate: window.globalExchangeRates[activeCurrency] || 1,
     notes: document.getElementById('quote-note').value || '',
     grandTotal: grandTotal,
     status: status,
-    items: JSON.parse(JSON.stringify(currentQuoteItems)),
-    savedAt: new Date().toISOString()
+    items: JSON.parse(JSON.stringify(currentQuoteItems))
   };
 
-  // Local storage save
-  const existingIdx = savedProposals.findIndex(p => p.no === quoteNo);
-  if (existingIdx >= 0) {
-    savedProposals[existingIdx] = proposalObj;
-  } else {
-    savedProposals.unshift(proposalObj);
+  let res;
+  try {
+    res = await fetch('/Quotes/SaveQuoteApi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(proposalObj)
+    });
+  } catch (err) {
+    throw new Error('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
   }
 
-  localStorage.setItem('sahin_admin_proposals', JSON.stringify(savedProposals));
-  document.getElementById('saved-count').textContent = savedProposals.length;
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.success) {
+    throw new Error((data && data.message) || 'Sunucu hatası (oturumunuzun süresi dolmuş olabilir, sayfayı yenileyip tekrar deneyin).');
+  }
 
-  // ASP.NET Core SQL Database API Call
-  fetch('/Quotes/SaveQuoteApi', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(proposalObj)
-  }).then(r => r.json()).then(res => {
-    if (res && res.success) {
-      console.log('Teklif SQL Veritabanına başarıyla kaydedildi! Kayıt ID:', res.id);
-      if (res.quoteNumber) {
-        document.getElementById('quote-no').value = res.quoteNumber;
-        document.getElementById('pdf-val-no').textContent = res.quoteNumber;
-        proposalObj.no = res.quoteNumber;
-        proposalObj.quoteNumber = res.quoteNumber;
-        const idx = savedProposals.findIndex(p => p === proposalObj || p.savedAt === proposalObj.savedAt);
-        if (idx >= 0) {
-          savedProposals[idx].no = res.quoteNumber;
-          savedProposals[idx].quoteNumber = res.quoteNumber;
-          localStorage.setItem('sahin_admin_proposals', JSON.stringify(savedProposals));
-        }
-      }
-      if (res.id && confirm(`Teklif ${res.quoteNumber || ''} kaydedildi. Teklif detayına gidip satış faturasına dönüştürmek ister misiniz?`)) {
-        window.location.href = '/Quotes/Details/' + res.id;
-      }
-    }
-  }).catch(e => console.warn('SQL Veritabanı kayıt uyarısı:', e));
+  if (data.quoteNumber) {
+    document.getElementById('quote-no').value = data.quoteNumber;
+    document.getElementById('pdf-val-no').textContent = data.quoteNumber;
+  }
+
+  return data;
 }
 
-// --- 7. DASHBOARD METRICS ---
-function renderDashboardMetrics() {
-  document.getElementById('metric-total-proposals').textContent = savedProposals.length;
-  document.getElementById('saved-count').textContent = savedProposals.length;
-
-  let totalVolTL = 0;
-  let approvedCount = 0;
-
-  savedProposals.forEach(p => {
-    let amtTL = p.grandTotal;
-    if (p.currency === 'USD') amtTL *= window.globalExchangeRates.USD;
-    if (p.currency === 'EUR') amtTL *= window.globalExchangeRates.EUR;
-
-    totalVolTL += amtTL;
-    if (p.status.includes('Onaylandı')) approvedCount++;
-  });
-
-  document.getElementById('metric-total-volume').textContent = `${formatMoney(totalVolTL)} ₺`;
-  document.getElementById('metric-approved-count').textContent = approvedCount;
-}
-
-// --- 8. MODAL HANDLERS & TABLES ---
+// --- 7. MODAL HANDLERS & TABLES ---
 function openStockModal() {
   document.getElementById('stock-modal').classList.add('active');
   renderStockManagementTable();
@@ -895,84 +940,6 @@ function renderStockManagementTable() {
     `;
     tbody.appendChild(tr);
   });
-}
-
-// HISTORY MODAL
-function openHistoryModal() {
-  document.getElementById('history-modal').classList.add('active');
-  renderHistoryTable();
-}
-
-function closeHistoryModal() {
-  document.getElementById('history-modal').classList.remove('active');
-}
-
-function renderHistoryTable() {
-  const tbody = document.getElementById('history-manage-body');
-  const query = turkishNormalize(document.getElementById('history-search-input').value);
-
-  const filtered = savedProposals.filter(p => 
-    turkishNormalize(p.no).includes(query) || 
-    turkishNormalize(p.company).includes(query) ||
-    turkishNormalize(p.contact).includes(query)
-  );
-
-  document.getElementById('history-total-count').textContent = savedProposals.length;
-  tbody.innerHTML = '';
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Kayıtlı teklif bulunamadı.</td></tr>`;
-    return;
-  }
-
-  filtered.forEach(p => {
-    const symbol = p.currency === 'USD' ? '$' : p.currency === 'EUR' ? '€' : '₺';
-    const statusClass = p.status.includes('Onaylandı') ? 'approved' : 'draft';
-    
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="item-code-badge">${p.no}</span></td>
-      <td>${p.date ? new Date(p.date).toLocaleDateString('tr-TR') : '-'}</td>
-      <td><strong>${p.company}</strong></td>
-      <td>${p.contact}</td>
-      <td><strong>${formatMoney(p.grandTotal)} ${symbol}</strong></td>
-      <td><span class="badge-status ${statusClass}">${p.status}</span></td>
-      <td>
-        <button class="btn btn-sm btn-gold" onclick="loadProposalFromHistory('${p.no}')">Yükle / Düzenle</button>
-        <button class="btn btn-sm btn-outline" onclick="deleteHistoryProposal('${p.no}')" style="color: var(--accent-red);">Sil</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function loadProposalFromHistory(quoteNo) {
-  const prop = savedProposals.find(p => p.no === quoteNo);
-  if (!prop) return;
-
-  document.getElementById('quote-no').value = prop.no;
-  document.getElementById('cust-company').value = prop.company;
-  document.getElementById('cust-contact').value = prop.contact;
-  if (prop.date) document.getElementById('quote-date').value = prop.date;
-  if (prop.currency) {
-    document.getElementById('quote-currency').value = prop.currency;
-    activeCurrency = prop.currency;
-  }
-
-  currentQuoteItems = JSON.parse(JSON.stringify(prop.items || []));
-  
-  updateCalculations();
-  updatePdfPreview();
-  closeHistoryModal();
-}
-
-function deleteHistoryProposal(quoteNo) {
-  if (confirm(`"${quoteNo}" numaralı teklifi geçmişten silmek istiyor musunuz?`)) {
-    savedProposals = savedProposals.filter(p => p.no !== quoteNo);
-    localStorage.setItem('sahin_admin_proposals', JSON.stringify(savedProposals));
-    renderHistoryTable();
-    renderDashboardMetrics();
-  }
 }
 
 function resetFormWithNewNo() {
