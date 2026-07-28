@@ -770,37 +770,11 @@ function validateQuoteBeforeSave() {
   return true;
 }
 
-async function saveAndExportPdf() {
-  if (!validateQuoteBeforeSave()) return;
+// Ekrandaki teklif henüz kaydedilmişse (Kaydet'e basıldıysa) veritabanındaki kaydın id'sini tutar.
+// Yazdır/PDF'ye Dönüştür/Sil bu id'yi kullanır; yoksa önce Kaydet'e basılması istenir.
+let currentSavedQuoteId = null;
 
-  updatePdfPreview();
-
-  let result;
-  try {
-    result = await saveQuoteToDatabase('Onaylandı / PDF İndirildi');
-  } catch (err) {
-    alert('Teklif veritabanına kaydedilemedi: ' + err.message);
-    return;
-  }
-
-  const quoteNo = document.getElementById('quote-no').value;
-  const company = document.getElementById('cust-company').value;
-  const sanitizedCompany = company.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Sahin_Bilisim_Teklif_${quoteNo}_${sanitizedCompany}.pdf`;
-
-  try {
-    await exportElementToPdf('pdf-template', filename);
-    alert(`"${filename}" başarıyla oluşturuldu, veritabanına kaydedildi ve cihazınıza indirildi!`);
-  } catch (err) {
-    console.error('PDF Generation Error:', err);
-    alert('Teklif veritabanına kaydedildi, ancak PDF oluşturulurken bir uyarı oluştu. "Doğrudan Yazdır" butonuyla yazdırabilirsiniz.');
-  }
-
-  refreshDashboardMetrics();
-  offerInvoiceConversion(result);
-}
-
-async function saveAsDraft() {
+async function saveQuote() {
   if (!validateQuoteBeforeSave()) return;
 
   let result;
@@ -811,31 +785,53 @@ async function saveAsDraft() {
     return;
   }
 
-  alert('Teklifiniz başarıyla veritabanına taslak olarak kaydedildi!');
+  currentSavedQuoteId = result.id;
+  updatePdfPreview();
+  alert(`Teklif ${result.quoteNumber || ''} veritabanına kaydedildi.`);
   refreshDashboardMetrics();
-  offerInvoiceConversion(result);
 }
 
-async function saveAndPrint() {
-  if (!validateQuoteBeforeSave()) return;
-
-  updatePdfPreview();
-
-  try {
-    await saveQuoteToDatabase('Onaylandı / Yazdırıldı');
-  } catch (err) {
-    alert('Teklif kaydedilemediği için yazdırma iptal edildi: ' + err.message);
+function printQuote() {
+  if (!currentSavedQuoteId) {
+    alert('Yazdırmadan önce lütfen "Kaydet" butonuna basınız.');
     return;
   }
-
-  refreshDashboardMetrics();
   window.print();
 }
 
-function offerInvoiceConversion(result) {
-  if (result && result.id && confirm(`Teklif ${result.quoteNumber || ''} kaydedildi. Teklif detayına gidip satış faturasına dönüştürmek ister misiniz?`)) {
-    window.location.href = '/Quotes/Details/' + result.id;
+async function exportQuotePdf() {
+  if (!currentSavedQuoteId) {
+    alert('PDF\'ye dönüştürmeden önce lütfen "Kaydet" butonuna basınız.');
+    return;
   }
+
+  const quoteNo = document.getElementById('quote-no').value;
+  const company = document.getElementById('cust-company').value;
+  const sanitizedCompany = company.replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Sahin_Bilisim_Teklif_${quoteNo}_${sanitizedCompany}.pdf`;
+
+  try {
+    await exportElementToPdf('pdf-template', filename);
+  } catch (err) {
+    console.error('PDF Generation Error:', err);
+    alert('PDF oluşturulurken bir hata oluştu. "Yazdır" butonuyla yazdırıp "PDF olarak kaydet" seçeneğini de kullanabilirsiniz.');
+  }
+}
+
+function deleteQuote() {
+  if (!currentSavedQuoteId) {
+    if (confirm('Bu teklif henüz kaydedilmedi. Ekrandaki taslağı temizlemek istiyor musunuz?')) {
+      resetFormWithNewNo();
+    }
+    return;
+  }
+
+  if (!confirm('Bu teklifi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
+    return;
+  }
+
+  document.getElementById('studio-delete-id').value = currentSavedQuoteId;
+  document.getElementById('studio-delete-form').submit();
 }
 
 // Teklifi gerçek SQL veritabanına kaydeder (SaveQuoteApi). Başarısız olursa hatayı fırlatır,
@@ -864,6 +860,7 @@ async function saveQuoteToDatabase(status) {
   const grandTotal = (subtotal - totalDiscount) + totalKdv;
 
   const proposalObj = {
+    id: currentSavedQuoteId,
     quoteNumber: quoteNo,
     customerId: customerId > 0 ? customerId : null,
     company: company,
@@ -945,6 +942,7 @@ function renderStockManagementTable() {
 function resetFormWithNewNo() {
   document.getElementById('quote-form').reset();
   currentQuoteItems = [];
+  currentSavedQuoteId = null;
   generateNewQuoteNumber();
   setDefaultDates();
   updateCalculations();

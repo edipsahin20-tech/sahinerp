@@ -281,14 +281,20 @@
           </div>
 
           <div class="form-action-bar">
-            <button type="button" class="btn btn-lg btn-gold-pulse" onclick="saveAndExportPdf()">
-              <i class="fa-solid fa-file-pdf"></i> KAYDET VE PDF DÖNÜŞTÜR (PDF İNDİR)
+            <button type="button" class="btn btn-lg btn-gold-pulse" onclick="saveQuote()">
+              <i class="fa-solid fa-floppy-disk"></i> Kaydet
             </button>
-            <button type="button" class="btn btn-lg btn-secondary" onclick="saveAsDraft()">
-              <i class="fa-solid fa-floppy-disk"></i> Taslak Olarak Kaydet
+            <button type="button" class="btn btn-lg btn-secondary" onclick="resetFormWithNewNo()">
+              <i class="fa-solid fa-file-circle-plus"></i> Yeni
             </button>
-            <button type="button" class="btn btn-lg btn-outline" onclick="saveAndPrint()">
-              <i class="fa-solid fa-print"></i> Kaydet ve Yazdır
+            <button type="button" class="btn btn-lg btn-outline" onclick="deleteQuote()" style="color: var(--accent-red, #b91c1c); border-color: var(--accent-red, #b91c1c);">
+              <i class="fa-solid fa-trash-can"></i> Sil
+            </button>
+            <button type="button" class="btn btn-lg btn-outline" onclick="printQuote()">
+              <i class="fa-solid fa-print"></i> Yazdır
+            </button>
+            <button type="button" class="btn btn-lg btn-outline" onclick="exportQuotePdf()">
+              <i class="fa-solid fa-file-pdf"></i> PDF'ye Dönüştür
             </button>
           </div>
 
@@ -486,6 +492,10 @@
       </div>
     </div>
   </div>
+
+  <form id="studio-delete-form" method="post" asp-controller="Quotes" asp-action="Delete" class="d-none">
+      <input type="hidden" name="id" id="studio-delete-id" />
+  </form>
 
   <div id="quick-search-modal" class="modal-overlay">
     <div class="modal-content modal-md">

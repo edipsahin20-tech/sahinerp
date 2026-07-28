@@ -2,6 +2,7 @@ namespace SahinSoft.Web.Models;
 
 public sealed class QuoteStudioSaveRequest
 {
+    public int? Id { get; set; }
     public int? CustomerId { get; set; }
     public string Company { get; set; } = string.Empty;
     public string? Contact { get; set; }

@@ -202,18 +202,36 @@ public sealed class QuotesController(
         var quoteDateUtc = request.QuoteDate.HasValue
             ? DateTime.SpecifyKind(request.QuoteDate.Value, DateTimeKind.Utc)
             : DateTime.UtcNow;
-        var quote = new Quote
+
+        // Zaten kaydedilmiş bir taslak tekrar "Kaydet" ile güncelleniyorsa, yeni bir teklif
+        // açmak yerine mevcut kaydı ve kalemlerini günceller (aynı taslağa tekrar kaydet mükerrer kayıt açmasın).
+        Quote? quote = null;
+        if (request.Id is int existingId)
+        {
+            quote = await dbContext.Quotes
+                .Include(x => x.Lines)
+                .SingleOrDefaultAsync(x => x.Id == existingId && x.Status == QuoteStatus.Draft);
+            if (quote is not null)
+            {
+                dbContext.QuoteLines.RemoveRange(quote.Lines);
+                quote.Lines.Clear();
+            }
+        }
+
+        var isNew = quote is null;
+        quote ??= new Quote
         {
             QuoteNumber = await documentNumberGenerator.GenerateAsync("QUOTE"),
-            QuoteDateUtc = quoteDateUtc,
-            ValidUntilUtc = quoteDateUtc.AddDays(15),
-            Status = request.Status.Contains("Onay", StringComparison.OrdinalIgnoreCase) ? QuoteStatus.Sent : QuoteStatus.Draft,
-            CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(),
-            ExchangeRate = request.ExchangeRate,
-            Notes = request.Notes?.Trim(),
-            CreatedByUserId = userId,
-            CustomerId = customer.Id
+            CreatedByUserId = userId
         };
+
+        quote.QuoteDateUtc = quoteDateUtc;
+        quote.ValidUntilUtc = quoteDateUtc.AddDays(15);
+        quote.Status = request.Status.Contains("Onay", StringComparison.OrdinalIgnoreCase) ? QuoteStatus.Sent : QuoteStatus.Draft;
+        quote.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant();
+        quote.ExchangeRate = request.ExchangeRate;
+        quote.Notes = request.Notes?.Trim();
+        quote.CustomerId = customer.Id;
 
         var lineNumber = 1;
         decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
@@ -252,7 +270,11 @@ public sealed class QuotesController(
         quote.TaxTotal = RoundMoney(taxTotal);
         quote.GrandTotal = RoundMoney(grandTotal);
 
-        dbContext.Quotes.Add(quote);
+        if (isNew)
+        {
+            dbContext.Quotes.Add(quote);
+        }
+
         await dbContext.SaveChangesAsync();
 
         return Json(new { success = true, id = quote.Id, quoteNumber = quote.QuoteNumber });
