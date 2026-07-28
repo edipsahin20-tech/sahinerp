@@ -24,6 +24,14 @@ public sealed class Invoice : EntityBase
     public string? CancelledByUserId { get; set; }
     public string? CancellationReason { get; set; }
 
+    public string? ReferenceNumber { get; set; }
+    public string? PaymentTerm { get; set; }
+    public string? TradeType { get; set; }
+    public bool IsReturn { get; set; }
+    public string? SalespersonUserId { get; set; }
+    public int? SettlementFinancialAccountId { get; set; }
+    public FinancialAccount? SettlementFinancialAccount { get; set; }
+
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
     public int WarehouseId { get; set; }

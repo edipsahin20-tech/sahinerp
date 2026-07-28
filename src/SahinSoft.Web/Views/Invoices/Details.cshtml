@@ -51,6 +51,41 @@
     </div>
 }
 
+@if (!string.IsNullOrWhiteSpace(Model.ReferenceNumber) || !string.IsNullOrWhiteSpace(Model.PaymentTerm) || !string.IsNullOrWhiteSpace(Model.TradeType) || !string.IsNullOrWhiteSpace(Model.SalespersonName) || !string.IsNullOrWhiteSpace(Model.SettlementFinancialAccountName) || Model.IsReturn)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Evrak Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                @if (!string.IsNullOrWhiteSpace(Model.ReferenceNumber))
+                {
+                    <div class="erp-field"><label>Belge No</label><div>@Model.ReferenceNumber</div></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.PaymentTerm))
+                {
+                    <div class="erp-field"><label>Ödeme Şekli</label><div>@Model.PaymentTerm</div></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.TradeType))
+                {
+                    <div class="erp-field"><label>Ticaret Türü</label><div>@Model.TradeType</div></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.SettlementFinancialAccountName))
+                {
+                    <div class="erp-field"><label>Kapayan Hesap</label><div>@Model.SettlementFinancialAccountName</div></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.SalespersonName))
+                {
+                    <div class="erp-field"><label>Plasiyer</label><div>@Model.SalespersonName</div></div>
+                }
+                @if (Model.IsReturn)
+                {
+                    <div class="erp-field"><label>Nor/İade</label><div><span class="badge text-bg-warning-subtle text-warning-emphasis">İade Faturası</span></div></div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 <div class="erp-panel">
     <div class="erp-panel-header">@Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")</div>
     <div class="erp-panel-body p-0">

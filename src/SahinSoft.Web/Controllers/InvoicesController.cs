@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
@@ -15,7 +17,8 @@ namespace SahinSoft.Web.Controllers;
 public sealed class InvoicesController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
-    InvoicePostingService invoicePostingService) : Controller
+    InvoicePostingService invoicePostingService,
+    UserManager<ApplicationUser> userManager) : Controller
 {
     public async Task<IActionResult> Index(
         InvoiceType? type,
@@ -130,6 +133,12 @@ public sealed class InvoicesController(
             CurrencyCode = invoice.CurrencyCode,
             ExchangeRate = invoice.ExchangeRate,
             Notes = invoice.Notes,
+            ReferenceNumber = invoice.ReferenceNumber,
+            PaymentTerm = invoice.PaymentTerm,
+            TradeType = invoice.TradeType,
+            IsReturn = invoice.IsReturn,
+            SalespersonUserId = invoice.SalespersonUserId,
+            SettlementFinancialAccountId = invoice.SettlementFinancialAccountId,
             Lines = invoice.Lines
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new InvoiceLineFormViewModel
@@ -249,6 +258,15 @@ public sealed class InvoicesController(
         }
 
         var settings = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        var salespersonName = invoice.SalespersonUserId is null
+            ? null
+            : (await userManager.FindByIdAsync(invoice.SalespersonUserId))?.FullName;
+        var settlementAccountName = invoice.SettlementFinancialAccountId is null
+            ? null
+            : await dbContext.FinancialAccounts
+                .Where(x => x.Id == invoice.SettlementFinancialAccountId)
+                .Select(x => x.Name)
+                .SingleOrDefaultAsync();
 
         var model = new InvoiceDetailsViewModel
         {
@@ -267,6 +285,12 @@ public sealed class InvoicesController(
             CustomerAddress = invoice.Customer.Address,
             WarehouseName = invoice.Warehouse.Name,
             CurrencyCode = invoice.CurrencyCode,
+            ReferenceNumber = invoice.ReferenceNumber,
+            PaymentTerm = invoice.PaymentTerm,
+            TradeType = invoice.TradeType,
+            IsReturn = invoice.IsReturn,
+            SalespersonName = salespersonName,
+            SettlementFinancialAccountName = settlementAccountName,
             Company = new PdfCompanyInfoViewModel
             {
                 CompanyName = settings.CompanyName,
@@ -375,6 +399,12 @@ public sealed class InvoicesController(
         target.CurrencyCode = source.CurrencyCode.Trim().ToUpperInvariant();
         target.ExchangeRate = source.ExchangeRate;
         target.Notes = source.Notes?.Trim();
+        target.ReferenceNumber = source.ReferenceNumber?.Trim();
+        target.PaymentTerm = source.PaymentTerm?.Trim();
+        target.TradeType = source.TradeType?.Trim();
+        target.IsReturn = source.IsReturn;
+        target.SalespersonUserId = string.IsNullOrWhiteSpace(source.SalespersonUserId) ? null : source.SalespersonUserId;
+        target.SettlementFinancialAccountId = source.SettlementFinancialAccountId;
     }
 
     private async Task MapLinesAsync(InvoiceFormViewModel source, Invoice target)
@@ -429,6 +459,20 @@ public sealed class InvoicesController(
                 .Select(x => x.Code + " - " + x.Name)
                 .SingleOrDefaultAsync();
         }
+
+        if (model.SettlementFinancialAccountId is int settlementAccountId)
+        {
+            model.SettlementFinancialAccountDisplay = await dbContext.FinancialAccounts
+                .Where(x => x.Id == settlementAccountId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
+
+        model.Salespeople = await userManager.Users
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.FullName)
+            .Select(x => new SelectListItem(x.FullName, x.Id))
+            .ToListAsync();
 
         var productIds = model.Lines
             .Where(x => x.ProductId.HasValue)

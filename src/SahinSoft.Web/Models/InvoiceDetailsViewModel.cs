@@ -19,6 +19,12 @@ public sealed class InvoiceDetailsViewModel
     public string? CustomerAddress { get; set; }
     public string WarehouseName { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
+    public string? ReferenceNumber { get; set; }
+    public string? PaymentTerm { get; set; }
+    public string? TradeType { get; set; }
+    public bool IsReturn { get; set; }
+    public string? SalespersonName { get; set; }
+    public string? SettlementFinancialAccountName { get; set; }
     public PdfCompanyInfoViewModel Company { get; set; } = new();
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }

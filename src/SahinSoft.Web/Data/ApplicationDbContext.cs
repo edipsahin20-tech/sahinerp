@@ -442,6 +442,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.ApprovedByUserId).HasMaxLength(450);
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.Property(x => x.ReferenceNumber).HasMaxLength(50);
+            entity.Property(x => x.PaymentTerm).HasMaxLength(100);
+            entity.Property(x => x.TradeType).HasMaxLength(100);
+            entity.Property(x => x.SalespersonUserId).HasMaxLength(450);
             entity.HasIndex(x => new { x.InvoiceType, x.InvoiceNumber }).IsUnique();
             entity.HasIndex(x => new { x.CustomerId, x.InvoiceDateUtc });
             entity.HasIndex(x => new { x.InvoiceType, x.Status, x.InvoiceDateUtc });
@@ -468,6 +472,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.BusinessProject)
                 .WithMany()
                 .HasForeignKey(x => x.BusinessProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.SettlementFinancialAccount)
+                .WithMany()
+                .HasForeignKey(x => x.SettlementFinancialAccountId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.ToTable(table =>
                 table.HasCheckConstraint(

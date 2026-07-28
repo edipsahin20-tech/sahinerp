@@ -59,6 +59,54 @@
                     <label asp-for="ExchangeRate"></label>
                     <input asp-for="ExchangeRate" class="form-control" />
                 </div>
+                <div class="erp-field">
+                    <label asp-for="ReferenceNumber"></label>
+                    <input asp-for="ReferenceNumber" class="form-control" placeholder="Örn: 2341" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="PaymentTerm"></label>
+                    <input asp-for="PaymentTerm" class="form-control" list="payment-term-options" placeholder="Örn: PEŞİN" />
+                    <datalist id="payment-term-options">
+                        <option value="PEŞİN"></option>
+                        <option value="Havale/EFT"></option>
+                        <option value="Kredi Kartı"></option>
+                        <option value="Çek"></option>
+                        <option value="Senet"></option>
+                        <option value="30 Gün Vadeli"></option>
+                        <option value="60 Gün Vadeli"></option>
+                    </datalist>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="TradeType"></label>
+                    <input asp-for="TradeType" class="form-control" list="trade-type-options" placeholder="Örn: Toptan yurtiçi ticaret" />
+                    <datalist id="trade-type-options">
+                        <option value="Toptan yurtiçi ticaret"></option>
+                        <option value="Perakende yurtiçi ticaret"></option>
+                        <option value="İhracat"></option>
+                        <option value="İthalat"></option>
+                    </datalist>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="SettlementFinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.SettlementFinancialAccountId), Id = nameof(Model.SettlementFinancialAccountId),
+                        Value = Model.SettlementFinancialAccountId?.ToString(),
+                        DisplayValue = Model.SettlementFinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Kapayan Hesap Seç", Placeholder = "Kasa/Banka seçin (opsiyonel)" })" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="SalespersonUserId"></label>
+                    <select asp-for="SalespersonUserId" asp-items="Model.Salespeople" class="form-select">
+                        <option value="">Plasiyer seçilmedi</option>
+                    </select>
+                </div>
+                <div class="erp-field d-flex align-items-center" style="padding-top: 1.7rem;">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsReturn" class="form-check-input" />
+                        <label asp-for="IsReturn" class="form-check-label"></label>
+                    </div>
+                </div>
                 <div class="erp-field" style="grid-column: 1 / -1;">
                     <label asp-for="Notes"></label>
                     <textarea asp-for="Notes" class="form-control" rows="2"></textarea>

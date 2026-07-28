@@ -38,10 +38,33 @@ public sealed class InvoiceFormViewModel
     [Display(Name = "Notlar")]
     public string? Notes { get; set; }
 
+    [StringLength(50)]
+    [Display(Name = "Belge No")]
+    public string? ReferenceNumber { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Ödeme Şekli")]
+    public string? PaymentTerm { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Ticaret Türü")]
+    public string? TradeType { get; set; }
+
+    [Display(Name = "İade Faturası mı?")]
+    public bool IsReturn { get; set; }
+
+    [Display(Name = "Plasiyer")]
+    public string? SalespersonUserId { get; set; }
+
+    [Display(Name = "Kapayan Hesap Kodu")]
+    public int? SettlementFinancialAccountId { get; set; }
+    public string? SettlementFinancialAccountDisplay { get; set; }
+
     public List<InvoiceLineFormViewModel> Lines { get; set; } = [];
 
     public string? CustomerDisplay { get; set; }
     public string? WarehouseDisplay { get; set; }
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> Salespeople { get; set; } = [];
 }
 
 public sealed class InvoiceLineFormViewModel
