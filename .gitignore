@@ -4,6 +4,7 @@
 **/bin/
 **/obj/
 **/appsettings.Production.json
+**/appsettings.Local.json
 *.user
 *.suo
 
