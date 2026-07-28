@@ -181,44 +181,52 @@ public sealed class QuotesController(
             return Json(new { success = false, message = "Ürün/hizmet adı zorunludur." });
         }
 
-        var category = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.Code == "YAZILIM" && x.IsActive)
-            ?? await dbContext.ProductCategories.OrderBy(x => x.Id).FirstOrDefaultAsync(x => x.IsActive);
-        var taxRate = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.Code == "KDV20" && x.IsActive)
-            ?? await dbContext.TaxRates.OrderBy(x => x.Id).FirstOrDefaultAsync(x => x.IsActive);
-
-        if (category is null || taxRate is null)
+        try
         {
-            return Json(new { success = false, message = "Varsayılan kategori veya KDV oranı bulunamadı." });
+            var category = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.Code == "YAZILIM" && x.IsActive)
+                ?? await dbContext.ProductCategories.OrderBy(x => x.Id).FirstOrDefaultAsync(x => x.IsActive);
+            var taxRate = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.Code == "KDV20" && x.IsActive)
+                ?? await dbContext.TaxRates.OrderBy(x => x.Id).FirstOrDefaultAsync(x => x.IsActive);
+
+            if (category is null || taxRate is null)
+            {
+                return Json(new { success = false, message = "Varsayılan kategori veya KDV oranı bulunamadı." });
+            }
+
+            var product = new Product
+            {
+                StockCode = await documentNumberGenerator.GenerateAsync("STOCK"),
+                Name = request.Name.Trim(),
+                CategoryId = category.Id,
+                TaxRateId = taxRate.Id,
+                ProductType = "Hizmet",
+                Unit = "Adet",
+                TrackStock = false,
+                SalePrice = request.Price,
+                PurchasePrice = 0,
+                IsActive = true
+            };
+
+            dbContext.Products.Add(product);
+            await dbContext.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                id = product.Id,
+                code = product.StockCode,
+                name = product.Name,
+                salePrice = product.SalePrice,
+                purchasePrice = product.PurchasePrice,
+                taxRate = taxRate.Rate,
+                unit = product.Unit
+            });
         }
-
-        var product = new Product
+        catch (Exception ex)
         {
-            StockCode = await documentNumberGenerator.GenerateAsync("STOCK"),
-            Name = request.Name.Trim(),
-            CategoryId = category.Id,
-            TaxRateId = taxRate.Id,
-            ProductType = "Hizmet",
-            Unit = "Adet",
-            TrackStock = false,
-            SalePrice = request.Price,
-            PurchasePrice = 0,
-            IsActive = true
-        };
-
-        dbContext.Products.Add(product);
-        await dbContext.SaveChangesAsync();
-
-        return Json(new
-        {
-            success = true,
-            id = product.Id,
-            code = product.StockCode,
-            name = product.Name,
-            salePrice = product.SalePrice,
-            purchasePrice = product.PurchasePrice,
-            taxRate = taxRate.Rate,
-            unit = product.Unit
-        });
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return Json(new { success = false, message = "Sunucu hatası: " + detail });
+        }
     }
 
     [HttpPost]
@@ -229,112 +237,120 @@ public sealed class QuotesController(
             return Json(new { success = false, message = "Firma unvanı ve en az bir kalem zorunludur." });
         }
 
-        Customer? customer = request.CustomerId is int customerId
-            ? await dbContext.Customers.SingleOrDefaultAsync(x => x.Id == customerId)
-            : null;
-
-        // Aynı ünvanla daha önce otomatik kaydedilmiş bir cari varsa, mükerrer kayıt açmak yerine onu kullan.
-        var companyName = request.Company.Trim();
-        customer ??= await dbContext.Customers
-            .FirstOrDefaultAsync(x => EF.Functions.Collate(x.Name, "Turkish_CI_AI") == companyName);
-
-        if (customer is null)
+        try
         {
-            customer = new Customer
-            {
-                Code = await documentNumberGenerator.GenerateAsync("CUSTOMER"),
-                Name = request.Company.Trim(),
-                Phone = request.Phone,
-                Email = request.Email,
-                Address = request.Address,
-                TaxOffice = request.TaxOffice,
-                IsCustomer = true,
-                IsActive = true
-            };
-            dbContext.Customers.Add(customer);
-            await dbContext.SaveChangesAsync();
-        }
+            Customer? customer = request.CustomerId is int customerId
+                ? await dbContext.Customers.SingleOrDefaultAsync(x => x.Id == customerId)
+                : null;
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        var quoteDateUtc = request.QuoteDate.HasValue
-            ? DateTime.SpecifyKind(request.QuoteDate.Value, DateTimeKind.Utc)
-            : DateTime.UtcNow;
+            // Aynı ünvanla daha önce otomatik kaydedilmiş bir cari varsa, mükerrer kayıt açmak yerine onu kullan.
+            var companyName = request.Company.Trim();
+            customer ??= await dbContext.Customers
+                .FirstOrDefaultAsync(x => EF.Functions.Collate(x.Name, "Turkish_CI_AI") == companyName);
 
-        // Zaten kaydedilmiş bir taslak tekrar "Kaydet" ile güncelleniyorsa, yeni bir teklif
-        // açmak yerine mevcut kaydı ve kalemlerini günceller (aynı taslağa tekrar kaydet mükerrer kayıt açmasın).
-        Quote? quote = null;
-        if (request.Id is int existingId)
-        {
-            quote = await dbContext.Quotes
-                .Include(x => x.Lines)
-                .SingleOrDefaultAsync(x => x.Id == existingId && x.Status == QuoteStatus.Draft);
-            if (quote is not null)
+            if (customer is null)
             {
-                dbContext.QuoteLines.RemoveRange(quote.Lines);
-                quote.Lines.Clear();
+                customer = new Customer
+                {
+                    Code = await documentNumberGenerator.GenerateAsync("CUSTOMER"),
+                    Name = request.Company.Trim(),
+                    Phone = request.Phone,
+                    Email = request.Email,
+                    Address = request.Address,
+                    TaxOffice = request.TaxOffice,
+                    IsCustomer = true,
+                    IsActive = true
+                };
+                dbContext.Customers.Add(customer);
+                await dbContext.SaveChangesAsync();
             }
-        }
 
-        var isNew = quote is null;
-        quote ??= new Quote
-        {
-            QuoteNumber = await documentNumberGenerator.GenerateAsync("QUOTE"),
-            CreatedByUserId = userId
-        };
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var quoteDateUtc = request.QuoteDate.HasValue
+                ? DateTime.SpecifyKind(request.QuoteDate.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow;
 
-        quote.QuoteDateUtc = quoteDateUtc;
-        quote.ValidUntilUtc = quoteDateUtc.AddDays(15);
-        quote.Status = request.Status.Contains("Onay", StringComparison.OrdinalIgnoreCase) ? QuoteStatus.Sent : QuoteStatus.Draft;
-        quote.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant();
-        quote.ExchangeRate = request.ExchangeRate;
-        quote.Notes = request.Notes?.Trim();
-        quote.CustomerId = customer.Id;
-
-        var lineNumber = 1;
-        decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
-        foreach (var item in request.Items)
-        {
-            var gross = RoundMoney(item.Qty * item.Price);
-            var discAmount = RoundMoney(gross * item.Discount / 100);
-            var net = gross - discAmount;
-            var taxAmount = RoundMoney(net * item.Kdv / 100);
-            var lineTotal = net + taxAmount;
-
-            subtotal += gross;
-            discountTotal += discAmount;
-            taxTotal += taxAmount;
-            grandTotal += lineTotal;
-
-            quote.Lines.Add(new QuoteLine
+            // Zaten kaydedilmiş bir taslak tekrar "Kaydet" ile güncelleniyorsa, yeni bir teklif
+            // açmak yerine mevcut kaydı ve kalemlerini günceller (aynı taslağa tekrar kaydet mükerrer kayıt açmasın).
+            Quote? quote = null;
+            if (request.Id is int existingId)
             {
-                LineNumber = lineNumber++,
-                ProductId = item.DbId,
-                ProductCodeSnapshot = item.Code ?? string.Empty,
-                ProductNameSnapshot = item.Name,
-                UnitSnapshot = item.Unit,
-                Quantity = item.Qty,
-                UnitPrice = item.Price,
-                DiscountRate = item.Discount,
-                DiscountAmount = discAmount,
-                TaxRate = item.Kdv,
-                TaxAmount = taxAmount,
-                LineTotal = lineTotal
-            });
+                quote = await dbContext.Quotes
+                    .Include(x => x.Lines)
+                    .SingleOrDefaultAsync(x => x.Id == existingId && x.Status == QuoteStatus.Draft);
+                if (quote is not null)
+                {
+                    dbContext.QuoteLines.RemoveRange(quote.Lines);
+                    quote.Lines.Clear();
+                }
+            }
+
+            var isNew = quote is null;
+            quote ??= new Quote
+            {
+                QuoteNumber = await documentNumberGenerator.GenerateAsync("QUOTE"),
+                CreatedByUserId = userId
+            };
+
+            quote.QuoteDateUtc = quoteDateUtc;
+            quote.ValidUntilUtc = quoteDateUtc.AddDays(15);
+            quote.Status = request.Status.Contains("Onay", StringComparison.OrdinalIgnoreCase) ? QuoteStatus.Sent : QuoteStatus.Draft;
+            quote.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant();
+            quote.ExchangeRate = request.ExchangeRate;
+            quote.Notes = request.Notes?.Trim();
+            quote.CustomerId = customer.Id;
+
+            var lineNumber = 1;
+            decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
+            foreach (var item in request.Items)
+            {
+                var gross = RoundMoney(item.Qty * item.Price);
+                var discAmount = RoundMoney(gross * item.Discount / 100);
+                var net = gross - discAmount;
+                var taxAmount = RoundMoney(net * item.Kdv / 100);
+                var lineTotal = net + taxAmount;
+
+                subtotal += gross;
+                discountTotal += discAmount;
+                taxTotal += taxAmount;
+                grandTotal += lineTotal;
+
+                quote.Lines.Add(new QuoteLine
+                {
+                    LineNumber = lineNumber++,
+                    ProductId = item.DbId,
+                    ProductCodeSnapshot = item.Code ?? string.Empty,
+                    ProductNameSnapshot = item.Name,
+                    UnitSnapshot = item.Unit,
+                    Quantity = item.Qty,
+                    UnitPrice = item.Price,
+                    DiscountRate = item.Discount,
+                    DiscountAmount = discAmount,
+                    TaxRate = item.Kdv,
+                    TaxAmount = taxAmount,
+                    LineTotal = lineTotal
+                });
+            }
+
+            quote.Subtotal = RoundMoney(subtotal);
+            quote.DiscountTotal = RoundMoney(discountTotal);
+            quote.TaxTotal = RoundMoney(taxTotal);
+            quote.GrandTotal = RoundMoney(grandTotal);
+
+            if (isNew)
+            {
+                dbContext.Quotes.Add(quote);
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            return Json(new { success = true, id = quote.Id, quoteNumber = quote.QuoteNumber });
         }
-
-        quote.Subtotal = RoundMoney(subtotal);
-        quote.DiscountTotal = RoundMoney(discountTotal);
-        quote.TaxTotal = RoundMoney(taxTotal);
-        quote.GrandTotal = RoundMoney(grandTotal);
-
-        if (isNew)
+        catch (Exception ex)
         {
-            dbContext.Quotes.Add(quote);
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return Json(new { success = false, message = "Sunucu hatası: " + detail });
         }
-
-        await dbContext.SaveChangesAsync();
-
-        return Json(new { success = true, id = quote.Id, quoteNumber = quote.QuoteNumber });
     }
 
     public IActionResult Create()

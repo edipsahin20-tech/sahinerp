@@ -214,14 +214,14 @@
 }
 
 .quote-studio-page .btn-secondary{
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #f1f5f9;
+  color: #1f2937;
+  border: 1px solid var(--border-color);
 }
 
 .quote-studio-page .btn-secondary:hover{
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--gold-primary);
+  background: #e2e8f0;
+  color: #1f2937;
 }
 
 .quote-studio-page .btn-outline{
