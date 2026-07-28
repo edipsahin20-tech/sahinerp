@@ -10,10 +10,22 @@ public sealed class InventoryCountPostingService(
     ApplicationDbContext dbContext,
     InventoryBalanceService inventoryBalance)
 {
-    public async Task ApproveAsync(
+    public Task ApproveAsync(
         int inventoryCountId,
         string approvedByUserId,
         CancellationToken cancellationToken = default)
+    {
+        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(inventoryCountId, approvedByUserId, cancellationToken));
+    }
+
+    private async Task ApproveCoreAsync(
+        int inventoryCountId,
+        string approvedByUserId,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -89,7 +101,7 @@ public sealed class InventoryCountPostingService(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CancelAsync(
+    public Task CancelAsync(
         int inventoryCountId,
         string cancelledByUserId,
         string reason,
@@ -100,6 +112,16 @@ public sealed class InventoryCountPostingService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await CancelCoreAsync(inventoryCountId, cancelledByUserId, reason, cancellationToken));
+    }
+
+    private async Task CancelCoreAsync(
+        int inventoryCountId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);

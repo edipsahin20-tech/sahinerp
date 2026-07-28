@@ -124,37 +124,51 @@ public sealed class ProductsController(
             return View("Form", form);
         }
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
-        var product = new Product();
-        await MapAsync(form, product, dbContext);
-        SyncPrimaryBarcode(product, form.Barcode);
-        dbContext.Products.Add(product);
-        if (!await TrySaveAsync(nameof(form.Barcode)))
+        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var (saved, product) = await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+            var newProduct = new Product();
+            await MapAsync(form, newProduct, dbContext);
+            SyncPrimaryBarcode(newProduct, form.Barcode);
+            dbContext.Products.Add(newProduct);
+            if (!await TrySaveAsync(nameof(form.Barcode)))
+            {
+                return (false, newProduct);
+            }
+
+            if (newProduct.TrackStock && newProduct.StockQuantity != 0)
+            {
+                var defaultWarehouseId = await dbContext.Warehouses
+                    .Where(x => x.IsDefault && x.IsActive)
+                    .Select(x => x.Id)
+                    .SingleAsync();
+                dbContext.StockMovements.Add(new StockMovement
+                {
+                    MovementDateUtc = DateTime.UtcNow,
+                    MovementType = StockMovementType.Opening,
+                    Quantity = newProduct.StockQuantity,
+                    UnitCost = newProduct.PurchasePrice,
+                    DocumentNumber = $"ACILIS-{newProduct.StockCode}",
+                    Description = "Stok kartı açılış miktarı",
+                    ProductId = newProduct.Id,
+                    WarehouseId = defaultWarehouseId
+                });
+                await dbContext.SaveChangesAsync();
+            }
+            await transaction.CommitAsync();
+            return (true, newProduct);
+        });
+
+        if (!saved)
         {
             await PopulateSelectionsAsync(form);
             return View("Form", form);
         }
 
-        if (product.TrackStock && product.StockQuantity != 0)
-        {
-            var defaultWarehouseId = await dbContext.Warehouses
-                .Where(x => x.IsDefault && x.IsActive)
-                .Select(x => x.Id)
-                .SingleAsync();
-            dbContext.StockMovements.Add(new StockMovement
-            {
-                MovementDateUtc = DateTime.UtcNow,
-                MovementType = StockMovementType.Opening,
-                Quantity = product.StockQuantity,
-                UnitCost = product.PurchasePrice,
-                DocumentNumber = $"ACILIS-{product.StockCode}",
-                Description = "Stok kartı açılış miktarı",
-                ProductId = product.Id,
-                WarehouseId = defaultWarehouseId
-            });
-            await dbContext.SaveChangesAsync();
-        }
-        await transaction.CommitAsync();
         TempData["Success"] = "Stok kartı kaydedildi.";
 
         if (Request.Form["saveMode"] == "saveAndNew")

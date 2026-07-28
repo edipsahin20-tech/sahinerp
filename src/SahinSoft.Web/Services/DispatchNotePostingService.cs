@@ -10,10 +10,22 @@ public sealed class DispatchNotePostingService(
     ApplicationDbContext dbContext,
     InventoryBalanceService inventoryBalance)
 {
-    public async Task ApproveAsync(
+    public Task ApproveAsync(
         int dispatchNoteId,
         string approvedByUserId,
         CancellationToken cancellationToken = default)
+    {
+        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(dispatchNoteId, approvedByUserId, cancellationToken));
+    }
+
+    private async Task ApproveCoreAsync(
+        int dispatchNoteId,
+        string approvedByUserId,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -101,7 +113,7 @@ public sealed class DispatchNotePostingService(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CancelAsync(
+    public Task CancelAsync(
         int dispatchNoteId,
         string cancelledByUserId,
         string reason,
@@ -112,6 +124,16 @@ public sealed class DispatchNotePostingService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await CancelCoreAsync(dispatchNoteId, cancelledByUserId, reason, cancellationToken));
+    }
+
+    private async Task CancelCoreAsync(
+        int dispatchNoteId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);

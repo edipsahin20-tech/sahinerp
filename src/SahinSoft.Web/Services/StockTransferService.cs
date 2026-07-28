@@ -10,7 +10,16 @@ public sealed class StockTransferService(
     ApplicationDbContext dbContext,
     InventoryBalanceService inventoryBalance)
 {
-    public async Task ApproveAsync(int transferId, string approvedByUserId, CancellationToken cancellationToken = default)
+    public Task ApproveAsync(int transferId, string approvedByUserId, CancellationToken cancellationToken = default)
+    {
+        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(transferId, approvedByUserId, cancellationToken));
+    }
+
+    private async Task ApproveCoreAsync(int transferId, string approvedByUserId, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -84,7 +93,7 @@ public sealed class StockTransferService(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CancelAsync(
+    public Task CancelAsync(
         int transferId,
         string cancelledByUserId,
         string reason,
@@ -95,6 +104,16 @@ public sealed class StockTransferService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () => await CancelCoreAsync(transferId, cancelledByUserId, reason, cancellationToken));
+    }
+
+    private async Task CancelCoreAsync(
+        int transferId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
