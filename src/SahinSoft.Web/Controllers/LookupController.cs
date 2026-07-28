@@ -39,8 +39,8 @@ public sealed class LookupController(
                 // Stok kartındaki Alış/Satış Fiyatı KDV dahildir; fatura/teklif satırındaki Birim
                 // Fiyat her zaman KDV hariçtir — burada stok kartının KDV oranına göre net tutara
                 // çevriliyor (aynı mantık site genelinde tutarlı olsun diye).
-                salePrice = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 2, MidpointRounding.AwayFromZero),
-                purchasePrice = Math.Round(x.PurchasePrice / (1 + x.TaxRate.Rate / 100), 2, MidpointRounding.AwayFromZero),
+                salePrice = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
+                purchasePrice = Math.Round(x.PurchasePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
                 taxRate = x.TaxRate.Rate,
                 unit = x.Unit,
                 stock = x.StockQuantity

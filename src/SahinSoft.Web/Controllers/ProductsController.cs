@@ -98,7 +98,6 @@ public sealed class ProductsController(
                 model.ShelfLifeDays = source.ShelfLifeDays;
                 model.CountryOfOrigin = source.CountryOfOrigin;
                 model.TrackSerialNumbers = source.TrackSerialNumbers;
-                model.PricesIncludeTax = source.PricesIncludeTax;
                 model.MinimumStockQuantity = source.MinimumStockQuantity;
                 model.TrackStock = source.TrackStock;
                 model.IsActive = source.IsActive;
@@ -204,7 +203,6 @@ public sealed class ProductsController(
             ShelfLifeDays = product.ShelfLifeDays,
             CountryOfOrigin = product.CountryOfOrigin,
             TrackSerialNumbers = product.TrackSerialNumbers,
-            PricesIncludeTax = product.PricesIncludeTax,
             PurchasePrice = product.PurchasePrice,
             SalePrice = product.SalePrice,
             StockQuantity = product.StockQuantity,
@@ -413,7 +411,6 @@ public sealed class ProductsController(
         target.ShelfLifeDays = source.ShelfLifeDays;
         target.CountryOfOrigin = source.CountryOfOrigin?.Trim();
         target.TrackSerialNumbers = source.TrackSerialNumbers;
-        target.PricesIncludeTax = source.PricesIncludeTax;
         target.PurchasePrice = source.PurchasePrice;
         target.SalePrice = source.SalePrice;
         target.StockQuantity = source.StockQuantity;

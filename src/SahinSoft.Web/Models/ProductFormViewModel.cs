@@ -57,9 +57,6 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Seri No Zorunlu mu?")]
     public bool TrackSerialNumbers { get; set; }
 
-    [Display(Name = "Fiyatlara KDV Dahil mi?")]
-    public bool PricesIncludeTax { get; set; } = true;
-
     [Display(Name = "Alış fiyatı")]
     [Range(0, 999999999999)]
     public decimal PurchasePrice { get; set; }

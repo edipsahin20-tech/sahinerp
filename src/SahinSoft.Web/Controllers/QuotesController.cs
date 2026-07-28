@@ -136,7 +136,7 @@ public sealed class QuotesController(
                 unit = x.Unit,
                 // Stok kartındaki Satış Fiyatı KDV dahildir; teklif/fatura satırındaki Birim Fiyat
                 // her zaman KDV hariçtir — burada stok kartının KDV oranına göre net tutara çevriliyor.
-                price = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 2, MidpointRounding.AwayFromZero),
+                price = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
                 stock = x.StockQuantity,
                 kdv = x.TaxRate.Rate
             })
@@ -204,8 +204,7 @@ public sealed class QuotesController(
             }
 
             // Teklif Stüdyosu'nda "Birim Fiyat" olarak girilen tutar KDV hariçtir; ürün kartına
-            // sitenin genel kuralına (PricesIncludeTax = true, fiyatlar KDV dahil saklanır) uygun
-            // şekilde KDV dahil hale çevrilerek kaydedilir.
+            // (fiyatlar her zaman KDV dahil saklanır kuralına uygun) KDV dahil hale çevrilerek kaydedilir.
             var salePriceInclTax = RoundMoney(request.Price * (1 + taxRate.Rate / 100));
 
             var product = new Product
@@ -219,7 +218,6 @@ public sealed class QuotesController(
                 Unit = "Adet",
                 TrackStock = false,
                 SalePrice = salePriceInclTax,
-                PricesIncludeTax = true,
                 PurchasePrice = 0,
                 IsActive = true
             };

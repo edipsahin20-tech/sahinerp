@@ -16,7 +16,6 @@ public sealed class Product : EntityBase
     public string? AlternateName { get; set; }
     public int? ShelfLifeDays { get; set; }
     public string? CountryOfOrigin { get; set; }
-    public bool PricesIncludeTax { get; set; }
     public string? Description { get; set; }
     public decimal PurchasePrice { get; set; }
     public decimal SalePrice { get; set; }
