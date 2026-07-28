@@ -106,6 +106,37 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MergeInto(int id, int targetCategoryId)
+    {
+        if (id == targetCategoryId)
+        {
+            TempData["Error"] = "Kaynak ve hedef kategori aynı olamaz.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var source = await dbContext.ProductCategories.SingleOrDefaultAsync(x => x.Id == id);
+        var target = await dbContext.ProductCategories.SingleOrDefaultAsync(x => x.Id == targetCategoryId);
+        if (source is null || target is null)
+        {
+            return NotFound();
+        }
+
+        var affectedProducts = await dbContext.Products.Where(x => x.CategoryId == id).ToListAsync();
+        foreach (var product in affectedProducts)
+        {
+            product.CategoryId = targetCategoryId;
+            product.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        dbContext.ProductCategories.Remove(source);
+        await dbContext.SaveChangesAsync();
+
+        TempData["Success"] = $"\"{source.Name}\" kategorisi \"{target.Name}\" ile birleştirildi ({affectedProducts.Count} ürün taşındı).";
+        return RedirectToAction(nameof(Index));
+    }
+
     private async Task SetToolbarAsync(int id)
     {
         var previousId = await dbContext.ProductCategories.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();

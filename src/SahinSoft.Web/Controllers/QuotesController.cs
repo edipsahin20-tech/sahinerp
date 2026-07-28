@@ -14,13 +14,15 @@ namespace SahinSoft.Web.Controllers;
 [Authorize]
 public sealed class QuotesController(
     ApplicationDbContext dbContext,
-    DocumentNumberGeneratorService documentNumberGenerator) : Controller
+    DocumentNumberGeneratorService documentNumberGenerator,
+    BarcodeGeneratorService barcodeGenerator) : Controller
 {
     public async Task<IActionResult> Index(QuoteStatus? status, string? search)
     {
         var query = dbContext.Quotes
             .AsNoTracking()
             .Include(x => x.Customer)
+            .Include(x => x.Invoices)
             .OrderByDescending(x => x.QuoteDateUtc)
             .ThenByDescending(x => x.Id)
             .AsQueryable();
@@ -37,6 +39,12 @@ public sealed class QuotesController(
 
         ViewBag.Status = status;
         ViewBag.Search = search;
+        ViewBag.Warehouses = await dbContext.Warehouses
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
         return View(await query.ToListAsync());
     }
 
@@ -196,6 +204,7 @@ public sealed class QuotesController(
             var product = new Product
             {
                 StockCode = await documentNumberGenerator.GenerateAsync("STOCK"),
+                Barcode = await barcodeGenerator.GenerateEan13Async(),
                 Name = request.Name.Trim(),
                 CategoryId = category.Id,
                 TaxRateId = taxRate.Id,
@@ -215,6 +224,7 @@ public sealed class QuotesController(
                 success = true,
                 id = product.Id,
                 code = product.StockCode,
+                barcode = product.Barcode,
                 name = product.Name,
                 salePrice = product.SalePrice,
                 purchasePrice = product.PurchasePrice,
@@ -515,6 +525,38 @@ public sealed class QuotesController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevertToDraft(int id)
+    {
+        var quote = await dbContext.Quotes
+            .Include(x => x.Invoices)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (quote is null)
+        {
+            return NotFound();
+        }
+
+        if (quote.Status is not (QuoteStatus.Sent or QuoteStatus.Approved or QuoteStatus.Rejected))
+        {
+            TempData["Error"] = "Bu teklif taslağa çevrilemez.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (quote.Invoices.Count > 0)
+        {
+            TempData["Error"] = "Bu teklif zaten faturaya dönüştürülmüş, taslağa çevrilemez.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        quote.Status = QuoteStatus.Draft;
+        quote.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+
+        TempData["Success"] = "Teklif taslağa çevrildi, artık düzenlenebilir.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConvertToInvoice(int id, int warehouseId)
     {
         var quote = await dbContext.Quotes
@@ -531,6 +573,51 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        var invoice = await BuildInvoiceFromQuoteAsync(quote, warehouseId);
+        dbContext.Invoices.Add(invoice);
+        await dbContext.SaveChangesAsync();
+
+        TempData["Success"] = "Teklif satış faturasına dönüştürüldü. Taslağı gözden geçirip onaylayabilirsiniz.";
+        return RedirectToAction("Details", "Invoices", new { id = invoice.Id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkConvertToInvoice(int[] ids, int warehouseId)
+    {
+        if (ids is null || ids.Length == 0)
+        {
+            TempData["Error"] = "Faturaya dönüştürmek için en az bir onaylı teklif seçmelisiniz.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var quotes = await dbContext.Quotes
+            .Include(x => x.Lines)
+            .Where(x => ids.Contains(x.Id) && x.Status == QuoteStatus.Approved)
+            .ToListAsync();
+
+        var createdCount = 0;
+        foreach (var quote in quotes)
+        {
+            var invoice = await BuildInvoiceFromQuoteAsync(quote, warehouseId);
+            dbContext.Invoices.Add(invoice);
+            createdCount++;
+        }
+
+        if (createdCount > 0)
+        {
+            await dbContext.SaveChangesAsync();
+        }
+
+        var skippedCount = ids.Length - createdCount;
+        TempData["Success"] = skippedCount > 0
+            ? $"{createdCount} teklif satış faturasına dönüştürüldü. {skippedCount} teklif onaylı olmadığı için atlandı."
+            : $"{createdCount} teklif satış faturasına dönüştürüldü.";
+        return RedirectToAction("Index", "Invoices", new { type = InvoiceType.Sales });
+    }
+
+    private async Task<Invoice> BuildInvoiceFromQuoteAsync(Quote quote, int warehouseId)
+    {
         var invoice = new Invoice
         {
             InvoiceType = InvoiceType.Sales,
@@ -564,11 +651,7 @@ public sealed class QuotesController(
             });
         }
 
-        dbContext.Invoices.Add(invoice);
-        await dbContext.SaveChangesAsync();
-
-        TempData["Success"] = "Teklif satış faturasına dönüştürüldü. Taslağı gözden geçirip onaylayabilirsiniz.";
-        return RedirectToAction("Details", "Invoices", new { id = invoice.Id });
+        return invoice;
     }
 
     private static decimal RoundMoney(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

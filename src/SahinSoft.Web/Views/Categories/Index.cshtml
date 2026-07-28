@@ -50,8 +50,19 @@
                         @if (item.IsActive) { <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span> }
                         else { <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span> }
                     </td>
-                    <td class="text-end">
+                    <td class="text-end d-flex justify-content-end align-items-center gap-2">
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                        <form asp-action="MergeInto" asp-route-id="@item.Id" method="post" class="d-flex align-items-center gap-1"
+                              onsubmit="return confirm('&quot;' + '@item.Name'.replace(/'/g,'') + '&quot; kategorisindeki tüm ürünler seçilen kategoriye taşınacak ve bu kategori silinecek. Emin misiniz?');">
+                            <select name="targetCategoryId" class="form-select form-select-sm" style="width: auto; font-size: 0.78rem;" required>
+                                <option value="">Birleştir →</option>
+                                @foreach (var other in Model.Where(x => x.Id != item.Id))
+                                {
+                                    <option value="@other.Id">@other.Code - @other.Name</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem; color: #b91c1c; border-color: #b91c1c;">Birleştir</button>
+                        </form>
                     </td>
                 </tr>
             }

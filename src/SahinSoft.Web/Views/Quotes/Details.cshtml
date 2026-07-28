@@ -42,6 +42,12 @@
                 <button type="submit" class="btn btn-erp-danger btn-sm">Reddet</button>
             </form>
         }
+        @if (Model.Status is QuoteStatus.Sent or QuoteStatus.Approved or QuoteStatus.Rejected && !Model.HasConvertedInvoice)
+        {
+            <form method="post" asp-action="RevertToDraft" asp-route-id="@Model.Id" class="d-inline" onsubmit="return confirm('Bu teklifi taslağa çevirmek istediğinize emin misiniz? Tekrar düzenlenebilir hale gelecek.');">
+                <button type="submit" class="btn btn-erp-outline btn-sm">Taslağa Çevir</button>
+            </form>
+        }
     </div>
 </div>
 
