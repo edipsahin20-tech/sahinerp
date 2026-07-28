@@ -134,7 +134,9 @@ public sealed class QuotesController(
                 name = x.Name,
                 category = x.Category.Name,
                 unit = x.Unit,
-                price = x.SalePrice,
+                // Stok kartındaki Satış Fiyatı KDV dahildir; teklif/fatura satırındaki Birim Fiyat
+                // her zaman KDV hariçtir — burada stok kartının KDV oranına göre net tutara çevriliyor.
+                price = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 2, MidpointRounding.AwayFromZero),
                 stock = x.StockQuantity,
                 kdv = x.TaxRate.Rate
             })
