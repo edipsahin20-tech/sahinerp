@@ -932,7 +932,12 @@ table.erp-table .form-select {
     }
 }
 
-/* Site geneli arama penceresi (LookupModal) - kompakt, koyu başlıklı görünüm */
+/* Site geneli arama penceresi (LookupModal) - Teklif Stüdyosu'ndaki F9 arama penceresiyle
+   aynı görünüm (koyu lacivert/altın başlık, bulanık arka plan, açılış animasyonu). */
+.modal-backdrop.show {
+    backdrop-filter: blur(4px);
+}
+
 .lookup-modal-dialog {
     max-width: 720px;
 }
@@ -942,6 +947,12 @@ table.erp-table .form-select {
     overflow: hidden;
     border: none;
     box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+    animation: lookupModalFadeIn 0.2s ease;
+}
+
+@keyframes lookupModalFadeIn {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .lookup-modal-header {

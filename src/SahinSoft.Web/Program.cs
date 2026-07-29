@@ -85,6 +85,18 @@ app.MapRazorPages()
 
 try
 {
+    using var migrationScope = app.Services.CreateScope();
+    var dbContext = migrationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+    app.Logger.LogInformation("Database migrations applied on startup.");
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Database migration error on startup.");
+}
+
+try
+{
     await IdentitySeed.InitializeAsync(app.Services, app.Configuration);
 }
 catch (Exception ex)
