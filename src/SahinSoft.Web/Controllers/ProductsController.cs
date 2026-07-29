@@ -79,6 +79,25 @@ public sealed class ProductsController(
         return View(await query.ToListAsync());
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkSetUnitToAdet()
+    {
+        var adet = await dbContext.UnitsOfMeasure.SingleOrDefaultAsync(x => x.Code == "ADET");
+        if (adet is null)
+        {
+            TempData["Error"] = "\"Adet\" birimi tanımlı değil.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var updatedCount = await dbContext.Products.ExecuteUpdateAsync(s => s
+            .SetProperty(p => p.Unit, adet.Name)
+            .SetProperty(p => p.UnitOfMeasureId, adet.Id));
+
+        TempData["Success"] = $"{updatedCount} ürünün birimi \"Adet\" olarak güncellendi.";
+        return RedirectToAction(nameof(Index));
+    }
+
     public async Task<IActionResult> Create(int? carryOverFromId)
     {
         var model = new ProductFormViewModel();

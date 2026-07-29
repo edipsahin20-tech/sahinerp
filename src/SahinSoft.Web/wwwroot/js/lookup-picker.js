@@ -9,6 +9,92 @@
     var currentItems = [];
     var highlightIndex = -1;
 
+    // --- Yazarken anında öneri açılır listesi (Teklif Stüdyosu'ndaki F9 aramasıyla aynı his) ---
+    var quickDropdown = null;
+    var quickDropdownInput = null;
+    var quickDropdownItems = [];
+    var quickDropdownHighlight = -1;
+    var quickSearchTimer = null;
+    var quickSearchSeq = 0;
+
+    function ensureQuickDropdown() {
+        if (quickDropdown) return;
+        quickDropdown = document.createElement("div");
+        quickDropdown.className = "lookup-quick-dropdown";
+        document.body.appendChild(quickDropdown);
+        quickDropdown.addEventListener("mousedown", function (e) { e.preventDefault(); });
+        quickDropdown.addEventListener("click", function (e) {
+            var row = e.target.closest("[data-idx]");
+            if (!row || !quickDropdownInput) return;
+            var item = quickDropdownItems[Number(row.getAttribute("data-idx"))];
+            if (item) applySelection(pseudoTriggerFor(quickDropdownInput), item);
+            hideQuickDropdown();
+        });
+    }
+
+    function positionQuickDropdown(input) {
+        var rect = input.getBoundingClientRect();
+        quickDropdown.style.left = (rect.left + window.scrollX) + "px";
+        quickDropdown.style.top = (rect.bottom + window.scrollY + 2) + "px";
+        quickDropdown.style.width = Math.max(rect.width, 260) + "px";
+    }
+
+    function hideQuickDropdown() {
+        if (quickDropdown) quickDropdown.style.display = "none";
+        quickDropdownItems = [];
+        quickDropdownHighlight = -1;
+        quickDropdownInput = null;
+    }
+
+    function quickItemSubtitle(item) {
+        if (item.category) return item.category;
+        if (item.taxOffice) return item.taxOffice;
+        return "";
+    }
+
+    function quickItemAmount(item) {
+        if (item.salePrice != null) return formatMoney(item.salePrice) + " ₺";
+        if (item.debit != null || item.credit != null) {
+            var bal = Math.max((item.debit || 0) - (item.credit || 0), 0);
+            return bal > 0 ? formatMoney(bal) + " ₺ borç" : "";
+        }
+        return "";
+    }
+
+    function renderQuickDropdown(input, items) {
+        quickDropdownInput = input;
+        quickDropdownItems = items;
+        quickDropdownHighlight = items.length > 0 ? 0 : -1;
+        ensureQuickDropdown();
+
+        quickDropdown.innerHTML = items.length === 0
+            ? '<div class="lookup-quick-empty">Sonuç bulunamadı.</div>'
+            : items.map(function (item, idx) {
+                var sub = quickItemSubtitle(item);
+                var amount = quickItemAmount(item);
+                return '<div class="lookup-quick-item' + (idx === 0 ? " highlighted" : "") + '" data-idx="' + idx + '">' +
+                    '<span class="lookup-quick-main">' +
+                    '<span class="lookup-code-badge">' + escapeHtml(item.code || "") + '</span> ' +
+                    '<span>' + escapeHtml(item.name || "") + '</span>' +
+                    (sub ? ' <small class="text-secondary">' + escapeHtml(sub) + '</small>' : '') +
+                    '</span>' +
+                    (amount ? '<span class="lookup-quick-amount">' + amount + '</span>' : '') +
+                    '</div>';
+            }).join('');
+
+        positionQuickDropdown(input);
+        quickDropdown.style.display = "block";
+    }
+
+    function highlightQuickDropdown() {
+        if (!quickDropdown) return;
+        quickDropdown.querySelectorAll("[data-idx]").forEach(function (el) {
+            el.classList.toggle("highlighted", Number(el.getAttribute("data-idx")) === quickDropdownHighlight);
+        });
+        var active = quickDropdown.querySelector(".highlighted");
+        if (active) active.scrollIntoView({ block: "nearest" });
+    }
+
     function ensureModal() {
         if (modalEl) return;
         modalEl = document.getElementById("lookupModal");
@@ -215,36 +301,101 @@
         }
     });
 
-    // Quicksearch inputs: e.g. barcode scanner into product name/code field.
-    // Enter veya F9 (Mikro tarzı arama tuşu) tetikler; tek eşleşme varsa otomatik seçilir (barkod davranışı).
-    // Sonuna * konması da desteklenir (kozmetik, arama zaten "içerir" mantığında).
-    document.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter" && e.key !== "F9") return;
+    // Yazarken anında (canlı) öneri listesi: 250ms debounce ile arama yapılır, açılır listede
+    // gösterilir. Ok tuşlarıyla gezilir, Enter/tıklama ile seçilir.
+    document.addEventListener("input", function (e) {
         var input = e.target.closest(".lookup-quicksearch");
         if (!input) return;
-        e.preventDefault();
+        clearTimeout(quickSearchTimer);
+        var value = input.value.trim().replace(/\*+$/, "");
+        if (!value) { hideQuickDropdown(); return; }
 
-        var endpoint = input.getAttribute("data-lookup-endpoint");
+        quickSearchTimer = setTimeout(function () {
+            var endpoint = input.getAttribute("data-lookup-endpoint");
+            var mySeq = ++quickSearchSeq;
+            fetch(endpoint + "?q=" + encodeURIComponent(value))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (mySeq !== quickSearchSeq) return;
+                    renderQuickDropdown(input, (data.items || []).slice(0, 8));
+                })
+                .catch(function () { hideQuickDropdown(); });
+        }, 220);
+    });
+
+    document.addEventListener("focusout", function (e) {
+        if (e.target.closest(".lookup-quicksearch")) {
+            setTimeout(hideQuickDropdown, 150);
+        }
+    });
+
+    // Quicksearch inputs: e.g. barcode scanner into product name/code field.
+    // Açılır liste açıkken ok tuşları/Enter onu yönetir; F9 her zaman tam pencereyi açar (Mikro
+    // tarzı arama tuşu). Açılır liste yoksa Enter, tek eşleşme varsa otomatik seçer (barkod davranışı),
+    // birden fazla eşleşme varsa tam pencereyi açar. Sonuna * konması da desteklenir.
+    document.addEventListener("keydown", function (e) {
+        var input = e.target.closest(".lookup-quicksearch");
+        if (!input) return;
+
+        var dropdownOpen = quickDropdown && quickDropdown.style.display === "block" && quickDropdownItems.length > 0;
+        if (dropdownOpen) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                quickDropdownHighlight = Math.min(quickDropdownItems.length - 1, quickDropdownHighlight + 1);
+                highlightQuickDropdown();
+                return;
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                quickDropdownHighlight = Math.max(0, quickDropdownHighlight - 1);
+                highlightQuickDropdown();
+                return;
+            }
+            if (e.key === "Enter" && quickDropdownHighlight >= 0) {
+                e.preventDefault();
+                applySelection(pseudoTriggerFor(input), quickDropdownItems[quickDropdownHighlight]);
+                hideQuickDropdown();
+                return;
+            }
+            if (e.key === "Escape") {
+                hideQuickDropdown();
+                return;
+            }
+        }
+
+        if (e.key !== "Enter" && e.key !== "F9") return;
         var value = input.value.trim().replace(/\*+$/, "");
         if (!value) return;
+        e.preventDefault();
+        hideQuickDropdown();
 
-        fetch(endpoint + "?q=" + encodeURIComponent(value))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                var items = data.items || [];
-                if (items.length === 1) {
-                    applySelection(pseudoTriggerFor(input), items[0]);
-                } else if (items.length > 1) {
-                    var fakeTrigger = pseudoTriggerFor(input);
-                    ensureModal();
-                    activeTrigger = fakeTrigger;
-                    modalEl.querySelector(".lookup-modal-title").innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ' + escapeHtml(input.getAttribute("data-lookup-title") || "Kayıt Seç");
-                    modalEl.querySelector(".lookup-modal-search").value = value;
-                    bsModal.show();
-                    runSearch(value);
-                }
-            });
+        if (e.key === "Enter") {
+            var endpoint = input.getAttribute("data-lookup-endpoint");
+            fetch(endpoint + "?q=" + encodeURIComponent(value))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var items = data.items || [];
+                    if (items.length === 1) {
+                        applySelection(pseudoTriggerFor(input), items[0]);
+                    } else if (items.length > 1) {
+                        openFullSearch(input, value);
+                    }
+                });
+            return;
+        }
+
+        openFullSearch(input, value);
     });
+
+    function openFullSearch(input, value) {
+        var fakeTrigger = pseudoTriggerFor(input);
+        ensureModal();
+        activeTrigger = fakeTrigger;
+        modalEl.querySelector(".lookup-modal-title").innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ' + escapeHtml(input.getAttribute("data-lookup-title") || "Kayıt Seç");
+        modalEl.querySelector(".lookup-modal-search").value = value || "";
+        bsModal.show();
+        runSearch(value || "");
+    }
 
     function pseudoTriggerFor(input) {
         return {

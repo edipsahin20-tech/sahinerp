@@ -1023,3 +1023,59 @@ table.erp-table .form-select {
     font-weight: 600;
     display: inline-block;
 }
+
+/* Yazarken anında açılan öneri listesi (F9/Ara ile aynı arama, klavyeden çıkmadan). */
+.lookup-quick-dropdown {
+    display: none;
+    position: absolute;
+    z-index: 3000;
+    max-height: 280px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+    font-size: 0.85rem;
+}
+
+.lookup-quick-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.lookup-quick-item:last-child {
+    border-bottom: none;
+}
+
+.lookup-quick-item.highlighted,
+.lookup-quick-item:hover {
+    background: rgba(212, 164, 55, 0.15);
+}
+
+.lookup-quick-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lookup-quick-amount {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: #1f2937;
+    white-space: nowrap;
+}
+
+.lookup-quick-empty {
+    padding: 10px;
+    color: #94a3b8;
+    text-align: center;
+}

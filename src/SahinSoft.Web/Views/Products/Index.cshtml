@@ -7,11 +7,20 @@
 {
     <div class="alert alert-success py-2">@success</div>
 }
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
 
 <div class="erp-list-panel">
     <div class="erp-list-header">
         <h2><i class="fa-solid fa-box"></i> Stok Kartları</h2>
-        <a asp-action="Create" class="btn-erp-list-new">+ Yeni Stok Kartı</a>
+        <div class="d-flex gap-2">
+            <form asp-action="BulkSetUnitToAdet" method="post" onsubmit="return confirm('Tüm ürünlerin birimi \'Adet\' olarak değiştirilecek. Emin misiniz?');">
+                <button type="submit" class="btn-erp-list-new">Tüm Birimleri Adet Yap</button>
+            </form>
+            <a asp-action="Create" class="btn-erp-list-new">+ Yeni Stok Kartı</a>
+        </div>
     </div>
     <div class="erp-list-body">
         <div class="erp-list-topbar">

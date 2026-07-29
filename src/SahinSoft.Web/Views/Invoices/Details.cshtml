@@ -320,7 +320,16 @@
             <div class="sig-box">
                 <span class="sig-title">FATURAYI DÜZENLEYEN</span>
                 <span class="sig-company">@Model.Company.CompanyName</span>
-                <div class="sig-space"><span class="stamp-badge">ONAYLI</span></div>
+                <div class="sig-space">
+                    @if (Model.Status == InvoiceStatus.Approved)
+                    {
+                        <span class="stamp-badge">ONAYLI</span>
+                    }
+                    else
+                    {
+                        <span class="sig-placeholder">Kaşe / İmza / Tarih</span>
+                    }
+                </div>
                 <span class="sig-name">Satış & Muhasebe Departmanı</span>
             </div>
             <div class="sig-box">

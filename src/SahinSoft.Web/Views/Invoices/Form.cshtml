@@ -126,10 +126,12 @@
                     <thead>
                         <tr>
                             <th style="min-width: 220px;">Ürün</th>
-                            <th style="width: 100px;">Miktar</th>
-                            <th style="width: 110px;">Birim Fiyat</th>
-                            <th style="width: 90px;">İsk. %</th>
-                            <th style="width: 90px;">KDV %</th>
+                            <th style="width: 90px;">Miktar</th>
+                            <th style="width: 100px;">Birim Fiyat</th>
+                            <th style="width: 80px;">İsk. %</th>
+                            <th style="width: 80px;">KDV %</th>
+                            <th style="width: 100px;">Tutar</th>
+                            <th style="width: 100px;">Net Tutar</th>
                             <th>Açıklama</th>
                             <th style="width: 40px;"></th>
                         </tr>
@@ -152,7 +154,9 @@
                             <td><input type="text" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" class="form-control price-input" /></td>
                             <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control discount-input" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
-                            <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control" /></td>
+                            <td class="text-end line-gross">0.00</td>
+                            <td class="text-end fw-semibold line-net">0.00</td>
+                            <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control description-input" /></td>
                             <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
                         </tr>
                     }
@@ -204,7 +208,9 @@
         <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
         <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control discount-input" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
-        <td><input type="text" name="Lines[__index__].Description" value="" class="form-control" /></td>
+        <td class="text-end line-gross">0.00</td>
+        <td class="text-end fw-semibold line-net">0.00</td>
+        <td><input type="text" name="Lines[__index__].Description" value="" class="form-control description-input" /></td>
         <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
     </tr>
 </template>
@@ -219,12 +225,19 @@
             var nextIndex = @Model.Lines.Count;
             var isSales = @Json.Serialize(isSales);
 
-            addButton.addEventListener('click', function () {
+            function addRow() {
                 var html = template.innerHTML.split('__index__').join(nextIndex);
                 var wrapper = document.createElement('tbody');
                 wrapper.innerHTML = html;
-                linesBody.appendChild(wrapper.firstElementChild);
+                var row = wrapper.firstElementChild;
+                linesBody.appendChild(row);
                 nextIndex++;
+                return row;
+            }
+
+            addButton.addEventListener('click', function () {
+                addRow();
+                recalcTotals();
             });
 
             linesBody.addEventListener('click', function (event) {
@@ -232,6 +245,7 @@
                     var row = event.target.closest('tr');
                     if (linesBody.querySelectorAll('.line-row').length > 1) {
                         row.remove();
+                        recalcTotals();
                     }
                 }
             });
@@ -245,6 +259,48 @@
                 row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
                 recalcTotals();
+                var qtyInput = row.querySelector('.quantity-input');
+                qtyInput.focus();
+                qtyInput.select();
+            });
+
+            // Mikro tarzı klavye akışı: Enter ile satırdaki bir sonraki alana geçilir; son alanda
+            // (Açıklama) Enter'a basılınca bir sonraki satıra (varsa) geçilir, o da son satırsa
+            // 2 yeni satır birden açılır ve ilk yeni satırın Ürün alanına odaklanılır.
+            var rowFieldOrder = ['.quantity-input', '.price-input', '.discount-input', '.tax-input', '.description-input'];
+
+            linesBody.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') return;
+                if (event.target.classList.contains('lookup-quicksearch')) return;
+
+                var fieldClass = rowFieldOrder.find(function (cls) { return event.target.classList.contains(cls.slice(1)); });
+                if (!fieldClass) return;
+                event.preventDefault();
+
+                var row = event.target.closest('tr');
+                var fieldIndex = rowFieldOrder.indexOf(fieldClass);
+
+                if (fieldIndex < rowFieldOrder.length - 1) {
+                    var nextField = row.querySelector(rowFieldOrder[fieldIndex + 1]);
+                    nextField.focus();
+                    nextField.select();
+                    return;
+                }
+
+                var allRows = Array.from(linesBody.querySelectorAll('.line-row'));
+                var isLastRow = allRows[allRows.length - 1] === row;
+
+                var targetRow;
+                if (isLastRow) {
+                    targetRow = addRow();
+                    addRow();
+                    recalcTotals();
+                } else {
+                    targetRow = allRows[allRows.indexOf(row) + 1];
+                }
+
+                var productInput = targetRow.querySelector('.lookup-quicksearch');
+                if (productInput) productInput.focus();
             });
 
             function formatMoney(amount) {
@@ -264,7 +320,7 @@
                     var gross = qty * price;
                     var lineDiscAmount = gross * discRate / 100;
                     var netAfterLineDiscount = gross - lineDiscAmount;
-                    return { gross: gross, lineDiscAmount: lineDiscAmount, netAfterLineDiscount: netAfterLineDiscount, taxRate: taxRate };
+                    return { row: row, gross: gross, lineDiscAmount: lineDiscAmount, netAfterLineDiscount: netAfterLineDiscount, taxRate: taxRate };
                 });
 
                 var netAfterLineDiscountTotal = rows.reduce(function (s, r) { return s + r.netAfterLineDiscount; }, 0);
@@ -282,6 +338,9 @@
                     var totalDiscAmount = r.lineDiscAmount + share;
                     var net = r.gross - totalDiscAmount;
                     var taxAmount = net * r.taxRate / 100;
+
+                    r.row.querySelector('.line-gross').textContent = formatMoney(r.gross);
+                    r.row.querySelector('.line-net').textContent = formatMoney(net);
 
                     subtotal += r.gross;
                     discountTotal += totalDiscAmount;
