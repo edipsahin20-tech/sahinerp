@@ -537,7 +537,7 @@ public sealed class QuotesController(
             TaxTotal = quote.TaxTotal,
             GrandTotal = quote.GrandTotal,
             Notes = quote.Notes,
-            HasConvertedInvoice = quote.Invoices.Count > 0,
+            HasConvertedInvoice = quote.Invoices.Any(x => x.Status != InvoiceStatus.Cancelled),
             Lines = quote.Lines
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new QuoteDetailsLineViewModel
@@ -692,7 +692,10 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        if (quote.Invoices.Count > 0)
+        // Faturaya dönüştürülmüş ama sonradan iptal edilmiş bir teklif, satış gerçekleşmediği
+        // için tekrar taslağa çevrilip düzenlenebilmeli — sadece hâlâ geçerli (iptal edilmemiş)
+        // bir fatura varsa engellenir.
+        if (quote.Invoices.Any(x => x.Status != InvoiceStatus.Cancelled))
         {
             TempData["Error"] = "Bu teklif zaten faturaya dönüştürülmüş, taslağa çevrilemez.";
             return RedirectToAction(nameof(Details), new { id });

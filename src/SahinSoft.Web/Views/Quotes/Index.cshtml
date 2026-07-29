@@ -82,7 +82,7 @@
                         QuoteStatus.Approved => "Müşteri Onayladı",
                         _ => "Müşteri Onaylamadı"
                     };
-                    var hasInvoice = item.Invoices.Count > 0;
+                    var hasInvoice = item.Invoices.Any(x => x.Status != InvoiceStatus.Cancelled);
                     <tr>
                         <td>
                             @if (item.Status == QuoteStatus.Approved && !hasInvoice)
