@@ -104,8 +104,8 @@
                     {
                         QuoteStatus.Draft => "Taslak",
                         QuoteStatus.Sent => "Gönderildi",
-                        QuoteStatus.Approved => "Onaylı",
-                        _ => "Reddedildi"
+                        QuoteStatus.Approved => "Müşteri Onayladı",
+                        _ => "Müşteri Onaylamadı"
                     };
                     var hasInvoice = item.Invoices.Count > 0;
                     <tr data-search="@($"{item.QuoteNumber} {item.Customer.Name}".ToLowerInvariant())">

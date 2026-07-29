@@ -260,6 +260,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
             entity.Property(x => x.Subtotal).HasPrecision(18, 2);
             entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.AmountDiscount).HasPrecision(18, 2);
             entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
             entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
@@ -273,7 +274,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.ToTable(table =>
                 table.HasCheckConstraint(
                     "CK_Quotes_Totals",
-                    "[Subtotal] >= 0 AND [DiscountTotal] >= 0 AND [TaxTotal] >= 0 AND [GrandTotal] >= 0"));
+                    "[Subtotal] >= 0 AND [DiscountTotal] >= 0 AND [AmountDiscount] >= 0 AND [TaxTotal] >= 0 AND [GrandTotal] >= 0"));
         });
 
         builder.Entity<QuoteLine>(entity =>
@@ -749,13 +750,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.Property(x => x.MinimumQuantity).HasPrecision(18, 3);
             entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            // Kasıtlı olarak tekil (unique) değil: bir cari+ürün için zaman içinde birden fazla
+            // fiyat kaydı (geçmiş) tutulur; en güncel fiyat CreatedAtUtc'ye göre seçilir.
             entity.HasIndex(x => new
             {
                 x.SalesPriceListId,
                 x.ProductId,
                 x.ProductVariantId,
                 x.MinimumQuantity
-            }).IsUnique();
+            });
             entity.HasOne(x => x.SalesPriceList)
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.SalesPriceListId)

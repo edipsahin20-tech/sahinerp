@@ -253,11 +253,20 @@ public sealed class CustomersController(
             return NotFound();
         }
 
-        var items = await dbContext.SalesPriceListItems
+        var rawItems = await dbContext.SalesPriceListItems
             .AsNoTracking()
             .Include(x => x.Product)
             .Where(x => x.SalesPriceList.CustomerId == id)
+            .ToListAsync();
+
+        var latestIdsByProduct = rawItems
+            .GroupBy(x => x.ProductId)
+            .Select(g => g.OrderByDescending(x => x.CreatedAtUtc).First().Id)
+            .ToHashSet();
+
+        var items = rawItems
             .OrderBy(x => x.Product.Name)
+            .ThenByDescending(x => x.CreatedAtUtc)
             .Select(x => new CustomerPriceListItemViewModel
             {
                 Id = x.Id,
@@ -265,9 +274,10 @@ public sealed class CustomersController(
                 ProductCode = x.Product.StockCode,
                 ProductName = x.Product.Name,
                 UnitPrice = x.UnitPrice,
-                UpdatedAtUtc = x.UpdatedAtUtc ?? x.CreatedAtUtc
+                UpdatedAtUtc = x.CreatedAtUtc,
+                IsLatest = latestIdsByProduct.Contains(x.Id)
             })
-            .ToListAsync();
+            .ToList();
 
         var model = new CustomerPriceListViewModel
         {
@@ -278,6 +288,52 @@ public sealed class CustomersController(
         };
 
         return View(model);
+    }
+
+    public async Task<IActionResult> PriceLists(string? search)
+    {
+        var rawItems = await dbContext.SalesPriceListItems
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.SalesPriceList).ThenInclude(x => x.Customer)
+            .Where(x => x.SalesPriceList.CustomerId != null)
+            .ToListAsync();
+
+        var latestIdsByCustomerProduct = rawItems
+            .GroupBy(x => new { x.SalesPriceList.CustomerId, x.ProductId })
+            .Select(g => g.OrderByDescending(x => x.CreatedAtUtc).First().Id)
+            .ToHashSet();
+
+        var items = rawItems
+            .Select(x => new AllCustomerPriceListItemViewModel
+            {
+                Id = x.Id,
+                CustomerId = x.SalesPriceList.CustomerId!.Value,
+                CustomerCode = x.SalesPriceList.Customer!.Code,
+                CustomerName = x.SalesPriceList.Customer!.Name,
+                ProductId = x.ProductId,
+                ProductCode = x.Product.StockCode,
+                ProductName = x.Product.Name,
+                UnitPrice = x.UnitPrice,
+                UpdatedAtUtc = x.CreatedAtUtc,
+                IsLatest = latestIdsByCustomerProduct.Contains(x.Id)
+            })
+            .Where(x => x.IsLatest)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalized = search.Trim();
+            items = items.Where(x =>
+                x.CustomerName.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                x.CustomerCode.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                x.ProductName.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                x.ProductCode.Contains(normalized, StringComparison.OrdinalIgnoreCase));
+        }
+
+        ViewBag.Search = search;
+        return View(items.ToList());
     }
 
     [HttpPost]
@@ -297,22 +353,15 @@ public sealed class CustomersController(
             return RedirectToAction(nameof(PriceList), new { id = customerId });
         }
 
+        // Her ekleme yeni bir geçmiş kaydı oluşturur (önceki fiyatın üzerine yazmaz) — böylece
+        // bir ürün için zaman içindeki fiyat değişimleri (ör. döviz kuru dalgalanması) görülebilir.
         var priceList = await GetOrCreateCustomerPriceListAsync(customerId);
-        var existingItem = priceList.Items.SingleOrDefault(x => x.ProductId == productId && x.ProductVariantId == null && x.MinimumQuantity == 1);
-        if (existingItem is not null)
+        priceList.Items.Add(new SalesPriceListItem
         {
-            existingItem.UnitPrice = unitPrice;
-            existingItem.UpdatedAtUtc = DateTime.UtcNow;
-        }
-        else
-        {
-            priceList.Items.Add(new SalesPriceListItem
-            {
-                ProductId = productId,
-                MinimumQuantity = 1,
-                UnitPrice = unitPrice
-            });
-        }
+            ProductId = productId,
+            MinimumQuantity = 1,
+            UnitPrice = unitPrice
+        });
 
         await dbContext.SaveChangesAsync();
         TempData["Success"] = $"{product.Name} için özel fiyat kaydedildi.";

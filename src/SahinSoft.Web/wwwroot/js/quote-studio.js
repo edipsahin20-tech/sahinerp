@@ -75,6 +75,7 @@ function loadExistingQuoteIfAny() {
   document.getElementById('cust-tax-office').value = data.taxOffice || '';
   document.getElementById('cust-address').value = data.address || '';
   document.getElementById('quote-note').value = data.notes || '';
+  document.getElementById('quote-amount-discount').value = data.amountDiscount || 0;
 
   if (data.currencyCode) {
     document.getElementById('quote-currency').value = data.currencyCode;
@@ -623,6 +624,59 @@ function getCurrencySymbol() {
   return activeCurrency === 'USD' ? '$' : activeCurrency === 'EUR' ? '€' : '₺';
 }
 
+function getAmountDiscountInput() {
+  const el = document.getElementById('quote-amount-discount');
+  return el ? (parseFloat(el.value) || 0) : 0;
+}
+
+// Satır iskontosu (%) uygulandıktan sonra, genel Tutar İskontosu her satırın net tutar payına
+// göre orantılı dağıtılır (KDV matrahını doğru düşürmek için) ve KDV bu nihai net üzerinden
+// hesaplanır. Ara Toplam her zaman brüt (hiç iskonto düşülmemiş) kalır.
+function calculateQuoteLineBreakdown() {
+  const rows = currentQuoteItems.map(item => {
+    const itemUnitPrice = convertPrice(item.price);
+    const gross = item.qty * itemUnitPrice;
+    const lineDiscAmount = gross * (item.discount / 100);
+    const netAfterLineDiscount = gross - lineDiscAmount;
+    return { item, itemUnitPrice, gross, lineDiscAmount, netAfterLineDiscount };
+  });
+
+  const netAfterLineDiscountTotal = rows.reduce((sum, r) => sum + r.netAfterLineDiscount, 0);
+  const rawAmountDiscount = getAmountDiscountInput();
+  const amountDiscount = Math.min(Math.max(rawAmountDiscount, 0), Math.max(netAfterLineDiscountTotal, 0));
+
+  let allocated = 0;
+  rows.forEach((r, idx) => {
+    const share = idx === rows.length - 1
+      ? (amountDiscount - allocated)
+      : (netAfterLineDiscountTotal > 0 ? amountDiscount * (r.netAfterLineDiscount / netAfterLineDiscountTotal) : 0);
+    allocated += share;
+    r.amountDiscShare = share;
+    r.totalDiscAmount = r.lineDiscAmount + share;
+    r.net = r.gross - r.totalDiscAmount;
+    r.kdvAmount = r.net * (r.item.kdv / 100);
+    r.lineTotal = r.net + r.kdvAmount;
+  });
+
+  const subtotal = rows.reduce((s, r) => s + r.gross, 0);
+  const totalDiscount = rows.reduce((s, r) => s + r.totalDiscAmount, 0);
+  const totalKdv = rows.reduce((s, r) => s + r.kdvAmount, 0);
+  const grandTotal = subtotal - totalDiscount + totalKdv;
+
+  // Farklı KDV oranlı satırlar bir aradaysa (ör. %10 ve %20), toplamı tek satırda göstermek
+  // yerine her oran için ayrı satır halinde döker.
+  const kdvBreakdownMap = new Map();
+  rows.forEach(r => {
+    const rate = r.item.kdv;
+    kdvBreakdownMap.set(rate, (kdvBreakdownMap.get(rate) || 0) + r.kdvAmount);
+  });
+  const kdvBreakdown = Array.from(kdvBreakdownMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([rate, amount]) => ({ rate, amount }));
+
+  return { rows, subtotal, totalDiscount, totalKdv, kdvBreakdown, grandTotal, amountDiscount };
+}
+
 function updateCalculations() {
   const tbody = document.getElementById('quote-items-body');
   document.getElementById('items-count-badge').textContent = currentQuoteItems.length;
@@ -638,50 +692,38 @@ function updateCalculations() {
     `;
     document.getElementById('calc-subtotal').textContent = `0.00 ${getCurrencySymbol()}`;
     document.getElementById('calc-discount-row').style.display = 'none';
-    document.getElementById('calc-kdv').textContent = `0.00 ${getCurrencySymbol()}`;
+    document.getElementById('calc-kdv-breakdown').innerHTML = '';
     document.getElementById('calc-grand-total').textContent = `0.00 ${getCurrencySymbol()}`;
     return;
   }
 
-  let subtotal = 0;
-  let totalDiscount = 0;
-  let totalKdv = 0;
   const symbol = getCurrencySymbol();
+  const { rows, subtotal, totalDiscount, kdvBreakdown, grandTotal } = calculateQuoteLineBreakdown();
 
   tbody.innerHTML = '';
 
-  currentQuoteItems.forEach((item, idx) => {
-    const itemUnitPrice = convertPrice(item.price);
-    const grossTotal = item.qty * itemUnitPrice;
-    const discAmount = grossTotal * (item.discount / 100);
-    const netTotal = grossTotal - discAmount;
-    const kdvAmount = netTotal * (item.kdv / 100);
-
-    subtotal += grossTotal;
-    totalDiscount += discAmount;
-    totalKdv += kdvAmount;
-
-    const escapedName = escapeHtml(item.name);
+  rows.forEach((r, idx) => {
+    const escapedName = escapeHtml(r.item.name);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>
-        <span class="item-code-badge">${item.code}</span>
+        <span class="item-code-badge">${r.item.code}</span>
         <input type="text" class="form-control item-name-input" value="${escapedName}" onchange="updateItemName(${idx}, this.value)" title="Bu teklif için ürün açıklamasını düzenleyebilirsiniz">
       </td>
-      <td>${item.unit}</td>
+      <td>${r.item.unit}</td>
       <td>
-        <input type="number" class="form-control" style="width: 60px; padding: 4px;" value="${item.qty}" min="1" onchange="updateItemQty(${idx}, this.value)">
+        <input type="number" class="form-control" style="width: 60px; padding: 4px;" value="${r.item.qty}" min="1" onchange="updateItemQty(${idx}, this.value)">
       </td>
       <td>
-        <input type="number" class="form-control" style="width: 90px; padding: 4px;" value="${itemUnitPrice.toFixed(2)}" step="0.01" onchange="updateItemPrice(${idx}, this.value)">
+        <input type="number" class="form-control" style="width: 90px; padding: 4px;" value="${r.itemUnitPrice.toFixed(2)}" step="0.01" onchange="updateItemPrice(${idx}, this.value)">
       </td>
-      <td>%${item.kdv}</td>
+      <td>%${r.item.kdv}</td>
       <td>
-        <input type="number" class="form-control" style="width: 60px; padding: 4px;" value="${item.discount}" min="0" max="100" onchange="updateItemDiscount(${idx}, this.value)">
+        <input type="number" class="form-control" style="width: 60px; padding: 4px;" value="${r.item.discount}" min="0" max="100" onchange="updateItemDiscount(${idx}, this.value)">
       </td>
-      <td><strong>${formatMoney(netTotal)} ${symbol}</strong></td>
+      <td><strong>${formatMoney(r.net)} ${symbol}</strong></td>
       <td>
         <button type="button" class="btn btn-sm btn-outline" onclick="removeQuoteItem(${idx})" title="Kalemi Sil" style="color: var(--accent-red); border-color: transparent;">
           <i class="fa-solid fa-trash-can"></i>
@@ -691,10 +733,8 @@ function updateCalculations() {
     tbody.appendChild(tr);
   });
 
-  const grandTotal = (subtotal - totalDiscount) + totalKdv;
-
   document.getElementById('calc-subtotal').textContent = `${formatMoney(subtotal)} ${symbol}`;
-  
+
   if (totalDiscount > 0) {
     document.getElementById('calc-discount-row').style.display = 'flex';
     document.getElementById('calc-discount-total').textContent = `-${formatMoney(totalDiscount)} ${symbol}`;
@@ -702,7 +742,12 @@ function updateCalculations() {
     document.getElementById('calc-discount-row').style.display = 'none';
   }
 
-  document.getElementById('calc-kdv').textContent = `${formatMoney(totalKdv)} ${symbol}`;
+  document.getElementById('calc-kdv-breakdown').innerHTML = kdvBreakdown.map(k => `
+    <div class="calc-line">
+      <span>KDV Tutarı (%${k.rate}):</span>
+      <strong>${formatMoney(k.amount)} ${symbol}</strong>
+    </div>
+  `).join('');
   document.getElementById('calc-grand-total').textContent = `${formatMoney(grandTotal)} ${symbol}`;
 }
 
@@ -753,11 +798,9 @@ function updatePdfPreview() {
   pdfTbody.innerHTML = '';
 
   const symbol = getCurrencySymbol();
-  let subtotal = 0;
-  let totalDiscount = 0;
-  let totalKdv = 0;
+  const { rows, subtotal, totalDiscount, kdvBreakdown, grandTotal } = calculateQuoteLineBreakdown();
 
-  if (currentQuoteItems.length === 0) {
+  if (rows.length === 0) {
     pdfTbody.innerHTML = `
       <tr>
         <td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">
@@ -766,34 +809,22 @@ function updatePdfPreview() {
       </tr>
     `;
   } else {
-    currentQuoteItems.forEach((item, idx) => {
-      const itemUnitPrice = convertPrice(item.price);
-      const grossTotal = item.qty * itemUnitPrice;
-      const discAmount = grossTotal * (item.discount / 100);
-      const netTotal = grossTotal - discAmount;
-      const kdvAmount = netTotal * (item.kdv / 100);
-
-      subtotal += grossTotal;
-      totalDiscount += discAmount;
-      totalKdv += kdvAmount;
-
+    rows.forEach((r, idx) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="text-align: center;">${idx + 1}</td>
-        <td><strong>${item.code}</strong></td>
-        <td>${escapeHtml(item.name)}</td>
-        <td>${item.unit}</td>
-        <td style="text-align: center;">${item.qty}</td>
-        <td style="text-align: right;">${formatMoney(itemUnitPrice)} ${symbol}</td>
-        <td style="text-align: center;">%${item.kdv}</td>
-        <td style="text-align: center;">${item.discount > 0 ? '%' + item.discount : '-'}</td>
-        <td style="text-align: right;"><strong>${formatMoney(netTotal)} ${symbol}</strong></td>
+        <td><strong>${r.item.code}</strong></td>
+        <td>${escapeHtml(r.item.name)}</td>
+        <td>${r.item.unit}</td>
+        <td style="text-align: center;">${r.item.qty}</td>
+        <td style="text-align: right;">${formatMoney(r.itemUnitPrice)} ${symbol}</td>
+        <td style="text-align: center;">%${r.item.kdv}</td>
+        <td style="text-align: center;">${r.item.discount > 0 ? '%' + r.item.discount : '-'}</td>
+        <td style="text-align: right;"><strong>${formatMoney(r.net)} ${symbol}</strong></td>
       `;
       pdfTbody.appendChild(tr);
     });
   }
-
-  const grandTotal = (subtotal - totalDiscount) + totalKdv;
 
   document.getElementById('pdf-val-subtotal').textContent = `${formatMoney(subtotal)} ${symbol}`;
   
@@ -804,7 +835,12 @@ function updatePdfPreview() {
     document.getElementById('pdf-discount-row').style.display = 'none';
   }
 
-  document.getElementById('pdf-val-kdv').textContent = `${formatMoney(totalKdv)} ${symbol}`;
+  document.getElementById('pdf-kdv-breakdown').innerHTML = kdvBreakdown.map(k => `
+    <div class="pdf-total-row">
+      <span>KDV Tutarı (%${k.rate}):</span>
+      <strong>${formatMoney(k.amount)} ${symbol}</strong>
+    </div>
+  `).join('');
   document.getElementById('pdf-val-grand').textContent = `${formatMoney(grandTotal)} ${symbol}`;
 }
 
@@ -900,20 +936,7 @@ async function saveQuoteToDatabase(status) {
   const companyInput = document.getElementById('cust-company');
   const customerId = companyInput ? parseInt(companyInput.dataset.customerId || '0') : 0;
 
-  let subtotal = 0;
-  let totalDiscount = 0;
-  let totalKdv = 0;
-  currentQuoteItems.forEach(i => {
-    const itemUnitPrice = convertPrice(i.price);
-    const gross = i.qty * itemUnitPrice;
-    const disc = gross * (i.discount / 100);
-    const net = gross - disc;
-    subtotal += gross;
-    totalDiscount += disc;
-    totalKdv += net * (i.kdv / 100);
-  });
-
-  const grandTotal = (subtotal - totalDiscount) + totalKdv;
+  const { grandTotal } = calculateQuoteLineBreakdown();
 
   const proposalObj = {
     id: currentSavedQuoteId,
@@ -929,6 +952,7 @@ async function saveQuoteToDatabase(status) {
     currencyCode: activeCurrency,
     exchangeRate: window.globalExchangeRates[activeCurrency] || 1,
     notes: document.getElementById('quote-note').value || '',
+    amountDiscount: getAmountDiscountInput(),
     grandTotal: grandTotal,
     status: status,
     items: JSON.parse(JSON.stringify(currentQuoteItems))

@@ -13,6 +13,7 @@ public sealed class Quote : EntityBase
     public decimal ExchangeRate { get; set; } = 1;
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }
+    public decimal AmountDiscount { get; set; }
     public decimal TaxTotal { get; set; }
     public decimal GrandTotal { get; set; }
     public string? Notes { get; set; }

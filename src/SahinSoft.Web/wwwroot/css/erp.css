@@ -590,6 +590,18 @@ table.erp-table .form-select {
 
 .btn-erp-danger:hover { background: #fdecec; color: #8a2a2a; }
 
+.btn-erp-success {
+    background: #1f7a4d;
+    border: none;
+    color: #ecfdf3;
+    font-weight: 700;
+    padding: 0.45rem 1.2rem;
+    border-radius: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.btn-erp-success:hover { background: #196540; color: #ecfdf3; }
+
 /* ---- Report/summary boxes (Cari Ekstresi style) ---- */
 .erp-summary-row {
     display: grid;

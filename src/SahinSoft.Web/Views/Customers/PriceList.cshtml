@@ -9,6 +9,7 @@
         <span class="erp-toolbar-meta">@Model.CustomerCode &middot; @Model.CustomerName</span>
     </div>
     <div class="erp-toolbar-actions">
+        <a asp-action="PriceLists" class="btn btn-erp-outline btn-sm">Tüm Cariler - Özel Fiyatlar</a>
         <a asp-action="Index" class="btn btn-erp-outline btn-sm">Cari Listesi</a>
     </div>
 </div>
@@ -24,7 +25,8 @@
 
 <div class="alert alert-info py-2">
     Burada tanımlanan fiyatlar yalnızca bu cariye teklif/fatura verilirken kullanılır — stok kartındaki genel Satış Fiyatı'nı etkilemez.
-    Bu cariye bir teklif kaydedildiğinde, kullanılan fiyat buraya otomatik olarak (tarihiyle birlikte) kaydedilir.
+    Bu cariye bir teklif kaydedildiğinde, kullanılan fiyat buraya otomatik olarak (tarihiyle birlikte) yeni bir kayıt olarak eklenir; bir ürün için
+    birden fazla tarihli fiyat olabilir, teklif verirken en güncel ("Güncel" etiketli) fiyat kullanılır.
 </div>
 
 <div class="erp-panel mb-3">
@@ -62,7 +64,8 @@
                         <th>Stok Kodu</th>
                         <th>Ürün</th>
                         <th class="text-end">Özel Fiyat (KDV Dahil)</th>
-                        <th>Son Güncelleme</th>
+                        <th>Tarih</th>
+                        <th>Durum</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -70,8 +73,8 @@
                 @foreach (var item in Model.Items)
                 {
                     var daysOld = (DateTime.UtcNow - item.UpdatedAtUtc).TotalDays;
-                    var isStale = daysOld > 30;
-                    <tr>
+                    var isStale = item.IsLatest && daysOld > 30;
+                    <tr class="@(item.IsLatest ? "" : "text-secondary")">
                         <td class="fw-semibold">@item.ProductCode</td>
                         <td>@item.ProductName</td>
                         <td class="text-end fw-semibold">@item.UnitPrice.ToString("N2") ₺</td>
@@ -82,8 +85,18 @@
                                 <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1" title="Bu fiyat 30 günden eski, döviz kuru değişmiş olabilir">@((int)daysOld) gün önce</span>
                             }
                         </td>
+                        <td>
+                            @if (item.IsLatest)
+                            {
+                                <span class="badge text-bg-success-subtle text-success-emphasis">Güncel</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary-subtle text-secondary-emphasis">Geçmiş</span>
+                            }
+                        </td>
                         <td class="text-end">
-                            <form asp-action="RemovePriceListItem" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bu özel fiyatı kaldırmak istediğinize emin misiniz?');">
+                            <form asp-action="RemovePriceListItem" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bu fiyat kaydını kaldırmak istediğinize emin misiniz?');">
                                 <input type="hidden" name="customerId" value="@Model.CustomerId" />
                                 <button type="submit" class="btn btn-erp-danger" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Kaldır</button>
                             </form>
@@ -92,7 +105,7 @@
                 }
                 @if (Model.Items.Count == 0)
                 {
-                    <tr><td colspan="5" class="text-center text-secondary py-4">Bu cariye tanımlanmış özel fiyat bulunamadı.</td></tr>
+                    <tr><td colspan="6" class="text-center text-secondary py-4">Bu cariye tanımlanmış özel fiyat bulunamadı.</td></tr>
                 }
                 </tbody>
             </table>

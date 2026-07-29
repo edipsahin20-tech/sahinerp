@@ -18,6 +18,7 @@
             quoteDate = Model.Existing.QuoteDate,
             currencyCode = Model.Existing.CurrencyCode,
             notes = Model.Existing.Notes,
+            amountDiscount = Model.Existing.AmountDiscount,
             items = Model.Existing.Items.Select(x => new
             {
                 dbId = x.DbId,
@@ -268,14 +269,15 @@
                   <span>Brüt Ara Toplam:</span>
                   <strong id="calc-subtotal">0.00 ₺</strong>
                 </div>
+                <div class="calc-line">
+                  <span>Tutar İskontosu:</span>
+                  <input type="number" id="quote-amount-discount" class="form-control" style="width: 120px; padding: 4px; text-align: right;" value="0" min="0" step="0.01" oninput="updateCalculations(); updatePdfPreview();" title="Ara toplamdan düşülecek genel (KDV hariç) iskonto tutarı">
+                </div>
                 <div class="calc-line text-red" id="calc-discount-row" style="display: none;">
                   <span>Toplam İskonto Tutarı:</span>
                   <strong id="calc-discount-total">-0.00 ₺</strong>
                 </div>
-                <div class="calc-line">
-                  <span>Toplam KDV Tutarı:</span>
-                  <strong id="calc-kdv">0.00 ₺</strong>
-                </div>
+                <div id="calc-kdv-breakdown"></div>
                 <div class="calc-line grand-total">
                   <span>GENEL TOPLAM:</span>
                   <strong id="calc-grand-total">0.00 ₺</strong>
@@ -442,10 +444,7 @@
                   <span>İskonto Tutarı:</span>
                   <strong id="pdf-val-discount">-0.00 ₺</strong>
                 </div>
-                <div class="pdf-total-row">
-                  <span>KDV Tutarı (%20):</span>
-                  <strong id="pdf-val-kdv">0.00 ₺</strong>
-                </div>
+                <div id="pdf-kdv-breakdown"></div>
                 <div class="pdf-total-row grand">
                   <span>GENEL TOPLAM:</span>
                   <strong id="pdf-val-grand">0.00 ₺</strong>

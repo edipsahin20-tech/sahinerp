@@ -13,8 +13,8 @@
     {
         QuoteStatus.Draft => "Taslak",
         QuoteStatus.Sent => "Gönderildi",
-        QuoteStatus.Approved => "Onaylı",
-        _ => "Reddedildi"
+        QuoteStatus.Approved => "Müşteri Onayladı",
+        _ => "Müşteri Onaylamadı"
     };
 }
 
@@ -35,11 +35,12 @@
         }
         @if (Model.Status is QuoteStatus.Draft or QuoteStatus.Sent)
         {
-            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline">
-                <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
+            <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="d-inline" onsubmit="return prepareApproveSubmit(this);">
+                <button type="submit" class="btn btn-erp-success btn-sm">Müşteri Onayladı</button>
             </form>
-            <form method="post" asp-action="Reject" asp-route-id="@Model.Id" class="d-inline">
-                <button type="submit" class="btn btn-erp-danger btn-sm">Reddet</button>
+            <form method="post" asp-action="Reject" asp-route-id="@Model.Id" class="d-inline" onsubmit="return promptRejectReason(this);">
+                <input type="hidden" name="reason" />
+                <button type="submit" class="btn btn-erp-danger btn-sm">Müşteri Onaylamadı</button>
             </form>
         }
         @if (Model.Status is QuoteStatus.Sent or QuoteStatus.Approved or QuoteStatus.Rejected && !Model.HasConvertedInvoice)
@@ -65,8 +66,13 @@
     <div class="erp-panel-body p-0">
         <div class="erp-table-wrap">
             <table class="erp-table">
+                @{ var canPickLines = Model.Status is QuoteStatus.Draft or QuoteStatus.Sent; }
                 <thead>
                     <tr>
+                        @if (canPickLines)
+                        {
+                            <th title="Müşterinin onayladığı kalemleri işaretleyin; işaretsiz bırakılanlar onaylandığında teklften silinir">Onay</th>
+                        }
                         <th>Ürün</th>
                         <th class="text-end">Miktar</th>
                         <th class="text-end">Birim Fiyat</th>
@@ -79,6 +85,10 @@
                 @foreach (var line in Model.Lines)
                 {
                     <tr>
+                        @if (canPickLines)
+                        {
+                            <td><input type="checkbox" class="line-approve-checkbox" data-line-id="@line.Id" checked></td>
+                        }
                         <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
                         <td class="text-end">@line.UnitPrice.ToString("N2")</td>
@@ -93,8 +103,11 @@
         <div class="p-3 d-flex">
             <div class="erp-totals">
                 <div class="erp-totals-row"><span>Ara toplam</span><span>@Model.Subtotal.ToString("N2")</span></div>
-                <div class="erp-totals-row"><span>İskonto</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
-                <div class="erp-totals-row"><span>KDV</span><span>@Model.TaxTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>İskonto @(Model.AmountDiscount > 0 ? $"(içinde {Model.AmountDiscount:N2} tutar iskontosu var)" : "")</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
+                @foreach (var tax in Model.TaxBreakdown)
+                {
+                    <div class="erp-totals-row"><span>KDV %@tax.TaxRate.ToString("0.##")</span><span>@tax.TaxAmount.ToString("N2")</span></div>
+                }
                 <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
             </div>
         </div>
@@ -134,4 +147,50 @@
             }
         </div>
     </div>
+}
+
+@section Scripts {
+    <script>
+        function promptRejectReason(form) {
+            const reason = prompt('Müşteri neden onaylamadı? (isteğe bağlı bir açıklama girebilirsiniz)');
+            if (reason === null) {
+                return false;
+            }
+            form.querySelector('input[name="reason"]').value = reason;
+            return true;
+        }
+
+        // Müşterinin onayladığı kalemleri Onayla formuna ekler; onaysız bırakılan kalemler
+        // teklften silinir (checkbox'lar tablo, form ise ayrı bir yerde olduğu için burada bağlanır).
+        function prepareApproveSubmit(form) {
+            const checkboxes = document.querySelectorAll('.line-approve-checkbox');
+            if (checkboxes.length === 0) {
+                return true;
+            }
+
+            const checked = Array.from(checkboxes).filter(cb => cb.checked);
+            if (checked.length === 0) {
+                alert('Onaylamak için en az bir kalem seçili olmalı.');
+                return false;
+            }
+
+            if (checked.length < checkboxes.length) {
+                if (!confirm('İşaretlenmemiş kalemler bu tekliften kalıcı olarak silinecek. Devam edilsin mi?')) {
+                    return false;
+                }
+            }
+
+            form.querySelectorAll('.approve-line-input').forEach(el => el.remove());
+            checked.forEach(cb => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'approvedLineIds';
+                input.value = cb.dataset.lineId;
+                input.className = 'approve-line-input';
+                form.appendChild(input);
+            });
+
+            return true;
+        }
+    </script>
 }

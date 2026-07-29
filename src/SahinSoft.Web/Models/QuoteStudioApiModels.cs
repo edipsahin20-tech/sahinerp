@@ -15,6 +15,7 @@ public sealed class QuoteStudioSaveRequest
     public decimal ExchangeRate { get; set; } = 1;
     public string? Notes { get; set; }
     public string Status { get; set; } = "Taslak";
+    public decimal AmountDiscount { get; set; }
     public List<QuoteStudioSaveLine> Items { get; set; } = [];
 }
 
@@ -56,6 +57,7 @@ public sealed class QuoteStudioExistingData
     public string QuoteDate { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
     public string? Notes { get; set; }
+    public decimal AmountDiscount { get; set; }
     public List<QuoteStudioExistingItem> Items { get; set; } = [];
 }
 

@@ -112,6 +112,7 @@ public sealed class QuotesController(
                 QuoteDate = quote.QuoteDateUtc.ToString("yyyy-MM-dd"),
                 CurrencyCode = quote.CurrencyCode,
                 Notes = quote.Notes,
+                AmountDiscount = quote.AmountDiscount,
                 Items = quote.Lines
                     .OrderBy(x => x.LineNumber)
                     .Select(x => new QuoteStudioExistingItem
@@ -136,10 +137,13 @@ public sealed class QuotesController(
     {
         // Carinin özel fiyat listesinde bu ürün için bir kayıt varsa, stok kartındaki genel
         // fiyat yerine o kullanılır (stok kartı hiçbir zaman değişmez, sadece öneri kaynağı değişir).
+        // Bir ürün için birden fazla tarihli kayıt olabileceğinden (fiyat geçmişi), en güncel (son) kayıt seçilir.
         var specialPrices = customerId.HasValue
             ? await dbContext.SalesPriceListItems
                 .AsNoTracking()
                 .Where(x => x.SalesPriceList.CustomerId == customerId.Value && x.ProductVariantId == null && x.MinimumQuantity == 1)
+                .GroupBy(x => x.ProductId)
+                .Select(g => new { ProductId = g.Key, UnitPrice = g.OrderByDescending(x => x.CreatedAtUtc).Select(x => x.UnitPrice).First() })
                 .ToDictionaryAsync(x => x.ProductId, x => x.UnitPrice)
             : [];
 
@@ -357,18 +361,49 @@ public sealed class QuotesController(
             quote.Notes = request.Notes?.Trim();
             quote.CustomerId = customer.Id;
 
+            // 1. geçiş: satır bazlı (%) iskonto sonrası net tutarlar hesaplanır; genel tutar
+            // iskontosunun satırlara oranlı dağıtımı için bu netlerin toplamına ihtiyaç var.
+            var lineCalc = request.Items
+                .Select(item =>
+                {
+                    var gross = RoundMoney(item.Qty * item.Price);
+                    var lineDiscAmount = RoundMoney(gross * item.Discount / 100);
+                    var netAfterLineDiscount = gross - lineDiscAmount;
+                    return (item, gross, lineDiscAmount, netAfterLineDiscount);
+                })
+                .ToList();
+
+            var netAfterLineDiscountTotal = lineCalc.Sum(x => x.netAfterLineDiscount);
+            // Tutar iskontosu, satır iskontoları sonrası net toplamdan fazla olamaz (negatif matrah oluşmasın).
+            var amountDiscount = Math.Clamp(request.AmountDiscount, 0, Math.Max(netAfterLineDiscountTotal, 0));
+
             var lineNumber = 1;
-            decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
-            foreach (var item in request.Items)
+            decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0, allocatedAmountDiscount = 0;
+            for (var i = 0; i < lineCalc.Count; i++)
             {
-                var gross = RoundMoney(item.Qty * item.Price);
-                var discAmount = RoundMoney(gross * item.Discount / 100);
-                var net = gross - discAmount;
+                var (item, gross, lineDiscAmount, netAfterLineDiscount) = lineCalc[i];
+
+                // Genel tutar iskontosu, KDV matrahını doğru düşürmek için her satırın net tutar
+                // payına göre orantılı dağıtılır; son satır yuvarlama farkını emer.
+                decimal amountDiscShare;
+                if (i == lineCalc.Count - 1)
+                {
+                    amountDiscShare = RoundMoney(amountDiscount - allocatedAmountDiscount);
+                }
+                else
+                {
+                    var ratio = netAfterLineDiscountTotal > 0 ? netAfterLineDiscount / netAfterLineDiscountTotal : 0;
+                    amountDiscShare = RoundMoney(amountDiscount * ratio);
+                }
+                allocatedAmountDiscount += amountDiscShare;
+
+                var totalDiscAmount = lineDiscAmount + amountDiscShare;
+                var net = gross - totalDiscAmount;
                 var taxAmount = RoundMoney(net * item.Kdv / 100);
                 var lineTotal = net + taxAmount;
 
                 subtotal += gross;
-                discountTotal += discAmount;
+                discountTotal += totalDiscAmount;
                 taxTotal += taxAmount;
                 grandTotal += lineTotal;
 
@@ -382,7 +417,7 @@ public sealed class QuotesController(
                     Quantity = item.Qty,
                     UnitPrice = item.Price,
                     DiscountRate = item.Discount,
-                    DiscountAmount = discAmount,
+                    DiscountAmount = totalDiscAmount,
                     TaxRate = item.Kdv,
                     TaxAmount = taxAmount,
                     LineTotal = lineTotal
@@ -391,6 +426,7 @@ public sealed class QuotesController(
 
             quote.Subtotal = RoundMoney(subtotal);
             quote.DiscountTotal = RoundMoney(discountTotal);
+            quote.AmountDiscount = amountDiscount;
             quote.TaxTotal = RoundMoney(taxTotal);
             quote.GrandTotal = RoundMoney(grandTotal);
 
@@ -399,9 +435,9 @@ public sealed class QuotesController(
                 dbContext.Quotes.Add(quote);
             }
 
-            // Bu caride kullanılan (KDV dahil) fiyat, stok kartını hiç etkilemeden carinin özel
-            // fiyat listesine (tarihiyle birlikte) kaydedilir — bir sonraki teklifte önce bu
-            // özel fiyat, yoksa stok kartındaki genel fiyat önerilir.
+            // Bu caride kullanılan (KDV dahil, tutar iskontosundan bağımsız birim liste fiyatı) stok
+            // kartını hiç etkilemeden carinin özel fiyat listesine (tarihiyle birlikte) yeni bir
+            // geçmiş kaydı olarak eklenir — fiyat bir öncekiyle aynıysa tekrar satır açılmaz.
             var linkedItems = request.Items.Where(x => x.DbId.HasValue).ToList();
             if (linkedItems.Count > 0)
             {
@@ -410,14 +446,11 @@ public sealed class QuotesController(
                 {
                     var productId = item.DbId!.Value;
                     var priceInclTax = RoundMoney(item.Price * (1 + item.Kdv / 100));
-                    var existingPriceItem = customerPriceList.Items.SingleOrDefault(
-                        x => x.ProductId == productId && x.ProductVariantId == null && x.MinimumQuantity == 1);
-                    if (existingPriceItem is not null)
-                    {
-                        existingPriceItem.UnitPrice = priceInclTax;
-                        existingPriceItem.UpdatedAtUtc = DateTime.UtcNow;
-                    }
-                    else
+                    var latestPriceItem = customerPriceList.Items
+                        .Where(x => x.ProductId == productId && x.ProductVariantId == null && x.MinimumQuantity == 1)
+                        .OrderByDescending(x => x.CreatedAtUtc)
+                        .FirstOrDefault();
+                    if (latestPriceItem is null || latestPriceItem.UnitPrice != priceInclTax)
                     {
                         customerPriceList.Items.Add(new SalesPriceListItem
                         {
@@ -500,6 +533,7 @@ public sealed class QuotesController(
             CurrencyCode = quote.CurrencyCode,
             Subtotal = quote.Subtotal,
             DiscountTotal = quote.DiscountTotal,
+            AmountDiscount = quote.AmountDiscount,
             TaxTotal = quote.TaxTotal,
             GrandTotal = quote.GrandTotal,
             Notes = quote.Notes,
@@ -508,6 +542,7 @@ public sealed class QuotesController(
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new QuoteDetailsLineViewModel
                 {
+                    Id = x.Id,
                     ProductNameSnapshot = x.ProductNameSnapshot,
                     UnitSnapshot = x.UnitSnapshot,
                     Quantity = x.Quantity,
@@ -516,6 +551,11 @@ public sealed class QuotesController(
                     TaxRate = x.TaxRate,
                     LineTotal = x.LineTotal
                 })
+                .ToList(),
+            TaxBreakdown = quote.Lines
+                .GroupBy(x => x.TaxRate)
+                .OrderBy(g => g.Key)
+                .Select(g => new QuoteTaxBreakdownViewModel { TaxRate = g.Key, TaxAmount = g.Sum(x => x.TaxAmount) })
                 .ToList(),
             Warehouses = await dbContext.Warehouses
                 .AsNoTracking()
@@ -554,9 +594,9 @@ public sealed class QuotesController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Approve(int id)
+    public async Task<IActionResult> Approve(int id, int[]? approvedLineIds)
     {
-        var quote = await dbContext.Quotes.SingleOrDefaultAsync(x => x.Id == id);
+        var quote = await dbContext.Quotes.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id);
         if (quote is null)
         {
             return NotFound();
@@ -568,17 +608,46 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        // Müşteri sadece bazı kalemleri onayladıysa (checkbox'lardan işaretsiz bırakılanlar),
+        // onaylanmayan satırlar teklften tamamen silinir ve toplamlar kalan satırlara göre
+        // yeniden hesaplanır (her satırın DiscountAmount/TaxAmount/LineTotal'ı zaten kendi
+        // nihai — tutar iskontosu dahil — değerini taşıdığı için basit toplam yeterli).
+        if (approvedLineIds is not null)
+        {
+            var approvedSet = approvedLineIds.ToHashSet();
+            if (approvedSet.Count == 0)
+            {
+                TempData["Error"] = "Onaylamak için en az bir kalem seçili olmalı.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (approvedSet.Count < quote.Lines.Count)
+            {
+                var linesToRemove = quote.Lines.Where(x => !approvedSet.Contains(x.Id)).ToList();
+                foreach (var line in linesToRemove)
+                {
+                    quote.Lines.Remove(line);
+                    dbContext.QuoteLines.Remove(line);
+                }
+
+                quote.Subtotal = RoundMoney(quote.Lines.Sum(x => x.Quantity * x.UnitPrice));
+                quote.DiscountTotal = RoundMoney(quote.Lines.Sum(x => x.DiscountAmount));
+                quote.TaxTotal = RoundMoney(quote.Lines.Sum(x => x.TaxAmount));
+                quote.GrandTotal = RoundMoney(quote.Lines.Sum(x => x.LineTotal));
+            }
+        }
+
         quote.Status = QuoteStatus.Approved;
         quote.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = "Teklif onaylandı.";
+        TempData["Success"] = "Teklif, müşteri onayladı olarak işaretlendi.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Reject(int id)
+    public async Task<IActionResult> Reject(int id, string? reason)
     {
         var quote = await dbContext.Quotes.SingleOrDefaultAsync(x => x.Id == id);
         if (quote is null)
@@ -594,9 +663,14 @@ public sealed class QuotesController(
 
         quote.Status = QuoteStatus.Rejected;
         quote.UpdatedAtUtc = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            var rejectionNote = $"Müşteri onaylamadı ({DateTime.UtcNow:dd.MM.yyyy}): {reason.Trim()}";
+            quote.Notes = string.IsNullOrWhiteSpace(quote.Notes) ? rejectionNote : $"{quote.Notes}\n{rejectionNote}";
+        }
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = "Teklif reddedildi olarak işaretlendi.";
+        TempData["Success"] = "Teklif, müşteri onaylamadı olarak işaretlendi.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -713,6 +787,15 @@ public sealed class QuotesController(
         var lineNumber = 1;
         foreach (var line in quote.Lines.OrderBy(x => x.LineNumber))
         {
+            // Fatura, teklifin satır iskontosu (%) alanını değil, teklifte fiilen uygulanan toplam
+            // iskonto tutarını (satır iskontosu + orantılı tutar iskontosu payı) aynen üretecek
+            // "etkin" bir iskonto oranı kullanır — böylece teklifteki genel tutar iskontosunun KDV
+            // matrahına etkisi, Fatura şemasına yeni alan eklemeden faturaya da aynen taşınır.
+            var gross = line.Quantity * line.UnitPrice;
+            var effectiveDiscountRate = gross > 0
+                ? Math.Round(line.DiscountAmount / gross * 100, 4, MidpointRounding.AwayFromZero)
+                : 0;
+
             invoice.Lines.Add(new InvoiceLine
             {
                 LineNumber = lineNumber++,
@@ -722,7 +805,7 @@ public sealed class QuotesController(
                 UnitSnapshot = line.UnitSnapshot,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
-                DiscountRate = line.DiscountRate,
+                DiscountRate = effectiveDiscountRate,
                 TaxRate = line.TaxRate,
                 Description = line.Description
             });
