@@ -3,31 +3,27 @@
     ViewData["Title"] = "Cari Özel Fiyat Listesi";
 }
 
-<div class="erp-toolbar">
-    <div class="erp-toolbar-title">
-        <h1>Cari Özel Fiyat Listesi</h1>
-        <span class="erp-toolbar-meta">Tüm carilerin güncel özel fiyatları · @Model.Count kayıt</span>
-    </div>
-    <div class="erp-toolbar-actions">
-        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Cari Listesi</a>
-    </div>
-</div>
-
 <div class="alert alert-info py-2">
     Burada her cari için o an geçerli olan (en güncel) özel fiyatlar topluca listelenir. Bir cariye ait fiyat geçmişini
     görmek veya yeni fiyat eklemek için ilgili carinin "Özel Fiyatlar" ekranına gidin.
 </div>
 
-<div class="erp-filter-bar">
-    <div class="erp-field flex-grow-1">
-        <label>Ara</label>
-        <input class="form-control" autocomplete="off"
-               placeholder="Cari kodu, cari adı, ürün kodu veya ürün adı ara..." data-live-search="#priceListsTable" />
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-tags"></i> Cari Özel Fiyat Listesi</h2>
+        <a asp-action="Index" class="btn-erp-list-new">Cari Listesi</a>
     </div>
-</div>
+    <div class="erp-list-body">
+        <div class="erp-list-topbar">
+            <div class="erp-list-topbar-left">
+                <div class="erp-list-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" class="form-control" autocomplete="off" placeholder="Cari kodu, cari adı, ürün kodu veya ürün adı ara..." data-live-search="#priceListsTable">
+                </div>
+            </div>
+            <span class="text-secondary">Toplam <strong>@Model.Count</strong> kayıt.</span>
+        </div>
 
-<div class="erp-panel">
-    <div class="erp-panel-body p-0">
         <div class="erp-table-wrap">
             <table class="erp-table" id="priceListsTable">
                 <thead>
@@ -47,20 +43,20 @@
                     var daysOld = (DateTime.UtcNow - item.UpdatedAtUtc).TotalDays;
                     var isStale = daysOld > 30;
                     <tr>
-                        <td class="fw-semibold">@item.CustomerCode</td>
-                        <td>@item.CustomerName</td>
-                        <td class="fw-semibold">@item.ProductCode</td>
+                        <td><span class="erp-code-badge">@item.CustomerCode</span></td>
+                        <td class="fw-semibold">@item.CustomerName</td>
+                        <td><span class="erp-code-badge">@item.ProductCode</span></td>
                         <td>@item.ProductName</td>
                         <td class="text-end fw-semibold">@item.UnitPrice.ToString("N2") ₺</td>
                         <td>
                             @item.UpdatedAtUtc.ToString("dd.MM.yyyy")
                             @if (isStale)
                             {
-                                <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1" title="Bu fiyat 30 günden eski, döviz kuru değişmiş olabilir">@((int)daysOld) gün önce</span>
+                                <span class="erp-status-pill amber ms-1" title="Bu fiyat 30 günden eski, döviz kuru değişmiş olabilir">@((int)daysOld) gün önce</span>
                             }
                         </td>
                         <td class="text-end">
-                            <a asp-action="PriceList" asp-route-id="@item.CustomerId" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Geçmişi Gör</a>
+                            <a asp-action="PriceList" asp-route-id="@item.CustomerId" class="btn-erp-list-action">Geçmişi Gör</a>
                         </td>
                     </tr>
                 }

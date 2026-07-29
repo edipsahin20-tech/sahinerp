@@ -804,6 +804,36 @@ table.erp-table .form-select {
     margin-bottom: 1rem;
 }
 
+/* ---- Standart liste sayfası şablonu (Teklifler listesindeki tasarım) ----
+   Sadece liste (Index) sayfalarında kullanılır; .erp-toolbar/.erp-panel formlarda/
+   detay sayfalarında kullanılmaya devam eder, buradan etkilenmez. */
+.erp-list-panel { border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); border: 1px solid #e5e7eb; }
+.erp-list-header { padding: 16px 22px; background: #0f172a; border-bottom: 2px solid #d4af37; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.erp-list-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+.erp-list-header h2 i { color: #d4af37; }
+.btn-erp-list-new { background: #d4af37; border: 1px solid #d4af37; color: #1f2937; font-weight: 600; padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: 6px; display: inline-block; }
+.btn-erp-list-new:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
+.erp-list-body { background: #fff; padding: 18px 22px 22px; }
+.erp-list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.erp-list-topbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1 1 auto; }
+.erp-list-search { position: relative; flex: 1 1 320px; max-width: 420px; }
+.erp-list-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+.erp-list-search input { padding-left: 36px; border-radius: 8px; }
+.erp-list-filter { margin: 0; }
+.erp-list-filter select { border-radius: 8px; max-width: 170px; }
+.erp-code-badge { font-family: 'Fira Code', monospace; font-size: 11px; color: #a3760f; background: rgba(212, 175, 55, 0.15); padding: 3px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
+.erp-status-pill { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; border: 1px solid transparent; }
+.erp-status-pill.gray { background: rgba(100, 116, 139, 0.12); color: #475569; border-color: rgba(100, 116, 139, 0.35); }
+.erp-status-pill.blue { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; border-color: rgba(37, 99, 235, 0.35); }
+.erp-status-pill.green { background: rgba(5, 150, 105, 0.12); color: #047857; border-color: rgba(5, 150, 105, 0.35); }
+.erp-status-pill.amber { background: rgba(217, 119, 6, 0.12); color: #b45309; border-color: rgba(217, 119, 6, 0.35); }
+.erp-status-pill.red { background: rgba(220, 38, 38, 0.12); color: #b91c1c; border-color: rgba(220, 38, 38, 0.35); }
+.erp-list-panel table.erp-table thead th { background: #f8fafc; }
+.btn-erp-list-action { background: #d4af37; border-color: #d4af37; color: #1f2937; font-weight: 600; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; display: inline-block; }
+.btn-erp-list-action:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
+.btn-erp-list-delete { color: #b91c1c; border: 1px solid #b91c1c; background: #fff; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; margin-left: 6px; display: inline-block; }
+.btn-erp-list-delete:hover { background: #fef2f2; color: #b91c1c; }
+
 /* ---- Mobile responsiveness ---- */
 @media (max-width: 576px) {
     :root {

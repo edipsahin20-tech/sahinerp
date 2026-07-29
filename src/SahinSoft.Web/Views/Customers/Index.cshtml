@@ -3,68 +3,68 @@
     ViewData["Title"] = "Cariler";
 }
 
-<div class="erp-toolbar">
-    <div class="erp-toolbar-title">
-        <h1>Cariler</h1>
-        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
-    </div>
-    <div class="erp-toolbar-actions">
-        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Cari</a>
-    </div>
-</div>
-
 @if (TempData["Success"] is string success)
 {
     <div class="alert alert-success py-2">@success</div>
 }
 
-<div class="erp-filter-bar">
-    <div class="erp-field flex-grow-1">
-        <label>Ara</label>
-        <input class="form-control" autocomplete="off"
-               placeholder="Cari kodu, unvan veya vergi no ara..." data-live-search="#customersTable" />
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-users"></i> Cariler</h2>
+        <a asp-action="Create" class="btn-erp-list-new">+ Yeni Cari</a>
     </div>
-</div>
+    <div class="erp-list-body">
+        <div class="erp-list-topbar">
+            <div class="erp-list-topbar-left">
+                <div class="erp-list-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" class="form-control" autocomplete="off" placeholder="Cari kodu, unvan veya vergi no ara..." data-live-search="#customersTable">
+                </div>
+            </div>
+            <span class="text-secondary">Toplam <strong>@Model.Count</strong> kayıt.</span>
+        </div>
 
-<div class="erp-panel">
-    <div class="erp-panel-body p-0">
-    <div class="erp-table-wrap">
-        <table class="erp-table" id="customersTable">
-            <thead>
-                <tr>
-                    <th>Cari Kodu</th>
-                    <th>Unvan</th>
-                    <th>Vergi No</th>
-                    <th>Telefon</th>
-                    <th>Tür</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var item in Model)
-            {
-                <tr class="@(item.IsActive ? "" : "text-secondary")">
-                    <td class="fw-semibold">@item.Code</td>
-                    <td>
-                        <div>@item.Name</div>
-                        <small class="text-secondary">@item.City @item.District</small>
-                    </td>
-                    <td>@item.TaxNumber</td>
-                    <td>@item.Phone</td>
-                    <td>
-                        @if (item.IsCustomer) { <span class="badge text-bg-primary-subtle text-primary-emphasis">Müşteri</span> }
-                        @if (item.IsSupplier) { <span class="badge text-bg-secondary-subtle text-secondary-emphasis">Tedarikçi</span> }
-                        @if (!item.IsActive) { <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span> }
-                    </td>
-                    <td class="text-end">
-                        <a asp-action="Statement" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Ekstre</a>
-                        <a asp-action="PriceList" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Özel Fiyatlar</a>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+        <div class="erp-table-wrap">
+            <table class="erp-table" id="customersTable">
+                <thead>
+                    <tr>
+                        <th>Cari Kodu</th>
+                        <th>Unvan</th>
+                        <th>Vergi No</th>
+                        <th>Telefon</th>
+                        <th>Tür</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr class="@(item.IsActive ? "" : "text-secondary")">
+                        <td><span class="erp-code-badge">@item.Code</span></td>
+                        <td>
+                            <div class="fw-semibold">@item.Name</div>
+                            <small class="text-secondary">@item.City @item.District</small>
+                        </td>
+                        <td>@item.TaxNumber</td>
+                        <td>@item.Phone</td>
+                        <td>
+                            @if (item.IsCustomer) { <span class="erp-status-pill blue">Müşteri</span> }
+                            @if (item.IsSupplier) { <span class="erp-status-pill gray">Tedarikçi</span> }
+                            @if (!item.IsActive) { <span class="erp-status-pill red">Pasif</span> }
+                        </td>
+                        <td class="text-end">
+                            <a asp-action="Statement" asp-route-id="@item.Id" class="btn-erp-list-action">Ekstre</a>
+                            <a asp-action="PriceList" asp-route-id="@item.Id" class="btn-erp-list-action">Özel Fiyatlar</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn-erp-list-action">Düzenle</a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

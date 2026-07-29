@@ -59,7 +59,16 @@ public sealed class InvoicesController(
         ViewBag.Status = status;
         ViewBag.CustomerId = customerId;
         ViewBag.Search = search;
-        return View(await query.ToListAsync());
+
+        try
+        {
+            return View(await query.ToListAsync());
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "Fatura listesi yüklenirken hata oluştu: " + (ex.InnerException?.Message ?? ex.Message);
+            return View(new List<Invoice>());
+        }
     }
 
     public async Task<IActionResult> Create(InvoiceType type)

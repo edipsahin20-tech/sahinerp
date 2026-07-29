@@ -6,31 +6,6 @@
 
 @section Head {
     <style>
-        .quote-list-panel { border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); border: 1px solid #e5e7eb; }
-        .quote-list-header { padding: 16px 22px; background: #0f172a; border-bottom: 2px solid #d4af37; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .quote-list-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
-        .quote-list-header h2 i { color: #d4af37; }
-        .btn-quote-new { background: #d4af37; border: 1px solid #d4af37; color: #1f2937; font-weight: 600; padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: 6px; display: inline-block; }
-        .btn-quote-new:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
-        .quote-list-body { background: #fff; padding: 18px 22px 22px; }
-        .quote-list-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .quote-list-topbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1 1 auto; }
-        .quote-list-search { position: relative; flex: 1 1 320px; max-width: 420px; }
-        .quote-list-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
-        .quote-list-search input { padding-left: 36px; border-radius: 8px; }
-        .quote-status-filter { margin: 0; }
-        .quote-status-filter select { border-radius: 8px; max-width: 170px; }
-        .quote-code-badge { font-family: 'Fira Code', monospace; font-size: 11px; color: #a3760f; background: rgba(212, 175, 55, 0.15); padding: 3px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
-        .quote-status-pill { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; border: 1px solid transparent; }
-        .quote-status-pill.draft { background: rgba(100, 116, 139, 0.12); color: #475569; border-color: rgba(100, 116, 139, 0.35); }
-        .quote-status-pill.sent { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; border-color: rgba(37, 99, 235, 0.35); }
-        .quote-status-pill.approved { background: rgba(5, 150, 105, 0.12); color: #047857; border-color: rgba(5, 150, 105, 0.35); }
-        .quote-status-pill.rejected { background: rgba(220, 38, 38, 0.12); color: #b91c1c; border-color: rgba(220, 38, 38, 0.35); }
-        .quote-list-panel table.erp-table thead th { background: #f8fafc; }
-        .btn-quote-load { background: #d4af37; border-color: #d4af37; color: #1f2937; font-weight: 600; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; display: inline-block; }
-        .btn-quote-load:hover { background: #c49c2c; border-color: #c49c2c; color: #1f2937; }
-        .btn-quote-delete { color: #b91c1c; border: 1px solid #b91c1c; background: #fff; padding: 0.3rem 0.75rem; font-size: 0.78rem; border-radius: 6px; margin-left: 6px; }
-        .btn-quote-delete:hover { background: #fef2f2; color: #b91c1c; }
         .quote-bulk-bar { display: none; align-items: center; gap: 10px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; flex-wrap: wrap; }
         .quote-bulk-bar.active { display: flex; }
         .quote-bulk-bar select { max-width: 220px; }
@@ -46,19 +21,19 @@
     <div class="alert alert-danger py-2">@error</div>
 }
 
-<div class="quote-list-panel">
-    <div class="quote-list-header">
+<div class="erp-list-panel">
+    <div class="erp-list-header">
         <h2><i class="fa-solid fa-folder-open"></i> Teklifler</h2>
-        <a asp-action="Studio" class="btn-quote-new">+ Yeni Teklif</a>
+        <a asp-action="Studio" class="btn-erp-list-new">+ Yeni Teklif</a>
     </div>
-    <div class="quote-list-body">
-        <div class="quote-list-topbar">
-            <div class="quote-list-topbar-left">
-                <div class="quote-list-search">
+    <div class="erp-list-body">
+        <div class="erp-list-topbar">
+            <div class="erp-list-topbar-left">
+                <div class="erp-list-search">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="quote-list-quicksearch" class="form-control" placeholder="Teklif no veya firma adı ara...">
+                    <input type="text" class="form-control" autocomplete="off" placeholder="Teklif no veya firma adı ara..." data-live-search="#quote-list-table">
                 </div>
-                <form method="get" class="quote-status-filter">
+                <form method="get" class="erp-list-filter">
                     <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<QuoteStatus>()" onchange="this.form.submit()">
                         <option value="">Tüm durumlar</option>
                     </select>
@@ -95,10 +70,10 @@
                 {
                     var statusClass = item.Status switch
                     {
-                        QuoteStatus.Draft => "draft",
-                        QuoteStatus.Sent => "sent",
-                        QuoteStatus.Approved => "approved",
-                        _ => "rejected"
+                        QuoteStatus.Draft => "gray",
+                        QuoteStatus.Sent => "blue",
+                        QuoteStatus.Approved => "green",
+                        _ => "red"
                     };
                     var statusText = item.Status switch
                     {
@@ -108,24 +83,24 @@
                         _ => "Müşteri Onaylamadı"
                     };
                     var hasInvoice = item.Invoices.Count > 0;
-                    <tr data-search="@($"{item.QuoteNumber} {item.Customer.Name}".ToLowerInvariant())">
+                    <tr>
                         <td>
                             @if (item.Status == QuoteStatus.Approved && !hasInvoice)
                             {
                                 <input type="checkbox" class="form-check-input quote-bulk-checkbox" value="@item.Id" />
                             }
                         </td>
-                        <td><span class="quote-code-badge">@item.QuoteNumber</span></td>
+                        <td><span class="erp-code-badge">@item.QuoteNumber</span></td>
                         <td>@item.QuoteDateUtc.ToString("dd.MM.yyyy")</td>
                         <td class="fw-semibold">@item.Customer.Name</td>
-                        <td><span class="quote-status-pill @statusClass">@statusText</span></td>
+                        <td><span class="erp-status-pill @statusClass">@statusText</span></td>
                         <td class="text-end fw-semibold">@item.GrandTotal.ToString("N2") ₺</td>
                         <td>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn-quote-load">Görüntüle / Düzenle</a>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn-erp-list-action">Görüntüle / Düzenle</a>
                             @if (item.Status == QuoteStatus.Draft)
                             {
                                 <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bu teklifi kalıcı olarak silmek istediğinize emin misiniz?');">
-                                    <button type="submit" class="btn-quote-delete">Sil</button>
+                                    <button type="submit" class="btn-erp-list-delete">Sil</button>
                                 </form>
                             }
                         </td>
@@ -143,13 +118,6 @@
 
 @section Scripts {
     <script>
-        document.getElementById('quote-list-quicksearch').addEventListener('input', function () {
-            var q = this.value.trim().toLocaleLowerCase('tr-TR');
-            document.querySelectorAll('#quote-list-table tbody tr[data-search]').forEach(function (row) {
-                row.style.display = row.dataset.search.includes(q) ? '' : 'none';
-            });
-        });
-
         (function () {
             var checkboxes = document.querySelectorAll('.quote-bulk-checkbox');
             var bar = document.getElementById('quote-bulk-bar');
