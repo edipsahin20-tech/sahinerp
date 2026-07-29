@@ -548,8 +548,12 @@ public sealed class QuotesController(
                     Quantity = x.Quantity,
                     UnitPrice = x.UnitPrice,
                     DiscountRate = x.DiscountRate,
+                    DiscountAmount = x.DiscountAmount,
                     TaxRate = x.TaxRate,
-                    LineTotal = x.LineTotal
+                    LineTotal = x.LineTotal,
+                    GrossTotal = Math.Round(x.Quantity * x.UnitPrice, 2, MidpointRounding.AwayFromZero),
+                    NetTotal = Math.Round((x.Quantity * x.UnitPrice) - x.DiscountAmount, 2, MidpointRounding.AwayFromZero),
+                    Description = x.Description
                 })
                 .ToList(),
             TaxBreakdown = quote.Lines
@@ -813,6 +817,10 @@ public sealed class QuotesController(
                 Description = line.Description
             });
         }
+
+        // Fatura, teklften dönüştürülür dönüştürülmez (onaydan/kaydetmeden önce bile) doğru
+        // toplamları göstersin diye — InvoicesController'daki taslak kaydıyla aynı hesap.
+        InvoiceTotalsCalculator.Calculate(invoice);
 
         return invoice;
     }

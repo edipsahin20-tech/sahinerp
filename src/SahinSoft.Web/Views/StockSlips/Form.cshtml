@@ -55,7 +55,8 @@
                 <table class="erp-table" id="lines-table">
                     <thead>
                         <tr>
-                            <th style="min-width: 220px;">Ürün</th>
+                            <th style="width: 140px;">Stok Kodu</th>
+                            <th style="min-width: 220px;">Ürün Adı</th>
                             <th style="width: 110px;">Miktar</th>
                             <th style="width: 120px;">Birim Maliyet</th>
                             <th>Açıklama</th>
@@ -65,20 +66,31 @@
                     <tbody id="lines-body">
                     @for (var i = 0; i < Model.Lines.Count; i++)
                     {
+                        var rawDisplay = Model.Lines[i].ProductDisplay ?? "";
+                        var codeVal = rawDisplay.Contains(" - ") ? rawDisplay.Split(" - ")[0] : "";
+                        var nameVal = rawDisplay.Contains(" - ") ? string.Join(" - ", rawDisplay.Split(" - ").Skip(1)) : rawDisplay;
                         <tr class="line-row">
                             <input type="hidden" name="Lines.Index" value="@i" />
+                            <td>
+                                <input type="text" class="form-control stock-code-input lookup-quicksearch" 
+                                       placeholder="Stok Kodu/Barkod" autocomplete="off" value="@codeVal"
+                                       data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                                       data-lookup-title="Ürün Seç"
+                                       data-target-hidden="Lines_@(i)__ProductId"
+                                       data-target-display="Lines_@(i)__ProductId_display" />
+                            </td>
                             <td>
                                 <partial name="_LookupField" model="@(new LookupFieldViewModel {
                                     Name = $"Lines[{i}].ProductId", Id = $"Lines_{i}__ProductId",
                                     Value = Model.Lines[i].ProductId?.ToString(),
-                                    DisplayValue = Model.Lines[i].ProductDisplay,
+                                    DisplayValue = nameVal,
                                     Endpoint = Url.Action("Products", "Lookup")!,
                                     Title = "Ürün Seç", Placeholder = "Ürün adı/kod/barkod",
                                     AllowQuickSearch = true })" />
                             </td>
-                            <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control" /></td>
+                            <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
                             <td><input type="text" name="Lines[@i].UnitCost" value="@Model.Lines[i].UnitCost" class="form-control cost-input" /></td>
-                            <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control" /></td>
+                            <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control description-input" /></td>
                             <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
                         </tr>
                     }
@@ -95,9 +107,17 @@
     <tr class="line-row">
         <input type="hidden" name="Lines.Index" value="__index__" />
         <td>
+            <input type="text" class="form-control stock-code-input lookup-quicksearch"
+                   placeholder="Stok Kodu/Barkod" autocomplete="off"
+                   data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                   data-lookup-title="Ürün Seç"
+                   data-target-hidden="Lines___index____ProductId"
+                   data-target-display="Lines___index____ProductId_display" />
+        </td>
+        <td>
             <div class="input-group">
                 <input type="hidden" name="Lines[__index__].ProductId" id="Lines___index____ProductId" value="" />
-                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch"
+                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch product-name-input"
                        placeholder="Ürün adı/kod/barkod" autocomplete="off"
                        data-lookup-endpoint="@Url.Action("Products", "Lookup")"
                        data-lookup-title="Ürün Seç"
@@ -112,9 +132,9 @@
                 </button>
             </div>
         </td>
-        <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control" /></td>
+        <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
         <td><input type="text" name="Lines[__index__].UnitCost" value="0" class="form-control cost-input" /></td>
-        <td><input type="text" name="Lines[__index__].Description" value="" class="form-control" /></td>
+        <td><input type="text" name="Lines[__index__].Description" value="" class="form-control description-input" /></td>
         <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
     </tr>
 </template>
@@ -128,12 +148,18 @@
             var addButton = document.getElementById('add-line');
             var nextIndex = @Model.Lines.Count;
 
-            addButton.addEventListener('click', function () {
+            function addRow() {
                 var html = template.innerHTML.split('__index__').join(nextIndex);
                 var wrapper = document.createElement('tbody');
                 wrapper.innerHTML = html;
-                linesBody.appendChild(wrapper.firstElementChild);
+                var row = wrapper.firstElementChild;
+                linesBody.appendChild(row);
                 nextIndex++;
+                return row;
+            }
+
+            addButton.addEventListener('click', function () {
+                addRow();
             });
 
             linesBody.addEventListener('click', function (event) {
@@ -150,7 +176,59 @@
                 if (!row) {
                     return;
                 }
-                row.querySelector('.cost-input').value = event.detail.item.purchaseUnitPrice;
+                var item = event.detail.item;
+                if (item.code) {
+                    var codeInput = row.querySelector('.stock-code-input');
+                    if (codeInput) codeInput.value = item.code;
+                }
+                row.querySelector('.cost-input').value = item.purchaseUnitPrice;
+                var qtyInput = row.querySelector('.quantity-input');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            });
+
+            var rowFieldOrder = ['.stock-code-input', '.lookup-quicksearch', '.quantity-input', '.cost-input', '.description-input'];
+
+            linesBody.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') return;
+                
+                var dropdownOpen = document.querySelector('.lookup-quick-dropdown') && document.querySelector('.lookup-quick-dropdown').style.display === 'block';
+                if (dropdownOpen) return;
+
+                var fieldClass = rowFieldOrder.find(function (cls) { return event.target.classList.contains(cls.slice(1)); });
+                if (!fieldClass) return;
+                event.preventDefault();
+
+                var row = event.target.closest('tr');
+                var fieldIndex = rowFieldOrder.indexOf(fieldClass);
+
+                if (fieldIndex < rowFieldOrder.length - 1) {
+                    var nextField = row.querySelector(rowFieldOrder[fieldIndex + 1]);
+                    if (nextField) {
+                        nextField.focus();
+                        if (typeof nextField.select === 'function') nextField.select();
+                        return;
+                    }
+                }
+
+                var allRows = Array.from(linesBody.querySelectorAll('.line-row'));
+                var isLastRow = allRows[allRows.length - 1] === row;
+
+                var targetRow;
+                if (isLastRow) {
+                    targetRow = addRow();
+                    addRow();
+                } else {
+                    targetRow = allRows[allRows.indexOf(row) + 1];
+                }
+
+                var firstInput = targetRow.querySelector('.stock-code-input') || targetRow.querySelector('.lookup-quicksearch');
+                if (firstInput) {
+                    firstInput.focus();
+                    if (typeof firstInput.select === 'function') firstInput.select();
+                }
             });
         })();
     </script>

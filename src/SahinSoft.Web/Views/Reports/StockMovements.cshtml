@@ -3,88 +3,85 @@
     ViewData["Title"] = "Stok Hareketleri";
 }
 
-<div class="erp-toolbar">
-    <div class="erp-toolbar-title">
-        <h1>Stok Hareketleri</h1>
-        <span class="erp-toolbar-meta">Son 500 kayıt</span>
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-arrow-right-arrow-left"></i> Stok Hareketleri</h2>
+        <span class="text-white-50" style="font-size: 0.8rem;">Son 500 kayıt</span>
     </div>
-</div>
+    <div class="erp-list-body">
+        <form method="get" class="erp-filter-bar">
+            <div class="erp-field">
+                <label>Ürün</label>
+                <select name="productId" class="form-select" style="min-width: 220px;" asp-items="Model.Products" onchange="this.form.submit()">
+                    <option value="">Tüm ürünler</option>
+                </select>
+            </div>
+            <div class="erp-field">
+                <label>Depo</label>
+                <select name="warehouseId" class="form-select" style="min-width: 160px;" asp-items="Model.Warehouses" onchange="this.form.submit()">
+                    <option value="">Tüm depolar</option>
+                </select>
+            </div>
+            <div class="erp-field">
+                <label>Başlangıç</label>
+                <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="erp-field">
+                <label>Bitiş</label>
+                <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <button class="btn btn-erp-primary">Filtrele</button>
+        </form>
 
-<form method="get" class="erp-filter-bar">
-    <div class="erp-field">
-        <label>Ürün</label>
-        <select name="productId" class="form-select" style="min-width: 220px;" asp-items="Model.Products">
-            <option value="">Tüm ürünler</option>
-        </select>
-    </div>
-    <div class="erp-field">
-        <label>Depo</label>
-        <select name="warehouseId" class="form-select" style="min-width: 160px;" asp-items="Model.Warehouses">
-            <option value="">Tüm depolar</option>
-        </select>
-    </div>
-    <div class="erp-field">
-        <label>Başlangıç</label>
-        <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
-    </div>
-    <div class="erp-field">
-        <label>Bitiş</label>
-        <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
-    </div>
-    <button class="btn btn-erp-primary">Filtrele</button>
-</form>
+        <div class="erp-summary-row">
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Giren</div>
+                <div class="erp-summary-value" style="color: #1f7a4d;">+@Model.TotalIn.ToString("N3")</div>
+            </div>
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Çıkan</div>
+                <div class="erp-summary-value" style="color: #8a2a2a;">-@Model.TotalOut.ToString("N3")</div>
+            </div>
+            <div class="erp-summary-box" style="border-color: var(--erp-gold);">
+                <div class="erp-summary-label">Net Değişim</div>
+                <div class="erp-summary-value">@(Model.NetChange >= 0 ? "+" : "")@Model.NetChange.ToString("N3")</div>
+            </div>
+        </div>
 
-<div class="erp-summary-row">
-    <div class="erp-summary-box">
-        <div class="erp-summary-label">Giren</div>
-        <div class="erp-summary-value" style="color: #1f7a4d;">+@Model.TotalIn.ToString("N3")</div>
-    </div>
-    <div class="erp-summary-box">
-        <div class="erp-summary-label">Çıkan</div>
-        <div class="erp-summary-value" style="color: #8a2a2a;">-@Model.TotalOut.ToString("N3")</div>
-    </div>
-    <div class="erp-summary-box" style="border-color: var(--erp-gold);">
-        <div class="erp-summary-label">Net Değişim</div>
-        <div class="erp-summary-value">@(Model.NetChange >= 0 ? "+" : "")@Model.NetChange.ToString("N3")</div>
-    </div>
-</div>
-
-<div class="erp-panel">
-    <div class="erp-panel-body p-0">
-    <div class="erp-table-wrap">
-        <table class="erp-table">
-            <thead>
-                <tr>
-                    <th>Tarih</th>
-                    <th>Ürün</th>
-                    <th>Depo</th>
-                    <th>Hareket</th>
-                    <th>Belge No</th>
-                    <th>Açıklama</th>
-                    <th class="text-end">Miktar</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var line in Model.Lines)
-            {
-                <tr>
-                    <td>@line.MovementDateUtc.ToString("dd.MM.yyyy")</td>
-                    <td>@line.ProductName</td>
-                    <td>@line.WarehouseName</td>
-                    <td>@line.MovementType</td>
-                    <td>@line.DocumentNumber</td>
-                    <td>@line.Description</td>
-                    <td class="text-end fw-semibold" style="color: @(line.Quantity < 0 ? "#8a2a2a" : "#1f7a4d");">
-                        @(line.Quantity > 0 ? "+" : "")@line.Quantity.ToString("N3")
-                    </td>
-                </tr>
-            }
-            @if (Model.Lines.Count == 0)
-            {
-                <tr><td colspan="7" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
-            }
-            </tbody>
-        </table>
-    </div>
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Ürün</th>
+                        <th>Depo</th>
+                        <th>Hareket</th>
+                        <th>Belge No</th>
+                        <th>Açıklama</th>
+                        <th class="text-end">Miktar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.MovementDateUtc.ToString("dd.MM.yyyy")</td>
+                        <td class="fw-semibold">@line.ProductName</td>
+                        <td>@line.WarehouseName</td>
+                        <td>@line.MovementType</td>
+                        <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
+                        <td>@line.Description</td>
+                        <td class="text-end fw-semibold" style="color: @(line.Quantity < 0 ? "#8a2a2a" : "#1f7a4d");">
+                            @(line.Quantity > 0 ? "+" : "")@line.Quantity.ToString("N3")
+                        </td>
+                    </tr>
+                }
+                @if (Model.Lines.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

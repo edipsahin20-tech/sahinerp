@@ -708,8 +708,8 @@ function updateCalculations() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${idx + 1}</td>
+      <td><span class="item-code-badge">${r.item.code || r.item.id || ''}</span></td>
       <td>
-        <span class="item-code-badge">${r.item.code}</span>
         <input type="text" class="form-control item-name-input" value="${escapedName}" onchange="updateItemName(${idx}, this.value)" title="Bu teklif için ürün açıklamasını düzenleyebilirsiniz">
       </td>
       <td>${r.item.unit}</td>

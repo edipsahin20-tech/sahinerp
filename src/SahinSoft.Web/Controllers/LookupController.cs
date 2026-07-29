@@ -24,7 +24,7 @@ public sealed class LookupController(
             query = query.Where(x =>
                 EF.Functions.Collate(x.StockCode, TurkishInsensitive).Contains(q) ||
                 EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q) ||
-                (x.Barcode != null && x.Barcode == q));
+                (x.Barcode != null && (x.Barcode == q || EF.Functions.Collate(x.Barcode, TurkishInsensitive).Contains(q))));
         }
 
         var items = await query

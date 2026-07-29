@@ -66,7 +66,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = [new CultureInfo("tr-TR")]
 });
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 

@@ -273,10 +273,33 @@
         var hiddenEl = document.getElementById(hiddenId);
         var displayEl = document.getElementById(displayId);
         if (hiddenEl) hiddenEl.value = item.id;
-        if (displayEl) displayEl.value = (item.code ? item.code + " - " : "") + item.name;
+
+        var row = (displayEl || hiddenEl) ? (displayEl || hiddenEl).closest("tr") : null;
+        var hasStockCodeCol = row && row.querySelector(".stock-code-input");
+
+        if (displayEl) {
+            displayEl.value = (hasStockCodeCol || !item.code) ? (item.name || "") : ((item.code ? item.code + " - " : "") + item.name);
+        }
+
+        if (row) {
+            var codeEl = row.querySelector(".stock-code-input");
+            if (codeEl) codeEl.value = item.code || "";
+            var nameEl = row.querySelector(".product-name-input");
+            if (nameEl) nameEl.value = item.name || "";
+        }
 
         var evt = new CustomEvent("lookup:selected", { bubbles: true, detail: { item: item, hiddenEl: hiddenEl, displayEl: displayEl, trigger: trigger } });
         (hiddenEl || trigger).dispatchEvent(evt);
+
+        if (row) {
+            var qtyInput = row.querySelector(".quantity-input");
+            if (qtyInput) {
+                setTimeout(function () {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }, 50);
+            }
+        }
     }
 
     function openModal(trigger) {
@@ -364,9 +387,11 @@
         }
 
         if (e.key !== "Enter" && e.key !== "F9") return;
+        // Bu alan bir <form> içindeyse Enter'ın formu erken göndermesini her durumda engelle
+        // (arama kutusu boş olsa bile) — aksi halde taslak satır girilirken kazara kaydedilir.
+        e.preventDefault();
         var value = input.value.trim().replace(/\*+$/, "");
         if (!value) return;
-        e.preventDefault();
         hideQuickDropdown();
 
         if (e.key === "Enter") {

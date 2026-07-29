@@ -4,7 +4,7 @@
     <input type="hidden" name="@Model.Name" id="@Model.Id" value="@Model.Value" />
     <input type="text"
            id="@(Model.Id)_display"
-           class="form-control @(Model.AllowQuickSearch ? "lookup-quicksearch" : "")"
+           class="form-control product-name-input @(Model.AllowQuickSearch ? "lookup-quicksearch" : "")"
            value="@Model.DisplayValue"
            placeholder="@Model.Placeholder"
            autocomplete="off"

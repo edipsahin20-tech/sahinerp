@@ -112,8 +112,11 @@ public sealed class InvoicesController(
         dbContext.Invoices.Add(invoice);
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = "Fatura taslağı oluşturuldu.";
-        return RedirectToAction(nameof(Details), new { id = invoice.Id });
+        // Mikro tarzı hızlı ardışık evrak girişi: yeni fatura kaydedilince Detay'a değil, aynı
+        // türde (Satış/Alış) boş bir yeni fatura giriş ekranına dönülür — düzenlemede (Edit) bu
+        // davranış farklı, orada kayıttan sonra Detay'a gidilmeye devam eder.
+        TempData["Success"] = $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
+        return RedirectToAction(nameof(Create), new { type = form.InvoiceType });
     }
 
     public async Task<IActionResult> Edit(int id)
@@ -185,9 +188,12 @@ public sealed class InvoicesController(
             return NotFound();
         }
 
-        if (invoice.Status != InvoiceStatus.Draft)
+        // İptal edilen bir fatura da silinebilir — iptal sırasında zaten ters (reversal) stok/cari
+        // hareketleri oluşturulmuştu; StockMovement/CurrentAccountTransaction kayıtları InvoiceId
+        // SetNull ile korunduğu için silme bu geçmiş kayıtları etkilemez.
+        if (invoice.Status is not (InvoiceStatus.Draft or InvoiceStatus.Cancelled))
         {
-            TempData["Error"] = "Yalnızca taslak faturalar silinebilir.";
+            TempData["Error"] = "Yalnızca taslak veya iptal edilmiş faturalar silinebilir.";
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -331,8 +337,12 @@ public sealed class InvoicesController(
                     Quantity = x.Quantity,
                     UnitPrice = x.UnitPrice,
                     DiscountRate = x.DiscountRate,
+                    DiscountAmount = x.DiscountAmount,
                     TaxRate = x.TaxRate,
-                    LineTotal = x.LineTotal
+                    LineTotal = x.LineTotal,
+                    GrossTotal = Math.Round(x.Quantity * x.UnitPrice, 2, MidpointRounding.AwayFromZero),
+                    NetTotal = Math.Round((x.Quantity * x.UnitPrice) - x.DiscountAmount, 2, MidpointRounding.AwayFromZero),
+                    Description = x.Description
                 })
                 .ToList(),
             TaxBreakdown = invoice.Lines

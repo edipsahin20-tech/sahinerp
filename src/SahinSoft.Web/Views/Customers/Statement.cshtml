@@ -3,30 +3,6 @@
     ViewData["Title"] = "Cari Hareket Föyü";
 }
 
-<div class="erp-toolbar">
-    <div class="erp-toolbar-title">
-        <h1>Cari Hareket Föyü</h1>
-        <span class="erp-toolbar-meta">@Model.CustomerCode &middot; @Model.CustomerName</span>
-    </div>
-    <div class="erp-toolbar-actions">
-        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Cari Listesi</a>
-        <button type="button" class="btn btn-erp-outline btn-sm" onclick="window.print()">Yazdır</button>
-    </div>
-</div>
-
-<form method="get" class="erp-filter-bar no-print">
-    <input type="hidden" name="id" value="@Model.CustomerId" />
-    <div class="erp-field">
-        <label>İlk Tarih</label>
-        <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
-    </div>
-    <div class="erp-field">
-        <label>Son Tarih</label>
-        <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
-    </div>
-    <button class="btn btn-erp-primary">Filtrele</button>
-</form>
-
 <div class="print-only mb-3">
     <h2 class="mb-1">Cari Hareket Föyü</h2>
     <div>@Model.CustomerCode &middot; @Model.CustomerName</div>
@@ -36,30 +12,52 @@
     }
 </div>
 
-<div class="erp-summary-row">
-    <div class="erp-summary-box">
-        <div class="erp-summary-label">Devir</div>
-        <div class="erp-summary-value">@Model.OpeningBalance.ToString("N2")</div>
-    </div>
-    <div class="erp-summary-box">
-        <div class="erp-summary-label">Borç</div>
-        <div class="erp-summary-value">@Model.Lines.Sum(x => x.Debit).ToString("N2")</div>
-    </div>
-    <div class="erp-summary-box">
-        <div class="erp-summary-label">Alacak</div>
-        <div class="erp-summary-value">@Model.Lines.Sum(x => x.Credit).ToString("N2")</div>
-    </div>
-    <div class="erp-summary-box" style="border-color: var(--erp-gold);">
-        <div class="erp-summary-label">Bakiye</div>
-        <div class="erp-summary-value" style="color: @(Model.ClosingBalance >= 0 ? "#8a2a2a" : "#1f7a4d");">
-            @Model.ClosingBalance.ToString("N2")
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Cari Hareket Föyü</h2>
+        <div class="d-flex gap-2 no-print">
+            <a asp-action="Index" class="btn-erp-list-new">Cari Listesi</a>
+            <button type="button" class="btn-erp-list-new" onclick="window.print()">Yazdır</button>
         </div>
-        <div class="text-secondary" style="font-size: 0.68rem;">@(Model.ClosingBalance >= 0 ? "CARİ BORÇLU" : "CARİ ALACAKLI")</div>
     </div>
-</div>
+    <div class="erp-list-body">
+        <span class="text-secondary d-block mb-3">@Model.CustomerCode &middot; @Model.CustomerName</span>
 
-<div class="erp-panel">
-    <div class="erp-panel-body p-0">
+        <form method="get" class="erp-filter-bar no-print">
+            <input type="hidden" name="id" value="@Model.CustomerId" />
+            <div class="erp-field">
+                <label>İlk Tarih</label>
+                <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="erp-field">
+                <label>Son Tarih</label>
+                <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <button class="btn btn-erp-primary">Filtrele</button>
+        </form>
+
+        <div class="erp-summary-row">
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Devir</div>
+                <div class="erp-summary-value">@Model.OpeningBalance.ToString("N2")</div>
+            </div>
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Borç</div>
+                <div class="erp-summary-value">@Model.Lines.Sum(x => x.Debit).ToString("N2")</div>
+            </div>
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Alacak</div>
+                <div class="erp-summary-value">@Model.Lines.Sum(x => x.Credit).ToString("N2")</div>
+            </div>
+            <div class="erp-summary-box" style="border-color: var(--erp-gold);">
+                <div class="erp-summary-label">Bakiye</div>
+                <div class="erp-summary-value" style="color: @(Model.ClosingBalance >= 0 ? "#8a2a2a" : "#1f7a4d");">
+                    @Model.ClosingBalance.ToString("N2")
+                </div>
+                <div class="text-secondary" style="font-size: 0.68rem;">@(Model.ClosingBalance >= 0 ? "CARİ BORÇLU" : "CARİ ALACAKLI")</div>
+            </div>
+        </div>
+
         <div class="erp-table-wrap">
             <table class="erp-table">
                 <thead>
@@ -86,7 +84,7 @@
                     <tr>
                         <td>@line.TransactionDateUtc.ToString("dd.MM.yyyy")</td>
                         <td>@line.TransactionType</td>
-                        <td>@line.DocumentNumber</td>
+                        <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
                         <td>@line.Description</td>
                         <td class="text-end">@(line.Debit > 0 ? line.Debit.ToString("N2") : "")</td>
                         <td class="text-end">@(line.Credit > 0 ? line.Credit.ToString("N2") : "")</td>

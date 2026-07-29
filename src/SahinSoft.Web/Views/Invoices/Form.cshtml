@@ -17,6 +17,10 @@
         </div>
     </div>
 
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success py-2">@success</div>
+    }
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
@@ -125,7 +129,8 @@
                 <table class="erp-table" id="lines-table">
                     <thead>
                         <tr>
-                            <th style="min-width: 220px;">Ürün</th>
+                            <th style="width: 140px;">Stok Kodu</th>
+                            <th style="min-width: 220px;">Ürün Adı</th>
                             <th style="width: 90px;">Miktar</th>
                             <th style="width: 100px;">Birim Fiyat</th>
                             <th style="width: 80px;">İsk. %</th>
@@ -139,13 +144,24 @@
                     <tbody id="lines-body">
                     @for (var i = 0; i < Model.Lines.Count; i++)
                     {
+                        var rawDisplay = Model.Lines[i].ProductDisplay ?? "";
+                        var codeVal = rawDisplay.Contains(" - ") ? rawDisplay.Split(" - ")[0] : "";
+                        var nameVal = rawDisplay.Contains(" - ") ? string.Join(" - ", rawDisplay.Split(" - ").Skip(1)) : rawDisplay;
                         <tr class="line-row">
                             <input type="hidden" name="Lines.Index" value="@i" />
+                            <td>
+                                <input type="text" class="form-control stock-code-input lookup-quicksearch" 
+                                       placeholder="Stok Kodu/Barkod" autocomplete="off" value="@codeVal"
+                                       data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                                       data-lookup-title="Ürün Seç"
+                                       data-target-hidden="Lines_@(i)__ProductId"
+                                       data-target-display="Lines_@(i)__ProductId_display" />
+                            </td>
                             <td>
                                 <partial name="_LookupField" model="@(new LookupFieldViewModel {
                                     Name = $"Lines[{i}].ProductId", Id = $"Lines_{i}__ProductId",
                                     Value = Model.Lines[i].ProductId?.ToString(),
-                                    DisplayValue = Model.Lines[i].ProductDisplay,
+                                    DisplayValue = nameVal,
                                     Endpoint = Url.Action("Products", "Lookup")!,
                                     Title = "Ürün Seç", Placeholder = "Ürün adı/kod/barkod",
                                     AllowQuickSearch = true })" />
@@ -187,9 +203,17 @@
     <tr class="line-row">
         <input type="hidden" name="Lines.Index" value="__index__" />
         <td>
+            <input type="text" class="form-control stock-code-input lookup-quicksearch"
+                   placeholder="Stok Kodu/Barkod" autocomplete="off"
+                   data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                   data-lookup-title="Ürün Seç"
+                   data-target-hidden="Lines___index____ProductId"
+                   data-target-display="Lines___index____ProductId_display" />
+        </td>
+        <td>
             <div class="input-group">
                 <input type="hidden" name="Lines[__index__].ProductId" id="Lines___index____ProductId" value="" />
-                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch"
+                <input type="text" id="Lines___index____ProductId_display" class="form-control lookup-quicksearch product-name-input"
                        placeholder="Ürün adı/kod/barkod" autocomplete="off"
                        data-lookup-endpoint="@Url.Action("Products", "Lookup")"
                        data-lookup-title="Ürün Seç"
@@ -256,22 +280,27 @@
                     return;
                 }
                 var item = event.detail.item;
+                if (item.code) {
+                    var codeInput = row.querySelector('.stock-code-input');
+                    if (codeInput) codeInput.value = item.code;
+                }
                 row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
                 recalcTotals();
                 var qtyInput = row.querySelector('.quantity-input');
-                qtyInput.focus();
-                qtyInput.select();
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
             });
 
-            // Mikro tarzı klavye akışı: Enter ile satırdaki bir sonraki alana geçilir; son alanda
-            // (Açıklama) Enter'a basılınca bir sonraki satıra (varsa) geçilir, o da son satırsa
-            // 2 yeni satır birden açılır ve ilk yeni satırın Ürün alanına odaklanılır.
-            var rowFieldOrder = ['.quantity-input', '.price-input', '.discount-input', '.tax-input', '.description-input'];
+            var rowFieldOrder = ['.stock-code-input', '.lookup-quicksearch', '.quantity-input', '.price-input', '.discount-input', '.tax-input', '.description-input'];
 
             linesBody.addEventListener('keydown', function (event) {
                 if (event.key !== 'Enter') return;
-                if (event.target.classList.contains('lookup-quicksearch')) return;
+                
+                var dropdownOpen = document.querySelector('.lookup-quick-dropdown') && document.querySelector('.lookup-quick-dropdown').style.display === 'block';
+                if (dropdownOpen) return;
 
                 var fieldClass = rowFieldOrder.find(function (cls) { return event.target.classList.contains(cls.slice(1)); });
                 if (!fieldClass) return;
@@ -282,9 +311,11 @@
 
                 if (fieldIndex < rowFieldOrder.length - 1) {
                     var nextField = row.querySelector(rowFieldOrder[fieldIndex + 1]);
-                    nextField.focus();
-                    nextField.select();
-                    return;
+                    if (nextField) {
+                        nextField.focus();
+                        if (typeof nextField.select === 'function') nextField.select();
+                        return;
+                    }
                 }
 
                 var allRows = Array.from(linesBody.querySelectorAll('.line-row'));
@@ -299,8 +330,11 @@
                     targetRow = allRows[allRows.indexOf(row) + 1];
                 }
 
-                var productInput = targetRow.querySelector('.lookup-quicksearch');
-                if (productInput) productInput.focus();
+                var firstInput = targetRow.querySelector('.stock-code-input') || targetRow.querySelector('.lookup-quicksearch');
+                if (firstInput) {
+                    firstInput.focus();
+                    if (typeof firstInput.select === 'function') firstInput.select();
+                }
             });
 
             function formatMoney(amount) {
