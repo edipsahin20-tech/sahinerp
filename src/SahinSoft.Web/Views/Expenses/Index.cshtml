@@ -27,15 +27,15 @@
     </div>
     <div class="erp-field flex-grow-1">
         <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Belge no veya açıklama ara..." />
+        <input class="form-control" autocomplete="off" placeholder="Belge no veya açıklama ara..." data-live-search="#expensesTable" />
     </div>
-    <button class="btn btn-erp-primary">Ara</button>
+    <button class="btn btn-erp-primary">Filtrele</button>
 </form>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">
     <div class="erp-table-wrap">
-        <table class="erp-table">
+        <table class="erp-table" id="expensesTable">
             <thead>
                 <tr>
                     <th>Belge No</th>

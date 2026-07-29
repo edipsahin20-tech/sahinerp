@@ -18,18 +18,17 @@
     <div class="alert alert-success py-2">@success</div>
 }
 
-<form method="get" class="erp-filter-bar">
+<div class="erp-filter-bar">
     <div class="erp-field flex-grow-1">
         <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Kategori kodu veya adı ara..." />
+        <input class="form-control" autocomplete="off" placeholder="Kategori kodu veya adı ara..." data-live-search="#categoriesTable" />
     </div>
-    <button class="btn btn-erp-primary">Ara</button>
-</form>
+</div>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">
     <div class="erp-table-wrap">
-        <table class="erp-table">
+        <table class="erp-table" id="categoriesTable">
             <thead>
                 <tr>
                     <th>Kod</th>

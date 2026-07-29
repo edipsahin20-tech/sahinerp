@@ -18,19 +18,18 @@
     <div class="alert alert-success py-2">@success</div>
 }
 
-<form method="get" class="erp-filter-bar">
+<div class="erp-filter-bar">
     <div class="erp-field flex-grow-1">
         <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control"
-               placeholder="Cari kodu, unvan veya vergi no ara..." />
+        <input class="form-control" autocomplete="off"
+               placeholder="Cari kodu, unvan veya vergi no ara..." data-live-search="#customersTable" />
     </div>
-    <button class="btn btn-erp-primary">Ara</button>
-</form>
+</div>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">
     <div class="erp-table-wrap">
-        <table class="erp-table">
+        <table class="erp-table" id="customersTable">
             <thead>
                 <tr>
                     <th>Cari Kodu</th>

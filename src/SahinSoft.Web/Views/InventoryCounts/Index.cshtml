@@ -32,15 +32,15 @@
     </div>
     <div class="erp-field flex-grow-1">
         <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Sayım no ara..." />
+        <input class="form-control" autocomplete="off" placeholder="Sayım no ara..." data-live-search="#inventoryCountsTable" />
     </div>
-    <button class="btn btn-erp-primary">Ara</button>
+    <button class="btn btn-erp-primary">Filtrele</button>
 </form>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">
     <div class="erp-table-wrap">
-        <table class="erp-table">
+        <table class="erp-table" id="inventoryCountsTable">
             <thead>
                 <tr>
                     <th>Sayım No</th>

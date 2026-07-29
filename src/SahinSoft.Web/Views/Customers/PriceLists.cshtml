@@ -18,19 +18,18 @@
     görmek veya yeni fiyat eklemek için ilgili carinin "Özel Fiyatlar" ekranına gidin.
 </div>
 
-<form method="get" class="erp-filter-bar">
+<div class="erp-filter-bar">
     <div class="erp-field flex-grow-1">
         <label>Ara</label>
-        <input name="search" value="@ViewBag.Search" class="form-control"
-               placeholder="Cari kodu, cari adı, ürün kodu veya ürün adı ara..." />
+        <input class="form-control" autocomplete="off"
+               placeholder="Cari kodu, cari adı, ürün kodu veya ürün adı ara..." data-live-search="#priceListsTable" />
     </div>
-    <button class="btn btn-erp-primary">Ara</button>
-</form>
+</div>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">
         <div class="erp-table-wrap">
-            <table class="erp-table">
+            <table class="erp-table" id="priceListsTable">
                 <thead>
                     <tr>
                         <th>Cari Kodu</th>
