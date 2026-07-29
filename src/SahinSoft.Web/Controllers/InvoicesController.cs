@@ -440,7 +440,37 @@ public sealed class InvoicesController(
                 Description = line.Description?.Trim()
             });
         }
+
+        CalculateDraftTotals(target);
     }
+
+    // Onaydan önce (taslak haldeyken) satır ve fatura toplamlarının Detay ekranında 0.00 görünmemesi
+    // için, InvoicePostingService.ApproveAsync'teki para hesabıyla aynı formül burada da uygulanır
+    // (stok hareketi/cari kaydı gibi onaya özel işlemler olmadan, sadece tutar hesabı).
+    private static void CalculateDraftTotals(Invoice invoice)
+    {
+        decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
+        foreach (var line in invoice.Lines.OrderBy(x => x.LineNumber))
+        {
+            var gross = RoundMoney(line.Quantity * line.UnitPrice);
+            line.DiscountAmount = RoundMoney(gross * line.DiscountRate / 100);
+            var net = gross - line.DiscountAmount;
+            line.TaxAmount = RoundMoney(net * line.TaxRate / 100);
+            line.LineTotal = net + line.TaxAmount;
+
+            subtotal += gross;
+            discountTotal += line.DiscountAmount;
+            taxTotal += line.TaxAmount;
+            grandTotal += line.LineTotal;
+        }
+
+        invoice.Subtotal = RoundMoney(subtotal);
+        invoice.DiscountTotal = RoundMoney(discountTotal);
+        invoice.TaxTotal = RoundMoney(taxTotal);
+        invoice.GrandTotal = RoundMoney(grandTotal);
+    }
+
+    private static decimal RoundMoney(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {

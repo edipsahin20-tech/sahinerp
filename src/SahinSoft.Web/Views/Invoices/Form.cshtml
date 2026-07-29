@@ -150,7 +150,7 @@
                             </td>
                             <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
                             <td><input type="text" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" class="form-control price-input" /></td>
-                            <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control" /></td>
+                            <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control discount-input" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
                             <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control" /></td>
                             <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
@@ -158,6 +158,16 @@
                     }
                     </tbody>
                 </table>
+            </div>
+        </div>
+        <div class="erp-panel-body pt-0">
+            <div class="d-flex justify-content-end">
+                <div class="erp-totals">
+                    <div class="erp-totals-row"><span>Ara toplam</span><span id="totals-subtotal">0.00</span></div>
+                    <div class="erp-totals-row"><span>İskonto</span><span id="totals-discount">0.00</span></div>
+                    <div id="totals-kdv-breakdown"></div>
+                    <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value" id="totals-grand">0.00</span></div>
+                </div>
             </div>
         </div>
     </div>
@@ -188,7 +198,7 @@
         </td>
         <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
         <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
-        <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control" /></td>
+        <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control discount-input" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
         <td><input type="text" name="Lines[__index__].Description" value="" class="form-control" /></td>
         <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
@@ -230,7 +240,53 @@
                 var item = event.detail.item;
                 row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
+                recalcTotals();
             });
+
+            function formatMoney(amount) {
+                return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Onaydan önce (taslak haldeyken) kullanıcı satırları girerken toplamları anında görsün diye;
+            // sunucudaki (InvoicesController.CalculateDraftTotals / InvoicePostingService.ApproveAsync) ile
+            // aynı formül burada da uygulanır.
+            function recalcTotals() {
+                var subtotal = 0, discountTotal = 0, grandTotal = 0;
+                var kdvByRate = {};
+
+                linesBody.querySelectorAll('.line-row').forEach(function (row) {
+                    var qty = parseFloat(row.querySelector('.quantity-input').value) || 0;
+                    var price = parseFloat(row.querySelector('.price-input').value) || 0;
+                    var discRate = parseFloat(row.querySelector('.discount-input').value) || 0;
+                    var taxRate = parseFloat(row.querySelector('.tax-input').value) || 0;
+
+                    var gross = qty * price;
+                    var discAmount = gross * discRate / 100;
+                    var net = gross - discAmount;
+                    var taxAmount = net * taxRate / 100;
+
+                    subtotal += gross;
+                    discountTotal += discAmount;
+                    grandTotal += net + taxAmount;
+                    kdvByRate[taxRate] = (kdvByRate[taxRate] || 0) + taxAmount;
+                });
+
+                document.getElementById('totals-subtotal').textContent = formatMoney(subtotal);
+                document.getElementById('totals-discount').textContent = formatMoney(discountTotal);
+                document.getElementById('totals-grand').textContent = formatMoney(grandTotal);
+                document.getElementById('totals-kdv-breakdown').innerHTML = Object.keys(kdvByRate).sort(function (a, b) { return a - b; }).map(function (rate) {
+                    return '<div class="erp-totals-row"><span>KDV %' + rate + '</span><span>' + formatMoney(kdvByRate[rate]) + '</span></div>';
+                }).join('');
+            }
+
+            linesBody.addEventListener('input', recalcTotals);
+            addButton.addEventListener('click', recalcTotals);
+            linesBody.addEventListener('click', function (event) {
+                if (event.target.classList.contains('remove-line')) {
+                    recalcTotals();
+                }
+            });
+            recalcTotals();
         })();
     </script>
 }
