@@ -139,6 +139,7 @@ public sealed class InvoicesController(
             IsReturn = invoice.IsReturn,
             SalespersonUserId = invoice.SalespersonUserId,
             SettlementFinancialAccountId = invoice.SettlementFinancialAccountId,
+            AmountDiscount = invoice.AmountDiscount,
             Lines = invoice.Lines
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new InvoiceLineFormViewModel
@@ -302,6 +303,7 @@ public sealed class InvoicesController(
             },
             Subtotal = invoice.Subtotal,
             DiscountTotal = invoice.DiscountTotal,
+            AmountDiscount = invoice.AmountDiscount,
             TaxTotal = invoice.TaxTotal,
             GrandTotal = invoice.GrandTotal,
             Notes = invoice.Notes,
@@ -323,6 +325,11 @@ public sealed class InvoicesController(
                     TaxRate = x.TaxRate,
                     LineTotal = x.LineTotal
                 })
+                .ToList(),
+            TaxBreakdown = invoice.Lines
+                .GroupBy(x => x.TaxRate)
+                .OrderBy(g => g.Key)
+                .Select(g => new InvoiceTaxBreakdownViewModel { TaxRate = g.Key, TaxAmount = g.Sum(x => x.TaxAmount) })
                 .ToList(),
             PaymentSchedules = invoice.PaymentSchedules
                 .OrderBy(x => x.InstallmentNumber)
@@ -405,6 +412,7 @@ public sealed class InvoicesController(
         target.IsReturn = source.IsReturn;
         target.SalespersonUserId = string.IsNullOrWhiteSpace(source.SalespersonUserId) ? null : source.SalespersonUserId;
         target.SettlementFinancialAccountId = source.SettlementFinancialAccountId;
+        target.AmountDiscount = source.AmountDiscount;
     }
 
     private async Task MapLinesAsync(InvoiceFormViewModel source, Invoice target)
@@ -445,32 +453,9 @@ public sealed class InvoicesController(
     }
 
     // Onaydan önce (taslak haldeyken) satır ve fatura toplamlarının Detay ekranında 0.00 görünmemesi
-    // için, InvoicePostingService.ApproveAsync'teki para hesabıyla aynı formül burada da uygulanır
-    // (stok hareketi/cari kaydı gibi onaya özel işlemler olmadan, sadece tutar hesabı).
-    private static void CalculateDraftTotals(Invoice invoice)
-    {
-        decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
-        foreach (var line in invoice.Lines.OrderBy(x => x.LineNumber))
-        {
-            var gross = RoundMoney(line.Quantity * line.UnitPrice);
-            line.DiscountAmount = RoundMoney(gross * line.DiscountRate / 100);
-            var net = gross - line.DiscountAmount;
-            line.TaxAmount = RoundMoney(net * line.TaxRate / 100);
-            line.LineTotal = net + line.TaxAmount;
-
-            subtotal += gross;
-            discountTotal += line.DiscountAmount;
-            taxTotal += line.TaxAmount;
-            grandTotal += line.LineTotal;
-        }
-
-        invoice.Subtotal = RoundMoney(subtotal);
-        invoice.DiscountTotal = RoundMoney(discountTotal);
-        invoice.TaxTotal = RoundMoney(taxTotal);
-        invoice.GrandTotal = RoundMoney(grandTotal);
-    }
-
-    private static decimal RoundMoney(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    // için, InvoicePostingService.ApproveAsync'teki para hesabıyla aynı formül (InvoiceTotalsCalculator)
+    // burada da uygulanır (stok hareketi/cari kaydı gibi onaya özel işlemler olmadan, sadece tutar hesabı).
+    private static void CalculateDraftTotals(Invoice invoice) => InvoiceTotalsCalculator.Calculate(invoice);
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {

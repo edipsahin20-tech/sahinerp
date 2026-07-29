@@ -164,7 +164,11 @@
             <div class="d-flex justify-content-end">
                 <div class="erp-totals">
                     <div class="erp-totals-row"><span>Ara toplam</span><span id="totals-subtotal">0.00</span></div>
-                    <div class="erp-totals-row"><span>İskonto</span><span id="totals-discount">0.00</span></div>
+                    <div class="erp-totals-row">
+                        <label asp-for="AmountDiscount" class="mb-0"></label>
+                        <input asp-for="AmountDiscount" class="form-control" style="width: 140px; padding: 4px; text-align: right;" id="amount-discount-input" />
+                    </div>
+                    <div class="erp-totals-row"><span>İskonto (satır + tutar)</span><span id="totals-discount">0.00</span></div>
                     <div id="totals-kdv-breakdown"></div>
                     <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value" id="totals-grand">0.00</span></div>
                 </div>
@@ -248,27 +252,41 @@
             }
 
             // Onaydan önce (taslak haldeyken) kullanıcı satırları girerken toplamları anında görsün diye;
-            // sunucudaki (InvoicesController.CalculateDraftTotals / InvoicePostingService.ApproveAsync) ile
-            // aynı formül burada da uygulanır.
+            // sunucudaki (InvoiceTotalsCalculator) ile aynı formül burada da uygulanır. Tutar İskontosu,
+            // KDV matrahını doğru düşürmek için satırlar arasında net tutar payına göre orantılı dağıtılır.
             function recalcTotals() {
-                var subtotal = 0, discountTotal = 0, grandTotal = 0;
-                var kdvByRate = {};
-
-                linesBody.querySelectorAll('.line-row').forEach(function (row) {
+                var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
                     var qty = parseFloat(row.querySelector('.quantity-input').value) || 0;
                     var price = parseFloat(row.querySelector('.price-input').value) || 0;
                     var discRate = parseFloat(row.querySelector('.discount-input').value) || 0;
                     var taxRate = parseFloat(row.querySelector('.tax-input').value) || 0;
 
                     var gross = qty * price;
-                    var discAmount = gross * discRate / 100;
-                    var net = gross - discAmount;
-                    var taxAmount = net * taxRate / 100;
+                    var lineDiscAmount = gross * discRate / 100;
+                    var netAfterLineDiscount = gross - lineDiscAmount;
+                    return { gross: gross, lineDiscAmount: lineDiscAmount, netAfterLineDiscount: netAfterLineDiscount, taxRate: taxRate };
+                });
 
-                    subtotal += gross;
-                    discountTotal += discAmount;
+                var netAfterLineDiscountTotal = rows.reduce(function (s, r) { return s + r.netAfterLineDiscount; }, 0);
+                var rawAmountDiscount = parseFloat(document.getElementById('amount-discount-input').value) || 0;
+                var amountDiscount = Math.min(Math.max(rawAmountDiscount, 0), Math.max(netAfterLineDiscountTotal, 0));
+
+                var subtotal = 0, discountTotal = 0, grandTotal = 0, allocated = 0;
+                var kdvByRate = {};
+                rows.forEach(function (r, idx) {
+                    var share = idx === rows.length - 1
+                        ? (amountDiscount - allocated)
+                        : (netAfterLineDiscountTotal > 0 ? amountDiscount * (r.netAfterLineDiscount / netAfterLineDiscountTotal) : 0);
+                    allocated += share;
+
+                    var totalDiscAmount = r.lineDiscAmount + share;
+                    var net = r.gross - totalDiscAmount;
+                    var taxAmount = net * r.taxRate / 100;
+
+                    subtotal += r.gross;
+                    discountTotal += totalDiscAmount;
                     grandTotal += net + taxAmount;
-                    kdvByRate[taxRate] = (kdvByRate[taxRate] || 0) + taxAmount;
+                    kdvByRate[r.taxRate] = (kdvByRate[r.taxRate] || 0) + taxAmount;
                 });
 
                 document.getElementById('totals-subtotal').textContent = formatMoney(subtotal);
@@ -278,6 +296,8 @@
                     return '<div class="erp-totals-row"><span>KDV %' + rate + '</span><span>' + formatMoney(kdvByRate[rate]) + '</span></div>';
                 }).join('');
             }
+
+            document.getElementById('amount-discount-input').addEventListener('input', recalcTotals);
 
             linesBody.addEventListener('input', recalcTotals);
             addButton.addEventListener('click', recalcTotals);

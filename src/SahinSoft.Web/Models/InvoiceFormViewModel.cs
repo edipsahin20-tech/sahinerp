@@ -60,6 +60,10 @@ public sealed class InvoiceFormViewModel
     public int? SettlementFinancialAccountId { get; set; }
     public string? SettlementFinancialAccountDisplay { get; set; }
 
+    [Range(0, 999999999)]
+    [Display(Name = "Tutar İskontosu")]
+    public decimal AmountDiscount { get; set; }
+
     public List<InvoiceLineFormViewModel> Lines { get; set; } = [];
 
     public string? CustomerDisplay { get; set; }

@@ -437,6 +437,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
             entity.Property(x => x.Subtotal).HasPrecision(18, 2);
             entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.AmountDiscount).HasPrecision(18, 2);
             entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
             entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();

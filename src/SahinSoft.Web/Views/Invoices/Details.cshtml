@@ -119,8 +119,11 @@
         <div class="p-3 d-flex">
             <div class="erp-totals">
                 <div class="erp-totals-row"><span>Ara toplam</span><span>@Model.Subtotal.ToString("N2")</span></div>
-                <div class="erp-totals-row"><span>İskonto</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
-                <div class="erp-totals-row"><span>KDV</span><span>@Model.TaxTotal.ToString("N2")</span></div>
+                <div class="erp-totals-row"><span>İskonto @(Model.AmountDiscount > 0 ? $"(içinde {Model.AmountDiscount:N2} tutar iskontosu var)" : "")</span><span>@Model.DiscountTotal.ToString("N2")</span></div>
+                @foreach (var tax in Model.TaxBreakdown)
+                {
+                    <div class="erp-totals-row"><span>KDV %@tax.TaxRate.ToString("0.##")</span><span>@tax.TaxAmount.ToString("N2")</span></div>
+                }
                 <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
             </div>
         </div>
@@ -305,7 +308,10 @@
                 {
                     <div class="pdf-total-row discount"><span>İskonto Tutarı:</span><strong>-@Model.DiscountTotal.ToString("N2") @Model.CurrencyCode</strong></div>
                 }
-                <div class="pdf-total-row"><span>KDV Tutarı:</span><strong>@Model.TaxTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                @foreach (var tax in Model.TaxBreakdown)
+                {
+                    <div class="pdf-total-row"><span>KDV Tutarı (%@tax.TaxRate.ToString("0.##")):</span><strong>@tax.TaxAmount.ToString("N2") @Model.CurrencyCode</strong></div>
+                }
                 <div class="pdf-total-row grand"><span>GENEL TOPLAM:</span><strong>@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</strong></div>
             </div>
         </div>

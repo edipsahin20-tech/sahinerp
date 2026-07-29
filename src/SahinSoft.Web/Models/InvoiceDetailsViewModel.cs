@@ -28,6 +28,7 @@ public sealed class InvoiceDetailsViewModel
     public PdfCompanyInfoViewModel Company { get; set; } = new();
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }
+    public decimal AmountDiscount { get; set; }
     public decimal TaxTotal { get; set; }
     public decimal GrandTotal { get; set; }
     public string? Notes { get; set; }
@@ -37,7 +38,14 @@ public sealed class InvoiceDetailsViewModel
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }
     public IReadOnlyList<InvoiceDetailsLineViewModel> Lines { get; set; } = [];
+    public IReadOnlyList<InvoiceTaxBreakdownViewModel> TaxBreakdown { get; set; } = [];
     public IReadOnlyList<InvoiceDetailsScheduleViewModel> PaymentSchedules { get; set; } = [];
+}
+
+public sealed class InvoiceTaxBreakdownViewModel
+{
+    public decimal TaxRate { get; set; }
+    public decimal TaxAmount { get; set; }
 }
 
 public sealed class InvoiceDetailsLineViewModel

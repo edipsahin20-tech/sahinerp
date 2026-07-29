@@ -53,26 +53,15 @@ public sealed class InvoicePostingService(
             .AsNoTracking()
             .SingleAsync(x => x.Id == 1, cancellationToken);
 
-        decimal subtotal = 0;
-        decimal discountTotal = 0;
-        decimal taxTotal = 0;
-        decimal grandTotal = 0;
+        foreach (var line in invoice.Lines)
+        {
+            ValidateLine(line);
+        }
+
+        InvoiceTotalsCalculator.Calculate(invoice);
 
         foreach (var line in invoice.Lines.OrderBy(x => x.LineNumber))
         {
-            ValidateLine(line);
-
-            var gross = RoundMoney(line.Quantity * line.UnitPrice);
-            line.DiscountAmount = RoundMoney(gross * line.DiscountRate / 100);
-            var net = gross - line.DiscountAmount;
-            line.TaxAmount = RoundMoney(net * line.TaxRate / 100);
-            line.LineTotal = net + line.TaxAmount;
-
-            subtotal += gross;
-            discountTotal += line.DiscountAmount;
-            taxTotal += line.TaxAmount;
-            grandTotal += line.LineTotal;
-
             if (line.ProductId is null || line.Product is null || !line.Product.TrackStock)
             {
                 continue;
@@ -130,10 +119,6 @@ public sealed class InvoicePostingService(
             line.Product.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        invoice.Subtotal = RoundMoney(subtotal);
-        invoice.DiscountTotal = RoundMoney(discountTotal);
-        invoice.TaxTotal = RoundMoney(taxTotal);
-        invoice.GrandTotal = RoundMoney(grandTotal);
         invoice.Status = InvoiceStatus.Approved;
         invoice.ApprovedByUserId = approvedByUserId;
         invoice.ApprovedAtUtc = DateTime.UtcNow;
@@ -326,7 +311,4 @@ public sealed class InvoicePostingService(
             throw new InvalidOperationException("Fatura satır fiyat, iskonto veya KDV bilgisi geçersiz.");
         }
     }
-
-    private static decimal RoundMoney(decimal value) =>
-        Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }
