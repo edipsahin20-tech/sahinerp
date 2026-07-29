@@ -176,14 +176,14 @@
 
               <div class="form-row">
                 <div class="form-group" style="position: relative;">
-                  <label for="picker-product-search">Ürün / Stok Ara * <span class="text-muted" style="font-weight: 400;">(yazınca anında benzer kayıtlar listelenir; F9 tüm eşleşmeleri büyük bir pencerede getirir)</span></label>
+                  <label for="picker-product-search">Ürün / Stok Ara * <span class="text-muted" style="font-weight: 400;">(yazınca anında benzer kayıtlar listelenir; Ara ile tüm eşleşmeleri küçük bir pencerede görebilirsiniz)</span></label>
                   <div class="input-group">
                       <input type="text" id="picker-product-search" class="form-control" autocomplete="off" placeholder="Ürün adı, kodu veya barkod yazın..."
                              oninput="runProductSearch(this.value)" onkeydown="handleProductSearchKeydown(event, this)">
                       <button type="button" id="picker-product-lookup-trigger" class="btn btn-outline-gold"
                               onclick="openQuickSearchModal('product', document.getElementById('picker-product-search').value)"
                               title="Tüm ürünlerde ara (F9)">
-                          F9
+                          Ara
                       </button>
                   </div>
                   <input type="hidden" id="picker-product-value">

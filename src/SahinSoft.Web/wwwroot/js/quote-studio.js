@@ -96,9 +96,11 @@ function loadExistingQuoteIfAny() {
 
 // --- LIVE ASP.NET CORE SQL DATABASE FETCH ---
 // Kataloğu her zaman canlı veritabanından çeker; sahte/örnek veriye asla düşmez.
-async function loadLiveDbCatalog() {
+async function loadLiveDbCatalog(customerId) {
   try {
-    const res = await fetch('/Quotes/GetCatalogDataApi');
+    const cid = customerId || document.getElementById('cust-company')?.dataset.customerId || '';
+    const url = cid ? `/Quotes/GetCatalogDataApi?customerId=${encodeURIComponent(cid)}` : '/Quotes/GetCatalogDataApi';
+    const res = await fetch(url);
     const data = res.ok ? await res.json() : null;
     sahinCatalog = (data && data.products) || [];
   } catch (err) {
@@ -164,6 +166,8 @@ function applySelectedCustomer(found) {
   document.getElementById('cust-address').value = found.address || '';
   document.getElementById('cust-company').dataset.customerId = found.id;
   updatePdfPreview();
+  // Bu cariye özel fiyatlar varsa (varsa) katalog fiyatlarına yansısın diye kataloğu bu cari için yeniden yükle.
+  loadLiveDbCatalog(found.id);
 }
 
 function generateNewQuoteNumber() {

@@ -245,6 +245,119 @@ public sealed class CustomersController(
         return View(model);
     }
 
+    public async Task<IActionResult> PriceList(int id)
+    {
+        var customer = await dbContext.Customers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var items = await dbContext.SalesPriceListItems
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Where(x => x.SalesPriceList.CustomerId == id)
+            .OrderBy(x => x.Product.Name)
+            .Select(x => new CustomerPriceListItemViewModel
+            {
+                Id = x.Id,
+                ProductId = x.ProductId,
+                ProductCode = x.Product.StockCode,
+                ProductName = x.Product.Name,
+                UnitPrice = x.UnitPrice,
+                UpdatedAtUtc = x.UpdatedAtUtc ?? x.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        var model = new CustomerPriceListViewModel
+        {
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            CustomerCode = customer.Code,
+            Items = items
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddPriceListItem(int customerId, int productId, decimal unitPrice)
+    {
+        if (unitPrice < 0)
+        {
+            TempData["Error"] = "Fiyat sıfırdan küçük olamaz.";
+            return RedirectToAction(nameof(PriceList), new { id = customerId });
+        }
+
+        var product = await dbContext.Products.SingleOrDefaultAsync(x => x.Id == productId);
+        if (product is null)
+        {
+            TempData["Error"] = "Ürün bulunamadı.";
+            return RedirectToAction(nameof(PriceList), new { id = customerId });
+        }
+
+        var priceList = await GetOrCreateCustomerPriceListAsync(customerId);
+        var existingItem = priceList.Items.SingleOrDefault(x => x.ProductId == productId && x.ProductVariantId == null && x.MinimumQuantity == 1);
+        if (existingItem is not null)
+        {
+            existingItem.UnitPrice = unitPrice;
+            existingItem.UpdatedAtUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            priceList.Items.Add(new SalesPriceListItem
+            {
+                ProductId = productId,
+                MinimumQuantity = 1,
+                UnitPrice = unitPrice
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
+        TempData["Success"] = $"{product.Name} için özel fiyat kaydedildi.";
+        return RedirectToAction(nameof(PriceList), new { id = customerId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemovePriceListItem(int id, int customerId)
+    {
+        var item = await dbContext.SalesPriceListItems.SingleOrDefaultAsync(x => x.Id == id);
+        if (item is not null)
+        {
+            dbContext.SalesPriceListItems.Remove(item);
+            await dbContext.SaveChangesAsync();
+            TempData["Success"] = "Özel fiyat kaldırıldı.";
+        }
+
+        return RedirectToAction(nameof(PriceList), new { id = customerId });
+    }
+
+    private async Task<SalesPriceList> GetOrCreateCustomerPriceListAsync(int customerId)
+    {
+        var list = await dbContext.SalesPriceLists
+            .Include(x => x.Items)
+            .SingleOrDefaultAsync(x => x.CustomerId == customerId);
+
+        if (list is null)
+        {
+            list = new SalesPriceList
+            {
+                Code = $"CFL.{customerId:D5}",
+                Name = "Cari Özel Fiyat Listesi",
+                CurrencyCode = "TRY",
+                ValidFromUtc = DateTime.UtcNow,
+                IsActive = true,
+                CustomerId = customerId
+            };
+            dbContext.SalesPriceLists.Add(list);
+            await dbContext.SaveChangesAsync();
+        }
+
+        return list;
+    }
+
     private async Task ValidateUniqueCodeAsync(CustomerFormViewModel model)
     {
         if (await dbContext.Customers.AnyAsync(x => x.Code == model.Code && x.Id != model.Id))

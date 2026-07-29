@@ -1,0 +1,101 @@
+@model SahinSoft.Web.Models.CustomerPriceListViewModel
+@{
+    ViewData["Title"] = "Özel Fiyatlar";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Cariye Özel Fiyatlar</h1>
+        <span class="erp-toolbar-meta">@Model.CustomerCode &middot; @Model.CustomerName</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" class="btn btn-erp-outline btn-sm">Cari Listesi</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="alert alert-info py-2">
+    Burada tanımlanan fiyatlar yalnızca bu cariye teklif/fatura verilirken kullanılır — stok kartındaki genel Satış Fiyatı'nı etkilemez.
+    Bu cariye bir teklif kaydedildiğinde, kullanılan fiyat buraya otomatik olarak (tarihiyle birlikte) kaydedilir.
+</div>
+
+<div class="erp-panel mb-3">
+    <div class="erp-panel-header">Yeni Özel Fiyat Ekle</div>
+    <div class="erp-panel-body">
+        <form asp-action="AddPriceListItem" method="post" class="erp-field-grid">
+            <input type="hidden" name="customerId" value="@Model.CustomerId" />
+            <div class="erp-field">
+                <label>Ürün</label>
+                <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                    Name = "productId", Id = "priceListProductId",
+                    Endpoint = Url.Action("Products", "Lookup")!,
+                    Title = "Ürün Seç", Placeholder = "Ürün seçin" })" />
+            </div>
+            <div class="erp-field">
+                <label>Fiyat (KDV Dahil)</label>
+                <div class="input-group">
+                    <input type="text" name="unitPrice" class="form-control" placeholder="0.00" required />
+                    <span class="input-group-text">₺</span>
+                </div>
+            </div>
+            <div class="erp-field d-flex align-items-end">
+                <button type="submit" class="btn btn-erp-primary">Ekle / Güncelle</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Stok Kodu</th>
+                        <th>Ürün</th>
+                        <th class="text-end">Özel Fiyat (KDV Dahil)</th>
+                        <th>Son Güncelleme</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    var daysOld = (DateTime.UtcNow - item.UpdatedAtUtc).TotalDays;
+                    var isStale = daysOld > 30;
+                    <tr>
+                        <td class="fw-semibold">@item.ProductCode</td>
+                        <td>@item.ProductName</td>
+                        <td class="text-end fw-semibold">@item.UnitPrice.ToString("N2") ₺</td>
+                        <td>
+                            @item.UpdatedAtUtc.ToString("dd.MM.yyyy")
+                            @if (isStale)
+                            {
+                                <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1" title="Bu fiyat 30 günden eski, döviz kuru değişmiş olabilir">@((int)daysOld) gün önce</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <form asp-action="RemovePriceListItem" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bu özel fiyatı kaldırmak istediğinize emin misiniz?');">
+                                <input type="hidden" name="customerId" value="@Model.CustomerId" />
+                                <button type="submit" class="btn btn-erp-danger" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Kaldır</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-secondary py-4">Bu cariye tanımlanmış özel fiyat bulunamadı.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

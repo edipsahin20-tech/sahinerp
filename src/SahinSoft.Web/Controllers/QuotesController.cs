@@ -132,8 +132,17 @@ public sealed class QuotesController(
         return View(model);
     }
 
-    public async Task<IActionResult> GetCatalogDataApi()
+    public async Task<IActionResult> GetCatalogDataApi(int? customerId)
     {
+        // Carinin özel fiyat listesinde bu ürün için bir kayıt varsa, stok kartındaki genel
+        // fiyat yerine o kullanılır (stok kartı hiçbir zaman değişmez, sadece öneri kaynağı değişir).
+        var specialPrices = customerId.HasValue
+            ? await dbContext.SalesPriceListItems
+                .AsNoTracking()
+                .Where(x => x.SalesPriceList.CustomerId == customerId.Value && x.ProductVariantId == null && x.MinimumQuantity == 1)
+                .ToDictionaryAsync(x => x.ProductId, x => x.UnitPrice)
+            : [];
+
         var products = await dbContext.Products
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -147,16 +156,34 @@ public sealed class QuotesController(
                 name = x.Name,
                 category = x.Category.Name,
                 unit = x.Unit,
-                // price: arama sonuçlarında gösterilen, stok kartındaki KDV dahil Satış Fiyatı.
-                // unitPrice: Birim Fiyat alanına yazılacak KDV hariç tutar (stok kartının KDV oranına göre).
-                price = x.SalePrice,
-                unitPrice = Math.Round(x.SalePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
-                stock = x.StockQuantity,
-                kdv = x.TaxRate.Rate
+                salePrice = x.SalePrice,
+                taxRate = x.TaxRate.Rate,
+                stock = x.StockQuantity
             })
             .ToListAsync();
 
-        return Json(new { products });
+        var result = products.Select(x =>
+        {
+            var hasSpecialPrice = specialPrices.TryGetValue(x.dbId, out var specialPrice);
+            var grossPrice = hasSpecialPrice ? specialPrice : x.salePrice;
+            return new
+            {
+                x.id,
+                x.dbId,
+                x.name,
+                x.category,
+                x.unit,
+                // price: arama sonuçlarında gösterilen KDV dahil tutar (carinin özel fiyatı varsa o, yoksa stok kartı).
+                // unitPrice: Birim Fiyat alanına yazılacak KDV hariç tutar.
+                price = grossPrice,
+                unitPrice = Math.Round(grossPrice / (1 + x.taxRate / 100), 3, MidpointRounding.AwayFromZero),
+                stock = x.stock,
+                kdv = x.taxRate,
+                hasSpecialPrice
+            };
+        });
+
+        return Json(new { products = result });
     }
 
     public async Task<IActionResult> GetCustomersApi()
@@ -330,14 +357,6 @@ public sealed class QuotesController(
             quote.Notes = request.Notes?.Trim();
             quote.CustomerId = customer.Id;
 
-            // Teklife eklenen ürünün stok kartındaki Satış Fiyatı, teklifte kullanılan (KDV hariç)
-            // Birim Fiyat'a göre güncellenir — stok kartı her zaman güncel/son teklif edilen KDV
-            // dahil fiyatı yansıtsın diye.
-            var linkedProductIds = request.Items.Where(x => x.DbId.HasValue).Select(x => x.DbId!.Value).Distinct().ToList();
-            var linkedProducts = linkedProductIds.Count > 0
-                ? await dbContext.Products.Where(x => linkedProductIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id)
-                : new Dictionary<int, Product>();
-
             var lineNumber = 1;
             decimal subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0;
             foreach (var item in request.Items)
@@ -368,12 +387,6 @@ public sealed class QuotesController(
                     TaxAmount = taxAmount,
                     LineTotal = lineTotal
                 });
-
-                if (item.DbId is int productId && linkedProducts.TryGetValue(productId, out var linkedProduct))
-                {
-                    linkedProduct.SalePrice = RoundMoney(item.Price * (1 + item.Kdv / 100));
-                    linkedProduct.UpdatedAtUtc = DateTime.UtcNow;
-                }
             }
 
             quote.Subtotal = RoundMoney(subtotal);
@@ -384,6 +397,36 @@ public sealed class QuotesController(
             if (isNew)
             {
                 dbContext.Quotes.Add(quote);
+            }
+
+            // Bu caride kullanılan (KDV dahil) fiyat, stok kartını hiç etkilemeden carinin özel
+            // fiyat listesine (tarihiyle birlikte) kaydedilir — bir sonraki teklifte önce bu
+            // özel fiyat, yoksa stok kartındaki genel fiyat önerilir.
+            var linkedItems = request.Items.Where(x => x.DbId.HasValue).ToList();
+            if (linkedItems.Count > 0)
+            {
+                var customerPriceList = await GetOrCreateCustomerPriceListAsync(customer.Id);
+                foreach (var item in linkedItems)
+                {
+                    var productId = item.DbId!.Value;
+                    var priceInclTax = RoundMoney(item.Price * (1 + item.Kdv / 100));
+                    var existingPriceItem = customerPriceList.Items.SingleOrDefault(
+                        x => x.ProductId == productId && x.ProductVariantId == null && x.MinimumQuantity == 1);
+                    if (existingPriceItem is not null)
+                    {
+                        existingPriceItem.UnitPrice = priceInclTax;
+                        existingPriceItem.UpdatedAtUtc = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        customerPriceList.Items.Add(new SalesPriceListItem
+                        {
+                            ProductId = productId,
+                            MinimumQuantity = 1,
+                            UnitPrice = priceInclTax
+                        });
+                    }
+                }
             }
 
             await dbContext.SaveChangesAsync();
@@ -686,6 +729,30 @@ public sealed class QuotesController(
         }
 
         return invoice;
+    }
+
+    private async Task<SalesPriceList> GetOrCreateCustomerPriceListAsync(int customerId)
+    {
+        var list = await dbContext.SalesPriceLists
+            .Include(x => x.Items)
+            .SingleOrDefaultAsync(x => x.CustomerId == customerId);
+
+        if (list is null)
+        {
+            list = new SalesPriceList
+            {
+                Code = $"CFL.{customerId:D5}",
+                Name = "Cari Özel Fiyat Listesi",
+                CurrencyCode = "TRY",
+                ValidFromUtc = DateTime.UtcNow,
+                IsActive = true,
+                CustomerId = customerId
+            };
+            dbContext.SalesPriceLists.Add(list);
+            await dbContext.SaveChangesAsync();
+        }
+
+        return list;
     }
 
     private static decimal RoundMoney(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
