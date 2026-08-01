@@ -10,6 +10,7 @@
 
 # Build/publish artifacts (compiled output, not source)
 deploy/iis-publish/
+deploy/dataresettool-publish/
 deploy/*.zip
 publish-fresh/
 **/publish-fresh/
