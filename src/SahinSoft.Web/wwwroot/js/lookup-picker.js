@@ -299,9 +299,13 @@
 
         var row = (displayEl || hiddenEl) ? (displayEl || hiddenEl).closest("tr") : null;
         var hasStockCodeCol = row && row.querySelector(".stock-code-input");
+        var endpoint = trigger.getAttribute("data-lookup-endpoint") || "";
+        // Birim (UnitOfMeasure) seçicisinde Kod ve Ad genelde aynı kelime olduğu için ("Adet - Adet")
+        // Kategori/Cari gibi "Kod - Ad" değil, sadece Ad gösterilir.
+        var isUnitLookup = endpoint.indexOf("/Lookup/UnitsOfMeasure") !== -1;
 
         if (displayEl) {
-            displayEl.value = (hasStockCodeCol || !item.code) ? (item.name || "") : ((item.code ? item.code + " - " : "") + item.name);
+            displayEl.value = (hasStockCodeCol || !item.code || isUnitLookup) ? (item.name || "") : ((item.code ? item.code + " - " : "") + item.name);
         }
 
         if (row) {

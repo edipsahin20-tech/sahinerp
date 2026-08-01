@@ -519,9 +519,11 @@ public sealed class ProductsController(
 
         if (model.UnitOfMeasureId is int unitOfMeasureId)
         {
+            // Birim seçicisinde Kod ve Ad genelde aynı kelime olduğu için ("Adet" - "Adet")
+            // Kategori/KDV gibi "Kod - Ad" değil, sadece Ad gösterilir.
             model.UnitOfMeasureDisplay = await dbContext.UnitsOfMeasure
                 .Where(x => x.Id == unitOfMeasureId)
-                .Select(x => x.Code + " - " + x.Name)
+                .Select(x => x.Name)
                 .SingleOrDefaultAsync();
         }
     }

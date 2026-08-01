@@ -120,6 +120,13 @@
                             Title = "KDV Oranı Seç", Placeholder = "KDV seçin" })" />
                         <span asp-validation-for="TaxRateId" class="text-danger small"></span>
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Kar Oranı %</label>
+                        <div class="input-group">
+                            <input type="text" id="profit-margin-display" class="form-control" readonly tabindex="-1" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-text mt-2">Not: Alış/Satış fiyatı her zaman KDV dahil girilir; teklif ve fatura satırlarında sistem otomatik olarak KDV hariç tutarı hesaplar.</div>
             </div>
@@ -257,5 +264,27 @@
                     alert('Barkod üretilirken bir hata oluştu.');
                 });
         }
+
+        (function () {
+            var purchaseInput = document.getElementById('PurchasePrice');
+            var saleInput = document.getElementById('SalePrice');
+            var marginDisplay = document.getElementById('profit-margin-display');
+            if (!purchaseInput || !saleInput || !marginDisplay) return;
+
+            function recalcMargin() {
+                var purchase = parseFloat((purchaseInput.value || '0').replace(',', '.'));
+                var sale = parseFloat((saleInput.value || '0').replace(',', '.'));
+                if (!purchase || purchase <= 0 || isNaN(sale)) {
+                    marginDisplay.value = '';
+                    return;
+                }
+                var margin = ((sale - purchase) / purchase) * 100;
+                marginDisplay.value = margin.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            purchaseInput.addEventListener('input', recalcMargin);
+            saleInput.addEventListener('input', recalcMargin);
+            recalcMargin();
+        })();
     </script>
 }
