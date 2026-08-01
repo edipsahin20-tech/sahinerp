@@ -47,18 +47,14 @@ public sealed class LookupController(
                 taxRate = x.TaxRate.Rate,
                 unit = x.Unit,
                 stock = x.StockQuantity,
-                // Ürün kartındaki (Statement ekranı) Alış/Satış Fiyat Hareketi ile aynı mantık: en son
-                // onaylı alış/satış faturası satırındaki KDV dahil birim fiyat.
+                // Son Alış Fiyatı: en son onaylı alış faturası satırındaki KDV dahil birim fiyat.
                 lastPurchasePrice = dbContext.InvoiceLines
                     .Where(l => l.ProductId == x.Id && l.Invoice.InvoiceType == InvoiceType.Purchase && l.Invoice.Status == InvoiceStatus.Approved)
                     .OrderByDescending(l => l.Invoice.InvoiceDateUtc).ThenByDescending(l => l.InvoiceId)
                     .Select(l => (decimal?)Math.Round(l.UnitPrice * (1 + l.TaxRate / 100), 2, MidpointRounding.AwayFromZero))
                     .FirstOrDefault(),
-                lastSalePrice = dbContext.InvoiceLines
-                    .Where(l => l.ProductId == x.Id && l.Invoice.InvoiceType == InvoiceType.Sales && l.Invoice.Status == InvoiceStatus.Approved)
-                    .OrderByDescending(l => l.Invoice.InvoiceDateUtc).ThenByDescending(l => l.InvoiceId)
-                    .Select(l => (decimal?)Math.Round(l.UnitPrice * (1 + l.TaxRate / 100), 2, MidpointRounding.AwayFromZero))
-                    .FirstOrDefault()
+                // Son Satış Fiyatı: fatura geçmişinden değil, stok kartındaki güncel Satış Fiyatı (zaten KDV dahil).
+                lastSalePrice = (decimal?)x.SalePrice
             })
             .ToListAsync();
 
