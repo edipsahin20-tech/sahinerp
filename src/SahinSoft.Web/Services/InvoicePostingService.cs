@@ -480,11 +480,13 @@ public sealed class InvoicePostingService(
         invoice.PaymentSchedules.Single().PaidAmount = invoice.GrandTotal;
     }
 
+    // Negatif miktara izin verilir (iade satırı: aynı fatura içinde -1, -2 gibi bir satırla iade
+    // düşülebilir) — sadece sıfır miktarlı satır anlamsız olduğu için engellenir.
     private static void ValidateLine(InvoiceLine line)
     {
-        if (line.Quantity <= 0)
+        if (line.Quantity == 0)
         {
-            throw new InvalidOperationException("Fatura satır miktarı sıfırdan büyük olmalıdır.");
+            throw new InvalidOperationException("Fatura satır miktarı sıfır olamaz.");
         }
 
         if (line.UnitPrice < 0 || line.DiscountRate is < 0 or > 100 || line.TaxRate is < 0 or > 100)
