@@ -5,6 +5,14 @@ using SahinSoft.Web.Data;
 
 namespace SahinSoft.Web.Services;
 
+// Yoğun eşzamanlı yük altında (ör. çok sayıda kullanıcının aynı anda aynı belge türünü kaydetmesi)
+// ExecuteWithConcurrencyRetryAsync'in tüm tekrar deneme haklarını tüketip vazgeçtiğini işaret eder.
+// Controller'lar bunu özel olarak yakalayıp kullanıcıya "tekrar deneyin" mesajı gösterip
+// (araç çubuğunu korumuş şekilde) formu yeniden gösterebilir — ham DbUpdateConcurrencyException
+// veya 500 hatası kullanıcıya asla sızmamalı.
+public sealed class ConcurrencyRetryExhaustedException()
+    : Exception("İşlem yoğun eşzamanlı istek nedeniyle tamamlanamadı, lütfen tekrar deneyin.");
+
 public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContext)
 {
     public Task<string> GenerateAsync(string sequenceKey, CancellationToken cancellationToken = default) =>
@@ -49,17 +57,29 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
             {
                 return await operation();
             }
-            catch (DbUpdateConcurrencyException) when (attempt < maxAttempts)
+            catch (DbUpdateConcurrencyException)
             {
+                // Son deneme de çakışırsa buradaki "when (attempt < maxAttempts)" olmadan hepsini
+                // yakalamak şart: aksi halde son denemenin ham DbUpdateConcurrencyException'ı
+                // döngünün sonundaki dostane hataya hiç uğramadan doğrudan çağırana (ve oradan da
+                // muhtemelen kullanıcıya çirkin bir 500 olarak) sızıyordu — bu satırın altındaki
+                // throw hiçbir zaman çalışmıyordu (ölü kod). Şimdi son denemede de ChangeTracker
+                // temizlenip aynı dostane mesajla ConcurrencyRetryExhaustedException fırlatılıyor.
                 foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
                 {
                     entry.State = EntityState.Detached;
                 }
+
+                if (attempt == maxAttempts)
+                {
+                    throw new ConcurrencyRetryExhaustedException();
+                }
+
                 await Task.Delay(Random.Shared.Next(10, 50) * attempt, cancellationToken);
             }
         }
 
-        throw new InvalidOperationException("İşlem yoğun eşzamanlı istek nedeniyle tamamlanamadı, lütfen tekrar deneyin.");
+        throw new ConcurrencyRetryExhaustedException();
     }
 
     // GenerateAsync'in transaction/SaveChanges yönetmeyen çekirdeği — zaten açık bir transaction

@@ -19,6 +19,12 @@ public sealed class Invoice : EntityBase
     public decimal GrandTotal { get; set; }
     public string? Notes { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması: Create formu her açıldığında yeni bir değer üretilir
+    // (gizli alan olarak forma gömülür). Aynı gönderim iki kez (çift tık, ağ tekrar denemesi vb.)
+    // sunucuya ulaşırsa veritabanı seviyesindeki unique index ikinci kaydı reddeder; controller bu
+    // durumu "zaten oluşturulmuş" olarak ele alıp aynı sonuca yönlendirir — iki ayrı fatura oluşmaz.
+    public Guid? SubmissionKey { get; set; }
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? CancelledAtUtc { get; set; }

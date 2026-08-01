@@ -452,6 +452,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.TradeType).HasMaxLength(100);
             entity.Property(x => x.SalespersonUserId).HasMaxLength(450);
             entity.HasIndex(x => new { x.InvoiceType, x.InvoiceNumber }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. Invoice.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.CustomerId, x.InvoiceDateUtc });
             entity.HasIndex(x => new { x.InvoiceType, x.Status, x.InvoiceDateUtc });
             entity.HasOne(x => x.Customer)

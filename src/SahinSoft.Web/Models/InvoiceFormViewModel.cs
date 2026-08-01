@@ -7,6 +7,10 @@ public sealed class InvoiceFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — form her (yeniden) açıldığında bir kez üretilir,
+    // gizli alan olarak taşınır. Bkz. Invoice.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public InvoiceType InvoiceType { get; set; }
 
     public string? InvoiceNumber { get; set; }

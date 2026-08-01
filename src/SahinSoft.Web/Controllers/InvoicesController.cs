@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Constants;
@@ -141,41 +142,98 @@ public sealed class InvoicesController(
         var sequenceKey = form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
         var createdByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
+        // Çift tıklama/mükerrer POST koruması: aynı SubmissionKey ile daha önce oluşturulmuş bir
+        // fatura varsa (client tarafında buton pasifleştirme atlanmışsa, ağ tekrar denemesi vb.),
+        // yeni bir numara/fatura ÜRETMEDEN aynı başarı sonucuna yönlendirilir. Bu ön kontrol sadece
+        // hızlı yoldur — asıl garanti aşağıdaki veritabanı seviyesindeki unique index'tir (bkz.
+        // Invoice.SubmissionKey), çünkü iki eşzamanlı istek bu ön kontrolü ikisi de geçebilir.
+        var existingBySubmission = await dbContext.Invoices
+            .FirstOrDefaultAsync(x => x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = $"{existingBySubmission.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
+            return RedirectToAction(nameof(Create), new { type = form.InvoiceType });
+        }
+
         // Numara üretimi ve fatura kaydı TEK transaction içinde: fatura satırları/toplamları
         // hesaplanırken veya SaveChangesAsync sırasında herhangi bir sebeple hata olursa, üretilen
         // numara da (sayaç dahil) geri alınır — hiçbir zaman "numara verildi ama evrak yok" durumu
         // oluşmaz. Dıştaki ExecuteWithConcurrencyRetryAsync, iki kullanıcının tam olarak aynı anda
         // kaydetmesi durumunda NumberSequence'ın RowVersion çakışmasını (DbUpdateConcurrencyException)
         // yakalayıp taze bir transaction'la otomatik tekrar dener — bkz. DocumentNumberGeneratorService.
-        var invoice = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+        var isAutoNumbered = string.IsNullOrEmpty(form.DocumentSeries?.Trim()) && string.IsNullOrEmpty(form.DocumentSequence?.Trim());
+        Invoice? invoice = null;
+        for (var healAttempt = 1; ; healAttempt++)
         {
-            var strategy = dbContext.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            try
             {
-                await using var transaction = await dbContext.Database.BeginTransactionAsync();
-
-                var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: null);
-                if (invoiceNumber is null)
+                invoice = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
                 {
-                    return null;
+                    var strategy = dbContext.Database.CreateExecutionStrategy();
+                    return await strategy.ExecuteAsync(async () =>
+                    {
+                        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                        var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: null);
+                        if (invoiceNumber is null)
+                        {
+                            return null;
+                        }
+
+                        var newInvoice = new Invoice
+                        {
+                            InvoiceType = form.InvoiceType,
+                            Status = InvoiceStatus.Draft,
+                            InvoiceNumber = invoiceNumber,
+                            CreatedByUserId = createdByUserId,
+                            SubmissionKey = form.SubmissionKey
+                        };
+                        MapHeader(form, newInvoice);
+                        await MapLinesAsync(form, newInvoice);
+
+                        dbContext.Invoices.Add(newInvoice);
+                        await dbContext.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        return newInvoice;
+                    });
+                });
+                break;
+            }
+            catch (DbUpdateException ex) when (IsSubmissionKeyUniqueViolation(ex))
+            {
+                // Tam olarak aynı anda gönderilen ikinci istek: birinci istek kaydı zaten oluşturdu
+                // (transaction commit oldu), bu istek SubmissionKey unique index'ine çarptı. Bu isteğin
+                // kendi transaction'ı (dolayısıyla bu istekte üretilmiş olabilecek numara/sayaç artışı)
+                // otomatik olarak geri alındı — ikinci bir fatura OLUŞMADI, birinci isteğin sonucuna
+                // yönlendiriliyoruz.
+                var existing = await dbContext.Invoices.SingleAsync(x => x.SubmissionKey == form.SubmissionKey);
+                TempData["Success"] = $"{existing.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
+                return RedirectToAction(nameof(Create), new { type = form.InvoiceType });
+            }
+            catch (DbUpdateException ex) when (IsInvoiceNumberUniqueViolation(ex) && isAutoNumbered && healAttempt < 3)
+            {
+                // Sayaç, bu türdeki gerçek veriden geride kalmış (ör. elle numara girilip sayaç
+                // güncellenmeden önce oluşan eski bir tutarsızlık) — üretilen numara zaten dolu
+                // çıktı. Başarısız denemenin ChangeTracker izleri temizlenir, sayaç ELDEKİ EN BÜYÜK
+                // numaranın bir fazlasına (asla boşluk doldurmaya değil — Stok Kartı kodlarındaki
+                // aynı kural) ileri alınır ve deneme tekrarlanır.
+                foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
+                {
+                    entry.State = EntityState.Detached;
                 }
-
-                var newInvoice = new Invoice
-                {
-                    InvoiceType = form.InvoiceType,
-                    Status = InvoiceStatus.Draft,
-                    InvoiceNumber = invoiceNumber,
-                    CreatedByUserId = createdByUserId
-                };
-                MapHeader(form, newInvoice);
-                await MapLinesAsync(form, newInvoice);
-
-                dbContext.Invoices.Add(newInvoice);
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return newInvoice;
-            });
-        });
+                await HealSequenceDriftAsync(sequenceKey, form.InvoiceType);
+            }
+            catch (ConcurrencyRetryExhaustedException ex)
+            {
+                // Aşırı yoğun eşzamanlı yük (çok sayıda kullanıcı tam olarak aynı anda aynı belge
+                // türünü kaydediyor) tüm tekrar deneme haklarını tüketti — ham teknik hata yerine
+                // kullanıcıya anlaşılır bir mesaj gösterilip form (araç çubuğu dahil) korunuyor.
+                ModelState.AddModelError(string.Empty, ex.Message);
+                await PopulateSelectionsAsync(form);
+                SetCreateToolbar(form.InvoiceType);
+                return View("Form", form);
+            }
+        }
 
         if (invoice is null)
         {
@@ -735,6 +793,41 @@ public sealed class InvoicesController(
         }
 
         return invoiceNumber;
+    }
+
+    // SQL Server hata kodları 2601/2627: unique index/constraint ihlali. Mesaj içinde index adını
+    // (IX_Invoices_SubmissionKey) arayarak bunun spesifik olarak çift-gönderim koruması olduğunu,
+    // başka bir unique index ihlali olmadığını doğruluyoruz.
+    private static bool IsSubmissionKeyUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is SqlException { Number: 2601 or 2627 } sqlEx &&
+        sqlEx.Message.Contains("SubmissionKey", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsInvoiceNumberUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is SqlException { Number: 2601 or 2627 } sqlEx &&
+        sqlEx.Message.Contains("IX_Invoices_InvoiceType_InvoiceNumber", StringComparison.OrdinalIgnoreCase);
+
+    // Otomatik numaralandırılan bir fatura, üretilen numaranın ZATEN dolu olduğu bir çakışmayla
+    // karşılaştığında (sayaç, gerçek veriden geride kalmışsa) çağrılır: ilgili tür + önek için
+    // veritabanındaki en büyük mevcut numarayı bulup sayacı bunun bir fazlasına ileri alır — asla
+    // geriye almaz, asla silinenlerin boşluğunu doldurmaya çalışmaz.
+    private async Task HealSequenceDriftAsync(string sequenceKey, InvoiceType type)
+    {
+        var prefix = (await documentNumberGenerator.PeekAsync(sequenceKey)).Prefix;
+        var existingNumbers = await dbContext.Invoices
+            .Where(x => x.InvoiceType == type && x.InvoiceNumber.StartsWith(prefix))
+            .Select(x => x.InvoiceNumber)
+            .ToListAsync();
+
+        var maxSuffix = 0L;
+        foreach (var number in existingNumbers)
+        {
+            if (long.TryParse(number[prefix.Length..], out var parsed) && parsed > maxSuffix)
+            {
+                maxSuffix = parsed;
+            }
+        }
+
+        await documentNumberGenerator.EnsureAtLeastForSeriesAsync(sequenceKey, prefix, maxSuffix + 1);
     }
 
     // "..." (Belge Sıra yanı) veya Seri alanında Enter'a basınca, o seriye özel önerilen sıra
