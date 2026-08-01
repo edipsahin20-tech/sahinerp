@@ -10,6 +10,24 @@ public sealed class ProductStatementViewModel
     public decimal OpeningBalance { get; set; }
     public decimal ClosingBalance { get; set; }
     public IReadOnlyList<ProductStatementLineViewModel> Lines { get; set; } = [];
+    public IReadOnlyList<ProductPriceHistoryLineViewModel> PurchasePriceHistory { get; set; } = [];
+    public IReadOnlyList<ProductPriceHistoryLineViewModel> SalePriceHistory { get; set; } = [];
+    public IReadOnlyList<ProductWarehouseQuantityViewModel> WarehouseQuantities { get; set; } = [];
+}
+
+public sealed class ProductPriceHistoryLineViewModel
+{
+    public DateTime InvoiceDateUtc { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal UnitPriceInclTax { get; set; }
+}
+
+public sealed class ProductWarehouseQuantityViewModel
+{
+    public string WarehouseName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
 }
 
 public sealed class ProductStatementLineViewModel

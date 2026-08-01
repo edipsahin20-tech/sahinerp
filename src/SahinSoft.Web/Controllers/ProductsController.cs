@@ -136,6 +136,25 @@ public sealed class ProductsController(
             });
         }
 
+        // Alış/Satış Fiyat Hareketi: onaylı fatura satırlarından türetilen fiyat geçmişi (KDV dahil,
+        // Stok Kartı'ndaki fiyat kuralıyla tutarlı) — bu ürün kime/kimden hangi tarihte hangi
+        // fiyattan alınıp satılmış, tüm geçmişiyle.
+        var purchasePriceHistory = await BuildPriceHistoryAsync(id, InvoiceType.Purchase);
+        var salePriceHistory = await BuildPriceHistoryAsync(id, InvoiceType.Sales);
+
+        // Depolar Arası Stok Miktarı: bu ürünün her depodaki güncel bakiyesi (tarih filtresinden
+        // bağımsız, her zaman tüm zamanların toplamı — bir anlık fotoğraf).
+        var warehouseQuantities = (await dbContext.StockMovements
+                .AsNoTracking()
+                .Include(x => x.Warehouse)
+                .Where(x => x.ProductId == id)
+                .ToListAsync())
+            .GroupBy(x => x.Warehouse.Name)
+            .Select(g => new ProductWarehouseQuantityViewModel { WarehouseName = g.Key, Quantity = g.Sum(x => x.Quantity) })
+            .Where(x => x.Quantity != 0)
+            .OrderByDescending(x => x.Quantity)
+            .ToList();
+
         var model = new ProductStatementViewModel
         {
             ProductId = product.Id,
@@ -145,10 +164,37 @@ public sealed class ProductsController(
             To = to,
             OpeningBalance = openingBalance,
             ClosingBalance = runningBalance,
-            Lines = lines
+            Lines = lines,
+            PurchasePriceHistory = purchasePriceHistory,
+            SalePriceHistory = salePriceHistory,
+            WarehouseQuantities = warehouseQuantities
         };
 
         return View(model);
+    }
+
+    private async Task<List<ProductPriceHistoryLineViewModel>> BuildPriceHistoryAsync(int productId, InvoiceType invoiceType)
+    {
+        var lines = await dbContext.InvoiceLines
+            .AsNoTracking()
+            .Include(x => x.Invoice).ThenInclude(x => x.Customer)
+            .Where(x => x.ProductId == productId
+                && x.Invoice.InvoiceType == invoiceType
+                && x.Invoice.Status == InvoiceStatus.Approved)
+            .OrderByDescending(x => x.Invoice.InvoiceDateUtc)
+            .ThenByDescending(x => x.InvoiceId)
+            .ToListAsync();
+
+        return lines
+            .Select(x => new ProductPriceHistoryLineViewModel
+            {
+                InvoiceDateUtc = x.Invoice.InvoiceDateUtc,
+                InvoiceNumber = x.Invoice.InvoiceNumber,
+                CustomerName = x.Invoice.Customer.Name,
+                Quantity = x.Quantity,
+                UnitPriceInclTax = Math.Round(x.UnitPrice * (1 + x.TaxRate / 100), 2, MidpointRounding.AwayFromZero)
+            })
+            .ToList();
     }
 
     [HttpPost]

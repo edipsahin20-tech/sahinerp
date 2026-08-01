@@ -23,99 +23,219 @@
     <div class="erp-list-body">
         <span class="text-secondary d-block mb-3">@Model.StockCode &middot; @Model.ProductName</span>
 
-        <form method="get" class="erp-filter-bar no-print">
-            <input type="hidden" name="id" value="@Model.ProductId" />
-            <div class="erp-field">
-                <label>İlk Tarih</label>
-                <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
-            </div>
-            <div class="erp-field">
-                <label>Son Tarih</label>
-                <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
-            </div>
-            <button class="btn btn-erp-primary">Filtrele</button>
-        </form>
-
-        <div class="erp-summary-row">
-            <div class="erp-summary-box">
-                <div class="erp-summary-label">Devir</div>
-                <div class="erp-summary-value">@Model.OpeningBalance.ToString("N3")</div>
-            </div>
-            <div class="erp-summary-box">
-                <div class="erp-summary-label">Giren</div>
-                <div class="erp-summary-value" style="color: #1f7a4d;">@Model.Lines.Sum(x => x.QuantityIn).ToString("N3")</div>
-            </div>
-            <div class="erp-summary-box">
-                <div class="erp-summary-label">Çıkan</div>
-                <div class="erp-summary-value" style="color: #8a2a2a;">@Model.Lines.Sum(x => x.QuantityOut).ToString("N3")</div>
-            </div>
-            <div class="erp-summary-box" style="border-color: var(--erp-gold);">
-                <div class="erp-summary-label">Bakiye</div>
-                <div class="erp-summary-value">@Model.ClosingBalance.ToString("N3")</div>
-            </div>
+        <div class="erp-tabs no-print">
+            <button type="button" class="active" data-tab-btn="hareketler">Hareketler</button>
+            <button type="button" data-tab-btn="alisfiyat">Alış Fiyat H.</button>
+            <button type="button" data-tab-btn="satisfiyat">Satış Fiyat H.</button>
+            <button type="button" data-tab-btn="lokasyon">Depolar Arası Stok Miktarı</button>
         </div>
 
-        <div class="erp-list-search mb-2 no-print" style="max-width: 320px;">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" class="form-control" autocomplete="off" placeholder="Depo, cari, belge no veya açıklama ara..." data-live-search="#productStatementTable">
-        </div>
+        <div data-tab-panel="hareketler">
+            <form method="get" class="erp-filter-bar no-print">
+                <input type="hidden" name="id" value="@Model.ProductId" />
+                <div class="erp-field">
+                    <label>İlk Tarih</label>
+                    <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label>Son Tarih</label>
+                    <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+                </div>
+                <button class="btn btn-erp-primary">Filtrele</button>
+            </form>
 
-        <div class="erp-table-wrap">
-            <table class="erp-table" id="productStatementTable" data-sortable>
-                <thead>
-                    <tr>
-                        <th data-sort="date">Tarih</th>
-                        <th data-sort="text">Depo</th>
-                        <th data-sort="text">Belge No</th>
-                        <th data-sort="text">Cari</th>
-                        <th data-sort="text">Hareket Türü</th>
-                        <th data-sort="text">Açıklama</th>
-                        <th class="text-end" data-sort="number">Giren</th>
-                        <th class="text-end" data-sort="number">Çıkan</th>
-                        <th class="text-end">Bakiye</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @if (Model.OpeningBalance != 0)
-                {
-                    <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
-                        <td colspan="8">Devreden Bakiye</td>
-                        <td class="text-end">@Model.OpeningBalance.ToString("N3")</td>
-                    </tr>
-                }
-                @foreach (var line in Model.Lines)
-                {
-                    <tr>
-                        <td>@line.MovementDateUtc.ToString("dd.MM.yyyy")</td>
-                        <td>@line.WarehouseName</td>
-                        <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
-                        <td>@line.CustomerName</td>
-                        <td>@line.MovementType</td>
-                        <td>@line.Description</td>
-                        <td class="text-end" style="color: #1f7a4d;">@(line.QuantityIn > 0 ? line.QuantityIn.ToString("N3") : "")</td>
-                        <td class="text-end" style="color: #8a2a2a;">@(line.QuantityOut > 0 ? line.QuantityOut.ToString("N3") : "")</td>
-                        <td class="text-end fw-semibold">@line.RunningBalance.ToString("N3")</td>
-                    </tr>
-                }
-                @if (Model.Lines.Count == 0)
-                {
-                    <tr data-live-search-empty>
-                        <td colspan="9" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
-                    </tr>
-                }
-                </tbody>
-                @if (Model.Lines.Count > 0)
-                {
-                    <tfoot>
+            <div class="erp-summary-row">
+                <div class="erp-summary-box">
+                    <div class="erp-summary-label">Devir</div>
+                    <div class="erp-summary-value">@Model.OpeningBalance.ToString("N3")</div>
+                </div>
+                <div class="erp-summary-box">
+                    <div class="erp-summary-label">Giren</div>
+                    <div class="erp-summary-value" style="color: #1f7a4d;">@Model.Lines.Sum(x => x.QuantityIn).ToString("N3")</div>
+                </div>
+                <div class="erp-summary-box">
+                    <div class="erp-summary-label">Çıkan</div>
+                    <div class="erp-summary-value" style="color: #8a2a2a;">@Model.Lines.Sum(x => x.QuantityOut).ToString("N3")</div>
+                </div>
+                <div class="erp-summary-box" style="border-color: var(--erp-gold);">
+                    <div class="erp-summary-label">Bakiye</div>
+                    <div class="erp-summary-value">@Model.ClosingBalance.ToString("N3")</div>
+                </div>
+            </div>
+
+            <div class="erp-list-search mb-2 no-print" style="max-width: 320px;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" class="form-control" autocomplete="off" placeholder="Depo, cari, belge no veya açıklama ara..." data-live-search="#productStatementTable">
+            </div>
+
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="productStatementTable" data-sortable>
+                    <thead>
                         <tr>
-                            <td colspan="6" class="text-end">Toplam</td>
-                            <td class="text-end" data-sum-col="6"></td>
-                            <td class="text-end" data-sum-col="7"></td>
-                            <td></td>
+                            <th>Sıra</th>
+                            <th data-sort="date">Tarih</th>
+                            <th data-sort="text">Depo</th>
+                            <th data-sort="text">Belge No</th>
+                            <th data-sort="text">Cari</th>
+                            <th data-sort="text">Hareket Türü</th>
+                            <th data-sort="text">Açıklama</th>
+                            <th class="text-end" data-sort="number">Giren</th>
+                            <th class="text-end" data-sort="number">Çıkan</th>
+                            <th class="text-end">Bakiye</th>
                         </tr>
-                    </tfoot>
-                }
-            </table>
+                    </thead>
+                    <tbody>
+                    @if (Model.OpeningBalance != 0)
+                    {
+                        <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
+                            <td colspan="9">Devreden Bakiye</td>
+                            <td class="text-end">@Model.OpeningBalance.ToString("N3")</td>
+                        </tr>
+                    }
+                    @{ var sira = 0; }
+                    @foreach (var line in Model.Lines)
+                    {
+                        sira++;
+                        <tr>
+                            <td>@sira</td>
+                            <td>@line.MovementDateUtc.ToString("dd.MM.yyyy")</td>
+                            <td>@line.WarehouseName</td>
+                            <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
+                            <td>@line.CustomerName</td>
+                            <td>@line.MovementType</td>
+                            <td>@line.Description</td>
+                            <td class="text-end" style="color: #1f7a4d;">@(line.QuantityIn > 0 ? line.QuantityIn.ToString("N3") : "")</td>
+                            <td class="text-end" style="color: #8a2a2a;">@(line.QuantityOut > 0 ? line.QuantityOut.ToString("N3") : "")</td>
+                            <td class="text-end fw-semibold">@line.RunningBalance.ToString("N3")</td>
+                        </tr>
+                    }
+                    @if (Model.Lines.Count == 0)
+                    {
+                        <tr data-live-search-empty>
+                            <td colspan="10" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
+                        </tr>
+                    }
+                    </tbody>
+                    @if (Model.Lines.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <td colspan="7" class="text-end">Toplam</td>
+                                <td class="text-end" data-sum-col="7"></td>
+                                <td class="text-end" data-sum-col="8"></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <div data-tab-panel="alisfiyat" hidden>
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="purchasePriceHistoryTable" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th data-sort="date">Tarih</th>
+                            <th data-sort="text">Belge No</th>
+                            <th data-sort="text">Cari</th>
+                            <th class="text-end" data-sort="number">Miktar</th>
+                            <th class="text-end" data-sort="number">Birim Fiyat (KDV Dahil)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @{ var alisSira = 0; }
+                    @foreach (var line in Model.PurchasePriceHistory)
+                    {
+                        alisSira++;
+                        <tr>
+                            <td>@alisSira</td>
+                            <td>@line.InvoiceDateUtc.ToString("dd.MM.yyyy")</td>
+                            <td><span class="erp-code-badge">@line.InvoiceNumber</span></td>
+                            <td>@line.CustomerName</td>
+                            <td class="text-end">@line.Quantity.ToString("N3")</td>
+                            <td class="text-end fw-semibold">@line.UnitPriceInclTax.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                    @if (Model.PurchasePriceHistory.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-center text-secondary py-4">Onaylı alış faturası hareketi bulunamadı.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div data-tab-panel="satisfiyat" hidden>
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="salePriceHistoryTable" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th data-sort="date">Tarih</th>
+                            <th data-sort="text">Belge No</th>
+                            <th data-sort="text">Cari</th>
+                            <th class="text-end" data-sort="number">Miktar</th>
+                            <th class="text-end" data-sort="number">Birim Fiyat (KDV Dahil)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @{ var satisSira = 0; }
+                    @foreach (var line in Model.SalePriceHistory)
+                    {
+                        satisSira++;
+                        <tr>
+                            <td>@satisSira</td>
+                            <td>@line.InvoiceDateUtc.ToString("dd.MM.yyyy")</td>
+                            <td><span class="erp-code-badge">@line.InvoiceNumber</span></td>
+                            <td>@line.CustomerName</td>
+                            <td class="text-end">@line.Quantity.ToString("N3")</td>
+                            <td class="text-end fw-semibold">@line.UnitPriceInclTax.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                    @if (Model.SalePriceHistory.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-center text-secondary py-4">Onaylı satış faturası hareketi bulunamadı.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div data-tab-panel="lokasyon" hidden>
+            <div class="erp-table-wrap">
+                <table class="erp-table" id="warehouseQuantityTable" data-sortable>
+                    <thead>
+                        <tr>
+                            <th data-sort="text">Depo</th>
+                            <th class="text-end" data-sort="number">Miktar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var line in Model.WarehouseQuantities)
+                    {
+                        <tr>
+                            <td>@line.WarehouseName</td>
+                            <td class="text-end fw-semibold">@line.Quantity.ToString("N3")</td>
+                        </tr>
+                    }
+                    @if (Model.WarehouseQuantities.Count == 0)
+                    {
+                        <tr><td colspan="2" class="text-center text-secondary py-4">Hiçbir depoda stok hareketi bulunamadı.</td></tr>
+                    }
+                    </tbody>
+                    @if (Model.WarehouseQuantities.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <td class="text-end">Toplam</td>
+                                <td class="text-end" data-sum-col="1"></td>
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
         </div>
     </div>
 </div>
