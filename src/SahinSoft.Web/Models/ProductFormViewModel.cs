@@ -105,9 +105,9 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Yazıcı")]
     public string? KitchenPrinterName { get; set; }
 
-    public string? CategoryDisplay { get; set; }
-    public string? UnitOfMeasureDisplay { get; set; }
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> TaxRateOptions { get; set; } = [];
+    public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> CategoryOptions { get; set; } = [];
+    public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> UnitOfMeasureOptions { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

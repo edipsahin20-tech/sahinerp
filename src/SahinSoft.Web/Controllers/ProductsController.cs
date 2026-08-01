@@ -516,16 +516,9 @@ public sealed class ProductsController(
             .Select(x => x.IsRestaurantModuleEnabled)
             .SingleOrDefaultAsync();
 
-        if (model.CategoryId > 0)
-        {
-            model.CategoryDisplay = await dbContext.ProductCategories
-                .Where(x => x.Id == model.CategoryId)
-                .Select(x => x.Code + " - " + x.Name)
-                .SingleOrDefaultAsync();
-        }
-
-        // KDV artık serbest metin aramalı bir seçici değil, sadece orana göre kapalı bir liste
-        // (kullanıcı isteği: "sadece oran seçilsin, başka değer girilmesin").
+        // KDV, Kategori ve Birim artık serbest metin aramalı seçiciler değil, sadece tanımlı
+        // kayıtlar arasından seçilebilen kapalı listeler (kullanıcı isteği: "sadece seçim yapılsın,
+        // başka değer girilmesin", aynı mantık KDV/Kategori/Birim için).
         model.TaxRateOptions = await dbContext.TaxRates
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -533,15 +526,19 @@ public sealed class ProductsController(
             .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem($"%{x.Rate.ToString("N0")}", x.Id.ToString()))
             .ToListAsync();
 
-        if (model.UnitOfMeasureId is int unitOfMeasureId)
-        {
-            // Birim seçicisinde Kod ve Ad genelde aynı kelime olduğu için ("Adet" - "Adet")
-            // Kategori/KDV gibi "Kod - Ad" değil, sadece Ad gösterilir.
-            model.UnitOfMeasureDisplay = await dbContext.UnitsOfMeasure
-                .Where(x => x.Id == unitOfMeasureId)
-                .Select(x => x.Name)
-                .SingleOrDefaultAsync();
-        }
+        model.CategoryOptions = await dbContext.ProductCategories
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
+
+        model.UnitOfMeasureOptions = await dbContext.UnitsOfMeasure
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
     }
 
     private static async Task MapAsync(ProductFormViewModel source, Product target, ApplicationDbContext dbContext)

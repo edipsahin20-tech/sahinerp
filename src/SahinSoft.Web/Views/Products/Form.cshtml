@@ -57,12 +57,9 @@
                     </div>
                     <div class="col-md-4">
                         <label asp-for="CategoryId" class="form-label"></label>
-                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                            Name = nameof(Model.CategoryId), Id = nameof(Model.CategoryId),
-                            Value = Model.CategoryId > 0 ? Model.CategoryId.ToString() : null,
-                            DisplayValue = Model.CategoryDisplay,
-                            Endpoint = Url.Action("Categories", "Lookup")!,
-                            Title = "Kategori Seç", Placeholder = "Kategori seçin" })" />
+                        <select asp-for="CategoryId" class="form-select" asp-items="Model.CategoryOptions">
+                            <option value="">Kategori seçin</option>
+                        </select>
                         <span asp-validation-for="CategoryId" class="text-danger small"></span>
                     </div>
                     <div class="col-md-4">
@@ -89,12 +86,9 @@
                     </div>
                     <div class="col-md-4">
                         <label asp-for="UnitOfMeasureId" class="form-label"></label>
-                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                            Name = nameof(Model.UnitOfMeasureId), Id = nameof(Model.UnitOfMeasureId),
-                            Value = Model.UnitOfMeasureId?.ToString(),
-                            DisplayValue = Model.UnitOfMeasureDisplay,
-                            Endpoint = Url.Action("UnitsOfMeasure", "Lookup")!,
-                            Title = "Birim Seç", Placeholder = "Birim seçin" })" />
+                        <select asp-for="UnitOfMeasureId" class="form-select" asp-items="Model.UnitOfMeasureOptions">
+                            <option value="">Birim seçin</option>
+                        </select>
                         <span asp-validation-for="UnitOfMeasureId" class="text-danger small"></span>
                     </div>
                 </div>
