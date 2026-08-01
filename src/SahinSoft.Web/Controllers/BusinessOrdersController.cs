@@ -69,6 +69,11 @@ public sealed class BusinessOrdersController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "BusinessOrders",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.OrderType.ToString() }
+            };
             return View("Form", form);
         }
 
@@ -193,6 +198,7 @@ public sealed class BusinessOrdersController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, form.OrderType);
             return View("Form", form);
         }
 

@@ -128,26 +128,56 @@ public sealed class InvoicesController(
     {
         ValidateLines(form);
         ValidateSettlement(form);
-        var sequenceKey = form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
-        var invoiceNumber = await ResolveInvoiceNumberAsync(form, sequenceKey, excludeInvoiceId: null);
+        // Belge numarası (Seri/Sıra) çözümlemesi gerçek bir DB yazımı ve bir sayaç tüketimidir —
+        // bu yüzden yalnızca form BAŞKA hiçbir sebeple geçersiz DEĞİLSE denenir. Aksi halde (örn.
+        // satır eksik, Kapalı Fatura için kasa/ödeme seçilmemiş) numara hiç üretilmeden hata gösterilir.
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            SetCreateToolbar(form.InvoiceType);
             return View("Form", form);
         }
 
-        var invoice = new Invoice
-        {
-            InvoiceType = form.InvoiceType,
-            Status = InvoiceStatus.Draft,
-            InvoiceNumber = invoiceNumber!,
-            CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty
-        };
-        MapHeader(form, invoice);
-        await MapLinesAsync(form, invoice);
+        var sequenceKey = form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var createdByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
-        dbContext.Invoices.Add(invoice);
-        await dbContext.SaveChangesAsync();
+        // Numara üretimi ve fatura kaydı TEK transaction içinde: fatura satırları/toplamları
+        // hesaplanırken veya SaveChangesAsync sırasında herhangi bir sebeple hata olursa, üretilen
+        // numara da (sayaç dahil) geri alınır — hiçbir zaman "numara verildi ama evrak yok" durumu
+        // oluşmaz.
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var invoice = await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: null);
+            if (invoiceNumber is null)
+            {
+                return null;
+            }
+
+            var newInvoice = new Invoice
+            {
+                InvoiceType = form.InvoiceType,
+                Status = InvoiceStatus.Draft,
+                InvoiceNumber = invoiceNumber,
+                CreatedByUserId = createdByUserId
+            };
+            MapHeader(form, newInvoice);
+            await MapLinesAsync(form, newInvoice);
+
+            dbContext.Invoices.Add(newInvoice);
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return newInvoice;
+        });
+
+        if (invoice is null)
+        {
+            await PopulateSelectionsAsync(form);
+            SetCreateToolbar(form.InvoiceType);
+            return View("Form", form);
+        }
 
         // Mikro tarzı hızlı ardışık evrak girişi: yeni fatura kaydedilince Detay'a değil, aynı
         // türde (Satış/Alış) boş bir yeni fatura giriş ekranına dönülür — düzenlemede (Edit) bu
@@ -255,6 +285,20 @@ public sealed class InvoicesController(
         return RedirectToAction(nameof(Index));
     }
 
+    // Create GET ile aynı toolbar'ı kurar — POST'ta doğrulama başarısız olup form yeniden
+    // gösterildiğinde de ViewBag.Toolbar ayarlanmazsa _EvrakToolbar partial'ı (Model null olduğu
+    // için) hiç render edilmez ve "Sakla" dahil TÜM araç çubuğu düğmeleri kaybolur — kullanıcı
+    // hatayı düzeltip kaydedecek hiçbir buton bulamaz ("kayıt ediyorum ama evrak yok" hatasının
+    // asıl sebeplerinden biri buydu).
+    private void SetCreateToolbar(InvoiceType type)
+    {
+        ViewBag.Toolbar = new EvrakToolbarViewModel
+        {
+            Controller = "Invoices",
+            CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
+        };
+    }
+
     private async Task SetToolbarAsync(int id, InvoiceType type)
     {
         var previousId = await dbContext.Invoices.Where(x => x.Id < id).OrderByDescending(x => x.Id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
@@ -302,36 +346,70 @@ public sealed class InvoicesController(
             return Forbid();
         }
 
-        var sequenceKey = invoice.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
-        var invoiceNumber = await ResolveInvoiceNumberAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
+        // Belge numarası çözümlemesi (Seri/Sıra) gerçek bir sayaç tüketimidir — form BAŞKA hiçbir
+        // sebeple geçersiz DEĞİLSE denenir (bkz. Create'teki aynı gerekçe).
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, invoice.InvoiceType);
             return View("Form", form);
         }
 
+        var sequenceKey = invoice.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+
         if (invoice.Status == InvoiceStatus.Draft)
         {
-            invoice.InvoiceNumber = invoiceNumber!;
-            MapHeader(form, invoice);
-            invoice.Lines.Clear();
-            await MapLinesAsync(form, invoice);
-            invoice.UpdatedAtUtc = DateTime.UtcNow;
+            // Numara üretimi ve fatura güncellemesi TEK transaction içinde (bkz. Create'teki gerekçe).
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            var saved = await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-            await dbContext.SaveChangesAsync();
+                var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
+                if (invoiceNumber is null)
+                {
+                    return false;
+                }
+
+                invoice.InvoiceNumber = invoiceNumber;
+                MapHeader(form, invoice);
+                invoice.Lines.Clear();
+                await MapLinesAsync(form, invoice);
+                invoice.UpdatedAtUtc = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            });
+
+            if (!saved)
+            {
+                await PopulateSelectionsAsync(form);
+                await SetToolbarAsync(id, invoice.InvoiceType);
+                return View("Form", form);
+            }
+
             TempData["Success"] = "Fatura taslağı güncellendi.";
             return RedirectToAction(nameof(Details), new { id = invoice.Id });
         }
 
         // Onaylı fatura düzenleniyor: eski stok/cari hareketleri ters kayıtla geri alınıp yeni
-        // satırlarla yeniden postalanır (InvoicePostingService.EditApprovedAsync) — tek işlemde,
-        // hata olursa hiçbir şey kalıcı olmaz.
+        // satırlarla yeniden postalanır (InvoicePostingService.EditApprovedAsync) — belge numarası
+        // üretimi de aynı transaction içinde yapılır (callback'in kendi içinde), böylece numara
+        // çakışması veya başka bir hata durumunda hiçbir şey (numara dahil) kalıcı olmaz.
         var editedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var numberConflict = false;
         try
         {
             await invoicePostingService.EditApprovedAsync(invoice.Id, editedByUserId, async inv =>
             {
-                inv.InvoiceNumber = invoiceNumber!;
+                var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
+                if (invoiceNumber is null)
+                {
+                    numberConflict = true;
+                    throw new InvalidOperationException("Bu belge numarası başka bir faturada kullanılıyor.");
+                }
+                inv.InvoiceNumber = invoiceNumber;
                 MapHeader(form, inv);
                 inv.Lines.Clear();
                 await MapLinesAsync(form, inv);
@@ -340,7 +418,17 @@ public sealed class InvoicesController(
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Error"] = ex.Message;
+            if (!numberConflict)
+            {
+                TempData["Error"] = ex.Message;
+            }
+        }
+
+        if (numberConflict)
+        {
+            await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, invoice.InvoiceType);
+            return View("Form", form);
         }
 
         return RedirectToAction(nameof(Details), new { id = invoice.Id });
@@ -500,7 +588,7 @@ public sealed class InvoicesController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(InvoiceFormViewModel form)
+    private void ValidateLines(InvoiceFormViewModel form)
     {
         form.Lines = form.Lines
             .Where(x => x.ProductId is not null)
@@ -508,7 +596,7 @@ public sealed class InvoicesController(
 
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Faturada en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Faturada en az bir satır bulunmalıdır.");
         }
     }
 
@@ -606,14 +694,21 @@ public sealed class InvoicesController(
     // Doldurulmuşsa kullanıcının girdiği numara aynen kullanılır — başka bir faturada kullanılmadığı
     // doğrulanır ve sayısal kısmı ayrıştırılabiliyorsa gelecekteki otomatik numaraların bununla
     // çakışmaması için sayaç ileri alınır (asla geri alınmaz).
-    private async Task<string?> ResolveInvoiceNumberAsync(InvoiceFormViewModel form, string sequenceKey, int? excludeInvoiceId)
+    //
+    // ÖNEMLİ: Bu metod her zaman çağıranın AÇIK OLAN transaction'ı içinde çalışır (GenerateAsync
+    // yerine GenerateWithinTransactionAsync kullanır) — böylece numara üretimi, faturanın kendisi
+    // kaydedilmeden önce herhangi bir sebeple (beklenmeyen hata, eşzamanlılık çakışması vb.) başarısız
+    // olursa transaction'la birlikte GERİ ALINIR. Daha önce numara bağımsız commit edildiği için,
+    // fatura kaydı başarısız olsa bile numara boşa harcanıyordu ("seri/sıra veriyor ama evrak yok"
+    // hatası) — bu artık mümkün değil.
+    private async Task<string?> ResolveInvoiceNumberWithinTransactionAsync(InvoiceFormViewModel form, string sequenceKey, int? excludeInvoiceId)
     {
         var series = form.DocumentSeries?.Trim();
         var sequence = form.DocumentSequence?.Trim();
 
         if (string.IsNullOrEmpty(series) || string.IsNullOrEmpty(sequence))
         {
-            return await documentNumberGenerator.GenerateAsync(sequenceKey);
+            return await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey);
         }
 
         var invoiceNumber = series + sequence;
@@ -627,7 +722,7 @@ public sealed class InvoicesController(
 
         if (long.TryParse(sequence, out var parsedNumber))
         {
-            await documentNumberGenerator.EnsureAtLeastForSeriesAsync(sequenceKey, series, parsedNumber + 1);
+            await documentNumberGenerator.EnsureAtLeastForSeriesWithinTransactionAsync(sequenceKey, series, parsedNumber + 1);
         }
 
         return invoiceNumber;

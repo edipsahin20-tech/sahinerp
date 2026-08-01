@@ -62,6 +62,11 @@ public sealed class NegotiableInstrumentsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "NegotiableInstruments",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.InstrumentType.ToString() }
+            };
             return View("Form", form);
         }
 
@@ -168,6 +173,7 @@ public sealed class NegotiableInstrumentsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, form.InstrumentType);
             return View("Form", form);
         }
 

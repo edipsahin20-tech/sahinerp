@@ -71,6 +71,11 @@ public sealed class DispatchNotesController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "DispatchNotes",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.DispatchType.ToString() }
+            };
             return View("Form", form);
         }
 
@@ -187,6 +192,7 @@ public sealed class DispatchNotesController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, form.DispatchType);
             return View("Form", form);
         }
 

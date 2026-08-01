@@ -71,6 +71,11 @@ public sealed class StockSlipsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "StockSlips",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.SlipType.ToString() }
+            };
             return View("Form", form);
         }
 
@@ -190,6 +195,7 @@ public sealed class StockSlipsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, form.SlipType);
             return View("Form", form);
         }
 

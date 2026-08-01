@@ -95,40 +95,48 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
                 IsolationLevel.Serializable,
                 cancellationToken);
 
-            var defaultSequence = await dbContext.NumberSequences
-                .SingleAsync(x => x.Key == sequenceKey, cancellationToken);
-
-            NumberSequence target;
-            if (string.IsNullOrEmpty(series) || series == defaultSequence.Prefix)
-            {
-                target = defaultSequence;
-            }
-            else
-            {
-                var composedKey = ComposeKey(sequenceKey, series);
-                target = await dbContext.NumberSequences.SingleOrDefaultAsync(x => x.Key == composedKey, cancellationToken)
-                    ?? new NumberSequence
-                    {
-                        Key = composedKey,
-                        Prefix = series,
-                        NextNumber = 1,
-                        Padding = defaultSequence.Padding
-                    };
-                if (target.Id == 0)
-                {
-                    dbContext.NumberSequences.Add(target);
-                }
-            }
-
-            if (minimumNextNumber > target.NextNumber)
-            {
-                target.NextNumber = minimumNextNumber;
-                target.UpdatedAtUtc = DateTime.UtcNow;
-            }
+            await EnsureAtLeastForSeriesWithinTransactionAsync(sequenceKey, series, minimumNextNumber, cancellationToken);
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         });
+    }
+
+    // EnsureAtLeastForSeriesAsync'in transaction/SaveChanges yönetmeyen çekirdeği — GenerateWithinTransactionAsync
+    // ile aynı gerekçeyle: zaten açık bir transaction içinde çalışan çağıranlar (ör.
+    // InvoicesController'ın fatura kaydını da aynı transaction'a saran akışı) için.
+    internal async Task EnsureAtLeastForSeriesWithinTransactionAsync(string sequenceKey, string series, long minimumNextNumber, CancellationToken cancellationToken = default)
+    {
+        var defaultSequence = await dbContext.NumberSequences
+            .SingleAsync(x => x.Key == sequenceKey, cancellationToken);
+
+        NumberSequence target;
+        if (string.IsNullOrEmpty(series) || series == defaultSequence.Prefix)
+        {
+            target = defaultSequence;
+        }
+        else
+        {
+            var composedKey = ComposeKey(sequenceKey, series);
+            target = await dbContext.NumberSequences.SingleOrDefaultAsync(x => x.Key == composedKey, cancellationToken)
+                ?? new NumberSequence
+                {
+                    Key = composedKey,
+                    Prefix = series,
+                    NextNumber = 1,
+                    Padding = defaultSequence.Padding
+                };
+            if (target.Id == 0)
+            {
+                dbContext.NumberSequences.Add(target);
+            }
+        }
+
+        if (minimumNextNumber > target.NextNumber)
+        {
+            target.NextNumber = minimumNextNumber;
+            target.UpdatedAtUtc = DateTime.UtcNow;
+        }
     }
 
     private static string ComposeKey(string sequenceKey, string series) => $"{sequenceKey}:{series}";

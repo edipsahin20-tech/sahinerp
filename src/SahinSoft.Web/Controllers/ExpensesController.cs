@@ -60,6 +60,7 @@ public sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "Expenses" };
             return View("Form", form);
         }
 
@@ -148,6 +149,7 @@ public sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id);
             return View("Form", form);
         }
 

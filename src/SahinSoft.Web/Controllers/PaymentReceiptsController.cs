@@ -83,6 +83,11 @@ public sealed class PaymentReceiptsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "PaymentReceipts",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.ReceiptType.ToString() }
+            };
             return View("Form", form);
         }
 
@@ -206,6 +211,7 @@ public sealed class PaymentReceiptsController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id, form.ReceiptType);
             return View("Form", form);
         }
 

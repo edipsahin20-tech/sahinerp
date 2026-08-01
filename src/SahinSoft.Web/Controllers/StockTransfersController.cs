@@ -65,6 +65,7 @@ public sealed class StockTransfersController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "StockTransfers" };
             return View("Form", form);
         }
 
@@ -179,6 +180,7 @@ public sealed class StockTransfersController(
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
+            await SetToolbarAsync(id);
             return View("Form", form);
         }
 
