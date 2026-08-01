@@ -305,9 +305,12 @@
         // Birim (UnitOfMeasure) seçicisinde Kod ve Ad genelde aynı kelime olduğu için ("Adet - Adet")
         // Kategori/Cari gibi "Kod - Ad" değil, sadece Ad gösterilir.
         var isUnitLookup = endpoint.indexOf("/Lookup/UnitsOfMeasure") !== -1;
+        // Stok Adı gibi kendi kendine arama yapan alanlarda (mükerrer kayıt kontrolü) her zaman
+        // sadece Ad yazılır — "Kod - Ad" formatı bu alanın kendi anlamıyla uyuşmaz.
+        var nameOnly = trigger.getAttribute("data-lookup-name-only") === "true";
 
         if (displayEl) {
-            displayEl.value = (hasStockCodeCol || !item.code || isUnitLookup) ? (item.name || "") : ((item.code ? item.code + " - " : "") + item.name);
+            displayEl.value = (hasStockCodeCol || !item.code || isUnitLookup || nameOnly) ? (item.name || "") : ((item.code ? item.code + " - " : "") + item.name);
         }
 
         if (row) {

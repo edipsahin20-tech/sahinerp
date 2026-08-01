@@ -52,8 +52,13 @@
                     </div>
                     <div class="col-md-8">
                         <label asp-for="Name" class="form-label"></label>
-                        <input asp-for="Name" class="form-control" autofocus />
+                        <input asp-for="Name" class="form-control lookup-quicksearch" autofocus autocomplete="off"
+                               data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                               data-lookup-title="Benzer Stok Ara"
+                               data-target-display="Name"
+                               data-lookup-name-only="true" />
                         <span asp-validation-for="Name" class="text-danger small"></span>
+                        <div class="form-text">Yazarken benzer stoklar önerilir (mükerrer kayıt oluşturmayı önler). Aramak için "*" ile bitirebilir veya F9'a basabilirsiniz.</div>
                     </div>
                     <div class="col-md-4">
                         <label asp-for="CategoryId" class="form-label"></label>
