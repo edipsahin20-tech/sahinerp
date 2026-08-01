@@ -1,0 +1,121 @@
+@model SahinSoft.Web.Models.ProductStatementViewModel
+@{
+    ViewData["Title"] = "Stok Hareket Ekstresi";
+}
+
+<div class="print-only mb-3">
+    <h2 class="mb-1">Stok Hareket Ekstresi</h2>
+    <div>@Model.StockCode &middot; @Model.ProductName</div>
+    @if (Model.From.HasValue || Model.To.HasValue)
+    {
+        <div>@(Model.From?.ToString("dd.MM.yyyy") ?? "Baştan") - @(Model.To?.ToString("dd.MM.yyyy") ?? "Sona")</div>
+    }
+</div>
+
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-arrow-right-arrow-left"></i> Stok Hareket Ekstresi</h2>
+        <div class="d-flex gap-2 no-print">
+            <a asp-action="Index" class="btn-erp-list-new">Stok Listesi</a>
+            <button type="button" class="btn-erp-list-new" onclick="window.print()">Yazdır</button>
+        </div>
+    </div>
+    <div class="erp-list-body">
+        <span class="text-secondary d-block mb-3">@Model.StockCode &middot; @Model.ProductName</span>
+
+        <form method="get" class="erp-filter-bar no-print">
+            <input type="hidden" name="id" value="@Model.ProductId" />
+            <div class="erp-field">
+                <label>İlk Tarih</label>
+                <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="erp-field">
+                <label>Son Tarih</label>
+                <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <button class="btn btn-erp-primary">Filtrele</button>
+        </form>
+
+        <div class="erp-summary-row">
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Devir</div>
+                <div class="erp-summary-value">@Model.OpeningBalance.ToString("N3")</div>
+            </div>
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Giren</div>
+                <div class="erp-summary-value" style="color: #1f7a4d;">@Model.Lines.Sum(x => x.QuantityIn).ToString("N3")</div>
+            </div>
+            <div class="erp-summary-box">
+                <div class="erp-summary-label">Çıkan</div>
+                <div class="erp-summary-value" style="color: #8a2a2a;">@Model.Lines.Sum(x => x.QuantityOut).ToString("N3")</div>
+            </div>
+            <div class="erp-summary-box" style="border-color: var(--erp-gold);">
+                <div class="erp-summary-label">Bakiye</div>
+                <div class="erp-summary-value">@Model.ClosingBalance.ToString("N3")</div>
+            </div>
+        </div>
+
+        <div class="erp-list-search mb-2 no-print" style="max-width: 320px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="form-control" autocomplete="off" placeholder="Depo, cari, belge no veya açıklama ara..." data-live-search="#productStatementTable">
+        </div>
+
+        <div class="erp-table-wrap">
+            <table class="erp-table" id="productStatementTable" data-sortable>
+                <thead>
+                    <tr>
+                        <th data-sort="date">Tarih</th>
+                        <th data-sort="text">Depo</th>
+                        <th data-sort="text">Belge No</th>
+                        <th data-sort="text">Cari</th>
+                        <th data-sort="text">Hareket Türü</th>
+                        <th data-sort="text">Açıklama</th>
+                        <th class="text-end" data-sort="number">Giren</th>
+                        <th class="text-end" data-sort="number">Çıkan</th>
+                        <th class="text-end">Bakiye</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.OpeningBalance != 0)
+                {
+                    <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
+                        <td colspan="8">Devreden Bakiye</td>
+                        <td class="text-end">@Model.OpeningBalance.ToString("N3")</td>
+                    </tr>
+                }
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.MovementDateUtc.ToString("dd.MM.yyyy")</td>
+                        <td>@line.WarehouseName</td>
+                        <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
+                        <td>@line.CustomerName</td>
+                        <td>@line.MovementType</td>
+                        <td>@line.Description</td>
+                        <td class="text-end" style="color: #1f7a4d;">@(line.QuantityIn > 0 ? line.QuantityIn.ToString("N3") : "")</td>
+                        <td class="text-end" style="color: #8a2a2a;">@(line.QuantityOut > 0 ? line.QuantityOut.ToString("N3") : "")</td>
+                        <td class="text-end fw-semibold">@line.RunningBalance.ToString("N3")</td>
+                    </tr>
+                }
+                @if (Model.Lines.Count == 0)
+                {
+                    <tr data-live-search-empty>
+                        <td colspan="9" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
+                    </tr>
+                }
+                </tbody>
+                @if (Model.Lines.Count > 0)
+                {
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="text-end">Toplam</td>
+                            <td class="text-end" data-sum-col="6"></td>
+                            <td class="text-end" data-sum-col="7"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

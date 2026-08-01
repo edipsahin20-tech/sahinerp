@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
@@ -77,6 +78,77 @@ public sealed class ProductsController(
 
         ViewBag.Search = search;
         return View(await query.ToListAsync());
+    }
+
+    // Cari Ekstresi (CustomersController.Statement) ile aynı desen: ürüne özel tüm stok
+    // hareketlerini tarih sırasıyla koşan bakiye ile listeler. Cari kolonu, hareket bir Satış/Alış
+    // faturasından geldiyse (InvoiceLineId dolu ise) faturanın carisinden türetilir; Stok Fişi,
+    // Transfer, Sayım, İrsaliye gibi fatura dışı hareketlerde boş kalır.
+    public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to)
+    {
+        var product = await dbContext.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        var movementsQuery = dbContext.StockMovements
+            .AsNoTracking()
+            .Include(x => x.Warehouse)
+            .Include(x => x.InvoiceLine).ThenInclude(x => x!.Invoice).ThenInclude(x => x.Customer)
+            .Where(x => x.ProductId == id);
+
+        var openingBalance = from.HasValue
+            ? await movementsQuery.Where(x => x.MovementDateUtc < from.Value).SumAsync(x => (decimal?)x.Quantity) ?? 0
+            : 0;
+
+        var rangeQuery = movementsQuery;
+        if (from.HasValue)
+        {
+            rangeQuery = rangeQuery.Where(x => x.MovementDateUtc >= from.Value);
+        }
+        if (to.HasValue)
+        {
+            rangeQuery = rangeQuery.Where(x => x.MovementDateUtc < to.Value.AddDays(1));
+        }
+
+        var movements = await rangeQuery
+            .OrderBy(x => x.MovementDateUtc)
+            .ThenBy(x => x.Id)
+            .ToListAsync();
+
+        var runningBalance = openingBalance;
+        var lines = new List<ProductStatementLineViewModel>();
+        foreach (var movement in movements)
+        {
+            runningBalance += movement.Quantity;
+            lines.Add(new ProductStatementLineViewModel
+            {
+                MovementDateUtc = movement.MovementDateUtc,
+                WarehouseName = movement.Warehouse.Name,
+                DocumentNumber = movement.DocumentNumber,
+                CustomerName = movement.InvoiceLine?.Invoice.Customer.Name,
+                MovementType = movement.MovementType.GetDisplayName(),
+                Description = movement.Description,
+                QuantityIn = movement.Quantity > 0 ? movement.Quantity : 0,
+                QuantityOut = movement.Quantity < 0 ? -movement.Quantity : 0,
+                RunningBalance = runningBalance
+            });
+        }
+
+        var model = new ProductStatementViewModel
+        {
+            ProductId = product.Id,
+            ProductName = product.Name,
+            StockCode = product.StockCode,
+            From = from,
+            To = to,
+            OpeningBalance = openingBalance,
+            ClosingBalance = runningBalance,
+            Lines = lines
+        };
+
+        return View(model);
     }
 
     [HttpPost]
