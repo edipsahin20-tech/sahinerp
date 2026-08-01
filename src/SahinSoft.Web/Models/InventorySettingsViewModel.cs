@@ -39,4 +39,7 @@ public sealed class InventorySettingsViewModel
 
     [Display(Name = "Maliyet altı satışa izin ver")]
     public bool AllowSaleBelowCost { get; set; }
+
+    [Display(Name = "Restoran Modülü aktif")]
+    public bool IsRestaurantModuleEnabled { get; set; }
 }

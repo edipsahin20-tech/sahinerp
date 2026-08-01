@@ -97,6 +97,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.TrackStockByVariant = model.TrackStockByVariant;
         settings.RequireProductVariant = model.RequireProductVariant;
         settings.AllowSaleBelowCost = model.AllowSaleBelowCost;
+        settings.IsRestaurantModuleEnabled = model.IsRestaurantModuleEnabled;
         settings.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
@@ -117,6 +118,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         RequireTransferApproval = settings.RequireTransferApproval,
         TrackStockByVariant = settings.TrackStockByVariant,
         RequireProductVariant = settings.RequireProductVariant,
-        AllowSaleBelowCost = settings.AllowSaleBelowCost
+        AllowSaleBelowCost = settings.AllowSaleBelowCost,
+        IsRestaurantModuleEnabled = settings.IsRestaurantModuleEnabled
     };
 }

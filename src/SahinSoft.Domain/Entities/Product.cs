@@ -26,6 +26,13 @@ public sealed class Product : EntityBase
     public string? ImagePath { get; set; }
     public string? WebsitePath { get; set; }
 
+    // Sadece Ayarlar > Stok Parametreleri'nde "Restoran Modülü" açıkken Stok Tanıtım Kartı'nda gösterilir.
+    public int LoyaltyPoints { get; set; }
+    public bool ShowAsShortcut { get; set; } = true;
+    public bool ShowInMobile { get; set; } = true;
+    public bool ShowInOnlineOrder { get; set; } = true;
+    public string? KitchenPrinterName { get; set; }
+
     public int CategoryId { get; set; }
     public ProductCategory Category { get; set; } = null!;
     public int TaxRateId { get; set; }

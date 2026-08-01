@@ -16,4 +16,5 @@ public sealed class InventorySettings : EntityBase
     public bool TrackStockByVariant { get; set; }
     public bool RequireProductVariant { get; set; }
     public bool AllowSaleBelowCost { get; set; }
+    public bool IsRestaurantModuleEnabled { get; set; }
 }

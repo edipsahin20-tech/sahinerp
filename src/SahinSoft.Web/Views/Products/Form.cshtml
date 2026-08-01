@@ -19,6 +19,10 @@
         <div class="erp-tabs">
             <button type="button" class="active" data-tab-btn="genel">Genel Bilgiler</button>
             <button type="button" data-tab-btn="ek">Ek Bilgiler</button>
+            @if (ViewBag.IsRestaurantModuleEnabled == true)
+            {
+                <button type="button" data-tab-btn="restoran">Restoran</button>
+            }
             <button type="button" data-tab-btn="notlar">Notlar</button>
         </div>
 
@@ -112,12 +116,9 @@
                     </div>
                     <div class="col-md-4">
                         <label asp-for="TaxRateId" class="form-label"></label>
-                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                            Name = nameof(Model.TaxRateId), Id = nameof(Model.TaxRateId),
-                            Value = Model.TaxRateId > 0 ? Model.TaxRateId.ToString() : null,
-                            DisplayValue = Model.TaxRateDisplay,
-                            Endpoint = Url.Action("TaxRates", "Lookup")!,
-                            Title = "KDV Oranı Seç", Placeholder = "KDV seçin" })" />
+                        <select asp-for="TaxRateId" class="form-select" asp-items="Model.TaxRateOptions">
+                            <option value="">KDV oranı seçin</option>
+                        </select>
                         <span asp-validation-for="TaxRateId" class="text-danger small"></span>
                     </div>
                     <div class="col-md-4">
@@ -215,6 +216,50 @@
                 </div>
             </div>
         </div>
+
+        @if (ViewBag.IsRestaurantModuleEnabled == true)
+        {
+            <div data-tab-panel="restoran" hidden>
+                <div class="erp-form-section">
+                    <div class="erp-section-header">
+                        <span class="erp-section-number">1</span>
+                        <div>
+                            <h2>Restoran</h2>
+                            <p>Restoran Modülü açıkken kullanılan ek alanlar.</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="LoyaltyPoints" class="form-label"></label>
+                            <input asp-for="LoyaltyPoints" class="form-control" />
+                            <span asp-validation-for="LoyaltyPoints" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="KitchenPrinterName" class="form-label"></label>
+                            <input asp-for="KitchenPrinterName" class="form-control" placeholder="Örn: Mutfak Yazıcısı 1" />
+                        </div>
+                        <div class="col-md-4 d-flex flex-wrap align-items-center gap-3">
+                            <div class="form-check form-switch mb-0">
+                                <input asp-for="ShowAsShortcut" class="form-check-input" />
+                                <label asp-for="ShowAsShortcut" class="form-check-label"></label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center">
+                            <div class="form-check form-switch mb-0">
+                                <input asp-for="ShowInMobile" class="form-check-input" />
+                                <label asp-for="ShowInMobile" class="form-check-label"></label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center">
+                            <div class="form-check form-switch mb-0">
+                                <input asp-for="ShowInOnlineOrder" class="form-check-input" />
+                                <label asp-for="ShowInOnlineOrder" class="form-check-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
 
         <div data-tab-panel="notlar" hidden>
             <div class="erp-form-section">

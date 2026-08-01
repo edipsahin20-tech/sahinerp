@@ -87,9 +87,27 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Açıklama")]
     public string? Description { get; set; }
 
+    // Sadece Restoran Modülü açıkken Stok Tanıtım Kartı'nda gösterilir.
+    [Display(Name = "Puan")]
+    [Range(0, 999999)]
+    public int LoyaltyPoints { get; set; }
+
+    [Display(Name = "Kısayol Görünsün mü?")]
+    public bool ShowAsShortcut { get; set; } = true;
+
+    [Display(Name = "Mobilde Görünsün mü?")]
+    public bool ShowInMobile { get; set; } = true;
+
+    [Display(Name = "Online Siparişte Görünsün mü?")]
+    public bool ShowInOnlineOrder { get; set; } = true;
+
+    [StringLength(100)]
+    [Display(Name = "Yazıcı")]
+    public string? KitchenPrinterName { get; set; }
+
     public string? CategoryDisplay { get; set; }
-    public string? TaxRateDisplay { get; set; }
     public string? UnitOfMeasureDisplay { get; set; }
+    public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> TaxRateOptions { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

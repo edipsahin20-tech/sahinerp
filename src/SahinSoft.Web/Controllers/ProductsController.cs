@@ -239,7 +239,11 @@ public sealed class ProductsController(
                 model.TrackStock = source.TrackStock;
                 model.IsActive = source.IsActive;
                 model.Description = source.Description;
-                // Stok kodu, barkod, fiyatlar ve miktar bilinçli olarak boş bırakılır.
+                model.ShowAsShortcut = source.ShowAsShortcut;
+                model.ShowInMobile = source.ShowInMobile;
+                model.ShowInOnlineOrder = source.ShowInOnlineOrder;
+                model.KitchenPrinterName = source.KitchenPrinterName;
+                // Stok kodu, barkod, fiyatlar, miktar ve puan bilinçli olarak boş bırakılır.
             }
         }
 
@@ -347,7 +351,12 @@ public sealed class ProductsController(
             TrackStock = product.TrackStock,
             IsActive = product.IsActive,
             ImagePath = product.ImagePath,
-            Description = product.Description
+            Description = product.Description,
+            LoyaltyPoints = product.LoyaltyPoints,
+            ShowAsShortcut = product.ShowAsShortcut,
+            ShowInMobile = product.ShowInMobile,
+            ShowInOnlineOrder = product.ShowInOnlineOrder,
+            KitchenPrinterName = product.KitchenPrinterName
         };
 
         await PopulateSelectionsAsync(model);
@@ -501,6 +510,12 @@ public sealed class ProductsController(
 
     private async Task PopulateSelectionsAsync(ProductFormViewModel model)
     {
+        ViewBag.IsRestaurantModuleEnabled = await dbContext.InventorySettings
+            .AsNoTracking()
+            .Where(x => x.Id == 1)
+            .Select(x => x.IsRestaurantModuleEnabled)
+            .SingleOrDefaultAsync();
+
         if (model.CategoryId > 0)
         {
             model.CategoryDisplay = await dbContext.ProductCategories
@@ -509,13 +524,14 @@ public sealed class ProductsController(
                 .SingleOrDefaultAsync();
         }
 
-        if (model.TaxRateId > 0)
-        {
-            model.TaxRateDisplay = await dbContext.TaxRates
-                .Where(x => x.Id == model.TaxRateId)
-                .Select(x => x.Code + " - " + x.Name)
-                .SingleOrDefaultAsync();
-        }
+        // KDV artık serbest metin aramalı bir seçici değil, sadece orana göre kapalı bir liste
+        // (kullanıcı isteği: "sadece oran seçilsin, başka değer girilmesin").
+        model.TaxRateOptions = await dbContext.TaxRates
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Rate)
+            .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem($"%{x.Rate.ToString("N0")}", x.Id.ToString()))
+            .ToListAsync();
 
         if (model.UnitOfMeasureId is int unitOfMeasureId)
         {
@@ -558,6 +574,11 @@ public sealed class ProductsController(
         target.IsActive = source.IsActive;
         target.ImagePath = source.ImagePath?.Trim();
         target.Description = source.Description?.Trim();
+        target.LoyaltyPoints = source.LoyaltyPoints;
+        target.ShowAsShortcut = source.ShowAsShortcut;
+        target.ShowInMobile = source.ShowInMobile;
+        target.ShowInOnlineOrder = source.ShowInOnlineOrder;
+        target.KitchenPrinterName = string.IsNullOrWhiteSpace(source.KitchenPrinterName) ? null : source.KitchenPrinterName.Trim();
     }
 
     private static void SyncPrimaryBarcode(Product product, string? barcode)
