@@ -14,7 +14,8 @@ public sealed class BarcodeGeneratorService(ApplicationDbContext dbContext)
     public async Task<string> GenerateAsciiAsync(CancellationToken cancellationToken = default)
     {
         const string prefix = "AS";
-        for (var sequence = 1; sequence <= 999999; sequence++)
+        var highest = await FindHighestExistingSequenceAsync(prefix, 6, 0, cancellationToken);
+        for (var sequence = highest + 1; sequence <= 999999; sequence++)
         {
             var candidate = $"{prefix}{sequence:D6}";
             if (!await ExistsAsync(candidate, cancellationToken))
@@ -35,7 +36,8 @@ public sealed class BarcodeGeneratorService(ApplicationDbContext dbContext)
             throw new ArgumentException("Terazi barkod ön eki 27, 28 veya 29 olmalıdır.", nameof(prefix));
         }
 
-        for (var plu = 1; plu <= 99999; plu++)
+        var highest = await FindHighestExistingSequenceAsync(prefix, 5, 0, cancellationToken);
+        for (var plu = highest + 1; plu <= 99999; plu++)
         {
             var candidate = $"{prefix}{plu:D5}";
             if (!await ExistsAsync(candidate, cancellationToken))
@@ -54,8 +56,9 @@ public sealed class BarcodeGeneratorService(ApplicationDbContext dbContext)
     {
         var sequenceLength = bodyLength - prefix.Length;
         var maximum = (long)Math.Pow(10, sequenceLength) - 1;
+        var highest = await FindHighestExistingSequenceAsync(prefix, sequenceLength, 1, cancellationToken);
 
-        for (long sequence = 1; sequence <= maximum; sequence++)
+        for (var sequence = highest + 1; sequence <= maximum; sequence++)
         {
             var body = $"{prefix}{sequence.ToString($"D{sequenceLength}")}";
             var candidate = $"{body}{CalculateCheckDigit(body)}";
@@ -68,8 +71,38 @@ public sealed class BarcodeGeneratorService(ApplicationDbContext dbContext)
         throw new InvalidOperationException("Kullanılabilir otomatik barkod kalmadı.");
     }
 
-    private Task<bool> ExistsAsync(string barcode, CancellationToken cancellationToken) =>
-        dbContext.ProductBarcodes.AnyAsync(x => x.Barcode == barcode, cancellationToken);
+    // Sistemdeki gerçek en büyük sıra numarasının bir fazlasından başlar (silinen kayıtların
+    // bıraktığı boşluk asla doldurulmaz). Hem Products.Barcode hem ProductBarcodes taranır.
+    private async Task<long> FindHighestExistingSequenceAsync(
+        string prefix,
+        int sequenceLength,
+        int suffixCharsToIgnore,
+        CancellationToken cancellationToken)
+    {
+        var totalLength = prefix.Length + sequenceLength + suffixCharsToIgnore;
+
+        var productCodes = await dbContext.Products
+            .Where(x => x.Barcode != null && x.Barcode.StartsWith(prefix) && x.Barcode.Length == totalLength)
+            .Select(x => x.Barcode!)
+            .ToListAsync(cancellationToken);
+
+        var extraCodes = await dbContext.ProductBarcodes
+            .Where(x => x.Barcode.StartsWith(prefix) && x.Barcode.Length == totalLength)
+            .Select(x => x.Barcode)
+            .ToListAsync(cancellationToken);
+
+        return productCodes.Concat(extraCodes)
+            .Select(code => long.TryParse(code.Substring(prefix.Length, sequenceLength), out var n) ? n : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
+    // Hem ürünün birincil barkodu (Products.Barcode) hem de ek barkodları (ProductBarcodes)
+    // kontrol edilmeli — sadece ikincisine bakmak, katalog/seed verisiyle gelen birincil
+    // barkodlarla çakışan "boş" aday üretilmesine yol açıyordu.
+    private async Task<bool> ExistsAsync(string barcode, CancellationToken cancellationToken) =>
+        await dbContext.Products.AnyAsync(x => x.Barcode == barcode, cancellationToken) ||
+        await dbContext.ProductBarcodes.AnyAsync(x => x.Barcode == barcode, cancellationToken);
 
     private static int CalculateCheckDigit(string digits)
     {

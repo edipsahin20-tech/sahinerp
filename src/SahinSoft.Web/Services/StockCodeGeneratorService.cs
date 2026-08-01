@@ -21,8 +21,24 @@ public sealed class StockCodeGeneratorService(ApplicationDbContext dbContext)
             var sequence = await dbContext.NumberSequences
                 .SingleAsync(x => x.Key == "STOCK", cancellationToken);
 
-            var stockCode = $"{sequence.Prefix}{sequence.NextNumber.ToString($"D{sequence.Padding}")}";
-            sequence.NextNumber++;
+            // Sayaç, elle/katalog verisiyle (CatalogSeedData vb.) zaten kullanılan kodların gerisinde
+            // kalabilir. Bu yüzden sistemdeki gerçek en büyük numara da bulunup sayaçla karşılaştırılır;
+            // ikisinin büyüğü kullanılır. Böylece silinen kayıtların bıraktığı boşluk asla doldurulmaz —
+            // her zaman o ana kadar görülen en büyük numaranın bir fazlası verilir.
+            var existingNumbers = await dbContext.Products
+                .Where(x => x.StockCode.StartsWith(sequence.Prefix))
+                .Select(x => x.StockCode.Substring(sequence.Prefix.Length))
+                .ToListAsync(cancellationToken);
+
+            var highestExisting = existingNumbers
+                .Select(suffix => int.TryParse(suffix, out var n) ? n : 0)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            var nextNumber = Math.Max(sequence.NextNumber, highestExisting + 1);
+            var stockCode = $"{sequence.Prefix}{nextNumber.ToString($"D{sequence.Padding}")}";
+
+            sequence.NextNumber = nextNumber + 1;
             sequence.UpdatedAtUtc = DateTime.UtcNow;
 
             await dbContext.SaveChangesAsync(cancellationToken);

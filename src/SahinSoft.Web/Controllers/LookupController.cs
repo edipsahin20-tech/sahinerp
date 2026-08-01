@@ -20,12 +20,16 @@ public sealed class LookupController(
     public async Task<IActionResult> Products(string? q)
     {
         var query = dbContext.Products.AsNoTracking().Include(x => x.TaxRate).Include(x => x.Category).Where(x => x.IsActive);
-        if (!string.IsNullOrWhiteSpace(q))
+        // Boşlukla ayrılmış her kelime (sırası fark etmeksizin) Stok Kodu/Stok Adı/Barkod'un
+        // herhangi birinde geçmeli; kelime içinde "*" LIKE joker karakterine çevrilir
+        // (örn. "hii*9" -> "%hii%9%").
+        foreach (var token in SplitSearchTokens(q))
         {
+            var pattern = BuildLikePattern(token);
             query = query.Where(x =>
-                EF.Functions.Collate(x.StockCode, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q) ||
-                (x.Barcode != null && (x.Barcode == q || EF.Functions.Collate(x.Barcode, TurkishInsensitive).Contains(q))));
+                EF.Functions.Like(EF.Functions.Collate(x.StockCode, TurkishInsensitive), pattern) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), pattern) ||
+                (x.Barcode != null && EF.Functions.Like(EF.Functions.Collate(x.Barcode, TurkishInsensitive), pattern)));
         }
 
         var items = await query
@@ -306,5 +310,19 @@ public sealed class LookupController(
             .ToList();
 
         return Json(new { items });
+    }
+
+    private static string[] SplitSearchTokens(string? q) =>
+        string.IsNullOrWhiteSpace(q)
+            ? []
+            : q.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    // Kullanıcının yazdığı "*" karakteri LIKE joker karakterine (%) çevrilir; mevcut LIKE özel
+    // karakterleri ([, %, _) önce kaçırılır ki arama metninde geçerlerse literal aransınlar.
+    // Sonuç her zaman baştan/sondan esnek eşleşir (örn. "hii*9" -> "%hii%9%").
+    private static string BuildLikePattern(string token)
+    {
+        var escaped = token.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
+        return "%" + escaped.Replace("*", "%") + "%";
     }
 }

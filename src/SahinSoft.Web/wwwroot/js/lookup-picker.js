@@ -184,13 +184,15 @@
         return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // Mikro tarzı: stok 0 ise arama sonucunda kırmızı "Stokta Yok" uyarısı gösterir (seçimi engellemez).
+    // Gerçek miktar her zaman gösterilir (0, pozitif veya negatif olabilir) — "Stokta Yok" gibi
+    // metinle maskelenmez; sadece sıfır/negatifse kırmızıyla vurgulanır.
     function stockCell(stock) {
         var qty = Number(stock || 0);
+        var text = qty.toLocaleString('tr-TR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
         if (qty <= 0) {
-            return '<span style="color:#b91c1c;font-weight:600;">Stokta Yok</span>';
+            return '<span style="color:#b91c1c;font-weight:600;">' + text + '</span>';
         }
-        return formatMoney(qty);
+        return text;
     }
 
     function renderResults(items) {
