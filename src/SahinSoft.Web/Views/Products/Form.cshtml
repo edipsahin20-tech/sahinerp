@@ -36,6 +36,15 @@
                     </div>
                 </div>
                 <div class="row g-3">
+                    @if (!isEdit)
+                    {
+                        <div class="col-12">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="quick-entry-toggle">
+                                <label class="form-check-label" for="quick-entry-toggle">Hızlı Stok Girişi (Stok kodu ve barkod otomatik oluşturulsun)</label>
+                            </div>
+                        </div>
+                    }
                     <div class="col-md-4">
                         <label asp-for="StockCode" class="form-label"></label>
                         <input asp-for="StockCode" class="form-control" />
@@ -309,6 +318,36 @@
                     alert('Barkod üretilirken bir hata oluştu.');
                 });
         }
+
+        (function () {
+            var quickEntryToggle = document.getElementById('quick-entry-toggle');
+            if (!quickEntryToggle) return;
+
+            var stockCodeInput = document.getElementById('StockCode');
+            var barcodeInput = document.getElementById('barcode-input');
+            var barcodeTypeSelect = document.getElementById('barcode-type-select');
+            var barcodeGenerateButton = barcodeInput.closest('.input-group').querySelector('button');
+
+            function applyQuickEntryState() {
+                var quick = quickEntryToggle.checked;
+                stockCodeInput.disabled = quick;
+                barcodeInput.disabled = quick;
+                barcodeTypeSelect.disabled = quick;
+                barcodeGenerateButton.disabled = quick;
+                if (quick) {
+                    stockCodeInput.value = '';
+                    barcodeInput.value = '';
+                    stockCodeInput.placeholder = 'Kaydedince otomatik oluşturulacak';
+                    barcodeInput.placeholder = 'Kaydedince otomatik oluşturulacak (EAN13)';
+                } else {
+                    stockCodeInput.placeholder = '';
+                    barcodeInput.placeholder = '';
+                }
+            }
+
+            quickEntryToggle.addEventListener('change', applyQuickEntryState);
+            applyQuickEntryState();
+        })();
 
         (function () {
             var purchaseInput = document.getElementById('PurchasePrice');
