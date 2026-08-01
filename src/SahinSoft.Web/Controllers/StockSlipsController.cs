@@ -111,6 +111,7 @@ public sealed class StockSlipsController(
         {
             Id = slip.Id,
             SlipType = slip.SlipType,
+            SlipNumber = slip.SlipNumber,
             WarehouseId = slip.WarehouseId,
             SlipDateUtc = slip.SlipDateUtc,
             Description = slip.Description,

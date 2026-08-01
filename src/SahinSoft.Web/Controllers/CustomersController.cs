@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Entities;
+using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
 using SahinSoft.Web.Services;
@@ -14,7 +15,7 @@ public sealed class CustomersController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator) : Controller
 {
-    public async Task<IActionResult> Index(string? search)
+    public async Task<IActionResult> Index(string? search, bool? isActive)
     {
         var query = dbContext.Customers
             .AsNoTracking()
@@ -29,8 +30,40 @@ public sealed class CustomersController(
                 (x.TaxNumber != null && x.TaxNumber.Contains(search)));
         }
 
+        if (isActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == isActive.Value);
+        }
+
+        var customers = await query.ToListAsync();
+
+        // Borç/Alacak, cari kartında ayrıca saklanmaz — her zaman hareket tablosundan (ledger'dan)
+        // canlı hesaplanır, böylece stok miktarındaki gibi bir senkron kopması riski olmaz.
+        var balances = await dbContext.CurrentAccountTransactions
+            .AsNoTracking()
+            .GroupBy(x => x.CustomerId)
+            .Select(g => new { CustomerId = g.Key, Debit = g.Sum(x => x.Debit), Credit = g.Sum(x => x.Credit) })
+            .ToDictionaryAsync(x => x.CustomerId);
+
+        var model = customers.Select(x => new CustomerListItemViewModel
+        {
+            Id = x.Id,
+            Code = x.Code,
+            Name = x.Name,
+            City = x.City,
+            District = x.District,
+            TaxNumber = x.TaxNumber,
+            Phone = x.Phone,
+            IsCustomer = x.IsCustomer,
+            IsSupplier = x.IsSupplier,
+            IsActive = x.IsActive,
+            Debit = balances.TryGetValue(x.Id, out var b) ? b.Debit : 0,
+            Credit = balances.TryGetValue(x.Id, out var b2) ? b2.Credit : 0
+        }).ToList();
+
         ViewBag.Search = search;
-        return View(await query.ToListAsync());
+        ViewBag.IsActive = isActive;
+        return View(model);
     }
 
     public IActionResult Create()
@@ -62,6 +95,24 @@ public sealed class CustomersController(
             return View("Form", form);
         }
 
+        // Ürün kartındaki açılış stok hareketi ile aynı desen: bakiye Customer üzerinde
+        // ayrıca saklanmaz (her zaman CurrentAccountTransactions'tan hesaplanır), sadece
+        // açılışta tek seferlik bir "Açılış" hareketi yazılır.
+        if (form.OpeningBalance != 0)
+        {
+            dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+            {
+                TransactionDateUtc = DateTime.UtcNow,
+                TransactionType = CurrentAccountTransactionType.Opening,
+                DocumentNumber = $"ACILIS-{customer.Code}",
+                Debit = form.OpeningBalance > 0 ? form.OpeningBalance : 0,
+                Credit = form.OpeningBalance < 0 ? -form.OpeningBalance : 0,
+                Description = "Cari kartı açılış bakiyesi",
+                CustomerId = customer.Id
+            });
+            await dbContext.SaveChangesAsync();
+        }
+
         TempData["Success"] = "Cari kaydedildi.";
         return RedirectToAction(nameof(Create));
     }
@@ -79,9 +130,14 @@ public sealed class CustomersController(
             Id = customer.Id,
             Code = customer.Code,
             Name = customer.Name,
+            AccountType = customer.AccountType,
             TaxOffice = customer.TaxOffice,
             TaxNumber = customer.TaxNumber,
             IdentityNumber = customer.IdentityNumber,
+            CustomerGroup = customer.CustomerGroup,
+            RiskLimit = customer.RiskLimit,
+            DefaultPaymentTermDays = customer.DefaultPaymentTermDays,
+            AuthorizedPerson = customer.AuthorizedPerson,
             Phone = customer.Phone,
             Email = customer.Email,
             Address = customer.Address,
@@ -419,9 +475,14 @@ public sealed class CustomersController(
     {
         target.Code = source.Code.Trim();
         target.Name = source.Name.Trim();
+        target.AccountType = source.AccountType;
         target.TaxOffice = source.TaxOffice?.Trim();
         target.TaxNumber = source.TaxNumber?.Trim();
         target.IdentityNumber = source.IdentityNumber?.Trim();
+        target.CustomerGroup = source.CustomerGroup?.Trim();
+        target.RiskLimit = source.RiskLimit;
+        target.DefaultPaymentTermDays = source.DefaultPaymentTermDays;
+        target.AuthorizedPerson = source.AuthorizedPerson?.Trim();
         target.Phone = source.Phone?.Trim();
         target.Email = source.Email?.Trim();
         target.Address = source.Address?.Trim();

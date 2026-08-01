@@ -98,6 +98,7 @@ public sealed class NegotiableInstrumentsController(
         {
             Id = instrument.Id,
             InstrumentType = instrument.InstrumentType,
+            InstrumentNumber = instrument.InstrumentNumber,
             Direction = instrument.Direction,
             CustomerId = instrument.CustomerId,
             IssueDateUtc = instrument.IssueDateUtc,

@@ -13,9 +13,16 @@
     <div class="erp-toolbar">
         <div class="erp-toolbar-title">
             <h1>@(isSales ? "Satış Faturası" : "Alış Faturası")</h1>
-            <span class="erp-toolbar-meta">@(isEdit ? "Taslak düzenleniyor" : "Yeni evrak")</span>
+            <span class="erp-toolbar-meta">@(isEdit ? (Model.Status == InvoiceStatus.Approved ? "Onaylı fatura düzenleniyor" : "Taslak düzenleniyor") : "Yeni evrak")</span>
         </div>
     </div>
+
+    @if (isEdit && Model.Status == InvoiceStatus.Approved)
+    {
+        <div class="alert alert-warning py-2">
+            <strong>Dikkat:</strong> Bu fatura onaylı. Kaydettiğinizde eski stok ve cari hareketleri otomatik olarak geri alınıp, yeni satırlarınıza göre yeniden oluşturulacak.
+        </div>
+    }
 
     @if (TempData["Success"] is string success)
     {
@@ -24,7 +31,48 @@
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
-        <div class="erp-panel-header">Evrak Bilgileri</div>
+        <div class="erp-evrak-header">
+            <div class="erp-evrak-badge">
+                <span class="erp-evrak-icon"><i class="fa-solid fa-file-invoice"></i></span>
+                <div class="erp-evrak-label">
+                    <small>@(isSales ? "Satış" : "Alış") Faturası</small>
+                    <strong>Evrak Bilgileri</strong>
+                </div>
+            </div>
+            <div class="erp-evrak-fields">
+                <div class="erp-field">
+                    <label asp-for="DocumentSeries"></label>
+                    <input asp-for="DocumentSeries" class="form-control" autocomplete="off" title="Boş bırakılırsa otomatik seri kullanılır." />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DocumentSequence"></label>
+                    <div class="input-group">
+                        <input asp-for="DocumentSequence" class="form-control" autocomplete="off" title="Boş bırakılırsa sıradaki numara otomatik verilir. Elle değiştirirseniz sonraki otomatik numaralar bunun devamından gelir." />
+                        <button type="button" class="btn btn-erp-outline lookup-trigger" id="invoice-browse-trigger"
+                                data-lookup-endpoint="@Url.Action("InvoicesBrowse", "Lookup", new { type = Model.InvoiceType })"
+                                data-lookup-title="Faturalarda Gözat"
+                                data-target-hidden="invoice-browse-dummy-hidden"
+                                data-target-display="invoice-browse-dummy-display"
+                                title="Tüm faturalarda gözat">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="DocumentSequence" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ReferenceNumber"></label>
+                    <input asp-for="ReferenceNumber" class="form-control" placeholder="Harici belge numarası" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="InvoiceDateUtc"></label>
+                    <input asp-for="InvoiceDateUtc" class="form-control" />
+                </div>
+            </div>
+            <label class="erp-vat-check">
+                <input asp-for="PricesIncludeTax" id="prices-include-tax" />
+                <span>Fiyatlara KDV Dahil</span>
+            </label>
+        </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
                 <div class="erp-field">
@@ -48,10 +96,6 @@
                     <span asp-validation-for="WarehouseId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">
-                    <label asp-for="InvoiceDateUtc"></label>
-                    <input asp-for="InvoiceDateUtc" class="form-control" />
-                </div>
-                <div class="erp-field">
                     <label asp-for="DueDateUtc"></label>
                     <input asp-for="DueDateUtc" class="form-control" />
                 </div>
@@ -62,10 +106,6 @@
                 <div class="erp-field">
                     <label asp-for="ExchangeRate"></label>
                     <input asp-for="ExchangeRate" class="form-control" />
-                </div>
-                <div class="erp-field">
-                    <label asp-for="ReferenceNumber"></label>
-                    <input asp-for="ReferenceNumber" class="form-control" placeholder="Örn: 2341" />
                 </div>
                 <div class="erp-field">
                     <label asp-for="PaymentTerm"></label>
@@ -91,15 +131,6 @@
                     </datalist>
                 </div>
                 <div class="erp-field">
-                    <label asp-for="SettlementFinancialAccountId"></label>
-                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                        Name = nameof(Model.SettlementFinancialAccountId), Id = nameof(Model.SettlementFinancialAccountId),
-                        Value = Model.SettlementFinancialAccountId?.ToString(),
-                        DisplayValue = Model.SettlementFinancialAccountDisplay,
-                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
-                        Title = "Kapayan Hesap Seç", Placeholder = "Kasa/Banka seçin (opsiyonel)" })" />
-                </div>
-                <div class="erp-field">
                     <label asp-for="SalespersonUserId"></label>
                     <select asp-for="SalespersonUserId" asp-items="Model.Salespeople" class="form-select">
                         <option value="">Plasiyer seçilmedi</option>
@@ -111,9 +142,34 @@
                         <label asp-for="IsReturn" class="form-check-label"></label>
                     </div>
                 </div>
-                <div class="erp-field" style="grid-column: 1 / -1;">
-                    <label asp-for="Notes"></label>
-                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                <div class="erp-field d-flex align-items-center" style="padding-top: 1.7rem;">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsClosedInvoice" class="form-check-input" id="is-closed-invoice-switch" />
+                        <label asp-for="IsClosedInvoice" class="form-check-label"></label>
+                    </div>
+                </div>
+                <div id="closed-invoice-fields" class="erp-field-grid" style="grid-column: 1 / -1; padding: 0;" hidden>
+                    <div class="erp-field">
+                        <label asp-for="SettlementPaymentMethod"></label>
+                        <select asp-for="SettlementPaymentMethod" class="form-select">
+                            <option value="">Seçiniz</option>
+                            @foreach (var method in Enum.GetValues<PaymentMethod>())
+                            {
+                                <option value="@((int)method)" selected="@(Model.SettlementPaymentMethod == method)">@method.GetDisplayName()</option>
+                            }
+                        </select>
+                        <span asp-validation-for="SettlementPaymentMethod" class="text-danger small"></span>
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="SettlementFinancialAccountId"></label>
+                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                            Name = nameof(Model.SettlementFinancialAccountId), Id = nameof(Model.SettlementFinancialAccountId),
+                            Value = Model.SettlementFinancialAccountId?.ToString(),
+                            DisplayValue = Model.SettlementFinancialAccountDisplay,
+                            Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                            Title = "Kapanacak Kasa/Banka Seç", Placeholder = "Kasa/Banka seçin" })" />
+                        <span asp-validation-for="SettlementFinancialAccountId" class="text-danger small"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -242,12 +298,85 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // "Kapalı Fatura mı?" işaretliyken Ödeme Yöntemi/Kapanacak Kasa alanlarını gösterir —
+        // bu alanlar yalnızca Kapalı işaretliyken zorunludur (bkz. InvoicesController.ValidateSettlement).
+        (function () {
+            var toggle = document.getElementById('is-closed-invoice-switch');
+            var fields = document.getElementById('closed-invoice-fields');
+            if (!toggle || !fields) return;
+            function sync() { fields.hidden = !toggle.checked; }
+            toggle.addEventListener('change', sync);
+            sync();
+        })();
+
+        // "..." ile açılan Faturalarda Gözat penceresinden bir fatura seçilince, o faturanın
+        // Detay ekranına gidilir (satır doldurma değil, gerçek sayfa geçişi).
+        (function () {
+            var trigger = document.getElementById('invoice-browse-trigger');
+            if (!trigger) return;
+            trigger.addEventListener('lookup:selected', function (e) {
+                window.location.href = '@Url.Action("Details", "Invoices")/' + e.detail.item.id;
+            });
+        })();
+
+        // Evrak başlığındaki alanlarda Enter'a basınca form kazara gönderilmesin (hataya sebep
+        // oluyordu); bunun yerine Tab gibi bir sonraki alana geçsin. Satırlar tablosu ve
+        // cari/depo gibi lookup-quicksearch alanları kendi Enter mantığını zaten yönetiyor,
+        // burada onlara dokunulmuyor.
+        (function () {
+            var seriesInput = document.getElementById('DocumentSeries');
+            var sequenceInput = document.getElementById('DocumentSequence');
+            if (seriesInput && sequenceInput) {
+                var lastCheckedSeries = seriesInput.value.trim();
+
+                // Seri alanından ayrılınca (Enter, Tab, tıklama, mobilde Sıra alanına dokunma —
+                // hangi yoldan olursa olsun) o seriye ait güncel sıra numarası sunucudan sorgulanıp
+                // Sıra alanına yazılır (her seri kendi sırasını takip eder — ör. "EDP" hiç
+                // kullanılmadıysa 00001'den başlar). Önceden yalnızca masaüstünde Enter tuşuna
+                // bağlıydı; mobilde Enter her zaman aynı şekilde tetiklenmediği ve kullanıcılar
+                // genelde doğrudan bir sonraki alana dokunduğu için 'blur' kullanmak daha güvenilir
+                // — hangi yolla olursa olsun alan terk edilince tetiklenir.
+                seriesInput.addEventListener('blur', function () {
+                    var currentSeries = seriesInput.value.trim();
+                    if (currentSeries === lastCheckedSeries) return;
+                    lastCheckedSeries = currentSeries;
+
+                    var url = '@Url.Action("PeekSequence", "Invoices")?type=@Model.InvoiceType&series=' + encodeURIComponent(currentSeries);
+                    fetch(url)
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            sequenceInput.value = data.sequence;
+                        });
+                });
+            }
+
+            document.getElementById('evrak-form').addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') return;
+                var target = event.target;
+                if (target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+                if (target.closest('#lines-table')) return;
+                if (target.classList.contains('lookup-quicksearch')) return;
+
+                event.preventDefault();
+                var focusable = Array.from(target.form.querySelectorAll('input, select, textarea')).filter(function (el) {
+                    return !el.disabled && el.type !== 'hidden' && el.offsetParent !== null;
+                });
+                var idx = focusable.indexOf(target);
+                if (idx >= 0 && idx < focusable.length - 1) {
+                    var next = focusable[idx + 1];
+                    next.focus();
+                    if (typeof next.select === 'function') next.select();
+                }
+            });
+        })();
+
         (function () {
             var linesBody = document.getElementById('lines-body');
             var template = document.getElementById('line-row-template');
             var addButton = document.getElementById('add-line');
             var nextIndex = @Model.Lines.Count;
             var isSales = @Json.Serialize(isSales);
+            var pricesIncludeTax = document.getElementById('prices-include-tax');
 
             function addRow() {
                 var html = template.innerHTML.split('__index__').join(nextIndex);
@@ -351,7 +480,10 @@
                     var discRate = parseFloat(row.querySelector('.discount-input').value) || 0;
                     var taxRate = parseFloat(row.querySelector('.tax-input').value) || 0;
 
-                    var gross = qty * price;
+                    var netUnitPrice = pricesIncludeTax.checked && taxRate > 0
+                        ? price / (1 + taxRate / 100)
+                        : price;
+                    var gross = qty * netUnitPrice;
                     var lineDiscAmount = gross * discRate / 100;
                     var netAfterLineDiscount = gross - lineDiscAmount;
                     return { row: row, gross: gross, lineDiscAmount: lineDiscAmount, netAfterLineDiscount: netAfterLineDiscount, taxRate: taxRate };
@@ -391,6 +523,7 @@
             }
 
             document.getElementById('amount-discount-input').addEventListener('input', recalcTotals);
+            pricesIncludeTax.addEventListener('change', recalcTotals);
 
             linesBody.addEventListener('input', recalcTotals);
             addButton.addEventListener('click', recalcTotals);

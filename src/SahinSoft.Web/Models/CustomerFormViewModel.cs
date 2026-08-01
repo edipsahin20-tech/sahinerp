@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Web.Models;
 
@@ -6,13 +7,19 @@ public sealed class CustomerFormViewModel
 {
     public int Id { get; set; }
 
-    [Required, StringLength(30)]
+    // [Required] kasıtlı olarak yok: boş bırakılırsa controller otomatik kod üretir (StockCode'daki
+    // aynı desen) — [Required] olsaydı istemci tarafı doğrulama, sunucuya hiç ulaşmadan boş göndermeyi
+    // engellerdi ve "boş bırakılırsa otomatik atanır" vaadi hiçbir zaman gerçekleşmezdi.
+    [StringLength(30)]
     [Display(Name = "Cari kodu")]
     public string Code { get; set; } = string.Empty;
 
     [Required, StringLength(200)]
     [Display(Name = "Unvan / Ad Soyad")]
     public string Name { get; set; } = string.Empty;
+
+    [Display(Name = "Hesap türü")]
+    public CustomerAccountType AccountType { get; set; } = CustomerAccountType.Corporate;
 
     [StringLength(100)]
     [Display(Name = "Vergi dairesi")]
@@ -25,6 +32,26 @@ public sealed class CustomerFormViewModel
     [StringLength(11)]
     [Display(Name = "TC kimlik no")]
     public string? IdentityNumber { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Cari grup")]
+    public string? CustomerGroup { get; set; }
+
+    [Range(0, 999999999)]
+    [Display(Name = "Risk limiti")]
+    public decimal RiskLimit { get; set; }
+
+    [Range(0, 3650)]
+    [Display(Name = "Varsayılan vade (gün)")]
+    public int? DefaultPaymentTermDays { get; set; }
+
+    [StringLength(150)]
+    [Display(Name = "Yetkili kişi")]
+    public string? AuthorizedPerson { get; set; }
+
+    [Range(-999999999, 999999999)]
+    [Display(Name = "Açılış bakiyesi")]
+    public decimal OpeningBalance { get; set; }
 
     [StringLength(30)]
     [Display(Name = "Telefon")]

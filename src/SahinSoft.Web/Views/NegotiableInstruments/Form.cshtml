@@ -17,7 +17,29 @@
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
-        <div class="erp-panel-header">Belge Bilgileri</div>
+        <div class="erp-evrak-header">
+            <div class="erp-evrak-badge">
+                <span class="erp-evrak-icon"><i class="fa-solid fa-money-check"></i></span>
+                <div class="erp-evrak-label">
+                    <small>@(isCheque ? "Çek" : "Senet")</small>
+                    <strong>Belge Bilgileri</strong>
+                </div>
+            </div>
+            <div class="erp-evrak-fields">
+                <div class="erp-field">
+                    <label>Evrak Belge Seri</label>
+                    <input class="form-control" value="@(isCheque ? "CEK" : "SEN")" readonly title="Evrak serisi sistem tarafından yönetilir." />
+                </div>
+                <div class="erp-field">
+                    <label>Evrak Belge Sıra</label>
+                    <input class="form-control" value="@(isEdit ? Model.InstrumentNumber : "Otomatik")" readonly title="Sıra numarası kayıt sırasında otomatik verilir." />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="IssueDateUtc"></label>
+                    <input asp-for="IssueDateUtc" class="form-control" />
+                </div>
+            </div>
+        </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
                 <div class="erp-field">
@@ -43,10 +65,6 @@
                         Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
                         Title = "Kasa/Banka Hesabı Seç", Placeholder = "Hesap yok" })" />
                     </select>
-                </div>
-                <div class="erp-field">
-                    <label asp-for="IssueDateUtc"></label>
-                    <input asp-for="IssueDateUtc" class="form-control" />
                 </div>
                 <div class="erp-field">
                     <label asp-for="DueDateUtc"></label>

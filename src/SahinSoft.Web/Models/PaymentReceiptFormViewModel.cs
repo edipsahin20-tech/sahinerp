@@ -9,6 +9,8 @@ public sealed class PaymentReceiptFormViewModel
 
     public ReceiptType ReceiptType { get; set; }
 
+    public string? ReceiptNumber { get; set; }
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }

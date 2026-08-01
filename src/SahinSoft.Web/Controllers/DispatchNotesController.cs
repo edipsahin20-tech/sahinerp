@@ -111,6 +111,7 @@ public sealed class DispatchNotesController(
         {
             Id = dispatch.Id,
             DispatchType = dispatch.DispatchType,
+            DispatchNumber = dispatch.DispatchNumber,
             CustomerId = dispatch.CustomerId,
             WarehouseId = dispatch.WarehouseId,
             DispatchDateUtc = dispatch.DispatchDateUtc,

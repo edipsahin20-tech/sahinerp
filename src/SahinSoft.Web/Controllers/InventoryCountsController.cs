@@ -97,6 +97,7 @@ public sealed class InventoryCountsController(
         var model = new InventoryCountFormViewModel
         {
             Id = count.Id,
+            CountNumber = count.CountNumber,
             WarehouseId = count.WarehouseId,
             CountDateUtc = count.CountDateUtc,
             Lines = count.Lines

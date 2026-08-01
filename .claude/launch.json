@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sahinsoft-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/SahinSoft.Web/SahinSoft.Web.csproj", "--urls", "http://localhost:5055"],
+      "port": 5055
+    }
+  ]
+}

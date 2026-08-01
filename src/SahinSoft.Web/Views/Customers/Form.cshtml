@@ -17,78 +17,156 @@
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
-        <div class="erp-panel-header">Kimlik Bilgileri</div>
-        <div class="erp-panel-body">
-            <div class="erp-field-grid">
-                <div class="erp-field">
-                    <label asp-for="Code"></label>
-                    <input asp-for="Code" class="form-control" placeholder="Boş bırakılırsa otomatik atanır" />
-                    <span asp-validation-for="Code" class="text-danger small"></span>
-                </div>
-                <div class="erp-field" style="grid-column: span 2;">
-                    <label asp-for="Name"></label>
-                    <input asp-for="Name" class="form-control" autofocus />
-                    <span asp-validation-for="Name" class="text-danger small"></span>
-                </div>
-                <div class="erp-field">
-                    <label asp-for="TaxOffice"></label>
-                    <input asp-for="TaxOffice" class="form-control" />
-                </div>
-                <div class="erp-field">
-                    <label asp-for="TaxNumber"></label>
-                    <input asp-for="TaxNumber" class="form-control" />
-                </div>
-                <div class="erp-field">
-                    <label asp-for="IdentityNumber"></label>
-                    <input asp-for="IdentityNumber" class="form-control" />
-                </div>
-            </div>
+        <div class="erp-tabs">
+            <button type="button" class="active" data-tab-btn="genel">Genel Bilgiler</button>
+            <button type="button" data-tab-btn="notlar">Notlar</button>
         </div>
-    </div>
 
-    <div class="erp-panel">
-        <div class="erp-panel-header">İletişim</div>
-        <div class="erp-panel-body">
-            <div class="erp-field-grid">
-                <div class="erp-field">
-                    <label asp-for="Phone"></label>
-                    <input asp-for="Phone" class="form-control" />
+        <div data-tab-panel="genel">
+            <div class="erp-form-section">
+                <div class="erp-section-header">
+                    <span class="erp-section-number">1</span>
+                    <div>
+                        <h2>Evrak ve Belge Bilgileri</h2>
+                        <p>Belge seri ve sıra ayarları.</p>
+                    </div>
                 </div>
-                <div class="erp-field">
-                    <label asp-for="Email"></label>
-                    <input asp-for="Email" class="form-control" />
-                    <span asp-validation-for="Email" class="text-danger small"></span>
+                <div class="erp-field-grid">
+                    <div class="erp-field">
+                        <label>Evrak Seri</label>
+                        <input class="form-control" value="CR" readonly title="Evrak serisi sistem tarafından yönetilir." />
+                    </div>
+                    <div class="erp-field">
+                        <label>Evrak Sıra No</label>
+                        <input class="form-control" value="@(isEdit ? Model.Code : "Otomatik")" readonly title="Sıra numarası kayıt sırasında otomatik verilir." />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="Code"></label>
+                        <input asp-for="Code" class="form-control" placeholder="Boş bırakılırsa otomatik atanır" />
+                        <span asp-validation-for="Code" class="text-danger small"></span>
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="AccountType"></label>
+                        <select asp-for="AccountType" asp-items="Html.GetEnumSelectList<SahinSoft.Domain.Enums.CustomerAccountType>()" class="form-select"></select>
+                    </div>
                 </div>
-                <div class="erp-field">
-                    <label asp-for="City"></label>
-                    <input asp-for="City" class="form-control" />
+            </div>
+
+            <div class="erp-form-section">
+                <div class="erp-section-header">
+                    <span class="erp-section-number">2</span>
+                    <div>
+                        <h2>Cari Türü ve Temel Bilgiler</h2>
+                        <p>Müşteri veya tedarikçi resmi bilgileri.</p>
+                    </div>
                 </div>
-                <div class="erp-field">
-                    <label asp-for="District"></label>
-                    <input asp-for="District" class="form-control" />
+                <div class="erp-field-grid">
+                    <div class="erp-field" style="grid-column: span 2;">
+                        <label asp-for="Name"></label>
+                        <input asp-for="Name" class="form-control" autofocus />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="TaxOffice"></label>
+                        <input asp-for="TaxOffice" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="TaxNumber"></label>
+                        <input asp-for="TaxNumber" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="IdentityNumber"></label>
+                        <input asp-for="IdentityNumber" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="CustomerGroup"></label>
+                        <input asp-for="CustomerGroup" class="form-control" placeholder="Örn: Bayi, Perakende" />
+                    </div>
+                    <div class="erp-field d-flex align-items-center gap-4" style="grid-column: span 3; padding-top: 0.4rem;">
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="IsCustomer" class="form-check-input" />
+                            <label asp-for="IsCustomer" class="form-check-label"></label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="IsSupplier" class="form-check-input" />
+                            <label asp-for="IsSupplier" class="form-check-label"></label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+                    </div>
                 </div>
-                <div class="erp-field" style="grid-column: 1 / -1;">
-                    <label asp-for="Address"></label>
-                    <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="erp-form-section">
+                <div class="erp-section-header">
+                    <span class="erp-section-number">3</span>
+                    <div>
+                        <h2>İletişim ve Finans</h2>
+                        <p>İletişim, vade ve risk bilgileri.</p>
+                    </div>
                 </div>
-                <div class="erp-field" style="grid-column: 1 / -1;">
-                    <label asp-for="Notes"></label>
-                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                <div class="erp-field-grid">
+                    <div class="erp-field">
+                        <label asp-for="Phone"></label>
+                        <input asp-for="Phone" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="Email"></label>
+                        <input asp-for="Email" class="form-control" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="AuthorizedPerson"></label>
+                        <input asp-for="AuthorizedPerson" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="RiskLimit"></label>
+                        <input asp-for="RiskLimit" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="DefaultPaymentTermDays"></label>
+                        <input asp-for="DefaultPaymentTermDays" class="form-control" placeholder="Örn: 30" />
+                    </div>
+                    @if (!isEdit)
+                    {
+                        <div class="erp-field">
+                            <label asp-for="OpeningBalance"></label>
+                            <input asp-for="OpeningBalance" class="form-control" />
+                        </div>
+                    }
+                    <div class="erp-field">
+                        <label asp-for="City"></label>
+                        <input asp-for="City" class="form-control" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="District"></label>
+                        <input asp-for="District" class="form-control" />
+                    </div>
+                    <div class="erp-field" style="grid-column: 1 / -1;">
+                        <label asp-for="Address"></label>
+                        <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="erp-panel-body pt-0 d-flex flex-wrap gap-4">
-            <div class="form-check form-switch">
-                <input asp-for="IsCustomer" class="form-check-input" />
-                <label asp-for="IsCustomer" class="form-check-label"></label>
-            </div>
-            <div class="form-check form-switch">
-                <input asp-for="IsSupplier" class="form-check-input" />
-                <label asp-for="IsSupplier" class="form-check-label"></label>
-            </div>
-            <div class="form-check form-switch">
-                <input asp-for="IsActive" class="form-check-input" />
-                <label asp-for="IsActive" class="form-check-label"></label>
+
+        <div data-tab-panel="notlar" hidden>
+            <div class="erp-form-section">
+                <div class="erp-section-header">
+                    <span class="erp-section-number">1</span>
+                    <div>
+                        <h2>Notlar</h2>
+                        <p>Cariyle ilgili serbest metin açıklaması.</p>
+                    </div>
+                </div>
+                <div class="erp-field-grid">
+                    <div class="erp-field" style="grid-column: 1 / -1;">
+                        <label asp-for="Notes"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

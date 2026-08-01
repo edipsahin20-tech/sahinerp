@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -24,7 +25,10 @@ public sealed class InvoicesController(
         InvoiceType? type,
         InvoiceStatus? status,
         int? customerId,
-        string? search)
+        string? search,
+        string? period,
+        DateTime? from,
+        DateTime? to)
     {
         var query = dbContext.Invoices
             .AsNoTracking()
@@ -55,10 +59,32 @@ public sealed class InvoicesController(
                 x.Customer.Name.Contains(search));
         }
 
+        // "Gelişmiş" panelindeki açık from/to tarihleri, üstteki hızlı "Dönem" seçiminden önceliklidir.
+        var today = DateTime.UtcNow.Date;
+        DateTime? periodStart = period switch
+        {
+            "today" => today,
+            "week" => today.AddDays(-(int)today.DayOfWeek + (today.DayOfWeek == DayOfWeek.Sunday ? -6 : 1)),
+            "month" => new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+            _ => null
+        };
+        var effectiveFrom = from ?? periodStart;
+        if (effectiveFrom.HasValue)
+        {
+            query = query.Where(x => x.InvoiceDateUtc >= effectiveFrom.Value);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(x => x.InvoiceDateUtc < to.Value.AddDays(1));
+        }
+
         ViewBag.Type = type;
         ViewBag.Status = status;
         ViewBag.CustomerId = customerId;
         ViewBag.Search = search;
+        ViewBag.Period = period;
+        ViewBag.From = from;
+        ViewBag.To = to;
 
         try
         {
@@ -73,9 +99,18 @@ public sealed class InvoicesController(
 
     public async Task<IActionResult> Create(InvoiceType type)
     {
+        var sequenceKey = type == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var peek = await documentNumberGenerator.PeekAsync(sequenceKey);
+        var defaultWarehouseId = await dbContext.Warehouses
+            .Where(x => x.IsDefault && x.IsActive)
+            .Select(x => (int?)x.Id)
+            .SingleOrDefaultAsync();
         var model = new InvoiceFormViewModel
         {
             InvoiceType = type,
+            DocumentSeries = peek.Prefix,
+            DocumentSequence = peek.NextNumber.ToString($"D{peek.Padding}"),
+            WarehouseId = defaultWarehouseId,
             Lines = [new InvoiceLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
@@ -92,6 +127,9 @@ public sealed class InvoicesController(
     public async Task<IActionResult> Create(InvoiceFormViewModel form)
     {
         ValidateLines(form);
+        ValidateSettlement(form);
+        var sequenceKey = form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var invoiceNumber = await ResolveInvoiceNumberAsync(form, sequenceKey, excludeInvoiceId: null);
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
@@ -102,8 +140,7 @@ public sealed class InvoicesController(
         {
             InvoiceType = form.InvoiceType,
             Status = InvoiceStatus.Draft,
-            InvoiceNumber = await documentNumberGenerator.GenerateAsync(
-                form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE"),
+            InvoiceNumber = invoiceNumber!,
             CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty
         };
         MapHeader(form, invoice);
@@ -129,15 +166,28 @@ public sealed class InvoicesController(
             return NotFound();
         }
 
-        if (invoice.Status != InvoiceStatus.Draft)
+        if (invoice.Status == InvoiceStatus.Cancelled)
         {
-            return BadRequest("Yalnızca taslak faturalar düzenlenebilir.");
+            return BadRequest("İptal edilmiş faturalar düzenlenemez.");
         }
+
+        if (invoice.Status == InvoiceStatus.Approved && !User.IsInRole(AppRoles.Administrator))
+        {
+            return Forbid();
+        }
+
+        var sequenceKey = invoice.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var currentPrefix = (await documentNumberGenerator.PeekAsync(sequenceKey)).Prefix;
+        var (series, sequencePart) = SplitInvoiceNumber(invoice.InvoiceNumber, currentPrefix);
 
         var model = new InvoiceFormViewModel
         {
             Id = invoice.Id,
             InvoiceType = invoice.InvoiceType,
+            InvoiceNumber = invoice.InvoiceNumber,
+            Status = invoice.Status,
+            DocumentSeries = series,
+            DocumentSequence = sequencePart,
             CustomerId = invoice.CustomerId,
             WarehouseId = invoice.WarehouseId,
             InvoiceDateUtc = invoice.InvoiceDateUtc,
@@ -150,6 +200,8 @@ public sealed class InvoicesController(
             TradeType = invoice.TradeType,
             IsReturn = invoice.IsReturn,
             SalespersonUserId = invoice.SalespersonUserId,
+            IsClosedInvoice = invoice.IsClosedInvoice,
+            SettlementPaymentMethod = invoice.SettlementPaymentMethod,
             SettlementFinancialAccountId = invoice.SettlementFinancialAccountId,
             AmountDiscount = invoice.AmountDiscount,
             Lines = invoice.Lines
@@ -230,11 +282,7 @@ public sealed class InvoicesController(
         }
 
         ValidateLines(form);
-        if (!ModelState.IsValid)
-        {
-            await PopulateSelectionsAsync(form);
-            return View("Form", form);
-        }
+        ValidateSettlement(form);
 
         var invoice = await dbContext.Invoices
             .Include(x => x.Lines)
@@ -244,18 +292,57 @@ public sealed class InvoicesController(
             return NotFound();
         }
 
-        if (invoice.Status != InvoiceStatus.Draft)
+        if (invoice.Status == InvoiceStatus.Cancelled)
         {
-            return BadRequest("Yalnızca taslak faturalar düzenlenebilir.");
+            return BadRequest("İptal edilmiş faturalar düzenlenemez.");
         }
 
-        MapHeader(form, invoice);
-        invoice.Lines.Clear();
-        await MapLinesAsync(form, invoice);
-        invoice.UpdatedAtUtc = DateTime.UtcNow;
+        if (invoice.Status == InvoiceStatus.Approved && !User.IsInRole(AppRoles.Administrator))
+        {
+            return Forbid();
+        }
 
-        await dbContext.SaveChangesAsync();
-        TempData["Success"] = "Fatura taslağı güncellendi.";
+        var sequenceKey = invoice.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var invoiceNumber = await ResolveInvoiceNumberAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
+        if (!ModelState.IsValid)
+        {
+            await PopulateSelectionsAsync(form);
+            return View("Form", form);
+        }
+
+        if (invoice.Status == InvoiceStatus.Draft)
+        {
+            invoice.InvoiceNumber = invoiceNumber!;
+            MapHeader(form, invoice);
+            invoice.Lines.Clear();
+            await MapLinesAsync(form, invoice);
+            invoice.UpdatedAtUtc = DateTime.UtcNow;
+
+            await dbContext.SaveChangesAsync();
+            TempData["Success"] = "Fatura taslağı güncellendi.";
+            return RedirectToAction(nameof(Details), new { id = invoice.Id });
+        }
+
+        // Onaylı fatura düzenleniyor: eski stok/cari hareketleri ters kayıtla geri alınıp yeni
+        // satırlarla yeniden postalanır (InvoicePostingService.EditApprovedAsync) — tek işlemde,
+        // hata olursa hiçbir şey kalıcı olmaz.
+        var editedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        try
+        {
+            await invoicePostingService.EditApprovedAsync(invoice.Id, editedByUserId, async inv =>
+            {
+                inv.InvoiceNumber = invoiceNumber!;
+                MapHeader(form, inv);
+                inv.Lines.Clear();
+                await MapLinesAsync(form, inv);
+            });
+            TempData["Success"] = "Onaylı fatura düzenlendi; stok ve cari hareketleri güncellendi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
         return RedirectToAction(nameof(Details), new { id = invoice.Id });
     }
 
@@ -283,6 +370,13 @@ public sealed class InvoicesController(
                 .Where(x => x.Id == invoice.SettlementFinancialAccountId)
                 .Select(x => x.Name)
                 .SingleOrDefaultAsync();
+        var settlementReceipt = invoice.IsClosedInvoice
+            ? await dbContext.PaymentReceipts
+                .Where(x => x.InvoiceId == invoice.Id)
+                .OrderByDescending(x => x.Id)
+                .Select(x => new { x.Id, x.ReceiptNumber })
+                .FirstOrDefaultAsync()
+            : null;
 
         var model = new InvoiceDetailsViewModel
         {
@@ -306,7 +400,11 @@ public sealed class InvoicesController(
             TradeType = invoice.TradeType,
             IsReturn = invoice.IsReturn,
             SalespersonName = salespersonName,
+            IsClosedInvoice = invoice.IsClosedInvoice,
+            SettlementPaymentMethodName = invoice.SettlementPaymentMethod?.GetDisplayName(),
             SettlementFinancialAccountName = settlementAccountName,
+            SettlementReceiptId = settlementReceipt?.Id,
+            SettlementReceiptNumber = settlementReceipt?.ReceiptNumber,
             Company = new PdfCompanyInfoViewModel
             {
                 CompanyName = settings.CompanyName,
@@ -414,6 +512,27 @@ public sealed class InvoicesController(
         }
     }
 
+    // Kapalı Fatura işaretliyse ödeme yöntemi ve kapanacak kasa/banka zorunludur — onay anında
+    // InvoicePostingService.PostClosedInvoiceSettlementAsync otomatik tahsilat/tediye fişi
+    // oluşturmak için bu ikisine ihtiyaç duyar.
+    private void ValidateSettlement(InvoiceFormViewModel form)
+    {
+        if (!form.IsClosedInvoice)
+        {
+            return;
+        }
+
+        if (form.SettlementPaymentMethod is null)
+        {
+            ModelState.AddModelError(nameof(form.SettlementPaymentMethod), "Kapalı fatura için ödeme yöntemi seçilmelidir.");
+        }
+
+        if (form.SettlementFinancialAccountId is null)
+        {
+            ModelState.AddModelError(nameof(form.SettlementFinancialAccountId), "Kapalı fatura için kapanacak kasa/banka seçilmelidir.");
+        }
+    }
+
     private static void MapHeader(InvoiceFormViewModel source, Invoice target)
     {
         target.CustomerId = source.CustomerId!.Value;
@@ -430,7 +549,9 @@ public sealed class InvoicesController(
         target.TradeType = source.TradeType?.Trim();
         target.IsReturn = source.IsReturn;
         target.SalespersonUserId = string.IsNullOrWhiteSpace(source.SalespersonUserId) ? null : source.SalespersonUserId;
-        target.SettlementFinancialAccountId = source.SettlementFinancialAccountId;
+        target.IsClosedInvoice = source.IsClosedInvoice;
+        target.SettlementPaymentMethod = source.IsClosedInvoice ? source.SettlementPaymentMethod : null;
+        target.SettlementFinancialAccountId = source.IsClosedInvoice ? source.SettlementFinancialAccountId : null;
         target.AmountDiscount = source.AmountDiscount;
     }
 
@@ -461,7 +582,12 @@ public sealed class InvoicesController(
                 ProductNameSnapshot = product.Name,
                 UnitSnapshot = product.Unit,
                 Quantity = line.Quantity,
-                UnitPrice = line.UnitPrice,
+                // "Fiyatlara KDV Dahil" işaretliyse girilen birim fiyat KDV dahildir; kayıt sırasında
+                // KDV hariç birim fiyata çevrilir ki mevcut toplam/KDV hesap mantığı (InvoiceTotalsCalculator,
+                // onay/iptal ters kayıtları) hiç değişmeden, hep KDV hariç fiyat üzerinden çalışmaya devam etsin.
+                UnitPrice = source.PricesIncludeTax && line.TaxRate > 0
+                    ? Math.Round(line.UnitPrice / (1 + line.TaxRate / 100), 6, MidpointRounding.AwayFromZero)
+                    : line.UnitPrice,
                 DiscountRate = line.DiscountRate,
                 TaxRate = line.TaxRate,
                 Description = line.Description?.Trim()
@@ -475,6 +601,60 @@ public sealed class InvoicesController(
     // için, InvoicePostingService.ApproveAsync'teki para hesabıyla aynı formül (InvoiceTotalsCalculator)
     // burada da uygulanır (stok hareketi/cari kaydı gibi onaya özel işlemler olmadan, sadece tutar hesabı).
     private static void CalculateDraftTotals(Invoice invoice) => InvoiceTotalsCalculator.Calculate(invoice);
+
+    // Evrak Belge Seri/Sıra formda boş bırakılırsa sistem otomatik numara üretir (mevcut davranış).
+    // Doldurulmuşsa kullanıcının girdiği numara aynen kullanılır — başka bir faturada kullanılmadığı
+    // doğrulanır ve sayısal kısmı ayrıştırılabiliyorsa gelecekteki otomatik numaraların bununla
+    // çakışmaması için sayaç ileri alınır (asla geri alınmaz).
+    private async Task<string?> ResolveInvoiceNumberAsync(InvoiceFormViewModel form, string sequenceKey, int? excludeInvoiceId)
+    {
+        var series = form.DocumentSeries?.Trim();
+        var sequence = form.DocumentSequence?.Trim();
+
+        if (string.IsNullOrEmpty(series) || string.IsNullOrEmpty(sequence))
+        {
+            return await documentNumberGenerator.GenerateAsync(sequenceKey);
+        }
+
+        var invoiceNumber = series + sequence;
+        var isDuplicate = await dbContext.Invoices.AnyAsync(x =>
+            x.InvoiceNumber == invoiceNumber && (excludeInvoiceId == null || x.Id != excludeInvoiceId));
+        if (isDuplicate)
+        {
+            ModelState.AddModelError(nameof(form.DocumentSequence), "Bu belge numarası başka bir faturada kullanılıyor.");
+            return null;
+        }
+
+        if (long.TryParse(sequence, out var parsedNumber))
+        {
+            await documentNumberGenerator.EnsureAtLeastForSeriesAsync(sequenceKey, series, parsedNumber + 1);
+        }
+
+        return invoiceNumber;
+    }
+
+    // "..." (Belge Sıra yanı) veya Seri alanında Enter'a basınca, o seriye özel önerilen sıra
+    // numarasını döner (bkz. DocumentNumberGeneratorService.PeekForSeriesAsync) — Invoices/Form.cshtml.
+    [HttpGet]
+    public async Task<IActionResult> PeekSequence(InvoiceType type, string? series)
+    {
+        var sequenceKey = type == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+        var peek = await documentNumberGenerator.PeekForSeriesAsync(sequenceKey, series?.Trim() ?? string.Empty);
+        return Json(new { sequence = peek.NextNumber.ToString($"D{peek.Padding}") });
+    }
+
+    // Var olan bir faturanın numarasını (ör. "SF.00005") düzenleme formunda ayrı Seri/Sıra alanlarına
+    // bölmek için — güncel seri önekiyle başlıyorsa oradan böler, başlamıyorsa (elle farklı bir seri
+    // girilmiş olabilir) numaranın tamamını "Sıra" alanına koyar ki hiçbir bilgi kaybolmasın.
+    private static (string Series, string Sequence) SplitInvoiceNumber(string invoiceNumber, string currentPrefix)
+    {
+        if (!string.IsNullOrEmpty(currentPrefix) && invoiceNumber.StartsWith(currentPrefix, StringComparison.Ordinal))
+        {
+            return (currentPrefix, invoiceNumber[currentPrefix.Length..]);
+        }
+
+        return (string.Empty, invoiceNumber);
+    }
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {

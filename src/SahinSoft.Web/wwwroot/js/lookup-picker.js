@@ -132,6 +132,8 @@
             var item = currentItems[Number(row.getAttribute("data-lookup-idx"))];
             if (item) selectItem(item);
         });
+        modalEl.querySelector(".lookup-modal-from").addEventListener("change", function () { runSearch(searchInput.value); });
+        modalEl.querySelector(".lookup-modal-to").addEventListener("change", function () { runSearch(searchInput.value); });
         modalEl.addEventListener("shown.bs.modal", function () {
             modalEl.querySelector(".lookup-modal-search").focus();
         });
@@ -147,6 +149,7 @@
         if (endpoint.indexOf("/Lookup/Products") !== -1) return "product";
         if (endpoint.indexOf("/Lookup/Customers") !== -1) return "customer";
         if (endpoint.indexOf("/Lookup/TaxRates") !== -1) return "taxrate";
+        if (endpoint.indexOf("/Lookup/InvoicesBrowse") !== -1) return "invoice";
         return "generic";
     }
 
@@ -157,7 +160,15 @@
         var resultsEl = modalEl.querySelector(".lookup-modal-results");
         resultsEl.innerHTML = '<div class="text-center text-secondary py-3">Aranıyor...</div>';
 
-        fetch(endpoint + "?q=" + encodeURIComponent(term || ""))
+        var url = endpoint + "?q=" + encodeURIComponent(term || "");
+        if (currentMode() === "invoice") {
+            var fromVal = modalEl.querySelector(".lookup-modal-from").value;
+            var toVal = modalEl.querySelector(".lookup-modal-to").value;
+            if (fromVal) url += "&from=" + encodeURIComponent(fromVal);
+            if (toVal) url += "&to=" + encodeURIComponent(toVal);
+        }
+
+        fetch(url)
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (mySeq !== searchSeq) return;
@@ -224,6 +235,18 @@
                     '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
                     '<td>' + escapeHtml(item.name || '') + '</td>' +
                     '<td class="text-end">%' + escapeHtml(String(item.rate != null ? item.rate : '')) + '</td>' +
+                    '</tr>';
+            }).join('');
+        } else if (mode === "invoice") {
+            headHtml = '<tr><th>Belge No</th><th>Cari</th><th>Tarih</th><th class="text-end">Tutar</th><th>Durum</th></tr>';
+            rowsHtml = items.map(function (item, idx) {
+                var statusClass = item.statusText === "Onaylı" ? "text-success" : (item.statusText === "İptal" ? "text-danger" : "text-secondary");
+                return '<tr data-lookup-idx="' + idx + '">' +
+                    '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
+                    '<td>' + escapeHtml(item.customerName || '') + '</td>' +
+                    '<td>' + escapeHtml(item.invoiceDate || '') + '</td>' +
+                    '<td class="text-end">' + formatMoney(item.grandTotal) + ' ₺</td>' +
+                    '<td class="' + statusClass + ' fw-semibold">' + escapeHtml(item.statusText || '') + '</td>' +
                     '</tr>';
             }).join('');
         } else {
@@ -312,6 +335,15 @@
         modalEl.querySelector(".lookup-modal-results").innerHTML = "";
         currentItems = [];
         highlightIndex = -1;
+
+        var extraFilters = modalEl.querySelector(".lookup-modal-extra-filters");
+        var isInvoiceMode = currentMode() === "invoice";
+        extraFilters.style.display = isInvoiceMode ? "flex" : "none";
+        if (isInvoiceMode) {
+            modalEl.querySelector(".lookup-modal-from").value = "";
+            modalEl.querySelector(".lookup-modal-to").value = "";
+        }
+
         bsModal.show();
         runSearch("");
     }

@@ -183,6 +183,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Email).HasMaxLength(200);
             entity.Property(x => x.City).HasMaxLength(100);
             entity.Property(x => x.District).HasMaxLength(100);
+            entity.Property(x => x.CustomerGroup).HasMaxLength(100);
+            entity.Property(x => x.AuthorizedPerson).HasMaxLength(150);
+            entity.Property(x => x.RiskLimit).HasPrecision(18, 2);
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.TaxNumber);
             entity.HasIndex(x => x.Name);
@@ -580,6 +583,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.BusinessProjectId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Invoice)
+                .WithMany(x => x.PaymentReceipts)
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<PaymentReceiptLine>(entity =>
@@ -698,7 +705,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<NumberSequence>(entity =>
         {
-            entity.Property(x => x.Key).HasMaxLength(30).IsRequired();
+            // 60: varsayılan anahtarlar (ör. "SALES_INVOICE") + kullanıcının elle girdiği özel
+            // seriler için "ANAHTAR:Seri" bileşik anahtarına yetecek kadar (bkz.
+            // DocumentNumberGeneratorService.EnsureAtLeastForSeriesAsync).
+            entity.Property(x => x.Key).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Prefix).HasMaxLength(20).IsRequired();
             entity.HasIndex(x => x.Key).IsUnique();
             entity.ToTable(table =>

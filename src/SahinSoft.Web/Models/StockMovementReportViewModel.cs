@@ -42,3 +42,23 @@ public sealed class StockReconciliationLineViewModel
     public decimal MovementQuantity { get; set; }
     public decimal Difference { get; set; }
 }
+
+public sealed class LastPurchasePricesReportViewModel
+{
+    public int? ProductId { get; set; }
+    public IReadOnlyList<LastPurchasePriceLineViewModel> Lines { get; set; } = [];
+    public IReadOnlyList<SelectListItem> Products { get; set; } = [];
+}
+
+public sealed class LastPurchasePriceLineViewModel
+{
+    public int ProductId { get; set; }
+    public string StockCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string SupplierName { get; set; } = string.Empty;
+    public DateTime LastPurchaseDateUtc { get; set; }
+    public decimal UnitPriceInclTax { get; set; }
+    public decimal Quantity { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public int PurchaseCount { get; set; }
+}

@@ -123,6 +123,7 @@ public sealed class PaymentReceiptsController(
         {
             Id = receipt.Id,
             ReceiptType = receipt.ReceiptType,
+            ReceiptNumber = receipt.ReceiptNumber,
             CustomerId = receipt.CustomerId,
             ReceiptDateUtc = receipt.ReceiptDateUtc,
             CurrencyCode = receipt.CurrencyCode,

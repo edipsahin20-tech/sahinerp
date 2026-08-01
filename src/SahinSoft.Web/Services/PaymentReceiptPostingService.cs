@@ -40,6 +40,43 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             throw new InvalidOperationException("Yalnızca satırı bulunan taslak fişler onaylanabilir.");
         }
 
+        await PostReceiptAsync(receipt, cancellationToken);
+
+        receipt.Status = PaymentReceiptStatus.Approved;
+        receipt.ApprovedByUserId = approvedByUserId;
+        receipt.ApprovedAtUtc = DateTime.UtcNow;
+        receipt.UpdatedAtUtc = DateTime.UtcNow;
+        dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
+        {
+            EventType = receipt.ReceiptType == ReceiptType.Collection
+                ? "CollectionReceiptApproved"
+                : "PaymentReceiptApproved",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                receipt.RecordId,
+                receipt.ReceiptNumber,
+                receipt.ReceiptType,
+                receipt.CustomerId,
+                receipt.TotalAmount
+            })
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    // Fişin toplamını hesaplar, cari hareketi ve satır başına finansal hareketi yazar — hem normal
+    // (elle taslak→onay) akış hem de Kapalı Fatura onayında InvoicePostingService'in otomatik
+    // oluşturup burada postaladığı fiş tarafından kullanılır. Durum/onay alanlarına dokunmaz,
+    // çağıran taraf belirler (InvoicePostingService'in otomatik fişi doğrudan Approved olarak
+    // eklenir, elle akışta ApproveCoreAsync statüyü ayrıca değiştirir).
+    internal Task PostReceiptAsync(PaymentReceipt receipt, CancellationToken cancellationToken)
+    {
+        if (receipt.Lines.Count == 0)
+        {
+            throw new InvalidOperationException("Yalnızca satırı bulunan taslak fişler onaylanabilir.");
+        }
+
         if (receipt.Lines.Any(x => x.Amount <= 0))
         {
             throw new InvalidOperationException("Fiş satır tutarları sıfırdan büyük olmalıdır.");
@@ -62,6 +99,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             Debit = receipt.ReceiptType == ReceiptType.Payment ? receipt.TotalAmount : 0,
             Credit = receipt.ReceiptType == ReceiptType.Collection ? receipt.TotalAmount : 0,
             CustomerId = receipt.CustomerId,
+            InvoiceId = receipt.InvoiceId,
             Description = receipt.Description
         };
         dbContext.CurrentAccountTransactions.Add(accountTransaction);
@@ -86,27 +124,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             line.FinancialTransaction = financialTransaction;
         }
 
-        receipt.Status = PaymentReceiptStatus.Approved;
-        receipt.ApprovedByUserId = approvedByUserId;
-        receipt.ApprovedAtUtc = DateTime.UtcNow;
-        receipt.UpdatedAtUtc = DateTime.UtcNow;
-        dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
-        {
-            EventType = receipt.ReceiptType == ReceiptType.Collection
-                ? "CollectionReceiptApproved"
-                : "PaymentReceiptApproved",
-            PayloadJson = JsonSerializer.Serialize(new
-            {
-                receipt.RecordId,
-                receipt.ReceiptNumber,
-                receipt.ReceiptType,
-                receipt.CustomerId,
-                receipt.TotalAmount
-            })
-        });
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public Task CancelAsync(

@@ -86,6 +86,50 @@ public sealed class LookupController(
         return Json(new { items });
     }
 
+    // "..." (Evrak Belge Sıra yanı) butonuyla açılan, tüm faturaları tarih tarih listeleyip
+    // tıklandığında ilgili faturayı açan gözat penceresi için — Invoices/Form.cshtml.
+    public async Task<IActionResult> InvoicesBrowse(string? q, SahinSoft.Domain.Enums.InvoiceType? type, DateTime? from, DateTime? to)
+    {
+        var query = dbContext.Invoices.AsNoTracking().Include(x => x.Customer).AsQueryable();
+        if (type.HasValue)
+        {
+            query = query.Where(x => x.InvoiceType == type.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            query = query.Where(x =>
+                EF.Functions.Collate(x.InvoiceNumber, TurkishInsensitive).Contains(q) ||
+                EF.Functions.Collate(x.Customer.Name, TurkishInsensitive).Contains(q));
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(x => x.InvoiceDateUtc >= from.Value);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(x => x.InvoiceDateUtc < to.Value.AddDays(1));
+        }
+
+        var items = await query
+            .OrderByDescending(x => x.InvoiceDateUtc)
+            .ThenByDescending(x => x.Id)
+            .Take(50)
+            .Select(x => new
+            {
+                id = x.Id,
+                code = x.InvoiceNumber,
+                name = x.Customer.Name,
+                customerName = x.Customer.Name,
+                invoiceDate = x.InvoiceDateUtc.ToString("dd.MM.yyyy"),
+                statusText = x.Status == SahinSoft.Domain.Enums.InvoiceStatus.Draft ? "Taslak"
+                    : x.Status == SahinSoft.Domain.Enums.InvoiceStatus.Approved ? "Onaylı" : "İptal",
+                grandTotal = x.GrandTotal
+            })
+            .ToListAsync();
+
+        return Json(new { items });
+    }
+
     public async Task<IActionResult> Categories(string? q)
     {
         var query = dbContext.ProductCategories.AsNoTracking().Where(x => x.IsActive);

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Common;
+using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
 
@@ -75,6 +76,62 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Name)
                 .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+                .ToListAsync()
+        };
+
+        return View(model);
+    }
+
+    public async Task<IActionResult> LastPurchasePrices(int? productId)
+    {
+        var query = dbContext.InvoiceLines
+            .AsNoTracking()
+            .Include(x => x.Invoice).ThenInclude(x => x.Customer)
+            .Include(x => x.Product)
+            .Where(x =>
+                x.Invoice.InvoiceType == InvoiceType.Purchase &&
+                x.Invoice.Status == InvoiceStatus.Approved &&
+                x.ProductId != null)
+            .AsQueryable();
+
+        if (productId.HasValue)
+        {
+            query = query.Where(x => x.ProductId == productId.Value);
+        }
+
+        var purchaseLines = await query.ToListAsync();
+
+        var lines = purchaseLines
+            .GroupBy(x => new { x.ProductId, x.Invoice.CustomerId })
+            .Select(g =>
+            {
+                var last = g.OrderByDescending(x => x.Invoice.InvoiceDateUtc).ThenByDescending(x => x.Invoice.Id).First();
+                return new LastPurchasePriceLineViewModel
+                {
+                    ProductId = last.ProductId!.Value,
+                    StockCode = last.Product!.StockCode,
+                    ProductName = last.Product.Name,
+                    SupplierName = last.Invoice.Customer.Name,
+                    LastPurchaseDateUtc = last.Invoice.InvoiceDateUtc,
+                    UnitPriceInclTax = Math.Round(last.UnitPrice * (1 + last.TaxRate / 100), 2, MidpointRounding.AwayFromZero),
+                    Quantity = last.Quantity,
+                    InvoiceNumber = last.Invoice.InvoiceNumber,
+                    PurchaseCount = g.Select(x => x.InvoiceId).Distinct().Count()
+                };
+            })
+            .OrderBy(x => x.ProductName)
+            .ThenByDescending(x => x.LastPurchaseDateUtc)
+            .ToList();
+
+        var model = new LastPurchasePricesReportViewModel
+        {
+            ProductId = productId,
+            Lines = lines,
+            Products = await dbContext.Products
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .Select(x => new SelectListItem($"{x.StockCode} - {x.Name}", x.Id.ToString()))
                 .ToListAsync()
         };
 

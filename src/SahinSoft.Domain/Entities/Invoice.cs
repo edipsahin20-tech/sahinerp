@@ -30,6 +30,8 @@ public sealed class Invoice : EntityBase
     public string? TradeType { get; set; }
     public bool IsReturn { get; set; }
     public string? SalespersonUserId { get; set; }
+    public bool IsClosedInvoice { get; set; }
+    public PaymentMethod? SettlementPaymentMethod { get; set; }
     public int? SettlementFinancialAccountId { get; set; }
     public FinancialAccount? SettlementFinancialAccount { get; set; }
 
@@ -49,4 +51,5 @@ public sealed class Invoice : EntityBase
     public ICollection<CurrentAccountTransaction> AccountTransactions { get; set; } = new List<CurrentAccountTransaction>();
     public ICollection<InvoicePaymentSchedule> PaymentSchedules { get; set; } = new List<InvoicePaymentSchedule>();
     public ICollection<DispatchNote> DispatchNotes { get; set; } = new List<DispatchNote>();
+    public ICollection<PaymentReceipt> PaymentReceipts { get; set; } = new List<PaymentReceipt>();
 }

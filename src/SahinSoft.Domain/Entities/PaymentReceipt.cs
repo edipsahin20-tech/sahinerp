@@ -27,5 +27,9 @@ public sealed class PaymentReceipt : EntityBase
     public CostCenter? CostCenter { get; set; }
     public int? BusinessProjectId { get; set; }
     public BusinessProject? BusinessProject { get; set; }
+    // Kapalı Fatura onayında otomatik oluşturulan tahsilat/tediye fişini kaynak faturaya bağlar
+    // (bkz. InvoicePostingService.ApproveCoreAsync). Elle oluşturulan serbest fişlerde boş kalır.
+    public int? InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
     public ICollection<PaymentReceiptLine> Lines { get; set; } = new List<PaymentReceiptLine>();
 }

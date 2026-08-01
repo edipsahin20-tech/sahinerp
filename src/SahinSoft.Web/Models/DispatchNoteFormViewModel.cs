@@ -9,6 +9,8 @@ public sealed class DispatchNoteFormViewModel
 
     public InvoiceType DispatchType { get; set; }
 
+    public string? DispatchNumber { get; set; }
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }

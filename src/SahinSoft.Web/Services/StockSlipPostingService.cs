@@ -93,6 +93,15 @@ public sealed class StockSlipPostingService(
             });
 
             line.Product.StockQuantity += quantity;
+
+            // Stok Giriş Fişi'nde girilen birim maliyet KDV dahil kabul edilir (Stok Kartı'ndaki
+            // Alış Fiyatı ile aynı kural, bkz. Products/Form.cshtml uyarı notu) ve doğrudan
+            // ürünün Alış Fiyatı'na yansıtılır. Çıkış fişlerinde maliyet değişmez.
+            if (slip.SlipType == StockSlipType.Receipt && line.UnitCost > 0)
+            {
+                line.Product.PurchasePrice = line.UnitCost;
+            }
+
             line.Product.UpdatedAtUtc = DateTime.UtcNow;
         }
 

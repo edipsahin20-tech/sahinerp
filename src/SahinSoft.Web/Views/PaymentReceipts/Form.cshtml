@@ -20,7 +20,29 @@
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
-        <div class="erp-panel-header">Evrak Bilgileri</div>
+        <div class="erp-evrak-header">
+            <div class="erp-evrak-badge">
+                <span class="erp-evrak-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
+                <div class="erp-evrak-label">
+                    <small>@(isCollection ? "Tahsilat" : "Tediye")</small>
+                    <strong>Evrak Bilgileri</strong>
+                </div>
+            </div>
+            <div class="erp-evrak-fields">
+                <div class="erp-field">
+                    <label>Evrak Belge Seri</label>
+                    <input class="form-control" value="@(isCollection ? "TAH" : "TED")" readonly title="Evrak serisi sistem tarafından yönetilir." />
+                </div>
+                <div class="erp-field">
+                    <label>Evrak Belge Sıra</label>
+                    <input class="form-control" value="@(isEdit ? Model.ReceiptNumber : "Otomatik")" readonly title="Sıra numarası kayıt sırasında otomatik verilir." />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ReceiptDateUtc"></label>
+                    <input asp-for="ReceiptDateUtc" class="form-control" />
+                </div>
+            </div>
+        </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
                 <div class="erp-field">
@@ -32,10 +54,6 @@
                         Endpoint = Url.Action("Customers", "Lookup")!,
                         Title = "Cari Seç", Placeholder = "Cari seçin" })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
-                </div>
-                <div class="erp-field">
-                    <label asp-for="ReceiptDateUtc"></label>
-                    <input asp-for="ReceiptDateUtc" class="form-control" />
                 </div>
                 <div class="erp-field">
                     <label asp-for="CurrencyCode"></label>

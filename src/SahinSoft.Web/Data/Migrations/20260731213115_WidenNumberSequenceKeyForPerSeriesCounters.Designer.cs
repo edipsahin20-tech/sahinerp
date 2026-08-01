@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SahinSoft.Web.Data;
 
@@ -11,9 +12,11 @@ using SahinSoft.Web.Data;
 namespace SahinSoft.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731213115_WidenNumberSequenceKeyForPerSeriesCounters")]
+    partial class WidenNumberSequenceKeyForPerSeriesCounters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2086,9 +2089,6 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int>("InvoiceType")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsClosedInvoice")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsReturn")
                         .HasColumnType("bit");
 
@@ -2125,9 +2125,6 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int?>("SettlementFinancialAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SettlementPaymentMethod")
                         .HasColumnType("int");
 
                     b.Property<int>("Status")
@@ -2785,9 +2782,6 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
-                    b.Property<int?>("InvoiceId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("ReceiptDateUtc")
                         .HasColumnType("datetime2");
 
@@ -2825,8 +2819,6 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("BusinessProjectId");
 
                     b.HasIndex("CostCenterId");
-
-                    b.HasIndex("InvoiceId");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
@@ -7326,18 +7318,11 @@ namespace SahinSoft.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SahinSoft.Domain.Entities.Invoice", "Invoice")
-                        .WithMany("PaymentReceipts")
-                        .HasForeignKey("InvoiceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("BusinessProject");
 
                     b.Navigation("CostCenter");
 
                     b.Navigation("Customer");
-
-                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.PaymentReceiptLine", b =>
@@ -7925,8 +7910,6 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("DispatchNotes");
 
                     b.Navigation("Lines");
-
-                    b.Navigation("PaymentReceipts");
 
                     b.Navigation("PaymentSchedules");
                 });

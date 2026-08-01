@@ -9,6 +9,8 @@ public sealed class StockSlipFormViewModel
 
     public StockSlipType SlipType { get; set; }
 
+    public string? SlipNumber { get; set; }
+
     [Required(ErrorMessage = "Depo seçilmelidir.")]
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }

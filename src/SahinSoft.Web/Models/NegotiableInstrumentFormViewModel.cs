@@ -9,6 +9,8 @@ public sealed class NegotiableInstrumentFormViewModel
 
     public NegotiableInstrumentType InstrumentType { get; set; }
 
+    public string? InstrumentNumber { get; set; }
+
     [Display(Name = "Yön")]
     public InstrumentDirection Direction { get; set; } = InstrumentDirection.Received;
 

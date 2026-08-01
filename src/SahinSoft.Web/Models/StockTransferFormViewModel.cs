@@ -6,6 +6,8 @@ public sealed class StockTransferFormViewModel
 {
     public int Id { get; set; }
 
+    public string? TransferNumber { get; set; }
+
     [Required(ErrorMessage = "Çıkış deposu seçilmelidir.")]
     [Display(Name = "Çıkış Deposu")]
     public int? FromWarehouseId { get; set; }

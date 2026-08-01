@@ -12,73 +12,97 @@
     <div class="alert alert-danger py-2">@error</div>
 }
 
-<div class="erp-list-panel">
-    <div class="erp-list-header">
-        <h2><i class="fa-solid fa-box"></i> Stok Kartları</h2>
-        <div class="d-flex gap-2">
-            <form asp-action="BulkSetUnitToAdet" method="post" onsubmit="return confirm('Tüm ürünlerin birimi \'Adet\' olarak değiştirilecek. Emin misiniz?');">
-                <button type="submit" class="btn-erp-list-new">Tüm Birimleri Adet Yap</button>
-            </form>
-            <a asp-action="Create" class="btn-erp-list-new">+ Yeni Stok Kartı</a>
-        </div>
-    </div>
-    <div class="erp-list-body">
-        <div class="erp-list-topbar">
-            <div class="erp-list-topbar-left">
-                <div class="erp-list-search">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" class="form-control" autocomplete="off" autofocus placeholder="Stok kodu, ürün, marka veya barkod ara (barkod okutabilirsiniz)..." data-live-search="#productsTable">
-                </div>
-            </div>
-            <span class="text-secondary">Toplam <strong>@Model.Count</strong> kayıt.</span>
-        </div>
+<div class="erp-breadcrumb-v2">Stok Yönetimi <span>/</span> Stok Listesi</div>
 
-        <div class="erp-table-wrap">
-            <table class="erp-table" id="productsTable">
-                <thead>
-                    <tr>
-                        <th>Stok Kodu</th>
-                        <th>Ürün</th>
-                        <th>Kategori</th>
-                        <th>KDV</th>
-                        <th class="text-end">Miktar</th>
-                        <th class="text-end">Satış Fiyatı</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td><span class="erp-code-badge">@item.StockCode</span></td>
-                        <td>
-                            <div class="fw-semibold">@item.Name</div>
-                            <small class="text-secondary">@item.Brand @item.Model</small>
-                        </td>
-                        <td>@item.Category.Name</td>
-                        <td>@item.TaxRate.Name</td>
-                        <td class="text-end">
-                            @if (item.StockQuantity <= 0)
-                            {
-                                <span class="erp-status-pill red">Stokta Yok</span>
-                            }
-                            else
-                            {
-                                @item.StockQuantity.ToString("N3")
-                            }
-                        </td>
-                        <td class="text-end fw-semibold">@item.SalePrice.ToString("N2") ₺</td>
-                        <td>
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn-erp-list-action">Düzenle</a>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Count == 0)
-                {
-                    <tr><td colspan="7" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
-                }
-                </tbody>
-            </table>
+<div class="erp-page-head">
+    <div>
+        <h1>Stok Listesi</h1>
+        <p>Ürünleri, fiyatları ve depo stok durumlarını yönetin.</p>
+    </div>
+    <div class="erp-page-head-actions">
+        <button type="button" class="btn-erp-outline-secondary" data-csv-export="#productsTable" data-csv-name="stok-listesi">
+            <i class="fa-solid fa-file-arrow-down"></i> Excel'e Aktar
+        </button>
+        <form asp-action="BulkSetUnitToAdet" method="post" onsubmit="return confirm('Tüm ürünlerin birimi \'Adet\' olarak değiştirilecek. Emin misiniz?');">
+            <button type="submit" class="btn-erp-outline-secondary">Tüm Birimleri Adet Yap</button>
+        </form>
+        <a asp-action="Create" class="btn-erp-list-new">+ Yeni Kayıt</a>
+    </div>
+</div>
+
+<div class="erp-list-card">
+    <form method="get" class="erp-list-card-toolbar">
+        <div class="erp-search-input-group">
+            <input type="text" autocomplete="off" autofocus placeholder="Stok kodu, ürün, marka veya barkod ara (barkod okutabilirsiniz)..." data-live-search="#productsTable" />
+            <button type="button" onclick="this.previousElementSibling.focus()">Ara</button>
         </div>
+    </form>
+
+    <div class="erp-table-wrap">
+        <table class="erp-table" id="productsTable" data-sortable data-paginate="20">
+            <thead>
+                <tr>
+                    <th data-sort="text">Stok Kodu</th>
+                    <th data-sort="text">Ürün / Açıklama</th>
+                    <th data-sort="text">Barkod</th>
+                    <th data-sort="text">Kategori</th>
+                    <th class="text-end" data-sort="number">Miktar</th>
+                    <th data-sort="text">Birim</th>
+                    <th class="text-end" data-sort="number">Tutar</th>
+                    <th data-sort="text">Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                var durumClass = item.StockQuantity <= 0 ? "red" : item.StockQuantity <= item.MinimumStockQuantity ? "red" : "green";
+                var durumText = item.StockQuantity <= 0 ? "Tükendi" : item.StockQuantity <= item.MinimumStockQuantity ? "Kritik" : "Yeterli";
+                <tr>
+                    <td><span class="erp-code-badge">@item.StockCode</span></td>
+                    <td>
+                        <div class="fw-semibold">@item.Name</div>
+                        <small class="text-secondary">@item.Brand @item.Model</small>
+                    </td>
+                    <td>@item.Barcode</td>
+                    <td>@item.Category.Name</td>
+                    <td class="text-end">@item.StockQuantity.ToString("N3")</td>
+                    <td>@item.Unit</td>
+                    <td class="text-end fw-semibold">@((item.StockQuantity * item.SalePrice).ToString("N2")) ₺</td>
+                    <td><span class="erp-status-pill @durumClass">@durumText</span></td>
+                    <td>
+                        <div class="erp-row-actions">
+                            <a asp-action="Edit" asp-route-id="@item.Id" title="Görüntüle"><i class="fa-regular fa-eye"></i></a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" title="Düzenle"><i class="fa-solid fa-pen"></i></a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr data-live-search-empty>
+                    <td colspan="9" class="text-center text-secondary py-4">Kayıt bulunamadı.</td>
+                </tr>
+            }
+            </tbody>
+            @if (Model.Count > 0)
+            {
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end">Toplam</td>
+                        <td class="text-end" data-sum-col="4"></td>
+                        <td></td>
+                        <td class="text-end" data-sum-col="6"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+
+    <div class="erp-list-card-footer">
+        <span data-pagination-count-for="#productsTable">Toplam @Model.Count kayıt gösteriliyor</span>
+        <div class="erp-pagination" data-pagination-for="#productsTable"></div>
     </div>
 </div>

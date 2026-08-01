@@ -20,7 +20,29 @@
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
     <div class="erp-panel">
-        <div class="erp-panel-header">Fiş Bilgileri</div>
+        <div class="erp-evrak-header">
+            <div class="erp-evrak-badge">
+                <span class="erp-evrak-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
+                <div class="erp-evrak-label">
+                    <small>Stok @(isReceipt ? "Giriş" : "Çıkış") Fişi</small>
+                    <strong>Fiş Bilgileri</strong>
+                </div>
+            </div>
+            <div class="erp-evrak-fields">
+                <div class="erp-field">
+                    <label>Evrak Belge Seri</label>
+                    <input class="form-control" value="@(isReceipt ? "SGF" : "SCF")" readonly title="Evrak serisi sistem tarafından yönetilir." />
+                </div>
+                <div class="erp-field">
+                    <label>Evrak Belge Sıra</label>
+                    <input class="form-control" value="@(isEdit ? Model.SlipNumber : "Otomatik")" readonly title="Sıra numarası kayıt sırasında otomatik verilir." />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="SlipDateUtc"></label>
+                    <input asp-for="SlipDateUtc" class="form-control" />
+                </div>
+            </div>
+        </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
                 <div class="erp-field">
@@ -32,10 +54,6 @@
                         Endpoint = Url.Action("Warehouses", "Lookup")!,
                         Title = "Depo Seç", Placeholder = "Depo seçin" })" />
                     <span asp-validation-for="WarehouseId" class="text-danger small"></span>
-                </div>
-                <div class="erp-field">
-                    <label asp-for="SlipDateUtc"></label>
-                    <input asp-for="SlipDateUtc" class="form-control" />
                 </div>
                 <div class="erp-field" style="grid-column: 1 / -1;">
                     <label asp-for="Description"></label>
@@ -58,7 +76,7 @@
                             <th style="width: 140px;">Stok Kodu</th>
                             <th style="min-width: 220px;">Ürün Adı</th>
                             <th style="width: 110px;">Miktar</th>
-                            <th style="width: 120px;">Birim Maliyet</th>
+                            <th style="width: 120px;">Birim Maliyet (KDV Dahil)</th>
                             <th>Açıklama</th>
                             <th style="width: 40px;"></th>
                         </tr>
@@ -181,7 +199,9 @@
                     var codeInput = row.querySelector('.stock-code-input');
                     if (codeInput) codeInput.value = item.code;
                 }
-                row.querySelector('.cost-input').value = item.purchaseUnitPrice;
+                // Stok Kartı'ndaki Alış Fiyatı KDV dahil tutulur (bkz. Products/Form.cshtml uyarı notu);
+                // Stok Giriş/Çıkış Fişi'ndeki Birim Maliyet de aynı kuralla KDV dahil girilir.
+                row.querySelector('.cost-input').value = item.purchasePrice;
                 var qtyInput = row.querySelector('.quantity-input');
                 if (qtyInput) {
                     qtyInput.focus();

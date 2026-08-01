@@ -58,23 +58,28 @@
             </div>
         </div>
 
+        <div class="erp-list-search mb-2 no-print" style="max-width: 320px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="form-control" autocomplete="off" placeholder="İşlem, belge no veya açıklama ara..." data-live-search="#statementTable">
+        </div>
+
         <div class="erp-table-wrap">
-            <table class="erp-table">
+            <table class="erp-table" id="statementTable" data-sortable>
                 <thead>
                     <tr>
-                        <th>Tarih</th>
-                        <th>İşlem</th>
-                        <th>Belge No</th>
-                        <th>Açıklama</th>
-                        <th class="text-end">Borç</th>
-                        <th class="text-end">Alacak</th>
+                        <th data-sort="date">Tarih</th>
+                        <th data-sort="text">İşlem</th>
+                        <th data-sort="text">Belge No</th>
+                        <th data-sort="text">Açıklama</th>
+                        <th class="text-end" data-sort="number">Borç</th>
+                        <th class="text-end" data-sort="number">Alacak</th>
                         <th class="text-end">Bakiye</th>
                     </tr>
                 </thead>
                 <tbody>
                 @if (Model.OpeningBalance != 0)
                 {
-                    <tr style="background: var(--erp-header-bg); font-weight: 700;">
+                    <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
                         <td colspan="6">Devreden Bakiye</td>
                         <td class="text-end">@Model.OpeningBalance.ToString("N2")</td>
                     </tr>
@@ -93,11 +98,22 @@
                 }
                 @if (Model.Lines.Count == 0)
                 {
-                    <tr>
+                    <tr data-live-search-empty>
                         <td colspan="7" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
                     </tr>
                 }
                 </tbody>
+                @if (Model.Lines.Count > 0)
+                {
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-end">Toplam</td>
+                            <td class="text-end" data-sum-col="4"></td>
+                            <td class="text-end" data-sum-col="5"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                }
             </table>
         </div>
     </div>

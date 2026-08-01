@@ -9,6 +9,8 @@ public sealed class BusinessOrderFormViewModel
 
     public InvoiceType OrderType { get; set; }
 
+    public string? OrderNumber { get; set; }
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }

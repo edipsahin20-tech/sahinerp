@@ -32,6 +32,10 @@
                 <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
             </form>
         }
+        else if (Model.Status == InvoiceStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm" title="Kaydedince stok/cari hareketleri otomatik güncellenir">Düzenle</a>
+        }
     </div>
 </div>
 
@@ -137,6 +141,21 @@
         </div>
     </div>
 </div>
+
+@if (Model.IsClosedInvoice)
+{
+    <div class="alert alert-success py-2 d-flex align-items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>
+            <strong>Kapalı Fatura</strong> &middot; @Model.SettlementPaymentMethodName / @Model.SettlementFinancialAccountName
+            @if (Model.SettlementReceiptId is int receiptId)
+            {
+                <text> &middot; </text>
+                <a asp-controller="PaymentReceipts" asp-action="Details" asp-route-id="@receiptId">@Model.SettlementReceiptNumber</a>
+            }
+        </span>
+    </div>
+}
 
 @if (Model.PaymentSchedules.Count > 0)
 {

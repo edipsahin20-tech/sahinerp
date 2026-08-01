@@ -13,81 +13,138 @@
     <div class="alert alert-danger py-2">@error</div>
 }
 
-<div class="erp-list-panel">
-    <div class="erp-list-header">
-        <h2><i class="fa-solid fa-file-invoice"></i> Faturalar</h2>
-        <div class="d-flex gap-2">
-            <a asp-action="Create" asp-route-type="@InvoiceType.Purchase" class="btn-erp-list-new">+ Alış Faturası</a>
-            <a asp-action="Create" asp-route-type="@InvoiceType.Sales" class="btn-erp-list-new">+ Satış Faturası</a>
-        </div>
-    </div>
-    <div class="erp-list-body">
-        <div class="erp-list-topbar">
-            <div class="erp-list-topbar-left">
-                <div class="erp-list-search">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" class="form-control" autocomplete="off" placeholder="Fatura no veya cari ara..." data-live-search="#invoicesTable">
-                </div>
-                <form method="get" class="erp-list-filter d-flex gap-2">
-                    <select name="type" class="form-select" asp-items="Html.GetEnumSelectList<InvoiceType>()" onchange="this.form.submit()">
-                        <option value="">Tüm türler</option>
-                    </select>
-                    <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<InvoiceStatus>()" onchange="this.form.submit()">
-                        <option value="">Tüm durumlar</option>
-                    </select>
-                </form>
-            </div>
-            <span class="text-secondary">Toplam <strong>@Model.Count</strong> kayıt.</span>
-        </div>
+<div class="erp-breadcrumb-v2">Fatura Yönetimi <span>/</span> Fatura Listesi</div>
 
-        <div class="erp-table-wrap">
-            <table class="erp-table" id="invoicesTable">
-                <thead>
-                    <tr>
-                        <th>Fatura No</th>
-                        <th>Tür</th>
-                        <th>Tarih</th>
-                        <th>Cari</th>
-                        <th>Durum</th>
-                        <th class="text-end">Tutar</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var item in Model)
-                {
-                    var statusClass = item.Status switch
-                    {
-                        InvoiceStatus.Draft => "gray",
-                        InvoiceStatus.Approved => "green",
-                        _ => "red"
-                    };
-                    var statusText = item.Status switch
-                    {
-                        InvoiceStatus.Draft => "Taslak",
-                        InvoiceStatus.Approved => "Onaylı",
-                        _ => "İptal"
-                    };
-                    <tr>
-                        <td><span class="erp-code-badge">@item.InvoiceNumber</span></td>
-                        <td>@(item.InvoiceType == InvoiceType.Sales ? "Satış" : "Alış")</td>
-                        <td>@item.InvoiceDateUtc.ToString("dd.MM.yyyy")</td>
-                        <td class="fw-semibold">@item.Customer.Name</td>
-                        <td><span class="erp-status-pill @statusClass">@statusText</span></td>
-                        <td class="text-end fw-semibold">@item.GrandTotal.ToString("N2") ₺</td>
-                        <td>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn-erp-list-action">Görüntüle</a>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Count == 0)
-                {
-                    <tr>
-                        <td colspan="7" class="text-center text-secondary py-4">Kayıt bulunamadı.</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+<div class="erp-page-head">
+    <div>
+        <h1>Fatura Listesi</h1>
+        <p>Satış, alış ve iade faturalarını yönetin.</p>
+    </div>
+    <div class="erp-page-head-actions">
+        <button type="button" class="btn-erp-outline-secondary" data-csv-export="#invoicesTable" data-csv-name="fatura-listesi">
+            <i class="fa-solid fa-file-arrow-down"></i> Excel'e Aktar
+        </button>
+        <a asp-action="Create" asp-route-type="@InvoiceType.Purchase" class="btn-erp-list-new">+ Alış Faturası</a>
+        <a asp-action="Create" asp-route-type="@InvoiceType.Sales" class="btn-erp-list-new">+ Satış Faturası</a>
+    </div>
+</div>
+
+<div class="erp-list-card">
+    <form method="get" class="erp-list-card-toolbar">
+        <div class="erp-search-input-group">
+            <input type="text" autocomplete="off" placeholder="Fatura no veya cari ile ara..." data-live-search="#invoicesTable" value="@ViewBag.Search" />
+            <button type="button" onclick="this.closest('form').querySelector('[name=search]')?.focus()">Ara</button>
         </div>
+        <input type="hidden" name="search" value="@ViewBag.Search" />
+        <select name="type" asp-items="Html.GetEnumSelectList<InvoiceType>()" onchange="this.form.submit()">
+            <option value="">Tüm Türler</option>
+        </select>
+        <select name="status" asp-items="Html.GetEnumSelectList<InvoiceStatus>()" onchange="this.form.submit()">
+            <option value="">Tüm Durumlar</option>
+        </select>
+        <select name="period" onchange="this.form.submit()">
+            <option value="">Tüm Zamanlar</option>
+            <option value="today" selected="@(ViewBag.Period == "today")">Bugün</option>
+            <option value="week" selected="@(ViewBag.Period == "week")">Bu Hafta</option>
+            <option value="month" selected="@(ViewBag.Period == "month")">Bu Ay</option>
+        </select>
+        <button type="button" class="erp-advanced-toggle" data-advanced-toggle="#invoicesAdvanced">
+            <i class="fa-solid fa-sliders"></i> Gelişmiş
+        </button>
+    </form>
+    <div class="erp-advanced-filters @(ViewBag.From != null || ViewBag.To != null ? "open" : "")" id="invoicesAdvanced">
+        <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+            <input type="hidden" name="search" value="@ViewBag.Search" />
+            <input type="hidden" name="type" value="@ViewBag.Type" />
+            <input type="hidden" name="status" value="@ViewBag.Status" />
+            <div class="erp-field">
+                <label>Başlangıç</label>
+                <input type="date" name="from" value="@(((DateTime?)ViewBag.From)?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </div>
+            <div class="erp-field">
+                <label>Bitiş</label>
+                <input type="date" name="to" value="@(((DateTime?)ViewBag.To)?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </div>
+            <button class="btn btn-erp-primary">Uygula</button>
+        </form>
+    </div>
+
+    <div class="erp-table-wrap">
+        <table class="erp-table" id="invoicesTable" data-sortable data-paginate="20">
+            <thead>
+                <tr>
+                    <th data-sort="text">Belge No</th>
+                    <th data-sort="date">Tarih</th>
+                    <th data-sort="text">Cari</th>
+                    <th data-sort="text">Tür</th>
+                    <th class="text-end" data-sort="number">Matrah</th>
+                    <th class="text-end" data-sort="number">KDV</th>
+                    <th class="text-end" data-sort="number">Genel Toplam</th>
+                    <th data-sort="text">Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                var statusClass = item.Status switch
+                {
+                    InvoiceStatus.Draft => "gray",
+                    InvoiceStatus.Approved => "green",
+                    _ => "red"
+                };
+                var statusText = item.Status switch
+                {
+                    InvoiceStatus.Draft => "Taslak",
+                    InvoiceStatus.Approved => "Onaylı",
+                    _ => "İptal"
+                };
+                <tr>
+                    <td><span class="erp-code-badge">@item.InvoiceNumber</span></td>
+                    <td>@item.InvoiceDateUtc.ToString("dd.MM.yyyy")</td>
+                    <td class="fw-semibold">@item.Customer.Name</td>
+                    <td>@(item.InvoiceType == InvoiceType.Sales ? "Satış" : "Alış")</td>
+                    <td class="text-end">@((item.GrandTotal - item.TaxTotal).ToString("N2")) ₺</td>
+                    <td class="text-end">@item.TaxTotal.ToString("N2") ₺</td>
+                    <td class="text-end fw-semibold">@item.GrandTotal.ToString("N2") ₺</td>
+                    <td><span class="erp-status-pill @statusClass">@statusText</span></td>
+                    <td>
+                        <div class="erp-row-actions">
+                            <a asp-action="Details" asp-route-id="@item.Id" title="Görüntüle"><i class="fa-regular fa-eye"></i></a>
+                            @if (item.Status == InvoiceStatus.Draft || (item.Status == InvoiceStatus.Approved && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator)))
+                            {
+                                <a asp-action="Edit" asp-route-id="@item.Id" title="Düzenle"><i class="fa-solid fa-pen"></i></a>
+                            }
+                            <a asp-action="Details" asp-route-id="@item.Id" title="Yazdır"><i class="fa-solid fa-print"></i></a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr data-live-search-empty>
+                    <td colspan="9" class="text-center text-secondary py-4">Kayıt bulunamadı.</td>
+                </tr>
+            }
+            </tbody>
+            @if (Model.Count > 0)
+            {
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end">Toplam</td>
+                        <td class="text-end" data-sum-col="4"></td>
+                        <td class="text-end" data-sum-col="5"></td>
+                        <td class="text-end" data-sum-col="6"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+
+    <div class="erp-list-card-footer">
+        <span data-pagination-count-for="#invoicesTable">Toplam @Model.Count kayıt gösteriliyor</span>
+        <div class="erp-pagination" data-pagination-for="#invoicesTable"></div>
     </div>
 </div>

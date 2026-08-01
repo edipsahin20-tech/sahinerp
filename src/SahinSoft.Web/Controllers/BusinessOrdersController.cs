@@ -110,6 +110,7 @@ public sealed class BusinessOrdersController(
         {
             Id = order.Id,
             OrderType = order.OrderType,
+            OrderNumber = order.OrderNumber,
             CustomerId = order.CustomerId,
             OrderDateUtc = order.OrderDateUtc,
             RequestedDeliveryDateUtc = order.RequestedDeliveryDateUtc,

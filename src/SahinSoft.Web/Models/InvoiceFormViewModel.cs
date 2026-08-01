@@ -9,6 +9,22 @@ public sealed class InvoiceFormViewModel
 
     public InvoiceType InvoiceType { get; set; }
 
+    public string? InvoiceNumber { get; set; }
+
+    // Görsel amaçlı: formun Onaylı bir faturayı mı düzenlediğini bilip uyarı göstermek için.
+    // Sunucu tarafında durum geçişleri buna değil, veritabanındaki gerçek Invoice.Status'e göre karar verilir.
+    public InvoiceStatus Status { get; set; }
+
+    // Belge Seri + Sıra, formda elle değiştirilebilir (ör. farklı bir fiziksel evrak defteri/seri
+    // kullanılıyorsa). Boş bırakılırsa sistemin ürettiği otomatik numara kullanılır.
+    [StringLength(20)]
+    [Display(Name = "Evrak Belge Seri")]
+    public string? DocumentSeries { get; set; }
+
+    [StringLength(30)]
+    [Display(Name = "Evrak Belge Sıra")]
+    public string? DocumentSequence { get; set; }
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }
@@ -39,8 +55,11 @@ public sealed class InvoiceFormViewModel
     public string? Notes { get; set; }
 
     [StringLength(50)]
-    [Display(Name = "Belge No")]
+    [Display(Name = "Belge Numarası")]
     public string? ReferenceNumber { get; set; }
+
+    [Display(Name = "Fiyatlara KDV Dahil")]
+    public bool PricesIncludeTax { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Ödeme Şekli")]
@@ -55,6 +74,12 @@ public sealed class InvoiceFormViewModel
 
     [Display(Name = "Plasiyer")]
     public string? SalespersonUserId { get; set; }
+
+    [Display(Name = "Kapalı Fatura mı?")]
+    public bool IsClosedInvoice { get; set; }
+
+    [Display(Name = "Ödeme Yöntemi")]
+    public PaymentMethod? SettlementPaymentMethod { get; set; }
 
     [Display(Name = "Kapayan Hesap Kodu")]
     public int? SettlementFinancialAccountId { get; set; }

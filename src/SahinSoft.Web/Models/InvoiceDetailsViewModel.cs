@@ -24,7 +24,11 @@ public sealed class InvoiceDetailsViewModel
     public string? TradeType { get; set; }
     public bool IsReturn { get; set; }
     public string? SalespersonName { get; set; }
+    public bool IsClosedInvoice { get; set; }
+    public string? SettlementPaymentMethodName { get; set; }
     public string? SettlementFinancialAccountName { get; set; }
+    public int? SettlementReceiptId { get; set; }
+    public string? SettlementReceiptNumber { get; set; }
     public PdfCompanyInfoViewModel Company { get; set; } = new();
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }

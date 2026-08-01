@@ -41,15 +41,15 @@
         </div>
 
         <div class="erp-table-wrap">
-            <table class="erp-table" id="businessOrdersTable">
+            <table class="erp-table" id="businessOrdersTable" data-sortable>
                 <thead>
                     <tr>
-                        <th>Sipariş No</th>
-                        <th>Tür</th>
-                        <th>Tarih</th>
-                        <th>Cari</th>
-                        <th>Durum</th>
-                        <th class="text-end">Tutar</th>
+                        <th data-sort="text">Sipariş No</th>
+                        <th data-sort="text">Tür</th>
+                        <th data-sort="date">Tarih</th>
+                        <th data-sort="text">Cari</th>
+                        <th data-sort="text">Durum</th>
+                        <th class="text-end" data-sort="number">Tutar</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -88,6 +88,16 @@
                     <tr><td colspan="7" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
                 }
                 </tbody>
+                @if (Model.Count > 0)
+                {
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-end">Toplam</td>
+                            <td class="text-end" data-sum-col="5"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                }
             </table>
         </div>
     </div>

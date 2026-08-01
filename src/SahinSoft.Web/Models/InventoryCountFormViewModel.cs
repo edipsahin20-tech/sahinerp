@@ -6,6 +6,8 @@ public sealed class InventoryCountFormViewModel
 {
     public int Id { get; set; }
 
+    public string? CountNumber { get; set; }
+
     [Required(ErrorMessage = "Depo seçilmelidir.")]
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }

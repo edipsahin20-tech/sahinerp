@@ -102,6 +102,7 @@ public sealed class StockTransfersController(
         var model = new StockTransferFormViewModel
         {
             Id = transfer.Id,
+            TransferNumber = transfer.TransferNumber,
             FromWarehouseId = transfer.FromWarehouseId,
             ToWarehouseId = transfer.ToWarehouseId,
             TransferDateUtc = transfer.TransferDateUtc,

@@ -36,29 +36,34 @@
         <div class="erp-summary-row">
             <div class="erp-summary-box">
                 <div class="erp-summary-label">Giren</div>
-                <div class="erp-summary-value" style="color: #1f7a4d;">+@Model.TotalIn.ToString("N3")</div>
+                <div class="erp-summary-value" id="summary-in" style="color: #1f7a4d;">+@Model.TotalIn.ToString("N3")</div>
             </div>
             <div class="erp-summary-box">
                 <div class="erp-summary-label">Çıkan</div>
-                <div class="erp-summary-value" style="color: #8a2a2a;">-@Model.TotalOut.ToString("N3")</div>
+                <div class="erp-summary-value" id="summary-out" style="color: #8a2a2a;">-@Model.TotalOut.ToString("N3")</div>
             </div>
             <div class="erp-summary-box" style="border-color: var(--erp-gold);">
                 <div class="erp-summary-label">Net Değişim</div>
-                <div class="erp-summary-value">@(Model.NetChange >= 0 ? "+" : "")@Model.NetChange.ToString("N3")</div>
+                <div class="erp-summary-value" id="summary-net">@(Model.NetChange >= 0 ? "+" : "")@Model.NetChange.ToString("N3")</div>
             </div>
         </div>
 
+        <div class="erp-list-search mb-2" style="max-width: 320px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="form-control" autocomplete="off" placeholder="Ürün, depo, hareket veya belge no ara..." data-live-search="#stockMovementsTable">
+        </div>
+
         <div class="erp-table-wrap">
-            <table class="erp-table">
+            <table class="erp-table" id="stockMovementsTable" data-sortable>
                 <thead>
                     <tr>
-                        <th>Tarih</th>
-                        <th>Ürün</th>
-                        <th>Depo</th>
-                        <th>Hareket</th>
-                        <th>Belge No</th>
-                        <th>Açıklama</th>
-                        <th class="text-end">Miktar</th>
+                        <th data-sort="date">Tarih</th>
+                        <th data-sort="text">Ürün</th>
+                        <th data-sort="text">Depo</th>
+                        <th data-sort="text">Hareket</th>
+                        <th data-sort="text">Belge No</th>
+                        <th data-sort="text">Açıklama</th>
+                        <th class="text-end" data-sort="number">Miktar</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,10 +83,53 @@
                 }
                 @if (Model.Lines.Count == 0)
                 {
-                    <tr><td colspan="7" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
+                    <tr data-live-search-empty><td colspan="7" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
                 }
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Üstteki Giren/Çıkan/Net Değişim kutuları sayfa yüklenirken sunucudaki (filtreye göre,
+        // en fazla 500 kayıt üzerinden) toplamları gösterir. Kullanıcı arama kutusuna yazınca artık
+        // bu kutular da sadece o an ekranda görünen (aramayla eşleşen) satırlar üzerinden yeniden
+        // hesaplanır — aksi halde arama sonrası liste ile kutulardaki toplamlar tutarsız görünürdü.
+        (function () {
+            var table = document.getElementById('stockMovementsTable');
+            if (!table) return;
+            var tbody = table.tBodies[0];
+            var inEl = document.getElementById('summary-in');
+            var outEl = document.getElementById('summary-out');
+            var netEl = document.getElementById('summary-net');
+
+            function parseQty(text) {
+                var cleaned = String(text || '').replace(/,/g, '').replace(/[^\d.+-]/g, '');
+                return parseFloat(cleaned) || 0;
+            }
+
+            function fmt(n) {
+                return n.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+            }
+
+            function recalc() {
+                var rows = Array.from(tbody.rows).filter(function (r) {
+                    return !r.hasAttribute('data-live-search-empty') && r.style.display !== 'none';
+                });
+                var totalIn = 0, totalOut = 0;
+                rows.forEach(function (row) {
+                    var qty = parseQty(row.cells[6].textContent);
+                    if (qty > 0) totalIn += qty; else totalOut += -qty;
+                });
+                inEl.textContent = '+' + fmt(totalIn);
+                outEl.textContent = '-' + fmt(totalOut);
+                var net = totalIn - totalOut;
+                netEl.textContent = (net >= 0 ? '+' : '') + fmt(net);
+            }
+
+            table.addEventListener('erp:rowschange', recalc);
+        })();
+    </script>
+}

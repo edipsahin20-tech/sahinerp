@@ -6,6 +6,8 @@ public sealed class ExpenseFormViewModel
 {
     public int Id { get; set; }
 
+    public string? DocumentNumber { get; set; }
+
     [Required(ErrorMessage = "Masraf kategorisi seçilmelidir.")]
     [Display(Name = "Masraf kategorisi")]
     public int? ExpenseCategoryId { get; set; }

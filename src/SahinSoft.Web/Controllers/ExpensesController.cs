@@ -87,6 +87,7 @@ public sealed class ExpensesController(
         var model = new ExpenseFormViewModel
         {
             Id = expense.Id,
+            DocumentNumber = expense.DocumentNumber,
             ExpenseCategoryId = expense.ExpenseCategoryId,
             ExpenseDateUtc = expense.ExpenseDateUtc,
             Description = expense.Description,
