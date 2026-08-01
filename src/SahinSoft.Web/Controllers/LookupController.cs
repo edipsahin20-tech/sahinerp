@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 
 namespace SahinSoft.Web.Controllers;
@@ -45,7 +46,19 @@ public sealed class LookupController(
                 purchaseUnitPrice = Math.Round(x.PurchasePrice / (1 + x.TaxRate.Rate / 100), 3, MidpointRounding.AwayFromZero),
                 taxRate = x.TaxRate.Rate,
                 unit = x.Unit,
-                stock = x.StockQuantity
+                stock = x.StockQuantity,
+                // Ürün kartındaki (Statement ekranı) Alış/Satış Fiyat Hareketi ile aynı mantık: en son
+                // onaylı alış/satış faturası satırındaki KDV dahil birim fiyat.
+                lastPurchasePrice = dbContext.InvoiceLines
+                    .Where(l => l.ProductId == x.Id && l.Invoice.InvoiceType == InvoiceType.Purchase && l.Invoice.Status == InvoiceStatus.Approved)
+                    .OrderByDescending(l => l.Invoice.InvoiceDateUtc).ThenByDescending(l => l.InvoiceId)
+                    .Select(l => (decimal?)Math.Round(l.UnitPrice * (1 + l.TaxRate / 100), 2, MidpointRounding.AwayFromZero))
+                    .FirstOrDefault(),
+                lastSalePrice = dbContext.InvoiceLines
+                    .Where(l => l.ProductId == x.Id && l.Invoice.InvoiceType == InvoiceType.Sales && l.Invoice.Status == InvoiceStatus.Approved)
+                    .OrderByDescending(l => l.Invoice.InvoiceDateUtc).ThenByDescending(l => l.InvoiceId)
+                    .Select(l => (decimal?)Math.Round(l.UnitPrice * (1 + l.TaxRate / 100), 2, MidpointRounding.AwayFromZero))
+                    .FirstOrDefault()
             })
             .ToListAsync();
 

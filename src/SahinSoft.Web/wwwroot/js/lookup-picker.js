@@ -207,14 +207,14 @@
         var headHtml, rowsHtml;
 
         if (mode === "product") {
-            headHtml = '<tr><th>Stok Kodu</th><th>Stok İsmi</th><th>Kategori</th><th class="text-end">Fiyat</th><th class="text-end">Miktar</th></tr>';
+            headHtml = '<tr><th>Stok Kodu</th><th>Stok İsmi</th><th class="text-end">Miktar</th><th class="text-end">Son Alış Fiyatı</th><th class="text-end">Son Satış Fiyatı</th></tr>';
             rowsHtml = items.map(function (item, idx) {
                 return '<tr data-lookup-idx="' + idx + '">' +
                     '<td><span class="lookup-code-badge">' + escapeHtml(item.code || '') + '</span></td>' +
                     '<td>' + escapeHtml(item.name || '') + '</td>' +
-                    '<td>' + escapeHtml(item.category || '') + '</td>' +
-                    '<td class="text-end">' + formatMoney(item.salePrice) + ' ₺</td>' +
                     '<td class="text-end">' + stockCell(item.stock) + '</td>' +
+                    '<td class="text-end">' + (item.lastPurchasePrice != null ? formatMoney(item.lastPurchasePrice) + ' ₺' : '-') + '</td>' +
+                    '<td class="text-end">' + (item.lastSalePrice != null ? formatMoney(item.lastSalePrice) + ' ₺' : '-') + '</td>' +
                     '</tr>';
             }).join('');
         } else if (mode === "customer") {
