@@ -144,32 +144,37 @@ public sealed class InvoicesController(
         // Numara üretimi ve fatura kaydı TEK transaction içinde: fatura satırları/toplamları
         // hesaplanırken veya SaveChangesAsync sırasında herhangi bir sebeple hata olursa, üretilen
         // numara da (sayaç dahil) geri alınır — hiçbir zaman "numara verildi ama evrak yok" durumu
-        // oluşmaz.
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        var invoice = await strategy.ExecuteAsync(async () =>
+        // oluşmaz. Dıştaki ExecuteWithConcurrencyRetryAsync, iki kullanıcının tam olarak aynı anda
+        // kaydetmesi durumunda NumberSequence'ın RowVersion çakışmasını (DbUpdateConcurrencyException)
+        // yakalayıp taze bir transaction'la otomatik tekrar dener — bkz. DocumentNumberGeneratorService.
+        var invoice = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync();
-
-            var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: null);
-            if (invoiceNumber is null)
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                return null;
-            }
+                await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-            var newInvoice = new Invoice
-            {
-                InvoiceType = form.InvoiceType,
-                Status = InvoiceStatus.Draft,
-                InvoiceNumber = invoiceNumber,
-                CreatedByUserId = createdByUserId
-            };
-            MapHeader(form, newInvoice);
-            await MapLinesAsync(form, newInvoice);
+                var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: null);
+                if (invoiceNumber is null)
+                {
+                    return null;
+                }
 
-            dbContext.Invoices.Add(newInvoice);
-            await dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return newInvoice;
+                var newInvoice = new Invoice
+                {
+                    InvoiceType = form.InvoiceType,
+                    Status = InvoiceStatus.Draft,
+                    InvoiceNumber = invoiceNumber,
+                    CreatedByUserId = createdByUserId
+                };
+                MapHeader(form, newInvoice);
+                await MapLinesAsync(form, newInvoice);
+
+                dbContext.Invoices.Add(newInvoice);
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return newInvoice;
+            });
         });
 
         if (invoice is null)
@@ -359,27 +364,31 @@ public sealed class InvoicesController(
 
         if (invoice.Status == InvoiceStatus.Draft)
         {
-            // Numara üretimi ve fatura güncellemesi TEK transaction içinde (bkz. Create'teki gerekçe).
-            var strategy = dbContext.Database.CreateExecutionStrategy();
-            var saved = await strategy.ExecuteAsync(async () =>
+            // Numara üretimi ve fatura güncellemesi TEK transaction içinde (bkz. Create'teki gerekçe,
+            // eşzamanlılık tekrar denemesi dahil).
+            var saved = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
             {
-                await using var transaction = await dbContext.Database.BeginTransactionAsync();
-
-                var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
-                if (invoiceNumber is null)
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
                 {
-                    return false;
-                }
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-                invoice.InvoiceNumber = invoiceNumber;
-                MapHeader(form, invoice);
-                invoice.Lines.Clear();
-                await MapLinesAsync(form, invoice);
-                invoice.UpdatedAtUtc = DateTime.UtcNow;
+                    var invoiceNumber = await ResolveInvoiceNumberWithinTransactionAsync(form, sequenceKey, excludeInvoiceId: invoice.Id);
+                    if (invoiceNumber is null)
+                    {
+                        return false;
+                    }
 
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
+                    invoice.InvoiceNumber = invoiceNumber;
+                    MapHeader(form, invoice);
+                    invoice.Lines.Clear();
+                    await MapLinesAsync(form, invoice);
+                    invoice.UpdatedAtUtc = DateTime.UtcNow;
+
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
             });
 
             if (!saved)

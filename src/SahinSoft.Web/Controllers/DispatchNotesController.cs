@@ -307,12 +307,12 @@ public sealed class DispatchNotesController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(DispatchNoteFormViewModel form)
+    private void ValidateLines(DispatchNoteFormViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("İrsaliyede en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "İrsaliyede en az bir satır bulunmalıdır.");
         }
     }
 

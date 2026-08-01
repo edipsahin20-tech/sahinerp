@@ -7,24 +7,59 @@ namespace SahinSoft.Web.Services;
 
 public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContext)
 {
-    public async Task<string> GenerateAsync(string sequenceKey, CancellationToken cancellationToken = default)
-    {
-        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
-        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
-        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+    public Task<string> GenerateAsync(string sequenceKey, CancellationToken cancellationToken = default) =>
+        ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
+            // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+            // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+            // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
 
-            var documentNumber = await GenerateWithinTransactionAsync(sequenceKey, cancellationToken);
+                var documentNumber = await GenerateWithinTransactionAsync(sequenceKey, cancellationToken);
 
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return documentNumber;
-        });
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return documentNumber;
+            });
+        }, cancellationToken);
+
+    // NumberSequence (EntityBase'ten gelen RowVersion aracılığıyla) iyimser eşzamanlılık kontrollü.
+    // Serializable transaction izolasyonu, iki eşzamanlı isteğin aynı sayacı okuyup her ikisinin de
+    // güncelleme denemesi durumunda birini SqlException (transient, EnableRetryOnFailure zaten
+    // yakalar) yerine DbUpdateConcurrencyException ile başarısız kılabiliyor — bu EF Core'un
+    // varsayılan "transient hata" listesinde OLMADIĞI için EnableRetryOnFailure bunu tekrar
+    // denemiyor. Bu yüzden ayrı bir dış tekrar deneme katmanı gerekiyor: kaybeden istek DbContext'in
+    // eski takip durumunu temizleyip sıfırdan (yeni transaction, taze okuma) tekrar dener. Yoğun
+    // eşzamanlı kayıt denemesinde (örn. iki kullanıcının aynı anda fatura kaydetmesi) numaranın
+    // rastgele bir hatayla başarısız olmaması için gerekli — canlıda 8 eşzamanlı istekle doğrulandı.
+    internal static async Task<T> ExecuteWithConcurrencyRetryAsync<T>(
+        ApplicationDbContext dbContext,
+        Func<Task<T>> operation,
+        CancellationToken cancellationToken = default,
+        int maxAttempts = 5)
+    {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maxAttempts)
+            {
+                foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+                await Task.Delay(Random.Shared.Next(10, 50) * attempt, cancellationToken);
+            }
+        }
+
+        throw new InvalidOperationException("İşlem yoğun eşzamanlı istek nedeniyle tamamlanamadı, lütfen tekrar deneyin.");
     }
 
     // GenerateAsync'in transaction/SaveChanges yönetmeyen çekirdeği — zaten açık bir transaction
@@ -86,21 +121,23 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
     // aynıysa asıl sayaç güncellenir; farklı, daha önce hiç kullanılmamış bir seriyse (ör. "EDP")
     // o seri için yeni, 1'den başlayan kendi sayacı otomatik oluşturulur — böylece her seri kendi
     // bağımsız sırasını takip eder, varsayılan serinin sayacı bundan etkilenmez.
-    public async Task EnsureAtLeastForSeriesAsync(string sequenceKey, string series, long minimumNextNumber, CancellationToken cancellationToken = default)
-    {
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+    public Task EnsureAtLeastForSeriesAsync(string sequenceKey, string series, long minimumNextNumber, CancellationToken cancellationToken = default) =>
+        ExecuteWithConcurrencyRetryAsync<object?>(dbContext, async () =>
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
 
-            await EnsureAtLeastForSeriesWithinTransactionAsync(sequenceKey, series, minimumNextNumber, cancellationToken);
+                await EnsureAtLeastForSeriesWithinTransactionAsync(sequenceKey, series, minimumNextNumber, cancellationToken);
 
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        });
-    }
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            });
+            return null;
+        }, cancellationToken);
 
     // EnsureAtLeastForSeriesAsync'in transaction/SaveChanges yönetmeyen çekirdeği — GenerateWithinTransactionAsync
     // ile aynı gerekçeyle: zaten açık bir transaction içinde çalışan çağıranlar (ör.

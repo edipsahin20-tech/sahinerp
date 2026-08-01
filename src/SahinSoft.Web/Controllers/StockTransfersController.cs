@@ -278,12 +278,12 @@ public sealed class StockTransfersController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(StockTransferFormViewModel form)
+    private void ValidateLines(StockTransferFormViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Transferde en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Transferde en az bir satır bulunmalıdır.");
         }
     }
 

@@ -298,12 +298,12 @@ public sealed class StockSlipsController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(StockSlipFormViewModel form)
+    private void ValidateLines(StockSlipFormViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Fişte en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Fişte en az bir satır bulunmalıdır.");
         }
     }
 

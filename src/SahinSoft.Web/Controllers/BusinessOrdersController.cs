@@ -318,12 +318,12 @@ public sealed class BusinessOrdersController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(BusinessOrderFormViewModel form)
+    private void ValidateLines(BusinessOrderFormViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Siparişte en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Siparişte en az bir satır bulunmalıdır.");
         }
     }
 

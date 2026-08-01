@@ -271,12 +271,12 @@ public sealed class InventoryCountsController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(InventoryCountFormViewModel form)
+    private void ValidateLines(InventoryCountFormViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Sayımda en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Sayımda en az bir satır bulunmalıdır.");
         }
     }
 

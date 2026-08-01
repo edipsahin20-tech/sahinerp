@@ -1038,7 +1038,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
             entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
             entity.HasIndex(x => new { x.ExpenseCategoryId, x.ExpenseDateUtc });
-            entity.HasIndex(x => x.DocumentNumber);
+            // Diğer tüm evrak türlerinde (Invoice, PaymentReceipt, StockSlip, BusinessOrder,
+            // DispatchNote, NegotiableInstrument, StockTransfer, InventoryCount) belge numarası
+            // veritabanı seviyesinde unique — Masraf'ta eksikti, eşzamanlılık altında son
+            // güvenlik ağı (uygulama seviyesindeki transaction koruması dışında) olması için eklendi.
+            entity.HasIndex(x => x.DocumentNumber).IsUnique();
             entity.HasOne(x => x.ExpenseCategory).WithMany(x => x.Expenses).HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.TaxRate).WithMany().HasForeignKey(x => x.TaxRateId).OnDelete(DeleteBehavior.SetNull);

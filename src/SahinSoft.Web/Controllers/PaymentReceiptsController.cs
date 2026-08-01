@@ -321,7 +321,7 @@ public sealed class PaymentReceiptsController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static void ValidateLines(PaymentReceiptFormViewModel form)
+    private void ValidateLines(PaymentReceiptFormViewModel form)
     {
         form.Lines = form.Lines
             .Where(x => x.FinancialAccountId is not null && x.Amount > 0)
@@ -329,7 +329,7 @@ public sealed class PaymentReceiptsController(
 
         if (form.Lines.Count == 0)
         {
-            throw new InvalidOperationException("Fişte en az bir satır bulunmalıdır.");
+            ModelState.AddModelError(string.Empty, "Fişte en az bir satır bulunmalıdır.");
         }
     }
 
