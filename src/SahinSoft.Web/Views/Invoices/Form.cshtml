@@ -636,12 +636,29 @@
                         });
                 }
 
+                // Formda daha önce dokunulmamış (ürün/stok kodu/miktar boş) bir satır varsa —
+                // tipik olarak sayfa ilk açıldığında gelen tek boş satır — F5 ile aktarılan ilk
+                // kalem bu satırı doldursun; her zaman yeni satır eklemek üst satırı boş bırakıp
+                // veriyi bir alt satıra kaydırıyordu.
+                function findBlankRow() {
+                    return Array.from(linesBody.querySelectorAll('.line-row')).find(function (r) {
+                        // Miktar alanı her yeni satırda varsayılan "1" değeriyle geliyor — kullanıcı
+                        // dokunmamış olsa bile dolu görünür, bu yüzden boşluk sinyali olarak
+                        // SAYILMAZ. Tek güvenilir ölçüt: ürün hiç seçilmemiş (ne ProductId ne kod).
+                        var productHidden = r.querySelector('input[id$="__ProductId"]');
+                        var codeInput = r.querySelector('.stock-code-input');
+                        var hasProduct = productHidden && productHidden.value;
+                        var hasCode = codeInput && codeInput.value;
+                        return !hasProduct && !hasCode;
+                    });
+                }
+
                 confirmBtn.addEventListener('click', function () {
                     var checked = Array.from(bodyEl.querySelectorAll('.dispatch-select:checked'));
                     checked.forEach(function (cb) {
                         var dispatch = loadedDispatches[Number(cb.getAttribute('data-idx'))];
                         dispatch.lines.forEach(function (line) {
-                            var row = addRow();
+                            var row = findBlankRow() || addRow();
                             row.querySelector('.dispatch-line-id-input').value = line.dispatchNoteLineId;
                             var productHidden = row.querySelector('input[id$="__ProductId"]');
                             var productDisplay = row.querySelector('input[id$="__ProductId_display"]');
