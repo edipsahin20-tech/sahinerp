@@ -8,6 +8,7 @@
 
 <form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
     <input asp-for="Id" type="hidden" />
+    <input asp-for="SubmissionKey" type="hidden" />
     <input asp-for="ReceiptType" type="hidden" />
 
     <div class="erp-toolbar">

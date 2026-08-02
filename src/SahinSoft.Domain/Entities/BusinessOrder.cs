@@ -18,6 +18,9 @@ public sealed class BusinessOrder : EntityBase
     public decimal GrandTotal { get; set; }
     public string? Notes { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
     public int? QuoteId { get; set; }

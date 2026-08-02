@@ -13,6 +13,9 @@ public sealed class DispatchNote : EntityBase
     public string? CarrierName { get; set; }
     public string? Notes { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? CancelledAtUtc { get; set; }

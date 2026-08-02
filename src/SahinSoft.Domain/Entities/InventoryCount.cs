@@ -9,6 +9,9 @@ public sealed class InventoryCount : EntityBase
     public DateTime CountDateUtc { get; set; } = DateTime.UtcNow;
     public InventoryCountStatus Status { get; set; } = InventoryCountStatus.Draft;
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? CancelledAtUtc { get; set; }

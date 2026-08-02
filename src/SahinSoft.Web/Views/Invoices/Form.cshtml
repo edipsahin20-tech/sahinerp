@@ -16,6 +16,9 @@
             <h1>@(isSales ? "Satış Faturası" : "Alış Faturası")</h1>
             <span class="erp-toolbar-meta">@(isEdit ? (Model.Status == InvoiceStatus.Approved ? "Onaylı fatura düzenleniyor" : "Taslak düzenleniyor") : "Yeni evrak")</span>
         </div>
+        <a class="btn btn-erp-outline btn-sm" asp-action="Index" asp-controller="Invoices" asp-route-type="@Model.InvoiceType" asp-route-status="@InvoiceStatus.Draft">
+            <i class="fa-solid fa-list-check"></i> Taslağa Git
+        </a>
     </div>
 
     @if (isEdit && Model.Status == InvoiceStatus.Approved)
@@ -454,7 +457,6 @@
                 var targetRow;
                 if (isLastRow) {
                     targetRow = addRow();
-                    addRow();
                     recalcTotals();
                 } else {
                     targetRow = allRows[allRows.indexOf(row) + 1];

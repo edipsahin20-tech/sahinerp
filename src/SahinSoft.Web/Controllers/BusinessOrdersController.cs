@@ -77,20 +77,72 @@ public sealed class BusinessOrdersController(
             return View("Form", form);
         }
 
-        var order = new BusinessOrder
-        {
-            OrderType = form.OrderType,
-            Status = BusinessDocumentStatus.Draft,
-            OrderNumber = await documentNumberGenerator.GenerateAsync(
-                form.OrderType == InvoiceType.Sales ? "SALES_ORDER" : "PURCHASE_ORDER"),
-            CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty
-        };
-        MapHeader(form, order);
-        await MapLinesAsync(form, order);
-        ComputeTotals(order);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var sequenceKey = form.OrderType == InvoiceType.Sales ? "SALES_ORDER" : "PURCHASE_ORDER";
 
-        dbContext.BusinessOrders.Add(order);
-        await dbContext.SaveChangesAsync();
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. BusinessOrder.SubmissionKey.
+        var existingBySubmission = await dbContext.BusinessOrders
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "Sipariş taslağı zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Details), new { id = existingBySubmission.Id });
+        }
+
+        BusinessOrder order;
+        try
+        {
+            order = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var newOrder = new BusinessOrder
+                    {
+                        OrderType = form.OrderType,
+                        Status = BusinessDocumentStatus.Draft,
+                        OrderNumber = await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey
+                    };
+                    MapHeader(form, newOrder);
+                    await MapLinesAsync(form, newOrder);
+                    ComputeTotals(newOrder);
+
+                    dbContext.BusinessOrders.Add(newOrder);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newOrder;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            // Bu isteğin transaction'ı geri alındı. SQL Server tek bir INSERT'te birden fazla unique
+            // index ihlalinden sadece birini raporlar — bu yüzden hata mesajının içeriğine güvenmek
+            // yerine doğrudan "bu SubmissionKey ile zaten bir kayıt var mı?" kontrolü yapılır. Varsa:
+            // diğer eşzamanlı istek başarıyla kaydetti, bu istek onun sonucuna yönlendirilir. Yoksa:
+            // gerçekten farklı bir çakışma — kullanıcıya araç çubuğu korunarak tekrar deneme mesajı
+            // gösterilir.
+            var existing = await dbContext.BusinessOrders.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "Sipariş taslağı zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Details), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "BusinessOrders",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.OrderType.ToString() }
+            };
+            return View("Form", form);
+        }
 
         TempData["Success"] = "Sipariş taslağı oluşturuldu.";
         return RedirectToAction(nameof(Details), new { id = order.Id });
@@ -320,6 +372,21 @@ public sealed class BusinessOrdersController(
 
     private void ValidateLines(BusinessOrderFormViewModel form)
     {
+        // Boş bırakılan satırlar hata değildir, sessizce göz ardı edilir — ama ASP.NET Core'un
+        // otomatik model doğrulaması bu satırlar için eklemiş olabileceği ModelState hatalarını da
+        // (ör. ProductId [Required]) temizlemek gerekir, yoksa satır çıkarılmış olsa bile
+        // ModelState.IsValid false kalmaya devam eder.
+        for (var i = 0; i < form.Lines.Count; i++)
+        {
+            if (form.Lines[i].ProductId is null)
+            {
+                foreach (var key in ModelState.Keys.Where(k => k.StartsWith($"{nameof(form.Lines)}[{i}].", StringComparison.Ordinal)).ToList())
+                {
+                    ModelState.Remove(key);
+                }
+            }
+        }
+
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {

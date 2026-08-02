@@ -69,17 +69,65 @@ public sealed class StockTransfersController(
             return View("Form", form);
         }
 
-        var transfer = new StockTransfer
-        {
-            Status = StockTransferStatus.Draft,
-            TransferNumber = await documentNumberGenerator.GenerateAsync("STOCK_TRANSFER"),
-            CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty
-        };
-        MapHeader(form, transfer);
-        await MapLinesAsync(form, transfer);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
-        dbContext.StockTransfers.Add(transfer);
-        await dbContext.SaveChangesAsync();
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. StockTransfer.SubmissionKey.
+        var existingBySubmission = await dbContext.StockTransfers
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "Transfer taslağı zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Details), new { id = existingBySubmission.Id });
+        }
+
+        StockTransfer transfer;
+        try
+        {
+            transfer = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var newTransfer = new StockTransfer
+                    {
+                        Status = StockTransferStatus.Draft,
+                        TransferNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("STOCK_TRANSFER"),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey
+                    };
+                    MapHeader(form, newTransfer);
+                    await MapLinesAsync(form, newTransfer);
+
+                    dbContext.StockTransfers.Add(newTransfer);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newTransfer;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            // Bu isteğin transaction'ı geri alındı. SQL Server tek bir INSERT'te birden fazla unique
+            // index ihlalinden sadece birini raporlar — bu yüzden hata mesajının içeriğine güvenmek
+            // yerine doğrudan "bu SubmissionKey ile zaten bir kayıt var mı?" kontrolü yapılır. Varsa:
+            // diğer eşzamanlı istek başarıyla kaydetti, bu istek onun sonucuna yönlendirilir. Yoksa:
+            // gerçekten farklı bir çakışma — kullanıcıya araç çubuğu korunarak tekrar deneme mesajı
+            // gösterilir.
+            var existing = await dbContext.StockTransfers.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "Transfer taslağı zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Details), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "StockTransfers" };
+            return View("Form", form);
+        }
 
         TempData["Success"] = "Transfer taslağı oluşturuldu.";
         return RedirectToAction(nameof(Details), new { id = transfer.Id });
@@ -280,6 +328,21 @@ public sealed class StockTransfersController(
 
     private void ValidateLines(StockTransferFormViewModel form)
     {
+        // Boş bırakılan satırlar hata değildir, sessizce göz ardı edilir — ama ASP.NET Core'un
+        // otomatik model doğrulaması bu satırlar için eklemiş olabileceği ModelState hatalarını da
+        // (ör. ProductId [Required]) temizlemek gerekir, yoksa satır çıkarılmış olsa bile
+        // ModelState.IsValid false kalmaya devam eder.
+        for (var i = 0; i < form.Lines.Count; i++)
+        {
+            if (form.Lines[i].ProductId is null)
+            {
+                foreach (var key in ModelState.Keys.Where(k => k.StartsWith($"{nameof(form.Lines)}[{i}].", StringComparison.Ordinal)).ToList())
+                {
+                    ModelState.Remove(key);
+                }
+            }
+        }
+
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {

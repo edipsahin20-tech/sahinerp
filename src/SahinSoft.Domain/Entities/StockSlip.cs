@@ -11,6 +11,12 @@ public sealed class StockSlip : EntityBase
     public StockSlipStatus Status { get; set; } = StockSlipStatus.Draft;
     public string? Description { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması: Create formu her açıldığında yeni bir değer üretilir
+    // (gizli alan olarak forma gömülür). Aynı gönderim iki kez sunucuya ulaşırsa (CreatedByUserId,
+    // SubmissionKey) üzerindeki unique index ikinci kaydı reddeder; controller bu durumu "zaten
+    // oluşturulmuş" olarak ele alıp mevcut fişin detayına yönlendirir — iki ayrı fiş oluşmaz.
+    public Guid? SubmissionKey { get; set; }
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? CancelledAtUtc { get; set; }

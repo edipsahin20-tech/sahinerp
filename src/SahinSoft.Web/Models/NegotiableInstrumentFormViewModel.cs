@@ -7,6 +7,9 @@ public sealed class NegotiableInstrumentFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. NegotiableInstrument.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public NegotiableInstrumentType InstrumentType { get; set; }
 
     public string? InstrumentNumber { get; set; }

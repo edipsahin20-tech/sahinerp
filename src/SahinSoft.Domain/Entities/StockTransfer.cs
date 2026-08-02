@@ -10,6 +10,9 @@ public sealed class StockTransfer : EntityBase
     public StockTransferStatus Status { get; set; } = StockTransferStatus.Draft;
     public string? Description { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? CancelledAtUtc { get; set; }

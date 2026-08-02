@@ -14,6 +14,9 @@ public sealed class PaymentReceipt : EntityBase
     public decimal TotalAmount { get; set; }
     public string? Description { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public PaymentReceiptStatus Status { get; set; } = PaymentReceiptStatus.Draft;
     public string? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }

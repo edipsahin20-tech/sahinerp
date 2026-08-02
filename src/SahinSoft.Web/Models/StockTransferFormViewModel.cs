@@ -6,6 +6,9 @@ public sealed class StockTransferFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. StockTransfer.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public string? TransferNumber { get; set; }
 
     [Required(ErrorMessage = "Çıkış deposu seçilmelidir.")]

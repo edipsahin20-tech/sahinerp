@@ -7,6 +7,9 @@ public sealed class StockSlipFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public StockSlipType SlipType { get; set; }
 
     public string? SlipNumber { get; set; }

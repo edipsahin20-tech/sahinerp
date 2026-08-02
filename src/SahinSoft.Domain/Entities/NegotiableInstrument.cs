@@ -9,6 +9,10 @@ public sealed class NegotiableInstrument : EntityBase
     public InstrumentDirection Direction { get; set; }
     public InstrumentStatus Status { get; set; } = InstrumentStatus.Portfolio;
     public string InstrumentNumber { get; set; } = string.Empty;
+    public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public DateTime IssueDateUtc { get; set; }
     public DateTime DueDateUtc { get; set; }
     public string CurrencyCode { get; set; } = "TRY";

@@ -5,6 +5,10 @@ namespace SahinSoft.Domain.Entities;
 public sealed class Expense : EntityBase
 {
     public string DocumentNumber { get; set; } = string.Empty;
+    public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public DateTime ExpenseDateUtc { get; set; } = DateTime.UtcNow;
     public string Description { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";

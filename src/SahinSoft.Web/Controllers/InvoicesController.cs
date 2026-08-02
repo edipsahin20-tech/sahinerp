@@ -657,6 +657,22 @@ public sealed class InvoicesController(
 
     private void ValidateLines(InvoiceFormViewModel form)
     {
+        // Kullanıcının doldurmadan bıraktığı tamamen boş satırlar (ör. Enter'a fazla basılması,
+        // satır ekleyip vazgeçilmesi) gerçek bir hata değildir — sessizce göz ardı edilir. ASP.NET
+        // Core'un otomatik model doğrulaması bu satırlar için ModelState hatası eklemiş olabilir
+        // (ör. ProductId [Required]); satırı listeden çıkarmadan önce o hataları da temizlemek
+        // gerekir, yoksa ModelState.IsValid, satır zaten çıkarılmış olsa bile false kalmaya devam eder.
+        for (var i = 0; i < form.Lines.Count; i++)
+        {
+            if (form.Lines[i].ProductId is null)
+            {
+                foreach (var key in ModelState.Keys.Where(k => k.StartsWith($"{nameof(form.Lines)}[{i}].", StringComparison.Ordinal)).ToList())
+                {
+                    ModelState.Remove(key);
+                }
+            }
+        }
+
         form.Lines = form.Lines
             .Where(x => x.ProductId is not null)
             .ToList();

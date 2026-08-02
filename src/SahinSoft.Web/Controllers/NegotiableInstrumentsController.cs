@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -70,17 +71,70 @@ public sealed class NegotiableInstrumentsController(
             return View("Form", form);
         }
 
-        var instrument = new NegotiableInstrument
-        {
-            InstrumentType = form.InstrumentType,
-            Status = InstrumentStatus.Portfolio,
-            InstrumentNumber = await documentNumberGenerator.GenerateAsync(
-                form.InstrumentType == NegotiableInstrumentType.Cheque ? "NEGOTIABLE_CHEQUE" : "NEGOTIABLE_NOTE")
-        };
-        Map(form, instrument);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var sequenceKey = form.InstrumentType == NegotiableInstrumentType.Cheque ? "NEGOTIABLE_CHEQUE" : "NEGOTIABLE_NOTE";
 
-        dbContext.NegotiableInstruments.Add(instrument);
-        await dbContext.SaveChangesAsync();
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. NegotiableInstrument.SubmissionKey.
+        var existingBySubmission = await dbContext.NegotiableInstruments
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "Kayıt zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Details), new { id = existingBySubmission.Id });
+        }
+
+        NegotiableInstrument instrument;
+        try
+        {
+            instrument = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var newInstrument = new NegotiableInstrument
+                    {
+                        InstrumentType = form.InstrumentType,
+                        Status = InstrumentStatus.Portfolio,
+                        InstrumentNumber = await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey
+                    };
+                    Map(form, newInstrument);
+
+                    dbContext.NegotiableInstruments.Add(newInstrument);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newInstrument;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            // Bu isteğin transaction'ı geri alındı. SQL Server tek bir INSERT'te birden fazla unique
+            // index ihlalinden sadece birini raporlar — bu yüzden hata mesajının içeriğine güvenmek
+            // yerine doğrudan "bu SubmissionKey ile zaten bir kayıt var mı?" kontrolü yapılır. Varsa:
+            // diğer eşzamanlı istek başarıyla kaydetti, bu istek onun sonucuna yönlendirilir. Yoksa:
+            // gerçekten farklı bir çakışma — kullanıcıya araç çubuğu korunarak tekrar deneme mesajı
+            // gösterilir.
+            var existing = await dbContext.NegotiableInstruments.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "Kayıt zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Details), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel
+            {
+                Controller = "NegotiableInstruments",
+                CreateRouteValues = new Dictionary<string, string> { ["type"] = form.InstrumentType.ToString() }
+            };
+            return View("Form", form);
+        }
 
         TempData["Success"] = "Kayıt oluşturuldu.";
         return RedirectToAction(nameof(Details), new { id = instrument.Id });

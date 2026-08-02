@@ -7,6 +7,9 @@ public sealed class BusinessOrderFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. BusinessOrder.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public InvoiceType OrderType { get; set; }
 
     public string? OrderNumber { get; set; }

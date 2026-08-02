@@ -7,6 +7,9 @@ public sealed class PaymentReceiptFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. PaymentReceipt.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public ReceiptType ReceiptType { get; set; }
 
     public string? ReceiptNumber { get; set; }

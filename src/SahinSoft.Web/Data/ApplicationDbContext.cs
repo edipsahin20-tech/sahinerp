@@ -572,6 +572,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => new { x.ReceiptType, x.ReceiptNumber }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. PaymentReceipt.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.CustomerId, x.ReceiptDateUtc });
             entity.HasOne(x => x.Customer)
                 .WithMany(x => x.PaymentReceipts)
@@ -845,6 +847,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.CountNumber).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. InventoryCount.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.WarehouseId, x.CountDateUtc });
             entity.HasOne(x => x.Warehouse)
                 .WithMany()
@@ -883,6 +887,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.SlipNumber).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.WarehouseId, x.SlipDateUtc });
             entity.HasOne(x => x.Warehouse)
                 .WithMany()
@@ -970,6 +976,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.HasIndex(x => new { x.OrderType, x.OrderNumber }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. BusinessOrder.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.CustomerId, x.OrderDateUtc });
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Quote).WithMany().HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.SetNull);
@@ -1004,6 +1012,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => new { x.DispatchType, x.DispatchNumber }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. DispatchNote.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.CustomerId, x.DispatchDateUtc });
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
@@ -1039,12 +1049,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.NetAmount).HasPrecision(18, 2);
             entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
             entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.HasIndex(x => new { x.ExpenseCategoryId, x.ExpenseDateUtc });
             // Diğer tüm evrak türlerinde (Invoice, PaymentReceipt, StockSlip, BusinessOrder,
             // DispatchNote, NegotiableInstrument, StockTransfer, InventoryCount) belge numarası
             // veritabanı seviyesinde unique — Masraf'ta eksikti, eşzamanlılık altında son
             // güvenlik ağı (uygulama seviyesindeki transaction koruması dışında) olması için eklendi.
             entity.HasIndex(x => x.DocumentNumber).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. Expense.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasOne(x => x.ExpenseCategory).WithMany(x => x.Expenses).HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.TaxRate).WithMany().HasForeignKey(x => x.TaxRateId).OnDelete(DeleteBehavior.SetNull);
@@ -1064,7 +1077,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.BranchName).HasMaxLength(150);
             entity.Property(x => x.AccountNumber).HasMaxLength(80);
             entity.Property(x => x.DrawerName).HasMaxLength(200);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             entity.HasIndex(x => new { x.InstrumentType, x.InstrumentNumber }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. NegotiableInstrument.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.Status, x.DueDateUtc });
             entity.HasIndex(x => new { x.CustomerId, x.DueDateUtc });
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
@@ -1107,6 +1123,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.TransferNumber).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. StockTransfer.SubmissionKey.
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasIndex(x => new { x.FromWarehouseId, x.TransferDateUtc });
             entity.HasIndex(x => new { x.ToWarehouseId, x.TransferDateUtc });
             entity.HasOne(x => x.FromWarehouse)

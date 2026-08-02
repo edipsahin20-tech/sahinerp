@@ -6,6 +6,9 @@ public sealed class ExpenseFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. Expense.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public string? DocumentNumber { get; set; }
 
     [Required(ErrorMessage = "Masraf kategorisi seçilmelidir.")]

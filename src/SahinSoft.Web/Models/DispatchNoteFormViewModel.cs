@@ -7,6 +7,9 @@ public sealed class DispatchNoteFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. DispatchNote.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public InvoiceType DispatchType { get; set; }
 
     public string? DispatchNumber { get; set; }

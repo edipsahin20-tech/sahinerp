@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -64,14 +65,63 @@ public sealed class ExpensesController(
             return View("Form", form);
         }
 
-        var expense = new Expense
-        {
-            DocumentNumber = await documentNumberGenerator.GenerateAsync("EXPENSE")
-        };
-        Map(form, expense);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
-        dbContext.Expenses.Add(expense);
-        await dbContext.SaveChangesAsync();
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. Expense.SubmissionKey.
+        var existingBySubmission = await dbContext.Expenses
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "Masraf zaten kaydedilmişti.";
+            return RedirectToAction(nameof(Edit), new { id = existingBySubmission.Id });
+        }
+
+        Expense expense;
+        try
+        {
+            expense = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var newExpense = new Expense
+                    {
+                        DocumentNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("EXPENSE"),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey
+                    };
+                    Map(form, newExpense);
+
+                    dbContext.Expenses.Add(newExpense);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newExpense;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            // Bu isteğin transaction'ı geri alındı. SQL Server tek bir INSERT'te birden fazla unique
+            // index ihlalinden sadece birini raporlar — bu yüzden hata mesajının içeriğine güvenmek
+            // yerine doğrudan "bu SubmissionKey ile zaten bir kayıt var mı?" kontrolü yapılır. Varsa:
+            // diğer eşzamanlı istek başarıyla kaydetti, bu istek onun sonucuna yönlendirilir. Yoksa:
+            // gerçekten farklı bir çakışma — kullanıcıya araç çubuğu korunarak tekrar deneme mesajı
+            // gösterilir.
+            var existing = await dbContext.Expenses.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "Masraf zaten kaydedilmişti.";
+                return RedirectToAction(nameof(Edit), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "Expenses" };
+            return View("Form", form);
+        }
 
         TempData["Success"] = "Masraf kaydedildi.";
         return RedirectToAction(nameof(Index));

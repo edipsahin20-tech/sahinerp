@@ -6,6 +6,9 @@ public sealed class InventoryCountFormViewModel
 {
     public int Id { get; set; }
 
+    // Çift tıklama/mükerrer POST koruması — bkz. InventoryCount.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
+
     public string? CountNumber { get; set; }
 
     [Required(ErrorMessage = "Depo seçilmelidir.")]
