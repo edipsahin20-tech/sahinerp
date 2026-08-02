@@ -152,6 +152,30 @@ public sealed class InvoicePostingService(
 
         if (invoice.PaymentSchedules.Any(x => x.PaidAmount > 0))
         {
+            // Legacy mutabakat: PaymentReceiptPostingService.CancelCoreAsync'e PaidAmount reversal'ı
+            // eklenmeden ÖNCE iptal edilmiş fişler yüzünden PaidAmount stale kalmış olabilir (örn.
+            // AF.00054/AF.00055 — TED.00003/TED.00004 eski kodla iptal edildi). Sadece açık FK
+            // (PaymentReceipt.InvoiceId) ile bağlı fişlere bakılır; hepsi Cancelled ve aktif fiş
+            // yoksa gerçek aktif toplam zaten 0'dır, PaidAmount ona çekilir. Aktif bir fiş varsa
+            // dokunulmaz ve aşağıdaki guard iptali doğru şekilde engellemeye devam eder.
+            var linkedReceipts = await dbContext.PaymentReceipts
+                .Where(x => x.InvoiceId == invoice.Id)
+                .ToListAsync(cancellationToken);
+
+            var allLinkedReceiptsCancelled = linkedReceipts.Count > 0
+                && linkedReceipts.All(x => x.Status == PaymentReceiptStatus.Cancelled);
+
+            if (allLinkedReceiptsCancelled)
+            {
+                foreach (var schedule in invoice.PaymentSchedules)
+                {
+                    schedule.PaidAmount = 0;
+                }
+            }
+        }
+
+        if (invoice.PaymentSchedules.Any(x => x.PaidAmount > 0))
+        {
             throw new InvalidOperationException("Tahsilatı/ödemesi yapılmış fatura iptal edilemez.");
         }
 
@@ -398,7 +422,19 @@ public sealed class InvoicePostingService(
             line.Product.UpdatedAtUtc = DateTime.UtcNow;
         }
 
+        // DİKKAT: "invoice.AccountTransactions içindeki son kayıt" YANLIŞ bir seçim ölçütüdür —
+        // Kapalı Fatura'nın otomatik ödeme fişi de InvoiceId ile bu koleksiyona dahildir
+        // (PaymentReceiptPostingService.PostReceiptAsync satır ~103), ama o fişin İPTALİ kendi ters
+        // kaydını InvoiceId ETİKETLEMEDEN oluşturur (PaymentReceiptPostingService.CancelCoreAsync).
+        // Bu yüzden "son kayıt" heuristiği, fiş zaten iptal edilmiş/ters kaydedilmiş olsa bile hâlâ
+        // fişin ORİJİNAL (henüz ters kaydedilmemiş görünen) hareketini seçip onu BİR DAHA ters
+        // kaydediyordu — üretimde AF.00054/AF.00055 üzerinde mükerrer ters kayıt olarak bulundu ve
+        // doğrulandı. Doğru ölçüt: faturanın KENDİ orijinal satış/alış hareketi — DocumentNumber
+        // faturanın numarasıyla birebir eşleşen ve kendisi bir ters kayıt olmayan (ReversalOfId null)
+        // tek satır. Kapalı Fatura'nın fiş hareketi asla bu numarayı taşımaz (kendi ReceiptNumber'ını
+        // taşır), bu yüzden bu filtre onu hiçbir zaman yanlışlıkla seçmez.
         var lastAccountTransaction = invoice.AccountTransactions
+            .Where(x => x.DocumentNumber == invoice.InvoiceNumber && x.ReversalOfId is null)
             .OrderByDescending(x => x.Id)
             .FirstOrDefault();
         if (lastAccountTransaction is not null)

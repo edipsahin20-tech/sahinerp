@@ -53,11 +53,40 @@ public sealed class InvoiceCancellationOrchestrationService(
                 "Faturaya bağlı aktif bir tahsilat/tediye bulunamadı; normal İptal Et akışını kullanın.");
         }
 
+        // Her adım kendi başına commit ettiği için (yukarıdaki atomiklik notuna bakın), hangi
+        // fişlerin gerçekten iptal edildiğini burada takip ediyoruz — bir sonraki adım hata verirse
+        // kullanıcıya "hiçbir şey olmadı" ile "bir kısmı zaten iptal oldu, kalan işi tamamla" arasındaki
+        // farkı net biçimde göstermek için.
+        var cancelledReceiptNumbers = new List<string>();
         foreach (var receipt in activeReceipts)
         {
-            await paymentReceiptPostingService.CancelAsync(receipt.Id, cancelledByUserId, reason, cancellationToken);
+            try
+            {
+                await paymentReceiptPostingService.CancelAsync(receipt.Id, cancelledByUserId, reason, cancellationToken);
+                cancelledReceiptNumbers.Add(receipt.ReceiptNumber);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ConcurrencyRetryExhaustedException)
+            {
+                var progress = cancelledReceiptNumbers.Count > 0
+                    ? $"Şu fiş(ler) başarıyla iptal edildi: {string.Join(", ", cancelledReceiptNumbers)}. "
+                    : "Henüz hiçbir fiş iptal edilmedi. ";
+                throw new InvalidOperationException(
+                    $"{progress}{receipt.ReceiptNumber} iptal edilirken hata oluştu: {ex.Message} " +
+                    "Fatura HENÜZ İPTAL EDİLMEDİ. Kalan fiş(ler)i ve faturayı kontrol edip işlemi tekrar deneyin.", ex);
+            }
         }
 
-        await invoicePostingService.CancelAsync(invoiceId, cancelledByUserId, reason, cancellationToken);
+        try
+        {
+            await invoicePostingService.CancelAsync(invoiceId, cancelledByUserId, reason, cancellationToken);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ConcurrencyRetryExhaustedException)
+        {
+            throw new InvalidOperationException(
+                $"Bağlı fiş(ler) ({string.Join(", ", cancelledReceiptNumbers)}) başarıyla iptal edildi, ancak faturanın " +
+                $"kendisi iptal edilirken hata oluştu: {ex.Message} Fatura hâlâ ONAYLI durumda ve AÇIK kalmıştır " +
+                "(bu tüm işlem tek bir veritabanı transaction'ı değildir); lütfen faturayı normal İptal Et akışıyla " +
+                "tekrar deneyin.", ex);
+        }
     }
 }

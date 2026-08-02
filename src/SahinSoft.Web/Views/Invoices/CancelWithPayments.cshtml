@@ -18,6 +18,9 @@
     Bu fatura, aşağıdaki aktif tahsilat/tediye fişleri nedeniyle normal İptal Et akışıyla kapatılamıyor.
     Devam ederseniz önce bu fişler, ardından fatura sırayla iptal edilecek. İptal işlemi kayıtları silmez;
     her belge için ters (reversal) hareket üretilir ve orijinal kayıtlar denetim izi olarak korunur.
+    <strong>Bu işlem TEK bir veritabanı transaction'ı DEĞİLDİR</strong> — her belge kendi iptalini ayrı
+    ayrı tamamlar. Bir aşamada hata olursa, o ana kadar başarıyla iptal edilenler geçerli kalır; hata
+    mesajı hangi belgelerin iptal edildiğini ve neyin yeniden denenmesi gerektiğini gösterir.
 </div>
 
 <div class="erp-panel">
