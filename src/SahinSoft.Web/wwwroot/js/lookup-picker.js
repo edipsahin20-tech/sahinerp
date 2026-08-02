@@ -160,7 +160,7 @@
         var resultsEl = modalEl.querySelector(".lookup-modal-results");
         resultsEl.innerHTML = '<div class="text-center text-secondary py-3">Aranıyor...</div>';
 
-        var url = endpoint + "?q=" + encodeURIComponent(term || "");
+        var url = appendQuery(endpoint, "q", term);
         if (currentMode() === "invoice") {
             var fromVal = modalEl.querySelector(".lookup-modal-from").value;
             var toVal = modalEl.querySelector(".lookup-modal-to").value;
@@ -280,6 +280,14 @@
         highlightRow();
     }
 
+    // endpoint bazen zaten bir sorgu dizesi taşıyor (ör. "/Lookup/Customers?type=Supplier") —
+    // bu durumda "?q=..." eklemek yerine "&q=..." eklenmeli, aksi halde tarayıcı ikinci "?"yi
+    // literal bir karakter olarak "type" parametresinin değerine dahil eder ve "q" hiç ayrıştırılmaz.
+    function appendQuery(endpoint, key, value) {
+        var sep = endpoint.indexOf("?") !== -1 ? "&" : "?";
+        return endpoint + sep + key + "=" + encodeURIComponent(value || "");
+    }
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -377,7 +385,7 @@
         quickSearchTimer = setTimeout(function () {
             var endpoint = input.getAttribute("data-lookup-endpoint");
             var mySeq = ++quickSearchSeq;
-            fetch(endpoint + "?q=" + encodeURIComponent(value))
+            fetch(appendQuery(endpoint, "q", value))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (mySeq !== quickSearchSeq) return;
@@ -437,7 +445,7 @@
 
         if (e.key === "Enter") {
             var endpoint = input.getAttribute("data-lookup-endpoint");
-            fetch(endpoint + "?q=" + encodeURIComponent(value))
+            fetch(appendQuery(endpoint, "q", value))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     var items = data.items || [];
