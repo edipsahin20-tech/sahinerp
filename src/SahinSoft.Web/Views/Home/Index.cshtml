@@ -1,126 +1,239 @@
+@using System.Text.Json
+@using SahinSoft.Domain.Enums
 @model SahinSoft.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = "Yönetim Paneli";
+    var stockTotal = Math.Max(1, Model.NormalStockCount + Model.CriticalStockCount + Model.OutOfStockCount + Model.UntrackedStockCount);
+    var normalEnd = Model.NormalStockCount * 100m / stockTotal;
+    var criticalEnd = normalEnd + (Model.CriticalStockCount * 100m / stockTotal);
+    var outEnd = criticalEnd + (Model.OutOfStockCount * 100m / stockTotal);
+    var normalEndCss = normalEnd.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    var criticalEndCss = criticalEnd.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    var outEndCss = outEnd.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    var chartData = JsonSerializer.Serialize(new
+    {
+        cash = new
+        {
+            labels = Model.DailyCashFlowStats.Select(x => x.DateUtc.ToString("dd.MM")),
+            collection = Model.DailyCashFlowStats.Select(x => x.CollectionTotal),
+            payment = Model.DailyCashFlowStats.Select(x => x.PaymentTotal)
+        },
+        invoices = new
+        {
+            labels = Model.DailyInvoiceStats.TakeLast(7).Select(x => x.DateUtc.ToString("dd.MM")),
+            sales = Model.DailyInvoiceStats.TakeLast(7).Select(x => x.SalesTotal),
+            purchase = Model.DailyInvoiceStats.TakeLast(7).Select(x => x.PurchaseTotal)
+        }
+    });
 }
 
-<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
-    <div>
-        <p class="text-primary fw-semibold mb-1" style="letter-spacing: 0.04em; font-size: 0.78rem;">ŞAHİNSOFT YÖNETİM SİSTEMİ</p>
-        <h1 class="h2 mb-1">Yönetim Paneli</h1>
-    </div>
-    <form method="get" class="d-flex flex-wrap align-items-end gap-2">
-        <div class="erp-field mb-0">
-            <label>Başlangıç Tarihi</label>
-            <input type="date" name="from" value="@(Model.FilterFrom?.ToString("yyyy-MM-dd"))" class="form-control" style="max-width: 160px;" />
-        </div>
-        <div class="erp-field mb-0">
-            <label>Bitiş Tarihi</label>
-            <input type="date" name="to" value="@(Model.FilterTo?.ToString("yyyy-MM-dd"))" class="form-control" style="max-width: 160px;" />
-        </div>
-        <button type="submit" class="btn btn-erp-primary">Uygula</button>
-        @if (Model.FilterFrom.HasValue || Model.FilterTo.HasValue)
-        {
-            <a asp-controller="Home" asp-action="Index" class="btn btn-erp-outline">Temizle</a>
-        }
-    </form>
-</div>
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-status="Approved" class="erp-kpi-card erp-kpi-pink">
-            <div class="erp-kpi-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
-            </div>
-            <div>
-                <div class="erp-kpi-label">Alış Faturası Toplamı</div>
-                <div class="erp-kpi-value">@Model.PurchaseInvoiceTotal.ToString("N2") ₺</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-status="Approved" class="erp-kpi-card erp-kpi-teal">
-            <div class="erp-kpi-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
-            </div>
-            <div>
-                <div class="erp-kpi-label">Satış Faturası Toplamı</div>
-                <div class="erp-kpi-value">@Model.SalesInvoiceTotal.ToString("N2") ₺</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Customers" asp-action="Index" class="erp-kpi-card erp-kpi-amber">
-            <div class="erp-kpi-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            </div>
-            <div>
-                <div class="erp-kpi-label">Toplam Borç</div>
-                <div class="erp-kpi-value">@Model.TotalDebt.ToString("N2") ₺</div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a asp-controller="Customers" asp-action="Index" class="erp-kpi-card erp-kpi-violet">
-            <div class="erp-kpi-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            </div>
-            <div>
-                <div class="erp-kpi-label">Toplam Alacak</div>
-                <div class="erp-kpi-value">@Model.TotalReceivable.ToString("N2") ₺</div>
-            </div>
-        </a>
-    </div>
-</div>
+@section Head {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
 
-<div class="row g-3">
-    <div class="col-12 col-lg-7">
-        <div class="erp-panel h-100">
-            <div class="erp-panel-header">Son 14 Gün &middot; Fatura Hareketleri</div>
-            <div class="erp-panel-body">
-                @{
-                    var maxDailyTotal = Model.DailyInvoiceStats.Count > 0
-                        ? Math.Max(1, Model.DailyInvoiceStats.Max(x => Math.Max(x.SalesTotal, x.PurchaseTotal)))
-                        : 1;
-                }
-                <div class="erp-chart">
-                    @foreach (var day in Model.DailyInvoiceStats)
-                    {
-                        var salesHeight = Math.Round((double)(day.SalesTotal / maxDailyTotal) * 100, 1);
-                        var purchaseHeight = Math.Round((double)(day.PurchaseTotal / maxDailyTotal) * 100, 1);
-                        <div class="erp-chart-col" title="@day.DateUtc.ToString("dd.MM.yyyy") &#10;Satış: @day.SalesTotal.ToString("N2") (@day.SalesCount) &#10;Alış: @day.PurchaseTotal.ToString("N2") (@day.PurchaseCount)">
-                            <div class="erp-chart-bars">
-                                <div class="erp-chart-bar erp-chart-bar-sales" style="height: @(salesHeight)%;"></div>
-                                <div class="erp-chart-bar erp-chart-bar-purchase" style="height: @(purchaseHeight)%;"></div>
-                            </div>
-                            <div class="erp-chart-label">@day.DateUtc.ToString("dd.MM")</div>
-                        </div>
-                    }
-                </div>
-                <div class="erp-chart-legend">
-                    <span><i class="erp-legend-dot erp-legend-sales"></i>Satış Faturası</span>
-                    <span><i class="erp-legend-dot erp-legend-purchase"></i>Alış Faturası</span>
-                </div>
-            </div>
+<div class="dash-page">
+    <header class="dash-heading">
+        <div>
+            <div class="dash-eyebrow">ŞAHİNSOFT YÖNETİM SİSTEMİ</div>
+            <h1>Yönetim Paneli</h1>
+            <p>@Model.PeriodLabel döneminde işletmenizde neler oluyor?</p>
         </div>
-    </div>
-    <div class="col-12 col-lg-5">
-        <div class="erp-panel h-100">
-            <div class="erp-panel-header">En Çok Borçlu Cariler</div>
-            <div class="erp-panel-body">
-                @if (Model.TopCustomers.Count == 0)
+
+        <div class="dash-period-wrap">
+            <nav class="dash-period-tabs" aria-label="Tarih dönemi">
+                <a asp-action="Index" asp-route-period="today" class="@(Model.Period == "today" ? "active" : null)">Bugün</a>
+                <a asp-action="Index" asp-route-period="week" class="@(Model.Period == "week" ? "active" : null)">Bu Hafta</a>
+                <a asp-action="Index" asp-route-period="month" class="@(Model.Period == "month" ? "active" : null)">Bu Ay</a>
+                <button type="button" class="@(Model.Period == "custom" ? "active" : null)" data-bs-toggle="collapse" data-bs-target="#customPeriod">Özel</button>
+            </nav>
+            <form id="customPeriod" method="get" class="collapse dash-custom-period @(Model.Period == "custom" ? "show" : null)">
+                <input type="hidden" name="period" value="custom" />
+                <input type="date" name="from" value="@Model.FilterFrom.ToString("yyyy-MM-dd")" aria-label="Başlangıç tarihi" />
+                <span>–</span>
+                <input type="date" name="to" value="@Model.FilterTo.ToString("yyyy-MM-dd")" aria-label="Bitiş tarihi" />
+                <button type="submit">Uygula</button>
+            </form>
+        </div>
+    </header>
+
+    <section class="dash-kpi-grid" aria-label="Finansal özet">
+        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-status="Approved" class="dash-kpi dash-kpi-teal">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-cart-shopping"></i></span>
+            <span><small>@Model.PeriodLabel Satış</small><strong>@Model.SalesInvoiceTotal.ToString("N2") ₺</strong><em>Onaylı satış faturaları</em></span>
+        </a>
+        <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-status="Approved" class="dash-kpi dash-kpi-blue">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-bag-shopping"></i></span>
+            <span><small>@Model.PeriodLabel Alış</small><strong>@Model.PurchaseInvoiceTotal.ToString("N2") ₺</strong><em>Onaylı alış faturaları</em></span>
+        </a>
+        <a asp-controller="PaymentReceipts" asp-action="Index" asp-route-type="Collection" asp-route-status="Approved" class="dash-kpi dash-kpi-green">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-wallet"></i></span>
+            <span><small>Tahsilat</small><strong>@Model.CollectionTotal.ToString("N2") ₺</strong><em>@Model.PeriodLabel toplamı</em></span>
+        </a>
+        <a asp-controller="PaymentReceipts" asp-action="Index" asp-route-type="Payment" asp-route-status="Approved" class="dash-kpi dash-kpi-violet">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-credit-card"></i></span>
+            <span><small>Ödeme</small><strong>@Model.PaymentTotal.ToString("N2") ₺</strong><em>@Model.PeriodLabel toplamı</em></span>
+        </a>
+        <a asp-controller="Customers" asp-action="Index" class="dash-kpi dash-kpi-gold">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-user-clock"></i></span>
+            <span><small>Toplam Alacak</small><strong>@Model.TotalReceivable.ToString("N2") ₺</strong><em>Güncel cari pozisyon</em></span>
+        </a>
+        <a asp-controller="Customers" asp-action="Index" class="dash-kpi dash-kpi-rose">
+            <span class="dash-kpi-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+            <span><small>Toplam Borç</small><strong>@Model.TotalDebt.ToString("N2") ₺</strong><em>Güncel cari pozisyon</em></span>
+        </a>
+    </section>
+
+    <section class="dash-grid dash-grid-primary">
+        <article class="dash-card dash-cash-card">
+            <div class="dash-card-head">
+                <div><h2>Nakit Akışı</h2><p>Son 14 gün tahsilat–ödeme karşılaştırması</p></div>
+                <a asp-controller="PaymentReceipts" asp-action="Index">Tümünü Gör <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <div class="dash-chart-legend"><span><i class="legend-dot collection"></i>Tahsilat</span><span><i class="legend-dot payment"></i>Ödeme</span></div>
+            <div class="dash-chart-box"><canvas id="cashFlowChart" aria-label="Nakit akışı grafiği"></canvas></div>
+        </article>
+
+        <article class="dash-card dash-due-card">
+            <div class="dash-card-head">
+                <div><h2>Vadesi Yaklaşanlar</h2><p>Geciken ve önümüzdeki 7 gün</p></div>
+                <a asp-controller="Invoices" asp-action="Index">Tümünü Gör <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <div class="dash-due-list">
+                @if (Model.UpcomingPayments.Count == 0)
                 {
-                    <p class="text-secondary small mb-0">Henüz cari hareketi bulunmuyor.</p>
+                    <div class="dash-empty"><i class="fa-regular fa-circle-check"></i><span>Yaklaşan veya geciken ödeme bulunmuyor.</span></div>
                 }
                 else
                 {
-                    @foreach (var customer in Model.TopCustomers)
+                    @foreach (var item in Model.UpcomingPayments)
                     {
-                        <div class="erp-top-customer-row">
-                            <span>@customer.CustomerName</span>
-                            <span class="fw-semibold" style="color: var(--erp-gold-dark);">@customer.Balance.ToString("N2") ₺</span>
-                        </div>
+                        var badgeClass = item.DaysUntilDue < 0 ? "overdue" : item.DaysUntilDue <= 2 ? "urgent" : "normal";
+                        var badgeText = item.DaysUntilDue < 0 ? $"{Math.Abs(item.DaysUntilDue)} gün geçti" : item.DaysUntilDue == 0 ? "Bugün" : $"{item.DaysUntilDue} gün";
+                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@item.InvoiceId" class="dash-due-row">
+                            <span class="due-date"><strong>@item.DueDateUtc.ToString("dd")</strong><small>@item.DueDateUtc.ToString("MMM")</small></span>
+                            <span class="due-main"><strong>@item.CustomerName</strong><small>@item.InvoiceNumber</small></span>
+                            <span class="due-amount"><strong>@item.RemainingAmount.ToString("N2") ₺</strong><small class="due-badge @badgeClass">@badgeText</small></span>
+                        </a>
                     }
                 }
             </div>
-        </div>
-    </div>
+        </article>
+    </section>
+
+    <section class="dash-grid dash-grid-secondary">
+        <article class="dash-card dash-sales-card">
+            <div class="dash-card-head">
+                <div><h2>Satış ve Alış Eğilimi</h2><p>Son 7 günlük onaylı fatura toplamları</p></div>
+            </div>
+            <div class="dash-chart-legend"><span><i class="legend-dot sales"></i>Satış</span><span><i class="legend-dot purchase"></i>Alış</span></div>
+            <div class="dash-chart-box compact"><canvas id="invoiceTrendChart" aria-label="Satış ve alış grafiği"></canvas></div>
+        </article>
+
+        <article class="dash-card dash-stock-summary">
+            <div class="dash-card-head">
+                <div><h2>Stok Durumu</h2><p>Aktif stok kartlarının dağılımı</p></div>
+                <a asp-controller="Products" asp-action="Index">Tümünü Gör <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <div class="stock-summary-body">
+                <div class="stock-donut" style="--normal-end:@(normalEndCss)%;--critical-end:@(criticalEndCss)%;--out-end:@(outEndCss)%">
+                    <span><strong>@(stockTotal == 1 && Model.NormalStockCount + Model.CriticalStockCount + Model.OutOfStockCount + Model.UntrackedStockCount == 0 ? 0 : stockTotal)</strong><small>Toplam Ürün</small></span>
+                </div>
+                <div class="stock-legend-list">
+                    <div><i class="normal"></i><span>Normal</span><strong>@Model.NormalStockCount</strong></div>
+                    <div><i class="critical"></i><span>Kritik</span><strong>@Model.CriticalStockCount</strong></div>
+                    <div><i class="out"></i><span>Tükendi</span><strong>@Model.OutOfStockCount</strong></div>
+                    <div><i class="untracked"></i><span>Takip Yok</span><strong>@Model.UntrackedStockCount</strong></div>
+                </div>
+            </div>
+        </article>
+
+        <article class="dash-card dash-quick-card">
+            <div class="dash-card-head"><div><h2>Hızlı İşlemler</h2><p>Sık kullanılan kayıtlar</p></div></div>
+            <div class="dash-quick-grid">
+                <a asp-controller="Invoices" asp-action="Create" asp-route-type="Sales"><i class="fa-solid fa-file-circle-plus teal"></i><span>Satış Faturası</span></a>
+                <a asp-controller="Invoices" asp-action="Create" asp-route-type="Purchase"><i class="fa-solid fa-file-arrow-down blue"></i><span>Alış Faturası</span></a>
+                <a asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Collection"><i class="fa-solid fa-hand-holding-dollar green"></i><span>Tahsilat</span></a>
+                <a asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Payment"><i class="fa-solid fa-money-bill-transfer violet"></i><span>Tediye</span></a>
+                <a asp-controller="Products" asp-action="Create"><i class="fa-solid fa-box gold"></i><span>Stok Kartı</span></a>
+                <a asp-controller="BusinessOrders" asp-action="Create" asp-route-type="Sales"><i class="fa-solid fa-clipboard-list rose"></i><span>Sipariş</span></a>
+            </div>
+        </article>
+    </section>
+
+    <section class="dash-grid dash-grid-bottom">
+        <article class="dash-card">
+            <div class="dash-card-head">
+                <div><h2>Kritik Stoklar</h2><p>Minimum seviyeye ulaşan ürünler</p></div>
+                <a asp-controller="Products" asp-action="Index">Tümünü Gör <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="dash-table">
+                    <thead><tr><th>Ürün</th><th>Mevcut</th><th>Minimum</th><th>Durum</th></tr></thead>
+                    <tbody>
+                    @if (Model.CriticalStocks.Count == 0)
+                    {
+                        <tr><td colspan="4" class="dash-table-empty">Kritik stok bulunmuyor.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.CriticalStocks)
+                        {
+                            <tr>
+                                <td><a asp-controller="Products" asp-action="Edit" asp-route-id="@item.ProductId"><strong>@item.ProductName</strong><small>@item.StockCode</small></a></td>
+                                <td>@item.StockQuantity.ToString("N2") @item.Unit</td>
+                                <td>@item.MinimumStockQuantity.ToString("N2") @item.Unit</td>
+                                <td><span class="status-pill @(item.IsOutOfStock ? "danger" : "warning")">@(item.IsOutOfStock ? "Tükendi" : "Kritik")</span></td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="dash-card">
+            <div class="dash-card-head">
+                <div><h2>Son Hareketler</h2><p>İşletmedeki son onaylı işlemler</p></div>
+            </div>
+            <div class="dash-activity-list">
+                @if (Model.RecentActivities.Count == 0)
+                {
+                    <div class="dash-empty"><span>Henüz onaylı hareket bulunmuyor.</span></div>
+                }
+                else
+                {
+                    @foreach (var item in Model.RecentActivities)
+                    {
+                        <a href="@Url.Action("Details", item.Controller, new { id = item.EntityId })" class="dash-activity-row">
+                            <span class="activity-icon @item.Tone"><i class="fa-solid @(item.Kind == "Fatura" ? "fa-file-invoice" : item.Kind == "Sipariş" ? "fa-clipboard-list" : "fa-wallet")"></i></span>
+                            <span class="activity-main"><strong>@item.Title</strong><small>@item.DocumentNumber · @item.Description</small></span>
+                            <span class="activity-end">
+                                @if (item.Amount.HasValue)
+                                {
+                                    <strong>@item.Amount.Value.ToString("N2") ₺</strong>
+                                }
+                                <small>@item.DateUtc.ToString("dd.MM HH:mm")</small>
+                            </span>
+                        </a>
+                    }
+                }
+            </div>
+        </article>
+
+        <article class="dash-card dash-tasks-card">
+            <div class="dash-card-head"><div><h2>Bekleyen İşler</h2><p>Bugün ilgilenmeniz gerekenler</p></div></div>
+            <div class="dash-task-list">
+                <a asp-controller="Invoices" asp-action="Index" asp-route-status="Draft"><i class="fa-regular fa-file-lines gold"></i><span><strong>Taslak Faturalar</strong><small>Onay bekleyen faturalarınız</small></span><b>@Model.DraftInvoiceCount</b></a>
+                <a asp-controller="BusinessOrders" asp-action="Index" asp-route-status="Draft"><i class="fa-solid fa-cart-flatbed blue"></i><span><strong>Onay Bekleyen Siparişler</strong><small>Hazırlanmayı bekleyen siparişler</small></span><b>@Model.PendingOrderCount</b></a>
+                <a asp-controller="Invoices" asp-action="Index"><i class="fa-solid fa-clock-rotate-left rose"></i><span><strong>Gecikmiş Tahsilatlar</strong><small>Vadesi geçen ödeme planları</small></span><b>@Model.OverdueReceivableCount</b></a>
+                <a asp-controller="Products" asp-action="Index"><i class="fa-solid fa-triangle-exclamation orange"></i><span><strong>Kritik Stoklar</strong><small>Minimum seviyedeki ürünler</small></span><b>@(Model.CriticalStockCount + Model.OutOfStockCount)</b></a>
+            </div>
+        </article>
+    </section>
 </div>
+
+<script id="dashboardChartData" type="application/json">@Html.Raw(chartData)</script>
+
+@section Scripts {
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}
