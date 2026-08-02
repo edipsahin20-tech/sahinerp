@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -76,9 +77,25 @@ public sealed class CustomersController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CustomerFormViewModel form)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. Customer.SubmissionKey.
+        var existingBySubmission = await dbContext.Customers
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "Cari zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Edit), new { id = existingBySubmission.Id });
+        }
+
         if (string.IsNullOrWhiteSpace(form.Code))
         {
             form.Code = await documentNumberGenerator.GenerateAsync("CUSTOMER");
+            // Code, non-nullable reference type olduğu için model binding sırasında boş bırakılırsa
+            // örtük "zorunlu alan" hatası ModelState'e ekleniyor — kodu burada ürettikten sonra bu
+            // eski hatayı temizlemezsek ModelState.IsValid hep false kalır (bkz. ProductsController.
+            // ApplyIdentifierPolicyAsync'teki aynı desen).
+            ModelState.Remove(nameof(form.Code));
         }
         await ValidateUniqueCodeAsync(form);
         if (!ModelState.IsValid)
@@ -86,12 +103,30 @@ public sealed class CustomersController(
             return View("Form", form);
         }
 
-        var customer = new Customer();
+        var customer = new Customer { CreatedByUserId = userId, SubmissionKey = form.SubmissionKey };
         Map(form, customer);
         dbContext.Customers.Add(customer);
 
-        if (!await TrySaveAsync())
+        try
         {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // SQL Server tek bir INSERT'te birden fazla unique index ihlalinden sadece birini
+            // raporlar (ör. eşzamanlı üretilen aynı cari kodu VE aynı SubmissionKey aynı anda
+            // çakışabilir) — bkz. DispatchNotesController'daki aynı desen. Hata mesajının
+            // içeriğine güvenmek yerine doğrudan "bu SubmissionKey ile zaten bir kayıt var mı?"
+            // kontrolü yapılır.
+            var existing = await dbContext.Customers.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "Cari zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Edit), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(nameof(CustomerFormViewModel.Code), "Bu cari kodu başka bir kayıtta kullanılıyor.");
             return View("Form", form);
         }
 

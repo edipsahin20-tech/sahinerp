@@ -189,6 +189,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.TaxNumber);
             entity.HasIndex(x => x.Name);
+            entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey })
+                .IsUnique()
+                .HasFilter("[SubmissionKey] IS NOT NULL");
         });
 
         builder.Entity<Warehouse>(entity =>

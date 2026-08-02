@@ -24,6 +24,10 @@ public sealed class Customer : EntityBase
     public bool IsCustomer { get; set; } = true;
     public bool IsSupplier { get; set; }
     public bool IsActive { get; set; } = true;
+    public string CreatedByUserId { get; set; } = string.Empty;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. DispatchNote.SubmissionKey.
+    public Guid? SubmissionKey { get; set; }
     public ICollection<Quote> Quotes { get; set; } = new List<Quote>();
     public ICollection<PurchasePriceList> PurchasePriceLists { get; set; } = new List<PurchasePriceList>();
     public ICollection<CurrentAccountTransaction> AccountTransactions { get; set; } = new List<CurrentAccountTransaction>();

@@ -36,6 +36,11 @@ public sealed class FinancialAccountsController(
                 ? "FINANCIAL_ACCOUNT_BANK"
                 : "FINANCIAL_ACCOUNT_CASH";
             form.Code = await documentNumberGenerator.GenerateAsync(sequenceKey);
+            // Code, non-nullable reference type olduğu için model binding sırasında boş bırakılırsa
+            // örtük "zorunlu alan" hatası ModelState'e ekleniyor — kodu burada ürettikten sonra bu
+            // eski hatayı temizlemezsek ModelState.IsValid hep false kalır (bkz. ProductsController.
+            // ApplyIdentifierPolicyAsync'teki aynı desen).
+            ModelState.Remove(nameof(form.Code));
         }
         await ValidateUniqueCodeAsync(form);
         if (!ModelState.IsValid)

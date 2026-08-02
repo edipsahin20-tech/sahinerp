@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Web.Data;
@@ -65,10 +66,7 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
                 // muhtemelen kullanıcıya çirkin bir 500 olarak) sızıyordu — bu satırın altındaki
                 // throw hiçbir zaman çalışmıyordu (ölü kod). Şimdi son denemede de ChangeTracker
                 // temizlenip aynı dostane mesajla ConcurrencyRetryExhaustedException fırlatılıyor.
-                foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
-                {
-                    entry.State = EntityState.Detached;
-                }
+                DetachAllTracked(dbContext);
 
                 if (attempt == maxAttempts)
                 {
@@ -77,9 +75,44 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
 
                 await Task.Delay(Random.Shared.Next(10, 50) * attempt, cancellationToken);
             }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 } sqlEx)
+            {
+                // Serializable izolasyon + NumberSequence'ın RowVersion'ı sayaç satırını korur, ama
+                // canlıda 10 eşzamanlı gerçek istekle doğrulandı: iki istek NextNumber'ı aynı anda
+                // okuyup AYNI belge numarasını üretebiliyor — bu durumda çakışma sayaç satırında değil,
+                // doğrudan belge tablosunun (InvoiceNumber/DispatchNumber/ReceiptNumber vb.) unique
+                // index'inde ham bir DbUpdateException olarak patlıyor ve DbUpdateConcurrencyException
+                // OLMADIĞI için üstteki catch'e hiç düşmüyordu — çağıran controller'lar bunu SADECE
+                // SubmissionKey çakışması sanıp gerçek eşzamanlı üretim çakışmasında kullanıcıya hemen
+                // "tekrar deneyin" hatası gösteriyordu (bkz. DispatchNotesController 10 eşzamanlı test:
+                // 7/10 başarısız). SubmissionKey ihlali BURADA yeniden denenerek düzelmez (aynı anahtar
+                // kalır) — o durumda çağıranın kendi "zaten var mı" kontrolüne düşmesi için olduğu gibi
+                // fırlatılır. Diğer her şey (belge numarası çakışması) taze bir denemeyle çözülür.
+                if (sqlEx.Message.Contains("SubmissionKey", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw;
+                }
+
+                DetachAllTracked(dbContext);
+
+                if (attempt == maxAttempts)
+                {
+                    throw new ConcurrencyRetryExhaustedException();
+                }
+
+                await Task.Delay(Random.Shared.Next(15, 60) * attempt, cancellationToken);
+            }
         }
 
         throw new ConcurrencyRetryExhaustedException();
+    }
+
+    private static void DetachAllTracked(ApplicationDbContext dbContext)
+    {
+        foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     // GenerateAsync'in transaction/SaveChanges yönetmeyen çekirdeği — zaten açık bir transaction

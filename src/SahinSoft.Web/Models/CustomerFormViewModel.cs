@@ -86,4 +86,7 @@ public sealed class CustomerFormViewModel
 
     [Display(Name = "Aktif")]
     public bool IsActive { get; set; } = true;
+
+    // Çift tıklama/mükerrer POST koruması — bkz. Customer.SubmissionKey.
+    public Guid SubmissionKey { get; set; } = Guid.NewGuid();
 }
