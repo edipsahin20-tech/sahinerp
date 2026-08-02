@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -60,6 +61,9 @@ public sealed class DispatchNotesController(
             Controller = "DispatchNotes",
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
+        var conversionSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        ViewBag.OrderToDispatchAutoApprove = ConversionAutoApprovalPolicy.ShouldAutoApprove(
+            conversionSettings, ConversionAutoApprovalKind.OrderToDispatch, type, User);
         return View("Form", model);
     }
 
@@ -146,14 +150,283 @@ public sealed class DispatchNotesController(
             return View("Form", form);
         }
 
-        TempData["Success"] = "İrsaliye taslağı oluşturuldu.";
+        // "Planlı İşlem" (F5) ile bir veya daha fazla satır BusinessOrderLineId taşıyorsa, bu normal
+        // Create aksiyonu üzerinden de Sipariş→İrsaliye dönüşümü yapılmış demektir — otomatik onay
+        // parametresi buraya da uygulanır. Kaynak siparişi olmayan tamamen elle girilmiş (plansız)
+        // irsaliyeler bu kontrolden hiç etkilenmez.
+        if (dispatch.Lines.Any(x => x.BusinessOrderLineId is not null))
+        {
+            await TryAutoApproveAsync(dispatch.Id, ConversionAutoApprovalKind.OrderToDispatch, dispatch.DispatchType, userId,
+                successMessage: "İrsaliye oluşturuldu ve otomatik onaylandı.",
+                fallbackMessage: "İrsaliye taslağı oluşturuldu.");
+        }
+        else
+        {
+            TempData["Success"] = "İrsaliye taslağı oluşturuldu.";
+        }
+
         return RedirectToAction(nameof(Details), new { id = dispatch.Id });
+    }
+
+    // Sipariş → İrsaliye: onaylı/kısmen karşılanmış siparişin kalan satırlarını gösterir.
+    public async Task<IActionResult> CreateFromOrder(int orderId)
+    {
+        var order = await dbContext.BusinessOrders
+            .Include(x => x.Customer)
+            .Include(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.Id == orderId);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        if (order.Status is not (BusinessDocumentStatus.Approved or BusinessDocumentStatus.PartiallyFulfilled))
+        {
+            TempData["Error"] = "Yalnızca onaylı veya kısmen karşılanmış siparişlerden irsaliye oluşturulabilir.";
+            return RedirectToAction("Details", "BusinessOrders", new { id = orderId });
+        }
+
+        var remainingLines = order.Lines
+            .Where(x => x.Quantity - x.FulfilledQuantity > 0)
+            .OrderBy(x => x.LineNumber)
+            .Select(x => new CreateDispatchFromOrderLineViewModel
+            {
+                BusinessOrderLineId = x.Id,
+                ProductNameSnapshot = x.ProductNameSnapshot,
+                UnitSnapshot = x.UnitSnapshot,
+                OrderedQuantity = x.Quantity,
+                RemainingQuantity = x.Quantity - x.FulfilledQuantity,
+                QuantityToShip = x.Quantity - x.FulfilledQuantity
+            })
+            .ToList();
+
+        if (remainingLines.Count == 0)
+        {
+            TempData["Error"] = "Siparişte kalan (sevk edilmemiş) satır yok.";
+            return RedirectToAction("Details", "BusinessOrders", new { id = orderId });
+        }
+
+        var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        var model = new CreateDispatchFromOrderViewModel
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            DispatchType = order.OrderType,
+            CustomerId = order.CustomerId,
+            CustomerDisplay = $"{order.Customer.Code} - {order.Customer.Name}",
+            Lines = remainingLines,
+            WillAutoApprove = ConversionAutoApprovalPolicy.ShouldAutoApprove(settings, ConversionAutoApprovalKind.OrderToDispatch, order.OrderType, User)
+        };
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateFromOrder(CreateDispatchFromOrderViewModel form)
+    {
+        form.Lines = form.Lines.Where(x => x.QuantityToShip > 0).ToList();
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.WarehouseId), "Depo seçilmelidir.");
+        }
+
+        if (form.Lines.Count == 0)
+        {
+            ModelState.AddModelError(string.Empty, "En az bir satırda sevk edilecek miktar girilmelidir.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PopulateOrderConversionSelectionsAsync(form);
+            return View(form);
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var sequenceKey = form.DispatchType == InvoiceType.Sales ? "SALES_DISPATCH" : "PURCHASE_DISPATCH";
+
+        // Çift tıklama/mükerrer POST koruması ön kontrolü — bkz. DispatchNote.SubmissionKey.
+        var existingBySubmission = await dbContext.DispatchNotes
+            .FirstOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = "İrsaliye taslağı zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Details), new { id = existingBySubmission.Id });
+        }
+
+        DispatchNote dispatch;
+        try
+        {
+            dispatch = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var orderLineIds = form.Lines.Select(x => x.BusinessOrderLineId).ToList();
+                    var orderLines = await dbContext.BusinessOrderLines
+                        .Where(x => orderLineIds.Contains(x.Id))
+                        .ToDictionaryAsync(x => x.Id);
+
+                    var newDispatch = new DispatchNote
+                    {
+                        DispatchType = form.DispatchType,
+                        Status = BusinessDocumentStatus.Draft,
+                        DispatchNumber = await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey,
+                        CustomerId = form.CustomerId,
+                        WarehouseId = form.WarehouseId!.Value,
+                        DispatchDateUtc = DateTime.SpecifyKind(form.DispatchDateUtc, DateTimeKind.Utc),
+                        VehiclePlate = form.VehiclePlate?.Trim(),
+                        CarrierName = form.CarrierName?.Trim(),
+                        Notes = $"Sipariş {form.OrderNumber} üzerinden oluşturuldu.",
+                        BusinessOrderId = form.OrderId
+                    };
+
+                    var lineNumber = 1;
+                    foreach (var line in form.Lines)
+                    {
+                        if (!orderLines.TryGetValue(line.BusinessOrderLineId, out var orderLine) || orderLine.ProductId is null)
+                        {
+                            continue;
+                        }
+
+                        newDispatch.Lines.Add(new DispatchNoteLine
+                        {
+                            LineNumber = lineNumber++,
+                            ProductId = orderLine.ProductId.Value,
+                            ProductVariantId = orderLine.ProductVariantId,
+                            Quantity = line.QuantityToShip,
+                            BusinessOrderLineId = orderLine.Id
+                        });
+                    }
+
+                    if (newDispatch.Lines.Count == 0)
+                    {
+                        throw new InvalidOperationException("En az bir satırda sevk edilecek miktar girilmelidir.");
+                    }
+
+                    dbContext.DispatchNotes.Add(newDispatch);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newDispatch;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            var existing = await dbContext.DispatchNotes.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CreatedByUserId == userId && x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = "İrsaliye taslağı zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Details), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateOrderConversionSelectionsAsync(form);
+            return View(form);
+        }
+
+        await TryAutoApproveAsync(dispatch.Id, ConversionAutoApprovalKind.OrderToDispatch, form.DispatchType, userId,
+            successMessage: "Siparişten irsaliye oluşturuldu ve otomatik onaylandı.",
+            fallbackMessage: "Siparişten irsaliye taslağı oluşturuldu. Gözden geçirip onaylayabilirsiniz.");
+        return RedirectToAction(nameof(Details), new { id = dispatch.Id });
+    }
+
+    // Kaydettikten sonra otomatik onayla: taslak KAYDEDİLİR (yukarıdaki transaction zaten commit
+    // edildi), ardından — ayrı, kendi atomik transaction'ına sahip — ApproveAsync çağrılır. Bu iki
+    // adım TEK bir atomik işlem DEĞİLDİR (kasıtlı olarak); onay adımı başarısız olursa (ör. eşzamanlı
+    // bir başka onay kalan miktarı tüketmişse) belge Taslak olarak kalır, hiçbir kısmi hareket
+    // oluşmaz — ApproveAsync'in kendi Serializable transaction'ı bunu garanti eder. Status hiçbir
+    // zaman elle set edilmez, yalnızca gerçek onay servisi üzerinden değişir.
+    private async Task TryAutoApproveAsync(
+        int dispatchId,
+        ConversionAutoApprovalKind kind,
+        InvoiceType direction,
+        string userId,
+        string successMessage,
+        string fallbackMessage)
+    {
+        var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        if (!ConversionAutoApprovalPolicy.ShouldAutoApprove(settings, kind, direction, User))
+        {
+            TempData["Success"] = fallbackMessage;
+            return;
+        }
+
+        try
+        {
+            await dispatchNotePostingService.ApproveAsync(dispatchId, userId);
+            TempData["Success"] = successMessage;
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = $"Belge kaydedildi ancak otomatik onaylanamadı; Taslak olarak bırakıldı. Sebep: {ex.Message}";
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
+        {
+            TempData["Error"] = $"Belge kaydedildi ancak otomatik onaylanamadı; Taslak olarak bırakıldı. Sebep: {ex.Message}";
+        }
+    }
+
+    private async Task PopulateOrderConversionSelectionsAsync(CreateDispatchFromOrderViewModel form)
+    {
+        if (form.WarehouseId is int warehouseId)
+        {
+            form.WarehouseDisplay = await dbContext.Warehouses
+                .Where(x => x.Id == warehouseId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
+    }
+
+    // "Planlı İşlem" (F5) — mal kabul/sevkiyat: seçili cariye ait, aynı alış/satış yönündeki, onaylı
+    // ve henüz tamamen karşılanmamış siparişleri (satırlarıyla birlikte) döner.
+    [HttpGet]
+    public async Task<IActionResult> EligibleOrders(int customerId, InvoiceType dispatchType)
+    {
+        var orders = await dbContext.BusinessOrders
+            .AsNoTracking()
+            .Include(x => x.Lines)
+            .Where(x => x.CustomerId == customerId &&
+                x.OrderType == dispatchType &&
+                (x.Status == BusinessDocumentStatus.Approved || x.Status == BusinessDocumentStatus.PartiallyFulfilled))
+            .OrderByDescending(x => x.OrderDateUtc)
+            .ToListAsync();
+
+        var result = orders
+            .Select(order => new
+            {
+                id = order.Id,
+                orderNumber = order.OrderNumber,
+                dateUtc = order.OrderDateUtc.ToString("dd.MM.yyyy"),
+                lines = order.Lines
+                    .Where(x => x.Quantity - x.FulfilledQuantity > 0)
+                    .OrderBy(x => x.LineNumber)
+                    .Select(line => new
+                    {
+                        businessOrderLineId = line.Id,
+                        productId = line.ProductId,
+                        productDisplay = line.ProductCodeSnapshot + " - " + line.ProductNameSnapshot,
+                        unitSnapshot = line.UnitSnapshot,
+                        remainingQuantity = line.Quantity - line.FulfilledQuantity
+                    })
+                    .ToList()
+            })
+            .Where(x => x.lines.Count > 0)
+            .ToList();
+
+        return Json(new { items = result });
     }
 
     public async Task<IActionResult> Edit(int id)
     {
         var dispatch = await dbContext.DispatchNotes
             .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (dispatch is null)
         {
@@ -178,7 +451,13 @@ public sealed class DispatchNotesController(
             Notes = dispatch.Notes,
             Lines = dispatch.Lines
                 .OrderBy(x => x.LineNumber)
-                .Select(x => new DispatchNoteLineFormViewModel { ProductId = x.ProductId, Quantity = x.Quantity })
+                .Select(x => new DispatchNoteLineFormViewModel
+                {
+                    ProductId = x.ProductId,
+                    Quantity = x.Quantity,
+                    BusinessOrderLineId = x.BusinessOrderLineId,
+                    SourceDisplay = x.BusinessOrderLine != null ? $"Sipariş {x.BusinessOrderLine.BusinessOrder.OrderNumber}" : null
+                })
                 .ToList()
         };
         if (model.Lines.Count == 0)
@@ -278,6 +557,7 @@ public sealed class DispatchNotesController(
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Warehouse)
+            .Include(x => x.BusinessOrder)
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
             .SingleOrDefaultAsync(x => x.Id == id);
@@ -316,9 +596,23 @@ public sealed class DispatchNotesController(
             ApprovedAtUtc = dispatch.ApprovedAtUtc,
             Lines = dispatch.Lines
                 .OrderBy(x => x.LineNumber)
-                .Select(x => new DispatchNoteDetailsLineViewModel { ProductName = x.Product.Name, Quantity = x.Quantity })
-                .ToList()
+                .Select(x => new DispatchNoteDetailsLineViewModel { ProductName = x.Product.Name, Quantity = x.Quantity, InvoicedQuantity = x.InvoicedQuantity })
+                .ToList(),
+            SourceOrderId = dispatch.BusinessOrderId,
+            SourceOrderNumber = dispatch.BusinessOrder?.OrderNumber
         };
+
+        var dispatchLineIds = dispatch.Lines.Select(x => x.Id).ToList();
+        var linkedInvoices = await dbContext.InvoiceLines
+            .AsNoTracking()
+            .Where(x => x.DispatchNoteLineId != null && dispatchLineIds.Contains(x.DispatchNoteLineId!.Value))
+            .Select(x => x.Invoice)
+            .Distinct()
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+        model.LinkedInvoices = linkedInvoices
+            .Select(x => new LinkedDocumentViewModel { Id = x.Id, Number = x.InvoiceNumber, StatusText = x.Status.GetDisplayName() })
+            .ToList();
 
         return View(model);
     }
@@ -334,6 +628,10 @@ public sealed class DispatchNotesController(
             TempData["Success"] = "İrsaliye onaylandı.";
         }
         catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
         {
             TempData["Error"] = ex.Message;
         }
@@ -353,6 +651,10 @@ public sealed class DispatchNotesController(
             TempData["Success"] = "İrsaliye iptal edildi.";
         }
         catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
         {
             TempData["Error"] = ex.Message;
         }
@@ -411,7 +713,8 @@ public sealed class DispatchNotesController(
             {
                 LineNumber = lineNumber++,
                 ProductId = line.ProductId.Value,
-                Quantity = line.Quantity
+                Quantity = line.Quantity,
+                BusinessOrderLineId = line.BusinessOrderLineId
             });
         }
     }

@@ -105,6 +105,7 @@
                         <th class="text-end">Tutar</th>
                         <th class="text-end">Net Tutar</th>
                         <th>Açıklama</th>
+                        <th style="width: 110px;">Kaynak</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,6 +120,7 @@
                         <td class="text-end">@line.GrossTotal.ToString("N2")</td>
                         <td class="text-end fw-semibold">@line.NetTotal.ToString("N2")</td>
                         <td>@line.Description</td>
+                        <td><small class="text-muted">@line.SourceDisplay</small></td>
                     </tr>
                 }
                 </tbody>

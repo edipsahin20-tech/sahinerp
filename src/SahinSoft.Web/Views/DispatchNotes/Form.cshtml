@@ -56,6 +56,12 @@
                         Title = "Cari Seç", Placeholder = "Cari seçin" })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                 </div>
+                <div class="erp-field d-flex align-items-center" style="padding-top: 1.7rem;">
+                    <div class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="planned-mode-toggle" />
+                        <label class="form-check-label" for="planned-mode-toggle">Planlı İşlem</label>
+                    </div>
+                </div>
                 <div class="erp-field">
                     <label asp-for="WarehouseId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
@@ -95,6 +101,7 @@
                             <th style="width: 140px;">Stok Kodu</th>
                             <th style="min-width: 240px;">Ürün Adı</th>
                             <th style="width: 140px;">Miktar</th>
+                            <th style="width: 110px;">Kaynak</th>
                             <th style="width: 40px;"></th>
                         </tr>
                     </thead>
@@ -106,6 +113,7 @@
                         var nameVal = rawDisplay.Contains(" - ") ? string.Join(" - ", rawDisplay.Split(" - ").Skip(1)) : rawDisplay;
                         <tr class="line-row">
                             <input type="hidden" name="Lines.Index" value="@i" />
+                            <input type="hidden" name="Lines[@i].BusinessOrderLineId" value="@Model.Lines[i].BusinessOrderLineId" class="order-line-id-input" />
                             <td>
                                 <input type="text" class="form-control stock-code-input lookup-quicksearch" 
                                        placeholder="Stok Kodu/Barkod" autocomplete="off" value="@codeVal"
@@ -124,6 +132,7 @@
                                     AllowQuickSearch = true })" />
                             </td>
                             <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
+                            <td class="source-cell"><small class="text-muted">@Model.Lines[i].SourceDisplay</small></td>
                             <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
                         </tr>
                     }
@@ -139,6 +148,7 @@
 <template id="line-row-template">
     <tr class="line-row">
         <input type="hidden" name="Lines.Index" value="__index__" />
+        <input type="hidden" name="Lines[__index__].BusinessOrderLineId" value="" class="order-line-id-input" />
         <td>
             <input type="text" class="form-control stock-code-input lookup-quicksearch"
                    placeholder="Stok Kodu/Barkod" autocomplete="off"
@@ -166,9 +176,33 @@
             </div>
         </td>
         <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
+        <td class="source-cell"></td>
         <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
     </tr>
 </template>
+
+@* Planlı İşlem (F5): seçili cariye ait, onaylı ve henüz tamamen karşılanmamış siparişleri listeler
+   (mal kabul / sevkiyat). Kullanıcı bir/birden fazla sipariş seçip Aktar'a basınca, o siparişlerin
+   kalan satırları irsaliye satır tablosuna eklenir. *@
+<div class="modal fade" id="plannedConversionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-clipboard-list"></i> Onaylı Siparişlerden Çağır</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body" id="planned-conversion-body">
+                <div class="text-center text-secondary py-3">Yükleniyor...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="planned-conversion-confirm">Seçilenleri İrsaliyeye Aktar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="conversion-auto-approve-hint" class="alert py-2 mb-3" style="display:none;"></div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -257,6 +291,109 @@
                     if (typeof firstInput.select === 'function') firstInput.select();
                 }
             });
+
+            // Planlı İşlem (F5) — mal kabul/sevkiyat: seçili cariye ait, onaylı siparişleri çağırıp
+            // kalan satırlarını irsaliye satır tablosuna aktarır — bkz. DispatchNotesController.EligibleOrders.
+            // addRow yukarıdaki kapanıştan (closure) aynen yeniden kullanılıyor.
+            (function () {
+                var plannedToggle = document.getElementById('planned-mode-toggle');
+                var modalEl = document.getElementById('plannedConversionModal');
+                var bodyEl = document.getElementById('planned-conversion-body');
+                var confirmBtn = document.getElementById('planned-conversion-confirm');
+                var customerHidden = document.getElementById('CustomerId');
+                var bsModal = null;
+                var loadedOrders = [];
+
+                function escapeHtml(s) {
+                    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+                    });
+                }
+
+                function ensureModal() {
+                    if (!bsModal && modalEl) bsModal = new bootstrap.Modal(modalEl);
+                    return bsModal;
+                }
+
+                function renderPicker() {
+                    if (loadedOrders.length === 0) {
+                        bodyEl.innerHTML = '<div class="text-center text-secondary py-3">Bu cari için onaylı, kalan miktarı olan sipariş bulunamadı.</div>';
+                        return;
+                    }
+                    bodyEl.innerHTML = loadedOrders.map(function (o, idx) {
+                        var linesHtml = o.lines.map(function (l) {
+                            return '<tr><td>' + escapeHtml(l.productDisplay) + '</td><td class="text-end">' +
+                                Number(l.remainingQuantity).toLocaleString('tr-TR', { minimumFractionDigits: 3 }) + ' ' + escapeHtml(l.unitSnapshot) + '</td></tr>';
+                        }).join('');
+                        return '<div class="erp-panel mb-2">' +
+                            '<div class="erp-panel-header d-flex align-items-center gap-2">' +
+                            '<input type="checkbox" class="form-check-input order-select" data-idx="' + idx + '" id="order-select-' + idx + '" />' +
+                            '<label for="order-select-' + idx + '"><strong>' + escapeHtml(o.orderNumber) + '</strong> <small class="text-muted">' + escapeHtml(o.dateUtc) + '</small></label>' +
+                            '</div>' +
+                            '<table class="table table-sm mb-0"><tbody>' + linesHtml + '</tbody></table>' +
+                            '</div>';
+                    }).join('');
+                }
+
+                function openPicker() {
+                    var customerId = customerHidden ? customerHidden.value : '';
+                    if (!customerId) {
+                        alert('Önce cari seçilmelidir.');
+                        return;
+                    }
+                    bodyEl.innerHTML = '<div class="text-center text-secondary py-3">Yükleniyor...</div>';
+                    ensureModal().show();
+                    fetch('@Url.Action("EligibleOrders")?customerId=' + encodeURIComponent(customerId) + '&dispatchType=@Model.DispatchType')
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            loadedOrders = data.items || [];
+                            renderPicker();
+                        })
+                        .catch(function () {
+                            bodyEl.innerHTML = '<div class="text-center text-danger py-3">Yüklenirken hata oluştu.</div>';
+                        });
+                }
+
+                confirmBtn.addEventListener('click', function () {
+                    var checked = Array.from(bodyEl.querySelectorAll('.order-select:checked'));
+                    checked.forEach(function (cb) {
+                        var order = loadedOrders[Number(cb.getAttribute('data-idx'))];
+                        order.lines.forEach(function (line) {
+                            var row = addRow();
+                            row.querySelector('.order-line-id-input').value = line.businessOrderLineId;
+                            var productHidden = row.querySelector('input[id$="__ProductId"]');
+                            var productDisplay = row.querySelector('input[id$="__ProductId_display"]');
+                            if (productHidden) productHidden.value = line.productId;
+                            if (productDisplay) productDisplay.value = line.productDisplay;
+                            var codeInput = row.querySelector('.stock-code-input');
+                            if (codeInput && line.productDisplay && line.productDisplay.indexOf(' - ') !== -1) {
+                                codeInput.value = line.productDisplay.split(' - ')[0];
+                            }
+                            row.querySelector('.quantity-input').value = line.remainingQuantity;
+                            row.querySelector('.source-cell').innerHTML = '<small class="text-muted">Sipariş ' + escapeHtml(order.orderNumber) + '</small>';
+                        });
+                    });
+                    if (bsModal) bsModal.hide();
+
+                    // Ekranda uygulanacak sonucu açıkça göster: bu irsaliye Sipariş→İrsaliye
+                    // dönüşümüyle (kaynak satır bağlantısı taşıyan en az bir satırla) kaydedilecek,
+                    // dolayısıyla OrderToDispatch otomatik onay parametresi geçerli olacak.
+                    var hintEl = document.getElementById('conversion-auto-approve-hint');
+                    var willAutoApprove = @Json.Serialize((bool)(ViewBag.OrderToDispatchAutoApprove ?? false));
+                    if (hintEl) {
+                        hintEl.style.display = '';
+                        hintEl.className = 'alert py-2 mb-3 ' + (willAutoApprove ? 'alert-success' : 'alert-secondary');
+                        hintEl.textContent = 'Bu işlem sonucunda: ' + (willAutoApprove ? 'Kaydedilecek ve otomatik onaylanacak' : 'Taslak oluşturulacak');
+                    }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key !== 'F5') return;
+                    if (!plannedToggle || !plannedToggle.checked) return;
+                    event.preventDefault();
+                    openPicker();
+                });
+            })();
         })();
     </script>
 }

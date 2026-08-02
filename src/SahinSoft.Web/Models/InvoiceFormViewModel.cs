@@ -127,4 +127,10 @@ public sealed class InvoiceLineFormViewModel
     [StringLength(500)]
     [Display(Name = "Açıklama")]
     public string? Description { get; set; }
+
+    // Planlı İşlem (F5) ile bir irsaliyeden/siparişten çağrılan satırlarda set edilir; elle eklenen
+    // satırlarda ikisi de null kalır. Bkz. InvoiceLine.DispatchNoteLineId / BusinessOrderLineId.
+    public int? DispatchNoteLineId { get; set; }
+    public int? BusinessOrderLineId { get; set; }
+    public string? SourceDisplay { get; set; }
 }

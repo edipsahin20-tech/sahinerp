@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SahinSoft.Web.Data;
 
@@ -11,9 +12,11 @@ using SahinSoft.Web.Data;
 namespace SahinSoft.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260802132212_AddOrderDispatchInvoiceConversionLinks")]
+    partial class AddOrderDispatchInvoiceConversionLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2003,16 +2006,6 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
 
-                    b.Property<bool>("DispatchToInvoicePurchaseAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("DispatchToInvoiceSalesAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<bool>("EnableMinimumStockWarning")
                         .HasColumnType("bit");
 
@@ -2021,26 +2014,6 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Property<bool>("IsRestaurantModuleEnabled")
                         .HasColumnType("bit");
-
-                    b.Property<bool>("OrderToDispatchPurchaseAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("OrderToDispatchSalesAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("OrderToInvoicePurchaseAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("OrderToInvoiceSalesAutoApprove")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<Guid>("RecordId")
                         .ValueGeneratedOnAdd()
@@ -2086,15 +2059,9 @@ namespace SahinSoft.Web.Data.Migrations
                             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultBarcodeType = "EAN13",
                             DefaultScalePrefix = "27",
-                            DispatchToInvoicePurchaseAutoApprove = false,
-                            DispatchToInvoiceSalesAutoApprove = false,
                             EnableMinimumStockWarning = true,
                             EnforceStockLevel = true,
                             IsRestaurantModuleEnabled = false,
-                            OrderToDispatchPurchaseAutoApprove = false,
-                            OrderToDispatchSalesAutoApprove = false,
-                            OrderToInvoicePurchaseAutoApprove = false,
-                            OrderToInvoiceSalesAutoApprove = false,
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
                             RequireBarcode = true,
                             RequireProductVariant = false,

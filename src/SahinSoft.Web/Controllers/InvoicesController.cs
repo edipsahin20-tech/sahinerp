@@ -120,6 +120,9 @@ public sealed class InvoicesController(
             Controller = "Invoices",
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
+        var conversionSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        ViewBag.DispatchToInvoiceAutoApprove = ConversionAutoApprovalPolicy.ShouldAutoApprove(
+            conversionSettings, ConversionAutoApprovalKind.DispatchToInvoice, type, User);
         return View("Form", model);
     }
 
@@ -242,17 +245,315 @@ public sealed class InvoicesController(
             return View("Form", form);
         }
 
+        // "Planlı İşlem" (F5) ile bir veya daha fazla satır DispatchNoteLineId taşıyorsa, bu normal
+        // Create aksiyonu üzerinden de İrsaliye→Fatura dönüşümü yapılmış demektir — otomatik onay
+        // parametresi buraya da uygulanır. Kaynak irsaliyesi olmayan tamamen elle girilmiş (plansız)
+        // faturalar bu kontrolden hiç etkilenmez.
+        if (invoice.Lines.Any(x => x.DispatchNoteLineId is not null))
+        {
+            await TryAutoApproveAsync(invoice.Id, ConversionAutoApprovalKind.DispatchToInvoice, form.InvoiceType, createdByUserId,
+                successMessage: $"{invoice.InvoiceNumber} numaralı fatura oluşturuldu ve otomatik onaylandı.",
+                fallbackMessage: $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.");
+        }
+        else
+        {
+            TempData["Success"] = $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
+        }
+
         // Mikro tarzı hızlı ardışık evrak girişi: yeni fatura kaydedilince Detay'a değil, aynı
         // türde (Satış/Alış) boş bir yeni fatura giriş ekranına dönülür — düzenlemede (Edit) bu
         // davranış farklı, orada kayıttan sonra Detay'a gidilmeye devam eder.
-        TempData["Success"] = $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
         return RedirectToAction(nameof(Create), new { type = form.InvoiceType });
+    }
+
+    // Sipariş → Fatura (doğrudan, irsaliyesiz): onaylı/kısmen karşılanmış siparişin kalan satırlarını,
+    // sipariş satırındaki fiyat/KDV/iskonto ile birlikte gösterir.
+    public async Task<IActionResult> CreateFromOrder(int orderId)
+    {
+        var order = await dbContext.BusinessOrders
+            .Include(x => x.Customer)
+            .Include(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.Id == orderId);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        if (order.Status is not (BusinessDocumentStatus.Approved or BusinessDocumentStatus.PartiallyFulfilled))
+        {
+            TempData["Error"] = "Yalnızca onaylı veya kısmen karşılanmış siparişlerden fatura oluşturulabilir.";
+            return RedirectToAction("Details", "BusinessOrders", new { id = orderId });
+        }
+
+        var remainingLines = order.Lines
+            .Where(x => x.Quantity - x.FulfilledQuantity > 0)
+            .OrderBy(x => x.LineNumber)
+            .Select(x => new CreateInvoiceFromOrderLineViewModel
+            {
+                BusinessOrderLineId = x.Id,
+                ProductNameSnapshot = x.ProductNameSnapshot,
+                UnitSnapshot = x.UnitSnapshot,
+                OrderedQuantity = x.Quantity,
+                RemainingQuantity = x.Quantity - x.FulfilledQuantity,
+                UnitPrice = x.UnitPrice,
+                DiscountRate = x.DiscountRate,
+                TaxRate = x.TaxRate,
+                QuantityToInvoice = x.Quantity - x.FulfilledQuantity
+            })
+            .ToList();
+
+        if (remainingLines.Count == 0)
+        {
+            TempData["Error"] = "Siparişte kalan (faturalanmamış) satır yok.";
+            return RedirectToAction("Details", "BusinessOrders", new { id = orderId });
+        }
+
+        var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        var model = new CreateInvoiceFromOrderViewModel
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            InvoiceType = order.OrderType,
+            CustomerId = order.CustomerId,
+            CustomerDisplay = $"{order.Customer.Code} - {order.Customer.Name}",
+            CurrencyCode = order.CurrencyCode,
+            ExchangeRate = order.ExchangeRate,
+            Lines = remainingLines,
+            WillAutoApprove = ConversionAutoApprovalPolicy.ShouldAutoApprove(settings, ConversionAutoApprovalKind.OrderToInvoice, order.OrderType, User)
+        };
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateFromOrder(CreateInvoiceFromOrderViewModel form)
+    {
+        form.Lines = form.Lines.Where(x => x.QuantityToInvoice > 0).ToList();
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.WarehouseId), "Depo seçilmelidir.");
+        }
+
+        if (form.Lines.Count == 0)
+        {
+            ModelState.AddModelError(string.Empty, "En az bir satırda faturalanacak miktar girilmelidir.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PopulateOrderConversionSelectionsAsync(form);
+            return View(form);
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var sequenceKey = form.InvoiceType == InvoiceType.Sales ? "SALES_INVOICE" : "PURCHASE_INVOICE";
+
+        var existingBySubmission = await dbContext.Invoices
+            .FirstOrDefaultAsync(x => x.SubmissionKey == form.SubmissionKey);
+        if (existingBySubmission is not null)
+        {
+            TempData["Success"] = $"{existingBySubmission.InvoiceNumber} numaralı fatura taslağı zaten oluşturulmuştu.";
+            return RedirectToAction(nameof(Details), new { id = existingBySubmission.Id });
+        }
+
+        Invoice invoice;
+        try
+        {
+            invoice = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+            {
+                var strategy = dbContext.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                    var orderLineIds = form.Lines.Select(x => x.BusinessOrderLineId).ToList();
+                    var orderLines = await dbContext.BusinessOrderLines
+                        .Where(x => orderLineIds.Contains(x.Id))
+                        .ToDictionaryAsync(x => x.Id);
+
+                    var newInvoice = new Invoice
+                    {
+                        InvoiceType = form.InvoiceType,
+                        Status = InvoiceStatus.Draft,
+                        InvoiceNumber = await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey),
+                        CreatedByUserId = userId,
+                        SubmissionKey = form.SubmissionKey,
+                        CustomerId = form.CustomerId,
+                        WarehouseId = form.WarehouseId!.Value,
+                        InvoiceDateUtc = DateTime.SpecifyKind(form.InvoiceDateUtc, DateTimeKind.Utc),
+                        CurrencyCode = form.CurrencyCode,
+                        ExchangeRate = form.ExchangeRate,
+                        Notes = $"Sipariş {form.OrderNumber} üzerinden oluşturuldu."
+                    };
+
+                    var lineNumber = 1;
+                    foreach (var line in form.Lines)
+                    {
+                        if (!orderLines.TryGetValue(line.BusinessOrderLineId, out var orderLine) || orderLine.ProductId is null)
+                        {
+                            continue;
+                        }
+
+                        newInvoice.Lines.Add(new InvoiceLine
+                        {
+                            LineNumber = lineNumber++,
+                            ProductId = orderLine.ProductId.Value,
+                            ProductVariantId = orderLine.ProductVariantId,
+                            ProductCodeSnapshot = orderLine.ProductCodeSnapshot,
+                            ProductNameSnapshot = orderLine.ProductNameSnapshot,
+                            UnitSnapshot = orderLine.UnitSnapshot,
+                            Quantity = line.QuantityToInvoice,
+                            UnitPrice = orderLine.UnitPrice,
+                            DiscountRate = orderLine.DiscountRate,
+                            TaxRate = orderLine.TaxRate,
+                            BusinessOrderLineId = orderLine.Id
+                        });
+                    }
+
+                    if (newInvoice.Lines.Count == 0)
+                    {
+                        throw new InvalidOperationException("En az bir satırda faturalanacak miktar girilmelidir.");
+                    }
+
+                    CalculateDraftTotals(newInvoice);
+
+                    dbContext.Invoices.Add(newInvoice);
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return newInvoice;
+                });
+            });
+        }
+        catch (DbUpdateException)
+        {
+            var existing = await dbContext.Invoices.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.SubmissionKey == form.SubmissionKey);
+            if (existing is not null)
+            {
+                TempData["Success"] = $"{existing.InvoiceNumber} numaralı fatura taslağı zaten oluşturulmuştu.";
+                return RedirectToAction(nameof(Details), new { id = existing.Id });
+            }
+
+            ModelState.AddModelError(string.Empty, "Kaydetme sırasında bir çakışma oluştu, lütfen tekrar deneyin.");
+            await PopulateOrderConversionSelectionsAsync(form);
+            return View(form);
+        }
+
+        await TryAutoApproveAsync(invoice.Id, ConversionAutoApprovalKind.OrderToInvoice, form.InvoiceType, userId,
+            successMessage: $"Siparişten {invoice.InvoiceNumber} numaralı fatura oluşturuldu ve otomatik onaylandı.",
+            fallbackMessage: $"Siparişten {invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu. Gözden geçirip onaylayabilirsiniz.");
+        return RedirectToAction(nameof(Details), new { id = invoice.Id });
+    }
+
+    // Kaydettikten sonra otomatik onayla: taslak KAYDEDİLİR (yukarıdaki transaction zaten commit
+    // edildi), ardından — ayrı, kendi atomik transaction'ına sahip — ApproveAsync çağrılır. Bu iki
+    // adım TEK bir atomik işlem DEĞİLDİR (kasıtlı olarak); onay adımı başarısız olursa belge Taslak
+    // olarak kalır, hiçbir kısmi hareket oluşmaz — ApproveAsync'in kendi Serializable transaction'ı
+    // bunu garanti eder. Status hiçbir zaman elle set edilmez, yalnızca gerçek onay servisi üzerinden
+    // değişir. (bkz. DispatchNotesController.TryAutoApproveAsync — aynı desen.)
+    private async Task TryAutoApproveAsync(
+        int invoiceId,
+        ConversionAutoApprovalKind kind,
+        InvoiceType direction,
+        string userId,
+        string successMessage,
+        string fallbackMessage)
+    {
+        var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
+        if (!ConversionAutoApprovalPolicy.ShouldAutoApprove(settings, kind, direction, User))
+        {
+            TempData["Success"] = fallbackMessage;
+            return;
+        }
+
+        try
+        {
+            await invoicePostingService.ApproveAsync(invoiceId, userId);
+            TempData["Success"] = successMessage;
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = $"Belge kaydedildi ancak otomatik onaylanamadı; Taslak olarak bırakıldı. Sebep: {ex.Message}";
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
+        {
+            TempData["Error"] = $"Belge kaydedildi ancak otomatik onaylanamadı; Taslak olarak bırakıldı. Sebep: {ex.Message}";
+        }
+    }
+
+    private async Task PopulateOrderConversionSelectionsAsync(CreateInvoiceFromOrderViewModel form)
+    {
+        if (form.WarehouseId is int warehouseId)
+        {
+            form.WarehouseDisplay = await dbContext.Warehouses
+                .Where(x => x.Id == warehouseId)
+                .Select(x => x.Code + " - " + x.Name)
+                .SingleOrDefaultAsync();
+        }
+    }
+
+    // "Planlı İşlem" (F5): seçili cariye ait, aynı alış/satış yönündeki, onaylı ve henüz tamamen
+    // faturalanmamış irsaliyeleri (satırlarıyla birlikte) döner — Invoices/Form.cshtml bunu JSON
+    // olarak çekip picker'da gösterir. Fiyat/KDV/iskonto kaynağı: irsaliye satırı bir siparişten
+    // geliyorsa (BusinessOrderLineId set) o sipariş satırının fiyatı; yoksa ürünün güncel fiyatı
+    // (önerilen değer, kullanıcı düzenleyebilir).
+    [HttpGet]
+    public async Task<IActionResult> EligibleDispatchNotes(int customerId, InvoiceType invoiceType)
+    {
+        var dispatches = await dbContext.DispatchNotes
+            .AsNoTracking()
+            .Include(x => x.Warehouse)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.Product)
+            .ThenInclude(x => x.TaxRate)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine)
+            .Where(x => x.CustomerId == customerId &&
+                x.DispatchType == invoiceType &&
+                (x.Status == BusinessDocumentStatus.Approved || x.Status == BusinessDocumentStatus.PartiallyFulfilled))
+            .OrderByDescending(x => x.DispatchDateUtc)
+            .ToListAsync();
+
+        var result = dispatches
+            .Select(dispatch => new
+            {
+                id = dispatch.Id,
+                dispatchNumber = dispatch.DispatchNumber,
+                dateUtc = dispatch.DispatchDateUtc.ToString("dd.MM.yyyy"),
+                warehouseId = dispatch.WarehouseId,
+                warehouseDisplay = $"{dispatch.Warehouse.Code} - {dispatch.Warehouse.Name}",
+                lines = dispatch.Lines
+                    .Where(x => x.Quantity - x.InvoicedQuantity > 0)
+                    .OrderBy(x => x.LineNumber)
+                    .Select(line => new
+                    {
+                        dispatchNoteLineId = line.Id,
+                        productId = line.ProductId,
+                        productDisplay = $"{line.Product.StockCode} - {line.Product.Name}",
+                        unitSnapshot = line.Product.Unit,
+                        remainingQuantity = line.Quantity - line.InvoicedQuantity,
+                        unitPrice = line.BusinessOrderLine?.UnitPrice
+                            ?? (invoiceType == InvoiceType.Sales ? line.Product.SalePrice : line.Product.PurchasePrice),
+                        discountRate = line.BusinessOrderLine?.DiscountRate ?? 0,
+                        taxRate = line.BusinessOrderLine?.TaxRate ?? line.Product.TaxRate.Rate
+                    })
+                    .ToList()
+            })
+            .Where(x => x.lines.Count > 0)
+            .ToList();
+
+        return Json(new { items = result });
     }
 
     public async Task<IActionResult> Edit(int id)
     {
         var invoice = await dbContext.Invoices
             .Include(x => x.Lines)
+            .ThenInclude(x => x.DispatchNoteLine!)
+            .ThenInclude(x => x.DispatchNote!)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (invoice is null)
         {
@@ -306,7 +607,14 @@ public sealed class InvoicesController(
                     UnitPrice = x.UnitPrice,
                     DiscountRate = x.DiscountRate,
                     TaxRate = x.TaxRate,
-                    Description = x.Description
+                    Description = x.Description,
+                    DispatchNoteLineId = x.DispatchNoteLineId,
+                    BusinessOrderLineId = x.BusinessOrderLineId,
+                    SourceDisplay = x.DispatchNoteLine is not null
+                        ? $"İrsaliye {x.DispatchNoteLine.DispatchNote.DispatchNumber}"
+                        : x.BusinessOrderLine is not null
+                            ? $"Sipariş {x.BusinessOrderLine.BusinessOrder.OrderNumber}"
+                            : null
                 })
                 .ToList()
         };
@@ -508,6 +816,11 @@ public sealed class InvoicesController(
             .Include(x => x.Customer)
             .Include(x => x.Warehouse)
             .Include(x => x.Lines)
+            .ThenInclude(x => x.DispatchNoteLine!)
+            .ThenInclude(x => x.DispatchNote!)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
             .Include(x => x.PaymentSchedules)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (invoice is null)
@@ -595,7 +908,12 @@ public sealed class InvoicesController(
                     LineTotal = x.LineTotal,
                     GrossTotal = Math.Round(x.Quantity * x.UnitPrice, 2, MidpointRounding.AwayFromZero),
                     NetTotal = Math.Round((x.Quantity * x.UnitPrice) - x.DiscountAmount, 2, MidpointRounding.AwayFromZero),
-                    Description = x.Description
+                    Description = x.Description,
+                    SourceDisplay = x.DispatchNoteLine is not null
+                        ? $"İrsaliye {x.DispatchNoteLine.DispatchNote.DispatchNumber}"
+                        : x.BusinessOrderLine is not null
+                            ? $"Sipariş {x.BusinessOrderLine.BusinessOrder.OrderNumber}"
+                            : null
                 })
                 .ToList(),
             TaxBreakdown = invoice.Lines
@@ -632,6 +950,10 @@ public sealed class InvoicesController(
         {
             TempData["Error"] = ex.Message;
         }
+        catch (ConcurrencyRetryExhaustedException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
 
         return RedirectToAction(nameof(Details), new { id });
     }
@@ -648,6 +970,10 @@ public sealed class InvoicesController(
             TempData["Success"] = "Fatura iptal edildi.";
         }
         catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
         {
             TempData["Error"] = ex.Message;
         }
@@ -761,7 +1087,9 @@ public sealed class InvoicesController(
                     : line.UnitPrice,
                 DiscountRate = line.DiscountRate,
                 TaxRate = line.TaxRate,
-                Description = line.Description?.Trim()
+                Description = line.Description?.Trim(),
+                DispatchNoteLineId = line.DispatchNoteLineId,
+                BusinessOrderLineId = line.DispatchNoteLineId is null ? line.BusinessOrderLineId : null
             });
         }
 

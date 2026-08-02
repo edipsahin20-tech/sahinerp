@@ -18,6 +18,15 @@ public sealed class BusinessOrderDetailsViewModel
     public decimal GrandTotal { get; set; }
     public string? Notes { get; set; }
     public IReadOnlyList<BusinessOrderDetailsLineViewModel> Lines { get; set; } = [];
+    public IReadOnlyList<LinkedDocumentViewModel> LinkedDispatchNotes { get; set; } = [];
+    public IReadOnlyList<LinkedDocumentViewModel> LinkedInvoices { get; set; } = [];
+}
+
+public sealed class LinkedDocumentViewModel
+{
+    public int Id { get; set; }
+    public string Number { get; set; } = string.Empty;
+    public string StatusText { get; set; } = string.Empty;
 }
 
 public sealed class BusinessOrderDetailsLineViewModel
@@ -26,6 +35,7 @@ public sealed class BusinessOrderDetailsLineViewModel
     public string UnitSnapshot { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal FulfilledQuantity { get; set; }
+    public decimal RemainingQuantity => Quantity - FulfilledQuantity;
     public decimal UnitPrice { get; set; }
     public decimal LineTotal { get; set; }
 }

@@ -1,0 +1,108 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.CreateDispatchFromOrderViewModel
+@{
+    var isSales = Model.DispatchType == InvoiceType.Sales;
+    ViewData["Title"] = "Siparişten İrsaliye Oluştur";
+}
+
+<form method="post" asp-action="CreateFromOrder">
+    <input asp-for="OrderId" type="hidden" />
+    <input asp-for="OrderNumber" type="hidden" />
+    <input asp-for="DispatchType" type="hidden" />
+    <input asp-for="CustomerId" type="hidden" />
+    <input asp-for="CustomerDisplay" type="hidden" />
+    <input asp-for="SubmissionKey" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>Siparişten İrsaliye Oluştur</h1>
+            <span class="erp-toolbar-meta">Kaynak sipariş: @Model.OrderNumber</span>
+        </div>
+        <div>
+            <a asp-controller="BusinessOrders" asp-action="Details" asp-route-id="@Model.OrderId" class="btn btn-erp-outline">Vazgeç</a>
+            <button type="submit" class="btn btn-erp-primary">İrsaliye Taslağı Oluştur</button>
+        </div>
+    </div>
+
+    <div class="alert @(Model.WillAutoApprove ? "alert-success" : "alert-secondary") py-2 mb-3">
+        Bu işlem sonucunda: <strong>@(Model.WillAutoApprove ? "Kaydedilecek ve otomatik onaylanacak" : "Taslak oluşturulacak")</strong>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Evrak Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label>Cari</label>
+                    <input class="form-control" value="@Model.CustomerDisplay" readonly />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="WarehouseId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.WarehouseId), Id = nameof(Model.WarehouseId),
+                        Value = Model.WarehouseId?.ToString(),
+                        DisplayValue = Model.WarehouseDisplay,
+                        Endpoint = Url.Action("Warehouses", "Lookup")!,
+                        Title = "Depo Seç", Placeholder = "Depo seçin" })" />
+                    <span asp-validation-for="WarehouseId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DispatchDateUtc"></label>
+                    <input asp-for="DispatchDateUtc" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="VehiclePlate"></label>
+                    <input asp-for="VehiclePlate" class="form-control" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CarrierName"></label>
+                    <input asp-for="CarrierName" class="form-control" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Sipariş Satırları — Kalan Miktarlar</div>
+        <div class="erp-panel-body p-0">
+            <div class="erp-table-wrap">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Ürün</th>
+                            <th style="width: 120px;">Sipariş Miktarı</th>
+                            <th style="width: 120px;">Kalan</th>
+                            <th style="width: 160px;">Sevk Edilecek Miktar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Lines.Count; i++)
+                    {
+                        <tr>
+                            <input type="hidden" name="Lines.Index" value="@i" />
+                            <input type="hidden" asp-for="Lines[i].BusinessOrderLineId" />
+                            <input type="hidden" asp-for="Lines[i].ProductNameSnapshot" />
+                            <input type="hidden" asp-for="Lines[i].UnitSnapshot" />
+                            <input type="hidden" asp-for="Lines[i].OrderedQuantity" />
+                            <input type="hidden" asp-for="Lines[i].RemainingQuantity" />
+                            <td>@Model.Lines[i].ProductNameSnapshot <small class="text-muted">(@Model.Lines[i].UnitSnapshot)</small></td>
+                            <td>@Model.Lines[i].OrderedQuantity.ToString("N3")</td>
+                            <td>@Model.Lines[i].RemainingQuantity.ToString("N3")</td>
+                            <td>
+                                <input type="text" asp-for="Lines[i].QuantityToShip" class="form-control"
+                                       max="@Model.Lines[i].RemainingQuantity" />
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

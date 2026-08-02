@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SahinSoft.Domain.Common;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
@@ -318,6 +319,27 @@ public sealed class BusinessOrdersController(
                 })
                 .ToList()
         };
+
+        var linkedDispatches = await dbContext.DispatchNotes
+            .AsNoTracking()
+            .Where(x => x.BusinessOrderId == id)
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+        model.LinkedDispatchNotes = linkedDispatches
+            .Select(x => new LinkedDocumentViewModel { Id = x.Id, Number = x.DispatchNumber, StatusText = x.Status.GetDisplayName() })
+            .ToList();
+
+        var orderLineIds = order.Lines.Select(x => x.Id).ToList();
+        var linkedInvoices = await dbContext.InvoiceLines
+            .AsNoTracking()
+            .Where(x => x.BusinessOrderLineId != null && orderLineIds.Contains(x.BusinessOrderLineId!.Value))
+            .Select(x => x.Invoice)
+            .Distinct()
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+        model.LinkedInvoices = linkedInvoices
+            .Select(x => new LinkedDocumentViewModel { Id = x.Id, Number = x.InvoiceNumber, StatusText = x.Status.GetDisplayName() })
+            .ToList();
 
         return View(model);
     }

@@ -34,8 +34,19 @@
                 <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
             </form>
         }
+        @if (Model.Status is BusinessDocumentStatus.Approved or BusinessDocumentStatus.PartiallyFulfilled && Model.Lines.Any(x => x.RemainingQuantity > 0))
+        {
+            <a asp-controller="Invoices" asp-action="Create" asp-route-type="@Model.DispatchType" class="btn btn-erp-outline btn-sm" title="Fatura ekranında 'Planlı İşlem'i işaretleyip F5 ile bu irsaliyeyi çağırabilirsiniz.">Faturala (Planlı İşlem)</a>
+        }
     </div>
 </div>
+
+@if (Model.SourceOrderId is int sourceOrderId)
+{
+    <div class="alert alert-secondary py-2">
+        Kaynak sipariş: <a asp-controller="BusinessOrders" asp-action="Details" asp-route-id="@sourceOrderId">@Model.SourceOrderNumber</a>
+    </div>
+}
 
 @if (TempData["Success"] is string success)
 {
@@ -59,6 +70,8 @@
                     <tr>
                         <th>Ürün</th>
                         <th class="text-end">Miktar</th>
+                        <th class="text-end">Faturalanan</th>
+                        <th class="text-end">Kalan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -67,6 +80,8 @@
                     <tr>
                         <td>@line.ProductName</td>
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
+                        <td class="text-end">@line.InvoicedQuantity.ToString("N3")</td>
+                        <td class="text-end">@line.RemainingQuantity.ToString("N3")</td>
                     </tr>
                 }
                 </tbody>
@@ -80,6 +95,21 @@
     <div class="erp-panel">
         <div class="erp-panel-header">Notlar</div>
         <div class="erp-panel-body">@Model.Notes</div>
+    </div>
+}
+
+@if (Model.LinkedInvoices.Count > 0)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Bağlı Faturalar</div>
+        <div class="erp-panel-body">
+            <ul class="mb-0">
+                @foreach (var inv in Model.LinkedInvoices)
+                {
+                    <li><a asp-controller="Invoices" asp-action="Details" asp-route-id="@inv.Id">@inv.Number</a> — @inv.StatusText</li>
+                }
+            </ul>
+        </div>
     </div>
 }
 

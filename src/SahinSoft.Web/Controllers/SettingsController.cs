@@ -98,6 +98,12 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireProductVariant = model.RequireProductVariant;
         settings.AllowSaleBelowCost = model.AllowSaleBelowCost;
         settings.IsRestaurantModuleEnabled = model.IsRestaurantModuleEnabled;
+        settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
+        settings.OrderToDispatchSalesAutoApprove = model.OrderToDispatchSalesAutoApprove;
+        settings.OrderToInvoicePurchaseAutoApprove = model.OrderToInvoicePurchaseAutoApprove;
+        settings.OrderToInvoiceSalesAutoApprove = model.OrderToInvoiceSalesAutoApprove;
+        settings.DispatchToInvoicePurchaseAutoApprove = model.DispatchToInvoicePurchaseAutoApprove;
+        settings.DispatchToInvoiceSalesAutoApprove = model.DispatchToInvoiceSalesAutoApprove;
         settings.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
@@ -119,6 +125,12 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         TrackStockByVariant = settings.TrackStockByVariant,
         RequireProductVariant = settings.RequireProductVariant,
         AllowSaleBelowCost = settings.AllowSaleBelowCost,
-        IsRestaurantModuleEnabled = settings.IsRestaurantModuleEnabled
+        IsRestaurantModuleEnabled = settings.IsRestaurantModuleEnabled,
+        OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,
+        OrderToDispatchSalesAutoApprove = settings.OrderToDispatchSalesAutoApprove,
+        OrderToInvoicePurchaseAutoApprove = settings.OrderToInvoicePurchaseAutoApprove,
+        OrderToInvoiceSalesAutoApprove = settings.OrderToInvoiceSalesAutoApprove,
+        DispatchToInvoicePurchaseAutoApprove = settings.DispatchToInvoicePurchaseAutoApprove,
+        DispatchToInvoiceSalesAutoApprove = settings.DispatchToInvoiceSalesAutoApprove
     };
 }

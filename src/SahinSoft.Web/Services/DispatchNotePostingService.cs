@@ -13,14 +13,21 @@ public sealed class DispatchNotePostingService(
     public Task ApproveAsync(
         int dispatchNoteId,
         string approvedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
-        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
-        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(dispatchNoteId, approvedByUserId, cancellationToken));
-    }
+        CancellationToken cancellationToken = default) =>
+        // Onay artık ilişkili BusinessOrderLine.FulfilledQuantity'yi de güncelleyebiliyor (Sipariş →
+        // İrsaliye dönüşümü) — RowVersion'lı bu satırda iki eşzamanlı onay çakışırsa Serializable
+        // izolasyon tek başına yetmiyor (bu oturumda İrsaliye numarası üretiminde ham DbUpdateException
+        // olarak kanıtlandı). DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync — sayaç
+        // üretimini koruyan aynı genel amaçlı sarmalayıcı — DbUpdateConcurrencyException'ı yakalayıp
+        // taze transaction'la otomatik tekrar dener.
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+            // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+            // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await ApproveCoreAsync(dispatchNoteId, approvedByUserId, cancellationToken); return true; });
+        }, cancellationToken);
 
     private async Task ApproveCoreAsync(
         int dispatchNoteId,
@@ -34,6 +41,10 @@ public sealed class DispatchNotePostingService(
         var dispatch = await dbContext.DispatchNotes
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
+            .ThenInclude(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == dispatchNoteId, cancellationToken)
             ?? throw new InvalidOperationException("İrsaliye bulunamadı.");
 
@@ -50,6 +61,33 @@ public sealed class DispatchNotePostingService(
         var settings = await dbContext.InventorySettings
             .AsNoTracking()
             .SingleAsync(x => x.Id == 1, cancellationToken);
+
+        // Sipariş satırından sevk edilen satırlar için önce kalan miktar kontrolü — sadece onayda
+        // (taslak oluşturma hiçbir şeyi tüketmez), tıpkı aşağıdaki negatif stok kontrolü gibi.
+        var affectedOrders = new HashSet<BusinessOrder>();
+        foreach (var line in dispatch.Lines)
+        {
+            if (line.BusinessOrderLine is null)
+            {
+                continue;
+            }
+
+            var remaining = line.BusinessOrderLine.Quantity - line.BusinessOrderLine.FulfilledQuantity;
+            if (remaining < line.Quantity)
+            {
+                throw new InvalidOperationException(
+                    $"{line.BusinessOrderLine.ProductNameSnapshot} için sipariş satırında kalan miktar yetersiz. Kalan: {remaining:N3}");
+            }
+
+            line.BusinessOrderLine.FulfilledQuantity += line.Quantity;
+            affectedOrders.Add(line.BusinessOrderLine.BusinessOrder);
+        }
+
+        foreach (var order in affectedOrders)
+        {
+            order.Status = FulfillmentStatusCalculator.Calculate(order.Lines.Select(x => (x.Quantity, x.FulfilledQuantity)));
+            order.UpdatedAtUtc = DateTime.UtcNow;
+        }
 
         foreach (var line in dispatch.Lines)
         {
@@ -124,8 +162,13 @@ public sealed class DispatchNotePostingService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await CancelCoreAsync(dispatchNoteId, cancelledByUserId, reason, cancellationToken));
+        // İptal artık ilişkili BusinessOrderLine.FulfilledQuantity'yi geri alabiliyor — bkz. ApproveAsync'teki
+        // aynı gerekçe.
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await CancelCoreAsync(dispatchNoteId, cancelledByUserId, reason, cancellationToken); return true; });
+        }, cancellationToken);
     }
 
     private async Task CancelCoreAsync(
@@ -141,6 +184,10 @@ public sealed class DispatchNotePostingService(
         var dispatch = await dbContext.DispatchNotes
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
+            .ThenInclude(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == dispatchNoteId, cancellationToken)
             ?? throw new InvalidOperationException("İrsaliye bulunamadı.");
 
@@ -150,6 +197,26 @@ public sealed class DispatchNotePostingService(
         }
 
         var reversalDocumentNumber = $"IPTAL-{dispatch.DispatchNumber}";
+
+        // İptal, sipariş satırının karşılanan miktarını güvenli biçimde geri alır — sipariş yeniden
+        // sevkedilebilir/faturalanabilir hale gelir.
+        var affectedOrders = new HashSet<BusinessOrder>();
+        foreach (var line in dispatch.Lines)
+        {
+            if (line.BusinessOrderLine is null)
+            {
+                continue;
+            }
+
+            line.BusinessOrderLine.FulfilledQuantity -= line.Quantity;
+            affectedOrders.Add(line.BusinessOrderLine.BusinessOrder);
+        }
+
+        foreach (var order in affectedOrders)
+        {
+            order.Status = FulfillmentStatusCalculator.Calculate(order.Lines.Select(x => (x.Quantity, x.FulfilledQuantity)));
+            order.UpdatedAtUtc = DateTime.UtcNow;
+        }
 
         foreach (var line in dispatch.Lines)
         {

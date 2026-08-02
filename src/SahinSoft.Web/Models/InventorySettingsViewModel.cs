@@ -42,4 +42,22 @@ public sealed class InventorySettingsViewModel
 
     [Display(Name = "Restoran Modülü aktif")]
     public bool IsRestaurantModuleEnabled { get; set; }
+
+    [Display(Name = "Alış Siparişi → İrsaliye otomatik onay")]
+    public bool OrderToDispatchPurchaseAutoApprove { get; set; }
+
+    [Display(Name = "Satış Siparişi → İrsaliye otomatik onay")]
+    public bool OrderToDispatchSalesAutoApprove { get; set; }
+
+    [Display(Name = "Alış Siparişi → Fatura otomatik onay")]
+    public bool OrderToInvoicePurchaseAutoApprove { get; set; }
+
+    [Display(Name = "Satış Siparişi → Fatura otomatik onay")]
+    public bool OrderToInvoiceSalesAutoApprove { get; set; }
+
+    [Display(Name = "Alış İrsaliyesi → Fatura otomatik onay")]
+    public bool DispatchToInvoicePurchaseAutoApprove { get; set; }
+
+    [Display(Name = "Satış İrsaliyesi → Fatura otomatik onay")]
+    public bool DispatchToInvoiceSalesAutoApprove { get; set; }
 }

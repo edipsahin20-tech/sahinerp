@@ -20,4 +20,8 @@ public sealed class BusinessOrderLine : EntityBase
     public Product? Product { get; set; }
     public int? ProductVariantId { get; set; }
     public ProductVariant? ProductVariant { get; set; }
+
+    // Bu sipariş satırından üretilmiş irsaliye/fatura satırları (dönüşüm izlenebilirliği).
+    public ICollection<DispatchNoteLine> DispatchNoteLines { get; set; } = new List<DispatchNoteLine>();
+    public ICollection<InvoiceLine> InvoiceLines { get; set; } = new List<InvoiceLine>();
 }

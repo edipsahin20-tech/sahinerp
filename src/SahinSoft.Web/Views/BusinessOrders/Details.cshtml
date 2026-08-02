@@ -33,6 +33,14 @@
                 <button type="submit" class="btn btn-erp-primary btn-sm">Onayla</button>
             </form>
         }
+        @{
+            var hasRemaining = Model.Lines.Any(x => x.RemainingQuantity > 0);
+        }
+        @if (Model.Status is BusinessDocumentStatus.Approved or BusinessDocumentStatus.PartiallyFulfilled && hasRemaining)
+        {
+            <a asp-controller="DispatchNotes" asp-action="CreateFromOrder" asp-route-orderId="@Model.Id" class="btn btn-erp-outline btn-sm">İrsaliyeye Dönüştür</a>
+            <a asp-controller="Invoices" asp-action="CreateFromOrder" asp-route-orderId="@Model.Id" class="btn btn-erp-outline btn-sm">Faturaya Dönüştür</a>
+        }
         @if (Model.Status is BusinessDocumentStatus.Draft or BusinessDocumentStatus.Approved)
         {
             <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-inline">
@@ -61,6 +69,7 @@
                         <th>Ürün</th>
                         <th class="text-end">Miktar</th>
                         <th class="text-end">Karşılanan</th>
+                        <th class="text-end">Kalan</th>
                         <th class="text-end">Birim Fiyat</th>
                         <th class="text-end">Tutar</th>
                     </tr>
@@ -72,6 +81,7 @@
                         <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
                         <td class="text-end">@line.FulfilledQuantity.ToString("N3")</td>
+                        <td class="text-end">@line.RemainingQuantity.ToString("N3")</td>
                         <td class="text-end">@line.UnitPrice.ToString("N2")</td>
                         <td class="text-end">@line.LineTotal.ToString("N2")</td>
                     </tr>
@@ -95,5 +105,34 @@
     <div class="erp-panel">
         <div class="erp-panel-header">Notlar</div>
         <div class="erp-panel-body">@Model.Notes</div>
+    </div>
+}
+
+@if (Model.LinkedDispatchNotes.Count > 0 || Model.LinkedInvoices.Count > 0)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Bağlı Belgeler</div>
+        <div class="erp-panel-body">
+            @if (Model.LinkedDispatchNotes.Count > 0)
+            {
+                <p class="mb-1"><strong>İrsaliyeler:</strong></p>
+                <ul class="mb-2">
+                    @foreach (var d in Model.LinkedDispatchNotes)
+                    {
+                        <li><a asp-controller="DispatchNotes" asp-action="Details" asp-route-id="@d.Id">@d.Number</a> — @d.StatusText</li>
+                    }
+                </ul>
+            }
+            @if (Model.LinkedInvoices.Count > 0)
+            {
+                <p class="mb-1"><strong>Faturalar:</strong></p>
+                <ul class="mb-0">
+                    @foreach (var inv in Model.LinkedInvoices)
+                    {
+                        <li><a asp-controller="Invoices" asp-action="Details" asp-route-id="@inv.Id">@inv.Number</a> — @inv.StatusText</li>
+                    }
+                </ul>
+            }
+        </div>
     </div>
 }

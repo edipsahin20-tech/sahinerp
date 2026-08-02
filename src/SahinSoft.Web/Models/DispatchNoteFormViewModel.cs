@@ -56,4 +56,9 @@ public sealed class DispatchNoteLineFormViewModel
     [Range(0.001, 999999999)]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
+
+    // Planlı İşlem (F5) ile bir siparişten çağrılan satırlarda set edilir; elle eklenen satırlarda
+    // null kalır. Bkz. DispatchNoteLine.BusinessOrderLineId.
+    public int? BusinessOrderLineId { get; set; }
+    public string? SourceDisplay { get; set; }
 }

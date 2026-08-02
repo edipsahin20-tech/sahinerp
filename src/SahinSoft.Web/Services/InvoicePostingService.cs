@@ -16,14 +16,22 @@ public sealed class InvoicePostingService(
     public Task ApproveAsync(
         int invoiceId,
         string approvedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
-        // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
-        // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(invoiceId, approvedByUserId, cancellationToken));
-    }
+        CancellationToken cancellationToken = default) =>
+        // Onay artık ilişkili BusinessOrderLine.FulfilledQuantity / DispatchNoteLine.InvoicedQuantity'yi
+        // de güncelleyebiliyor (Sipariş/İrsaliye → Fatura dönüşümü) — RowVersion'lı bu satırlarda iki
+        // eşzamanlı onay çakışırsa Serializable izolasyon tek başına yetmiyor (bu oturumda İrsaliye
+        // numarası üretiminde ham DbUpdateException olarak kanıtlandı).
+        // DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync — sayaç üretimini koruyan aynı
+        // genel amaçlı sarmalayıcı — DbUpdateConcurrencyException'ı yakalayıp taze transaction'la
+        // otomatik tekrar dener.
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
+            // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
+            // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await ApproveCoreAsync(invoiceId, approvedByUserId, cancellationToken); return true; });
+        }, cancellationToken);
 
     private async Task ApproveCoreAsync(
         int invoiceId,
@@ -37,6 +45,14 @@ public sealed class InvoicePostingService(
         var invoice = await dbContext.Invoices
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
+            .ThenInclude(x => x.Lines)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.DispatchNoteLine!)
+            .ThenInclude(x => x.DispatchNote!)
+            .ThenInclude(x => x.Lines)
             .Include(x => x.PaymentSchedules)
             .SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
             ?? throw new InvalidOperationException("Fatura bulunamadı.");
@@ -49,6 +65,8 @@ public sealed class InvoicePostingService(
         var inventorySettings = await dbContext.InventorySettings
             .AsNoTracking()
             .SingleAsync(x => x.Id == 1, cancellationToken);
+
+        ApplyConversionFulfillment(invoice);
 
         await PostStockAndAccountAsync(invoice, inventorySettings, cancellationToken);
 
@@ -92,8 +110,13 @@ public sealed class InvoicePostingService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await CancelCoreAsync(invoiceId, cancelledByUserId, reason, cancellationToken));
+        // İptal artık ilişkili BusinessOrderLine.FulfilledQuantity / DispatchNoteLine.InvoicedQuantity'yi
+        // geri alabiliyor — bkz. ApproveAsync'teki aynı gerekçe.
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await CancelCoreAsync(invoiceId, cancelledByUserId, reason, cancellationToken); return true; });
+        }, cancellationToken);
     }
 
     private async Task CancelCoreAsync(
@@ -109,6 +132,14 @@ public sealed class InvoicePostingService(
         var invoice = await dbContext.Invoices
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.BusinessOrderLine!)
+            .ThenInclude(x => x.BusinessOrder!)
+            .ThenInclude(x => x.Lines)
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.DispatchNoteLine!)
+            .ThenInclude(x => x.DispatchNote!)
+            .ThenInclude(x => x.Lines)
             .Include(x => x.PaymentSchedules)
             .Include(x => x.AccountTransactions)
             .SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
@@ -123,6 +154,8 @@ public sealed class InvoicePostingService(
         {
             throw new InvalidOperationException("Tahsilatı/ödemesi yapılmış fatura iptal edilemez.");
         }
+
+        ReverseConversionFulfillment(invoice);
 
         var reversalDocumentNumber = $"IPTAL-{invoice.InvoiceNumber}";
         await ReversePostingsAsync(invoice, reversalDocumentNumber, $"Fatura iptali - {reason}", cancellationToken);
@@ -153,6 +186,91 @@ public sealed class InvoicePostingService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    // Sipariş → Fatura (doğrudan) ve İrsaliye → Fatura dönüşümlerinden gelen satırlar için kalan
+    // miktar kontrolü + sayaç güncellemesi — sadece onayda (taslak oluşturma hiçbir şeyi tüketmez).
+    // Bir InvoiceLine ya DispatchNoteLineId ya BusinessOrderLineId taşır, asla ikisini birden
+    // (irsaliyeden gelen bir fatura satırı siparişin havuzuna tekrar dokunmaz — irsaliye onayında
+    // zaten tüketildi, bkz. DispatchNotePostingService.ApproveCoreAsync).
+    private static void ApplyConversionFulfillment(Invoice invoice)
+    {
+        var affectedOrders = new HashSet<BusinessOrder>();
+        var affectedDispatches = new HashSet<DispatchNote>();
+
+        foreach (var line in invoice.Lines)
+        {
+            if (line.DispatchNoteLine is not null)
+            {
+                var remaining = line.DispatchNoteLine.Quantity - line.DispatchNoteLine.InvoicedQuantity;
+                if (remaining < line.Quantity)
+                {
+                    throw new InvalidOperationException(
+                        $"{line.ProductNameSnapshot} için irsaliye satırında kalan (faturalanacak) miktar yetersiz. Kalan: {remaining:N3}");
+                }
+
+                line.DispatchNoteLine.InvoicedQuantity += line.Quantity;
+                affectedDispatches.Add(line.DispatchNoteLine.DispatchNote);
+            }
+            else if (line.BusinessOrderLine is not null)
+            {
+                var remaining = line.BusinessOrderLine.Quantity - line.BusinessOrderLine.FulfilledQuantity;
+                if (remaining < line.Quantity)
+                {
+                    throw new InvalidOperationException(
+                        $"{line.ProductNameSnapshot} için sipariş satırında kalan miktar yetersiz. Kalan: {remaining:N3}");
+                }
+
+                line.BusinessOrderLine.FulfilledQuantity += line.Quantity;
+                affectedOrders.Add(line.BusinessOrderLine.BusinessOrder);
+            }
+        }
+
+        foreach (var order in affectedOrders)
+        {
+            order.Status = FulfillmentStatusCalculator.Calculate(order.Lines.Select(x => (x.Quantity, x.FulfilledQuantity)));
+            order.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        foreach (var dispatch in affectedDispatches)
+        {
+            dispatch.Status = FulfillmentStatusCalculator.Calculate(dispatch.Lines.Select(x => (x.Quantity, x.InvoicedQuantity)));
+            dispatch.UpdatedAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    // ApplyConversionFulfillment'ın tersi — iptalde kaynak belgenin karşılanan/faturalanan miktarını
+    // güvenli biçimde geri alır.
+    private static void ReverseConversionFulfillment(Invoice invoice)
+    {
+        var affectedOrders = new HashSet<BusinessOrder>();
+        var affectedDispatches = new HashSet<DispatchNote>();
+
+        foreach (var line in invoice.Lines)
+        {
+            if (line.DispatchNoteLine is not null)
+            {
+                line.DispatchNoteLine.InvoicedQuantity -= line.Quantity;
+                affectedDispatches.Add(line.DispatchNoteLine.DispatchNote);
+            }
+            else if (line.BusinessOrderLine is not null)
+            {
+                line.BusinessOrderLine.FulfilledQuantity -= line.Quantity;
+                affectedOrders.Add(line.BusinessOrderLine.BusinessOrder);
+            }
+        }
+
+        foreach (var order in affectedOrders)
+        {
+            order.Status = FulfillmentStatusCalculator.Calculate(order.Lines.Select(x => (x.Quantity, x.FulfilledQuantity)));
+            order.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        foreach (var dispatch in affectedDispatches)
+        {
+            dispatch.Status = FulfillmentStatusCalculator.Calculate(dispatch.Lines.Select(x => (x.Quantity, x.InvoicedQuantity)));
+            dispatch.UpdatedAtUtc = DateTime.UtcNow;
+        }
     }
 
     // Onaylı bir faturanın satırlarını (ürün ekle/çıkar/miktar-fiyat değiştir) düzenlemeye izin
@@ -331,55 +449,64 @@ public sealed class InvoicePostingService(
                 continue;
             }
 
-            if (inventorySettings.RequireProductVariant &&
-                line.ProductVariantId is null &&
-                await dbContext.ProductVariants.AnyAsync(
-                    x => x.ProductId == line.ProductId && x.IsActive,
-                    cancellationToken))
+            // İrsaliyeden çağrılan (Planlı İşlem) satırların stoğu zaten İRSALİYE onayında işlendi —
+            // burada ikinci kez StockMovement yazıp Product.StockQuantity'yi bir daha değiştirmek
+            // çifte sayıma yol açar; bu yüzden stok tarafı tamamen atlanır (varyant/negatif stok
+            // kontrolleri dahil — irsaliye onayında zaten doğrulandı). Alış Fiyatı snapshot'ı ise
+            // stoktan bağımsız olduğu için (fiilen ödenen fiyatı yansıtır) yine de güncellenir —
+            // aşağıdaki if bloğu bunun için korunuyor.
+            if (line.DispatchNoteLineId is null)
             {
-                throw new InvalidOperationException(
-                    $"{line.ProductNameSnapshot} için renk/varyant seçilmelidir.");
-            }
-
-            var signedQuantity = invoice.InvoiceType == InvoiceType.Sales
-                ? -line.Quantity
-                : line.Quantity;
-
-            if (invoice.InvoiceType == InvoiceType.Sales &&
-                inventorySettings.EnforceStockLevel &&
-                !inventorySettings.AllowNegativeStock &&
-                !inventorySettings.AllowSaleWhenOutOfStock)
-            {
-                var available = await inventoryBalance.GetAvailableAsync(
-                    line.ProductId.Value,
-                    line.ProductVariantId,
-                    invoice.WarehouseId,
-                    cancellationToken);
-
-                if (available < line.Quantity)
+                if (inventorySettings.RequireProductVariant &&
+                    line.ProductVariantId is null &&
+                    await dbContext.ProductVariants.AnyAsync(
+                        x => x.ProductId == line.ProductId && x.IsActive,
+                        cancellationToken))
                 {
                     throw new InvalidOperationException(
-                        $"{line.ProductNameSnapshot} için yeterli stok yok. Mevcut: {available:N3}");
+                        $"{line.ProductNameSnapshot} için renk/varyant seçilmelidir.");
                 }
+
+                var signedQuantity = invoice.InvoiceType == InvoiceType.Sales
+                    ? -line.Quantity
+                    : line.Quantity;
+
+                if (invoice.InvoiceType == InvoiceType.Sales &&
+                    inventorySettings.EnforceStockLevel &&
+                    !inventorySettings.AllowNegativeStock &&
+                    !inventorySettings.AllowSaleWhenOutOfStock)
+                {
+                    var available = await inventoryBalance.GetAvailableAsync(
+                        line.ProductId.Value,
+                        line.ProductVariantId,
+                        invoice.WarehouseId,
+                        cancellationToken);
+
+                    if (available < line.Quantity)
+                    {
+                        throw new InvalidOperationException(
+                            $"{line.ProductNameSnapshot} için yeterli stok yok. Mevcut: {available:N3}");
+                    }
+                }
+
+                dbContext.StockMovements.Add(new StockMovement
+                {
+                    MovementDateUtc = invoice.InvoiceDateUtc,
+                    MovementType = invoice.InvoiceType == InvoiceType.Sales
+                        ? StockMovementType.Sale
+                        : StockMovementType.Purchase,
+                    Quantity = signedQuantity,
+                    UnitCost = invoice.InvoiceType == InvoiceType.Purchase ? line.UnitPrice : 0,
+                    DocumentNumber = invoice.InvoiceNumber,
+                    ProductId = line.ProductId.Value,
+                    ProductVariantId = line.ProductVariantId,
+                    WarehouseId = invoice.WarehouseId,
+                    InvoiceLineId = line.Id,
+                    Description = invoice.Notes
+                });
+
+                line.Product.StockQuantity += signedQuantity;
             }
-
-            dbContext.StockMovements.Add(new StockMovement
-            {
-                MovementDateUtc = invoice.InvoiceDateUtc,
-                MovementType = invoice.InvoiceType == InvoiceType.Sales
-                    ? StockMovementType.Sale
-                    : StockMovementType.Purchase,
-                Quantity = signedQuantity,
-                UnitCost = invoice.InvoiceType == InvoiceType.Purchase ? line.UnitPrice : 0,
-                DocumentNumber = invoice.InvoiceNumber,
-                ProductId = line.ProductId.Value,
-                ProductVariantId = line.ProductVariantId,
-                WarehouseId = invoice.WarehouseId,
-                InvoiceLineId = line.Id,
-                Description = invoice.Notes
-            });
-
-            line.Product.StockQuantity += signedQuantity;
 
             // Alış Faturası satır fiyatı kayıt sırasında hep KDV hariç tutulur (InvoicesController.
             // MapLinesAsync, PricesIncludeTax dönüşümü); Stok Kartı'ndaki Alış Fiyatı ise her zaman

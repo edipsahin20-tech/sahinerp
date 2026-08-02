@@ -73,5 +73,32 @@
         </div>
     </div>
 
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Belge Dönüşümü Otomatik Onay</div>
+        <div class="card-body">
+            <p class="text-secondary small">Açılırsa, ilgili dönüşümle oluşturulan belge kaydedilir ve hemen ardından otomatik onaylanır (mevcut onay servisi üzerinden — stok/cari hareketleri normal onay gibi işlenir). Yalnızca yönetici kullanıcılarda çalışır; kapalıyken (varsayılan) belge Taslak olarak kalır. Otomatik onay başarısız olursa belge Taslak olarak korunur, hiçbir kısmi hareket oluşmaz.</p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="OrderToDispatchPurchaseAutoApprove" class="form-check-input" /><label asp-for="OrderToDispatchPurchaseAutoApprove" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="OrderToDispatchSalesAutoApprove" class="form-check-input" /><label asp-for="OrderToDispatchSalesAutoApprove" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="OrderToInvoicePurchaseAutoApprove" class="form-check-input" /><label asp-for="OrderToInvoicePurchaseAutoApprove" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="OrderToInvoiceSalesAutoApprove" class="form-check-input" /><label asp-for="OrderToInvoiceSalesAutoApprove" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="DispatchToInvoicePurchaseAutoApprove" class="form-check-input" /><label asp-for="DispatchToInvoicePurchaseAutoApprove" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="DispatchToInvoiceSalesAutoApprove" class="form-check-input" /><label asp-for="DispatchToInvoiceSalesAutoApprove" class="form-check-label"></label></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <button class="btn btn-primary px-4" type="submit">Parametreleri Kaydet</button>
 </form>

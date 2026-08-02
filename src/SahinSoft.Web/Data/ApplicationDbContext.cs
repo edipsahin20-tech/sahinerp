@@ -518,6 +518,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.ProductVariantId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.DispatchNoteLine)
+                .WithMany(x => x.InvoiceLines)
+                .HasForeignKey(x => x.DispatchNoteLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BusinessOrderLine)
+                .WithMany(x => x.InvoiceLines)
+                .HasForeignKey(x => x.BusinessOrderLineId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CustomerAddress>(entity =>
@@ -708,6 +716,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.Property(x => x.DefaultBarcodeType).HasMaxLength(20).IsRequired();
             entity.Property(x => x.DefaultScalePrefix).HasMaxLength(2).IsRequired();
+            entity.Property(x => x.OrderToDispatchPurchaseAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.OrderToDispatchSalesAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.OrderToInvoicePurchaseAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.OrderToInvoiceSalesAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.DispatchToInvoicePurchaseAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.DispatchToInvoiceSalesAutoApprove).HasDefaultValue(false);
         });
 
         builder.Entity<NumberSequence>(entity =>
@@ -1027,12 +1041,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<DispatchNoteLine>(entity =>
         {
             entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.InvoicedQuantity).HasPrecision(18, 3);
             entity.HasIndex(x => new { x.DispatchNoteId, x.LineNumber }).IsUnique();
             entity.HasOne(x => x.DispatchNote).WithMany(x => x.Lines).HasForeignKey(x => x.DispatchNoteId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.ProductVariant).WithMany().HasForeignKey(x => x.ProductVariantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BusinessOrderLine).WithMany(x => x.DispatchNoteLines).HasForeignKey(x => x.BusinessOrderLineId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table =>
-                table.HasCheckConstraint("CK_DispatchNoteLines_Quantity", "[Quantity] > 0"));
+            {
+                table.HasCheckConstraint("CK_DispatchNoteLines_Quantity", "[Quantity] > 0");
+                table.HasCheckConstraint("CK_DispatchNoteLines_InvoicedQuantity", "[InvoicedQuantity] >= 0 AND [InvoicedQuantity] <= [Quantity]");
+            });
         });
 
         builder.Entity<ExpenseCategory>(entity =>

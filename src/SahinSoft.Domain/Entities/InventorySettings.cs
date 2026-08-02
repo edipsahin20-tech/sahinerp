@@ -17,4 +17,11 @@ public sealed class InventorySettings : EntityBase
     public bool RequireProductVariant { get; set; }
     public bool AllowSaleBelowCost { get; set; }
     public bool IsRestaurantModuleEnabled { get; set; }
+
+    public bool OrderToDispatchPurchaseAutoApprove { get; set; }
+    public bool OrderToDispatchSalesAutoApprove { get; set; }
+    public bool OrderToInvoicePurchaseAutoApprove { get; set; }
+    public bool OrderToInvoiceSalesAutoApprove { get; set; }
+    public bool DispatchToInvoicePurchaseAutoApprove { get; set; }
+    public bool DispatchToInvoiceSalesAutoApprove { get; set; }
 }

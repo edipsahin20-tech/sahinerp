@@ -66,6 +66,7 @@ public sealed class InvoiceDetailsLineViewModel
     public decimal GrossTotal { get; set; }
     public decimal NetTotal { get; set; }
     public string? Description { get; set; }
+    public string? SourceDisplay { get; set; }
 }
 
 public sealed class InvoiceDetailsScheduleViewModel

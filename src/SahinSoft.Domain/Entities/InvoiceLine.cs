@@ -24,4 +24,15 @@ public sealed class InvoiceLine : EntityBase
     public int? ProductVariantId { get; set; }
     public ProductVariant? ProductVariant { get; set; }
     public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+
+    // Bu fatura satırı hangi irsaliye satırından kesildi (İrsaliye → Fatura dönüşümü).
+    // Kaynak sipariş satırının FulfilledQuantity'sine BURADAN dokunulmaz — irsaliye onayında zaten
+    // tüketildi (bkz. DispatchNoteLine.BusinessOrderLineId); çifte tüketimi önlemek için bu satırda
+    // asla DispatchNoteLineId ile BusinessOrderLineId birlikte set edilmez.
+    public int? DispatchNoteLineId { get; set; }
+    public DispatchNoteLine? DispatchNoteLine { get; set; }
+
+    // Bu fatura satırı hangi sipariş satırından DOĞRUDAN (irsaliyesiz) kesildi.
+    public int? BusinessOrderLineId { get; set; }
+    public BusinessOrderLine? BusinessOrderLine { get; set; }
 }
