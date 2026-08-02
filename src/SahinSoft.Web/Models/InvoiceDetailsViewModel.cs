@@ -44,6 +44,7 @@ public sealed class InvoiceDetailsViewModel
     public IReadOnlyList<InvoiceDetailsLineViewModel> Lines { get; set; } = [];
     public IReadOnlyList<InvoiceTaxBreakdownViewModel> TaxBreakdown { get; set; } = [];
     public IReadOnlyList<InvoiceDetailsScheduleViewModel> PaymentSchedules { get; set; } = [];
+    public int ActiveLinkedReceiptCount { get; set; }
 }
 
 public sealed class InvoiceTaxBreakdownViewModel

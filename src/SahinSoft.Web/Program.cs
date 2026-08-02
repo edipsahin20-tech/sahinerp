@@ -43,6 +43,7 @@ builder.Services.AddScoped<StockSlipPostingService>();
 builder.Services.AddScoped<InventoryCountPostingService>();
 builder.Services.AddScoped<InventoryBalanceService>();
 builder.Services.AddScoped<PaymentReceiptPostingService>();
+builder.Services.AddScoped<InvoiceCancellationOrchestrationService>();
 builder.Services.AddScoped<DispatchNotePostingService>();
 
 var app = builder.Build();

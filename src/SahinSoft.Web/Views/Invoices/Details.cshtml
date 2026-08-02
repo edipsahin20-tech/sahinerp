@@ -204,11 +204,22 @@
     <div class="erp-panel">
         <div class="erp-panel-header">Faturayı İptal Et</div>
         <div class="erp-panel-body">
-            <p class="text-secondary small mb-2">İptal işlemi kaydı silmez; stok ve cari için ters hareket üretir.</p>
-            <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
-                <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
-                <button type="submit" class="btn btn-erp-danger text-nowrap">İptal Et</button>
-            </form>
+            @if (Model.ActiveLinkedReceiptCount > 0)
+            {
+                <p class="text-secondary small mb-2">
+                    Bu faturaya bağlı @Model.ActiveLinkedReceiptCount aktif tahsilat/tediye fişi bulunduğu için
+                    normal İptal Et kullanılamıyor.
+                </p>
+                <a asp-action="CancelWithPayments" asp-route-id="@Model.Id" class="btn btn-erp-danger">Bağlı Ödemelerle Birlikte İptal Et</a>
+            }
+            else
+            {
+                <p class="text-secondary small mb-2">İptal işlemi kaydı silmez; stok ve cari için ters hareket üretir.</p>
+                <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex gap-2">
+                    <input type="text" name="reason" class="form-control" placeholder="İptal gerekçesi" required />
+                    <button type="submit" class="btn btn-erp-danger text-nowrap">İptal Et</button>
+                </form>
+            }
         </div>
     </div>
 }

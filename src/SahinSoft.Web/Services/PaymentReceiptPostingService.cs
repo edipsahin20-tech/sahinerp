@@ -12,14 +12,15 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
     public Task ApproveAsync(
         int paymentReceiptId,
         string approvedByUserId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) =>
         // EnableRetryOnFailure() (Program.cs) sets a retrying execution strategy; elle açılan
         // transaction'lar bununla uyumlu değil, tüm bloğun CreateExecutionStrategy() üzerinden
         // "tekrar denenebilir birim" olarak sarılması gerekiyor (aksi halde InvalidOperationException).
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await ApproveCoreAsync(paymentReceiptId, approvedByUserId, cancellationToken));
-    }
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await ApproveCoreAsync(paymentReceiptId, approvedByUserId, cancellationToken); return true; });
+        }, cancellationToken);
 
     private async Task ApproveCoreAsync(
         int paymentReceiptId,
@@ -138,8 +139,15 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () => await CancelCoreAsync(paymentReceiptId, cancelledByUserId, reason, cancellationToken));
+        // Fiş bir faturaya bağlıysa (bkz. aşağıdaki CancelCoreAsync) o faturanın
+        // InvoicePaymentSchedule satırı da güncellenir — RowVersion'lı bu satırda eşzamanlı bir
+        // çakışma DbUpdateConcurrencyException fırlatabilir, bu yüzden diğer Approve/Cancel
+        // akışlarıyla aynı genel amaçlı tekrar deneme sarmalayıcısı kullanılıyor.
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () => { await CancelCoreAsync(paymentReceiptId, cancelledByUserId, reason, cancellationToken); return true; });
+        }, cancellationToken);
     }
 
     private async Task CancelCoreAsync(
@@ -225,6 +233,38 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
                 CurrentAccountTransaction = reversalAccountTransaction,
                 ReversalOfId = originalFinancialTransaction.Id
             });
+        }
+
+        // Fiş bir faturanın "Kapalı Fatura" otomatik tahsilat/tediyesiyse (bkz.
+        // InvoicePostingService.PostClosedInvoiceSettlementAsync — sistemde InvoicePaymentSchedule.
+        // PaidAmount'a yazan TEK yer), iptalde bu alanı geri açmazsak fatura üzerindeki "Tahsilatı/
+        // ödemesi yapılmış fatura iptal edilemez" koruması kalıcı olarak kilitli kalır — üretimde
+        // tam olarak bu şekilde bulundu (AF.00054/AF.00055, TED.00003/TED.00004). Yalnızca bu fişin
+        // InvoiceId ile AÇIKÇA eşleştiği faturanın satırları güncellenir; başka hiçbir faturaya
+        // sezgisel/miktar eşleştirmesiyle dokunulmaz.
+        if (receipt.InvoiceId is not null)
+        {
+            var linkedInvoice = await dbContext.Invoices
+                .Include(x => x.PaymentSchedules)
+                .SingleOrDefaultAsync(x => x.Id == receipt.InvoiceId.Value, cancellationToken);
+
+            if (linkedInvoice is not null)
+            {
+                var remaining = receipt.TotalAmount;
+                foreach (var schedule in linkedInvoice.PaymentSchedules.OrderByDescending(x => x.InstallmentNumber))
+                {
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+
+                    var deduct = Math.Min(schedule.PaidAmount, remaining);
+                    schedule.PaidAmount -= deduct;
+                    remaining -= deduct;
+                }
+
+                linkedInvoice.UpdatedAtUtc = DateTime.UtcNow;
+            }
         }
 
         receipt.Status = PaymentReceiptStatus.Cancelled;

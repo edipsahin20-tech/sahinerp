@@ -350,6 +350,10 @@ public sealed class PaymentReceiptsController(
         {
             TempData["Error"] = ex.Message;
         }
+        catch (ConcurrencyRetryExhaustedException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
 
         return RedirectToAction(nameof(Details), new { id });
     }
@@ -366,6 +370,10 @@ public sealed class PaymentReceiptsController(
             TempData["Success"] = "Fiş iptal edildi.";
         }
         catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
         {
             TempData["Error"] = ex.Message;
         }

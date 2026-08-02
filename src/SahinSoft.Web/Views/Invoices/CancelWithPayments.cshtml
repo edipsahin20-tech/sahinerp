@@ -1,0 +1,77 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.CancelInvoiceWithPaymentsViewModel
+@{
+    ViewData["Title"] = "Bağlı Ödemelerle Birlikte İptal Et";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Bağlı Ödemelerle Birlikte İptal Et</h1>
+        <span class="erp-toolbar-meta">@Model.InvoiceNumber &middot; @Model.CustomerName</span>
+    </div>
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.InvoiceId" class="btn btn-erp-outline">Vazgeç</a>
+    </div>
+</div>
+
+<div class="alert alert-warning py-2">
+    Bu fatura, aşağıdaki aktif tahsilat/tediye fişleri nedeniyle normal İptal Et akışıyla kapatılamıyor.
+    Devam ederseniz önce bu fişler, ardından fatura sırayla iptal edilecek. İptal işlemi kayıtları silmez;
+    her belge için ters (reversal) hareket üretilir ve orijinal kayıtlar denetim izi olarak korunur.
+</div>
+
+<div class="erp-panel">
+    <div class="erp-panel-header">İptal Edilecek Bağlı Belgeler</div>
+    <div class="erp-panel-body p-0">
+        <div class="erp-table-wrap">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th>Belge No</th>
+                        <th>Tür</th>
+                        <th>Tarih</th>
+                        <th>Kasa/Banka</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var receipt in Model.LinkedReceipts)
+                {
+                    <tr>
+                        <td><a asp-controller="PaymentReceipts" asp-action="Details" asp-route-id="@receipt.Id" target="_blank">@receipt.ReceiptNumber</a></td>
+                        <td>@(receipt.ReceiptType == ReceiptType.Collection ? "Tahsilat" : "Tediye")</td>
+                        <td>@receipt.ReceiptDateUtc.ToString("dd.MM.yyyy")</td>
+                        <td>@receipt.FinancialAccountNames</td>
+                        <td class="text-end">@receipt.TotalAmount.ToString("N2") @Model.CurrencyCode</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="erp-panel">
+    <div class="erp-panel-header">Ayrıca Ters Çevrilecek Hareketler</div>
+    <div class="erp-panel-body">
+        <ul class="mb-0 small text-secondary">
+            <li>Yukarıdaki fişlerin cari (borç/alacak) ve kasa/banka hareketleri ters kayıtla kapatılır.</li>
+            <li>Faturanın ödeme planındaki tahsil edilen tutar sıfırlanır.</li>
+            <li>Fatura kendi İptal akışı üzerinden iptal edilir; stok hareketi varsa (fatura satırları stok takipli ürün içeriyorsa) ters stok hareketi oluşur, cari hareketi ters kayıtla kapatılır.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="erp-panel">
+    <div class="erp-panel-header">Onay</div>
+    <div class="erp-panel-body">
+        <form method="post" asp-action="CancelWithPayments">
+            <input type="hidden" asp-for="InvoiceId" />
+            <div class="mb-3">
+                <label asp-for="Reason" class="form-label"></label>
+                <input asp-for="Reason" class="form-control" placeholder="İptal gerekçesi" required />
+            </div>
+            <button type="submit" class="btn btn-erp-danger">Bağlı Ödemelerle Birlikte İptal Et</button>
+        </form>
+    </div>
+</div>

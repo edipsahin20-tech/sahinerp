@@ -20,6 +20,7 @@ public sealed class InvoicesController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     InvoicePostingService invoicePostingService,
+    InvoiceCancellationOrchestrationService invoiceCancellationOrchestration,
     UserManager<ApplicationUser> userManager) : Controller
 {
     public async Task<IActionResult> Index(
@@ -930,7 +931,10 @@ public sealed class InvoicesController(
                     Amount = x.Amount,
                     PaidAmount = x.PaidAmount
                 })
-                .ToList()
+                .ToList(),
+            ActiveLinkedReceiptCount = invoice.Status == InvoiceStatus.Approved
+                ? await dbContext.PaymentReceipts.CountAsync(x => x.InvoiceId == invoice.Id && x.Status == PaymentReceiptStatus.Approved)
+                : 0
         };
 
         return View(model);
@@ -979,6 +983,77 @@ public sealed class InvoicesController(
         }
 
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // Faturaya bağlı aktif tahsilat/tediye fişi bulunduğu için normal İptal Et bloklanmışsa,
+    // kullanıcıya hangi fişlerin de birlikte iptal edileceğini gösteren onay ekranı.
+    [Authorize(Roles = AppRoles.Administrator)]
+    public async Task<IActionResult> CancelWithPayments(int id)
+    {
+        var invoice = await dbContext.Invoices
+            .AsNoTracking()
+            .Include(x => x.Customer)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (invoice is null)
+        {
+            return NotFound();
+        }
+
+        if (invoice.Status != InvoiceStatus.Approved)
+        {
+            TempData["Error"] = "Yalnızca onaylanmış faturalar bu şekilde iptal edilebilir.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var activeReceipts = await invoiceCancellationOrchestration.GetActiveLinkedReceiptsAsync(id);
+        if (activeReceipts.Count == 0)
+        {
+            TempData["Error"] = "Faturaya bağlı aktif bir tahsilat/tediye bulunamadı; normal İptal Et akışını kullanın.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var model = new CancelInvoiceWithPaymentsViewModel
+        {
+            InvoiceId = invoice.Id,
+            InvoiceNumber = invoice.InvoiceNumber,
+            InvoiceType = invoice.InvoiceType,
+            CustomerName = invoice.Customer.Name,
+            GrandTotal = invoice.GrandTotal,
+            CurrencyCode = invoice.CurrencyCode,
+            LinkedReceipts = activeReceipts.Select(x => new LinkedReceiptViewModel
+            {
+                Id = x.Id,
+                ReceiptNumber = x.ReceiptNumber,
+                ReceiptType = x.ReceiptType,
+                TotalAmount = x.TotalAmount,
+                ReceiptDateUtc = x.ReceiptDateUtc,
+                FinancialAccountNames = string.Join(", ", x.Lines.Select(l => l.FinancialAccount.Name).Distinct())
+            }).ToList()
+        };
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Administrator)]
+    public async Task<IActionResult> CancelWithPayments(CancelInvoiceWithPaymentsViewModel form)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        try
+        {
+            await invoiceCancellationOrchestration.CancelInvoiceWithLinkedPaymentsAsync(form.InvoiceId, userId, form.Reason);
+            TempData["Success"] = "Fatura, bağlı tahsilat/tediye fişleriyle birlikte iptal edildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (ConcurrencyRetryExhaustedException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { id = form.InvoiceId });
     }
 
     private void ValidateLines(InvoiceFormViewModel form)
