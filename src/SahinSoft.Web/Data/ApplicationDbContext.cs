@@ -1375,6 +1375,43 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Padding = 3,
                 CreatedAtUtc = new DateTime(2026, 7, 28, 0, 0, 0, DateTimeKind.Utc)
             });
+        // Otomatik barkod üretimi (bkz. BarcodeGeneratorService) artık "boş aday tara" yerine bu
+        // sayaçlar üzerinden atomik rezervasyon yapıyor — Padding burada "1989" önekinden sonraki
+        // gövde uzunluğu (EAN13: 12-4=8, EAN8: 7-4=3), kontrol basamağı hariç.
+        // Id'ler bilinçli olarak yüksek tutuldu (1000+): DocumentNumberGeneratorService.
+        // EnsureAtLeastForSeriesWithinTransactionAsync, kullanıcı elle seri girdiğinde (ör.
+        // "SALES_INVOICE:ASE") IDENTITY sütunundan otomatik Id alan yeni NumberSequence satırları
+        // çalışma zamanında oluşturuyor — küçük bir Id seçmek, canlıda organik olarak büyüyen bu
+        // satırlarla ileride çakışma riski taşır (bu satırlardan bazıları bu migration hazırlanırken
+        // tam olarak 22/23/24'ü zaten kullanıyordu).
+        builder.Entity<NumberSequence>().HasData(
+            new NumberSequence
+            {
+                Id = 1001,
+                Key = "BARCODE_EAN13",
+                Prefix = "1989",
+                NextNumber = 1,
+                Padding = 8,
+                CreatedAtUtc = new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 1002,
+                Key = "BARCODE_EAN8",
+                Prefix = "1989",
+                NextNumber = 1,
+                Padding = 3,
+                CreatedAtUtc = new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new NumberSequence
+            {
+                Id = 1003,
+                Key = "BARCODE_ASCII",
+                Prefix = "AS",
+                NextNumber = 1,
+                Padding = 6,
+                CreatedAtUtc = new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)
+            });
         builder.Entity<UnitOfMeasure>().HasData(
             new UnitOfMeasure
             {

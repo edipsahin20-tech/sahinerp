@@ -49,7 +49,7 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
         ApplicationDbContext dbContext,
         Func<Task<T>> operation,
         CancellationToken cancellationToken = default,
-        int maxAttempts = 5)
+        int maxAttempts = 12)
     {
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
