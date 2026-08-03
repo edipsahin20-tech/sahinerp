@@ -269,21 +269,38 @@ public sealed class NegotiableInstrumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeStatus(int id, InstrumentStatus status)
     {
-        var instrument = await dbContext.NegotiableInstruments.SingleOrDefaultAsync(x => x.Id == id);
-        if (instrument is null)
+        // Diğer evrak türlerindeki Approve/Cancel gibi, RowVersion çakışmasında (iki kullanıcının aynı
+        // kaydı aynı anda durum değiştirmesi) ham DbUpdateConcurrencyException yerine taze bir okuma ile
+        // otomatik tekrar dener — bkz. DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync.
+        var result = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+        {
+            var instrument = await dbContext.NegotiableInstruments.SingleOrDefaultAsync(x => x.Id == id);
+            if (instrument is null)
+            {
+                return "not-found";
+            }
+
+            if (instrument.Status is InstrumentStatus.Collected or InstrumentStatus.Paid or InstrumentStatus.Cancelled)
+            {
+                return "blocked";
+            }
+
+            instrument.Status = status;
+            instrument.UpdatedAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync();
+            return "ok";
+        });
+
+        if (result == "not-found")
         {
             return NotFound();
         }
 
-        if (instrument.Status is InstrumentStatus.Collected or InstrumentStatus.Paid or InstrumentStatus.Cancelled)
+        if (result == "blocked")
         {
             TempData["Error"] = "Bu kayıt artık durum değiştiremez.";
             return RedirectToAction(nameof(Details), new { id });
         }
-
-        instrument.Status = status;
-        instrument.UpdatedAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync();
 
         TempData["Success"] = "Durum güncellendi.";
         return RedirectToAction(nameof(Details), new { id });
