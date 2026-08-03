@@ -70,6 +70,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<StockSlip> StockSlips => Set<StockSlip>();
     public DbSet<StockSlipLine> StockSlipLines => Set<StockSlipLine>();
 
+    // Restoran Modülü Faz 1 (bkz. CLEAN_ROOM_DEVELOPMENT.md)
+    public DbSet<RestaurantSection> RestaurantSections => Set<RestaurantSection>();
+    public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
+    public DbSet<RestaurantTableSession> RestaurantTableSessions => Set<RestaurantTableSession>();
+    public DbSet<RestaurantTableSessionMove> RestaurantTableSessionMoves => Set<RestaurantTableSessionMove>();
+    public DbSet<RestaurantCheck> RestaurantChecks => Set<RestaurantCheck>();
+    public DbSet<RestaurantOrder> RestaurantOrders => Set<RestaurantOrder>();
+    public DbSet<RestaurantOrderLine> RestaurantOrderLines => Set<RestaurantOrderLine>();
+    public DbSet<RestaurantOrderLineModifier> RestaurantOrderLineModifiers => Set<RestaurantOrderLineModifier>();
+    public DbSet<ProductPortion> ProductPortions => Set<ProductPortion>();
+    public DbSet<ProductRecipeHeader> ProductRecipeHeaders => Set<ProductRecipeHeader>();
+    public DbSet<ProductRecipeLine> ProductRecipeLines => Set<ProductRecipeLine>();
+    public DbSet<KitchenStation> KitchenStations => Set<KitchenStation>();
+    public DbSet<KitchenTicket> KitchenTickets => Set<KitchenTicket>();
+    public DbSet<KitchenTicketLine> KitchenTicketLines => Set<KitchenTicketLine>();
+    public DbSet<RestaurantPayment> RestaurantPayments => Set<RestaurantPayment>();
+    public DbSet<RestaurantCashShift> RestaurantCashShifts => Set<RestaurantCashShift>();
+    public DbSet<RetailSale> RetailSales => Set<RetailSale>();
+    public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -1195,6 +1215,295 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 table.HasCheckConstraint(
                     "CK_StockTransferLines_PositiveQuantity",
                     "[Quantity] > 0"));
+        });
+
+        // ---- Restoran Modülü Faz 1 (bkz. CLEAN_ROOM_DEVELOPMENT.md) ----
+
+        builder.Entity<Product>()
+            .HasOne(x => x.DefaultKitchenStation)
+            .WithMany()
+            .HasForeignKey(x => x.DefaultKitchenStationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<RestaurantSection>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => new { x.BranchId, x.Name });
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantTable>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.PosX).HasPrecision(10, 2);
+            entity.Property(x => x.PosY).HasPrecision(10, 2);
+            entity.HasIndex(x => new { x.RestaurantSectionId, x.Name });
+            entity.HasOne(x => x.RestaurantSection)
+                .WithMany(x => x.Tables)
+                .HasForeignKey(x => x.RestaurantSectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_RestaurantTables_Capacity", "[Capacity] >= 0"));
+        });
+
+        builder.Entity<RestaurantTableSession>(entity =>
+        {
+            entity.Property(x => x.OpenedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.WaiterUserId).HasMaxLength(450);
+            entity.Property(x => x.ClosedByUserId).HasMaxLength(450);
+            // Aynı masada iki aktif oturum olamaz — DB seviyesinde garanti.
+            entity.HasIndex(x => x.RestaurantTableId)
+                .IsUnique()
+                .HasFilter("[Status] = 1")
+                .HasDatabaseName("IX_RestaurantTableSessions_OneOpenPerTable");
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantTable)
+                .WithMany(x => x.Sessions)
+                .HasForeignKey(x => x.RestaurantTableId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.MergedIntoSession)
+                .WithMany()
+                .HasForeignKey(x => x.MergedIntoSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantTableSessionMove>(entity =>
+        {
+            entity.Property(x => x.MovedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(300);
+            entity.HasIndex(x => x.RestaurantTableSessionId);
+            entity.HasOne(x => x.RestaurantTableSession)
+                .WithMany(x => x.Moves)
+                .HasForeignKey(x => x.RestaurantTableSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FromRestaurantTable).WithMany().HasForeignKey(x => x.FromRestaurantTableId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ToRestaurantTable).WithMany().HasForeignKey(x => x.ToRestaurantTableId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantCheck>(entity =>
+        {
+            entity.Property(x => x.CheckNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.SubtotalAmount).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceChargeAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
+            entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(x => x.CheckNumber).IsUnique();
+            entity.HasIndex(x => new { x.RestaurantTableSessionId, x.OpenedAtUtc });
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantTableSession)
+                .WithMany(x => x.Checks)
+                .HasForeignKey(x => x.RestaurantTableSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LinkedInvoice).WithMany().HasForeignKey(x => x.LinkedInvoiceId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LinkedRetailSale).WithMany().HasForeignKey(x => x.LinkedRetailSaleId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_RestaurantChecks_Amounts",
+                "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0"));
+        });
+
+        builder.Entity<RestaurantOrder>(entity =>
+        {
+            entity.Property(x => x.OrderedByUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => new { x.RestaurantCheckId, x.OrderedAtUtc });
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantCheck)
+                .WithMany(x => x.Orders)
+                .HasForeignKey(x => x.RestaurantCheckId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantOrderLine>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.PortionNameSnapshot).HasMaxLength(50);
+            entity.Property(x => x.UnitPriceSnapshot).HasPrecision(18, 2);
+            entity.Property(x => x.TaxRateSnapshot).HasPrecision(5, 2);
+            entity.Property(x => x.DiscountAmountSnapshot).HasPrecision(18, 2);
+            entity.Property(x => x.KitchenNote).HasMaxLength(500);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(x => x.RestaurantOrderId);
+            entity.HasIndex(x => x.Status);
+            entity.HasOne(x => x.RestaurantOrder)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.RestaurantOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductPortion).WithMany().HasForeignKey(x => x.ProductPortionId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_RestaurantOrderLines_Quantity", "[Quantity] > 0"));
+        });
+
+        builder.Entity<RestaurantOrderLineModifier>(entity =>
+        {
+            entity.Property(x => x.NameSnapshot).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.PriceSnapshot).HasPrecision(18, 2);
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.HasIndex(x => x.RestaurantOrderLineId);
+            entity.HasOne(x => x.RestaurantOrderLine)
+                .WithMany(x => x.Modifiers)
+                .HasForeignKey(x => x.RestaurantOrderLineId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table => table.HasCheckConstraint("CK_RestaurantOrderLineModifiers_Quantity", "[Quantity] > 0"));
+        });
+
+        builder.Entity<ProductPortion>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.PriceOverride).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.ProductId, x.Name });
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ProductRecipeHeader>(entity =>
+        {
+            entity.Property(x => x.YieldQuantity).HasPrecision(18, 3);
+            // Aynı ürün/porsiyon/şube kombinasyonu için aynı anda yalnızca 1 aktif versiyon.
+            entity.HasIndex(x => new { x.ProductId, x.ProductPortionId, x.BranchId })
+                .IsUnique()
+                .HasFilter("[ValidToUtc] IS NULL")
+                .HasDatabaseName("IX_ProductRecipeHeaders_OneActiveVersion");
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductPortion).WithMany().HasForeignKey(x => x.ProductPortionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_ProductRecipeHeaders_Yield", "[YieldQuantity] > 0"));
+        });
+
+        builder.Entity<ProductRecipeLine>(entity =>
+        {
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.WastagePercent).HasPrecision(5, 2);
+            entity.HasIndex(x => x.ProductRecipeHeaderId);
+            entity.HasOne(x => x.ProductRecipeHeader)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.ProductRecipeHeaderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.IngredientProduct).WithMany().HasForeignKey(x => x.IngredientProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UnitOfMeasure).WithMany().HasForeignKey(x => x.UnitOfMeasureId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_ProductRecipeLines_Quantity", "[Quantity] > 0");
+                table.HasCheckConstraint("CK_ProductRecipeLines_Wastage", "[WastagePercent] >= 0 AND [WastagePercent] <= 100");
+            });
+        });
+
+        builder.Entity<KitchenStation>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.PrinterName).HasMaxLength(150);
+            entity.HasIndex(x => new { x.BranchId, x.Name });
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<KitchenTicket>(entity =>
+        {
+            entity.Property(x => x.TicketNumber).HasMaxLength(30);
+            // Aynı sipariş+istasyon için mükerrer fiş oluşmaz.
+            entity.HasIndex(x => new { x.RestaurantOrderId, x.KitchenStationId }).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantOrder)
+                .WithMany(x => x.KitchenTickets)
+                .HasForeignKey(x => x.RestaurantOrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.KitchenStation).WithMany(x => x.Tickets).HasForeignKey(x => x.KitchenStationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<KitchenTicketLine>(entity =>
+        {
+            // Aynı sipariş kalemi aynı fişte yalnızca 1 kez görünür — ama FARKLI fişlerde
+            // (farklı istasyon veya tekrar gönderim) tekrar görünebilir, bkz. §11 Karar 4.
+            entity.HasIndex(x => new { x.KitchenTicketId, x.RestaurantOrderLineId }).IsUnique();
+            entity.HasIndex(x => x.RestaurantOrderLineId);
+            entity.HasOne(x => x.KitchenTicket)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.KitchenTicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.RestaurantOrderLine)
+                .WithMany(x => x.KitchenTicketLines)
+                .HasForeignKey(x => x.RestaurantOrderLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantPayment>(entity =>
+        {
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.HasIndex(x => x.RestaurantCheckId);
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantCheck)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.RestaurantCheckId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FinancialTransaction).WithMany().HasForeignKey(x => x.FinancialTransactionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ReversalOf).WithMany().HasForeignKey(x => x.ReversalOfId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_RestaurantPayments_Amount", "[Amount] > 0"));
+        });
+
+        builder.Entity<RestaurantCashShift>(entity =>
+        {
+            entity.Property(x => x.CashierUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.OpeningBalance).HasPrecision(18, 2);
+            entity.Property(x => x.ClosingBalanceExpected).HasPrecision(18, 2);
+            entity.Property(x => x.ClosingBalanceCounted).HasPrecision(18, 2);
+            // Aynı kasada iki açık vardiya olamaz.
+            entity.HasIndex(x => x.FinancialAccountId)
+                .IsUnique()
+                .HasFilter("[Status] = 1")
+                .HasDatabaseName("IX_RestaurantCashShifts_OneOpenPerAccount");
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RetailSale>(entity =>
+        {
+            entity.Property(x => x.DocumentNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.SubtotalAmount).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceChargeAmount).HasPrecision(18, 2);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
+            entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.FiscalDeviceSerialNumber).HasMaxLength(50);
+            entity.Property(x => x.FiscalReceiptNumber).HasMaxLength(50);
+            entity.Property(x => x.ZReportNumber).HasMaxLength(50);
+            entity.Property(x => x.FiscalTransactionId).HasMaxLength(100);
+            entity.Property(x => x.EInvoiceUuid).HasMaxLength(100);
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(x => x.DocumentNumber).IsUnique();
+            // Bir adisyon başına en fazla 1 dahili perakende satış fişi.
+            entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
+            entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_RetailSales_Amounts",
+                "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0"));
+        });
+
+        builder.Entity<RetailSaleLine>(entity =>
+        {
+            entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Quantity).HasPrecision(18, 3);
+            entity.Property(x => x.UnitPriceSnapshot).HasPrecision(18, 2);
+            entity.Property(x => x.TaxRateSnapshot).HasPrecision(5, 2);
+            entity.Property(x => x.DiscountAmountSnapshot).HasPrecision(18, 2);
+            entity.Property(x => x.LineTotal).HasPrecision(18, 2);
+            entity.HasIndex(x => x.RetailSaleId);
+            entity.HasOne(x => x.RetailSale)
+                .WithMany(x => x.Lines)
+                .HasForeignKey(x => x.RetailSaleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_RetailSaleLines_Quantity", "[Quantity] > 0"));
         });
 
         builder.Entity<TaxRate>().HasData(CatalogSeedData.TaxRates);

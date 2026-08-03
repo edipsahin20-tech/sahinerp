@@ -33,6 +33,11 @@ public sealed class Product : EntityBase
     public bool ShowInOnlineOrder { get; set; } = true;
     public string? KitchenPrinterName { get; set; }
 
+    // Ürünün varsayılan mutfak istasyonu (Faz 1 restoran modülü) — mevcut KitchenPrinterName
+    // alanına dokunulmadı, o metin alanı kalıyor.
+    public int? DefaultKitchenStationId { get; set; }
+    public KitchenStation? DefaultKitchenStation { get; set; }
+
     public int CategoryId { get; set; }
     public ProductCategory Category { get; set; } = null!;
     public int TaxRateId { get; set; }
