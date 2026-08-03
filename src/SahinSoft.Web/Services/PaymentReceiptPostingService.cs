@@ -146,20 +146,29 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
         return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
             var strategy = dbContext.Database.CreateExecutionStrategy();
-            return strategy.ExecuteAsync(async () => { await CancelCoreAsync(paymentReceiptId, cancelledByUserId, reason, cancellationToken); return true; });
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+                await CancelWithinTransactionAsync(paymentReceiptId, cancelledByUserId, reason, cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
         }, cancellationToken);
     }
 
-    private async Task CancelCoreAsync(
+    // CancelAsync'in kendi transaction'ı içindeki gövde — InvoiceCancellationOrchestrationService,
+    // faturayı ve ona bağlı fiş(ler)i TEK bir transaction'da iptal edebilmek için bunu doğrudan,
+    // kendi açtığı ambient transaction'ın içinde çağırır (bkz. o servisteki
+    // CancelInvoiceWithLinkedPaymentsAsync). Burada transaction başlatılmaz/commit edilmez — çağıran
+    // taraf yönetir; böylece tek bir adımın başarısız olması TÜM adımları geri alır.
+    internal async Task CancelWithinTransactionAsync(
         int paymentReceiptId,
         string cancelledByUserId,
         string reason,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
-
         var receipt = await dbContext.PaymentReceipts
             .Include(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == paymentReceiptId, cancellationToken)
@@ -290,6 +299,5 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 }

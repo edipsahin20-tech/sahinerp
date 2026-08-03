@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -6,19 +7,16 @@ using SahinSoft.Web.Data;
 namespace SahinSoft.Web.Services;
 
 // Onaylı bir faturaya bağlı, hâlâ aktif (Onaylı) tahsilat/tediye fişi varsa normal Fatura İptali
-// tek başına çalışmaz (bkz. InvoicePostingService.CancelCoreAsync — PaidAmount > 0 koruması). Bu
-// servis, kullanıcının açık onayıyla önce bağlı fişleri, sonra faturayı — HER İKİSİNİ DE kendi
-// mevcut, zaten test edilmiş Cancel akışları üzerinden — sırayla iptal eder. Status hiçbir yerde
-// elle set edilmez; yalnızca PaymentReceiptPostingService.CancelAsync ve InvoicePostingService.
-// CancelAsync çağrılır.
+// tek başına çalışmaz (bkz. InvoicePostingService.CancelWithinTransactionAsync — PaidAmount > 0
+// koruması). Bu servis, kullanıcının açık onayıyla önce bağlı fişleri, sonra faturayı iptal eder.
+// Status hiçbir yerde elle set edilmez; yalnızca PaymentReceiptPostingService ve
+// InvoicePostingService'in Cancel mantığı (CancelWithinTransactionAsync) çağrılır.
 //
-// Atomiklik notu: her adımın kendi Serializable transaction'ı + eşzamanlılık tekrar denemesi var
-// (mevcut, kanıtlanmış davranış). Tüm adımları TEK bir veritabanı transaction'ında birleştirmek,
-// zaten bağımsız çalışan iki posting servisinin transaction yönetimini yeniden yazmayı gerektirir
-// — bu riskli bir refactor olur. Bunun yerine: her adım kendi başına ATOMİK ve GEÇERLİDİR (bir fişin
-// iptali her zaman kendi başına doğru bir işlemdir); sıradaki bir adım başarısız olursa, o ana kadar
-// başarıyla iptal edilmiş belgeler geçerli/doğru kalır (yarım/bozuk bir belge oluşmaz), yalnızca
-// kalan adımlar tamamlanmamış olur ve kullanıcıya hangi adımda durduğu net şekilde bildirilir.
+// Atomiklik: tüm adımlar TEK bir Serializable transaction'da çalışır (aynı scoped ApplicationDbContext
+// üzerinden, aşağıdaki iki servisle paylaşılır). Herhangi bir adım hata verirse transaction hiç commit
+// edilmeden dispose olur — o ana kadar yapılmış hiçbir cari/kasa/durum değişikliği kalıcı olmaz, fatura
+// ve bağlı fiş(ler) tamamen başlangıçtaki (Onaylı) haliyle kalır. Yarım/bozuk bir sonuç artık mümkün
+// değil: ya HEPSİ iptal olur ya da HİÇBİRİ.
 public sealed class InvoiceCancellationOrchestrationService(
     ApplicationDbContext dbContext,
     InvoicePostingService invoicePostingService,
@@ -35,7 +33,7 @@ public sealed class InvoiceCancellationOrchestrationService(
             .OrderBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
-    public async Task CancelInvoiceWithLinkedPaymentsAsync(
+    public Task CancelInvoiceWithLinkedPaymentsAsync(
         int invoiceId,
         string cancelledByUserId,
         string reason,
@@ -46,47 +44,41 @@ public sealed class InvoiceCancellationOrchestrationService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
-        var activeReceipts = await GetActiveLinkedReceiptsAsync(invoiceId, cancellationToken);
-        if (activeReceipts.Count == 0)
+        // Diğer Approve/Cancel akışlarıyla aynı desen: EnableRetryOnFailure() ile uyumlu olmak için
+        // tüm blok CreateExecutionStrategy() üzerinden tekrar denenebilir birim olarak sarılır; bir
+        // RowVersion çakışması olursa strategy TÜM bloğu (taze okuma + yeni transaction ile) baştan
+        // çalıştırır — commit'ten önce hiçbir şey kalıcı olmadığından bu güvenlidir.
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
-            throw new InvalidOperationException(
-                "Faturaya bağlı aktif bir tahsilat/tediye bulunamadı; normal İptal Et akışını kullanın.");
-        }
-
-        // Her adım kendi başına commit ettiği için (yukarıdaki atomiklik notuna bakın), hangi
-        // fişlerin gerçekten iptal edildiğini burada takip ediyoruz — bir sonraki adım hata verirse
-        // kullanıcıya "hiçbir şey olmadı" ile "bir kısmı zaten iptal oldu, kalan işi tamamla" arasındaki
-        // farkı net biçimde göstermek için.
-        var cancelledReceiptNumbers = new List<string>();
-        foreach (var receipt in activeReceipts)
-        {
-            try
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
             {
-                await paymentReceiptPostingService.CancelAsync(receipt.Id, cancelledByUserId, reason, cancellationToken);
-                cancelledReceiptNumbers.Add(receipt.ReceiptNumber);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or ConcurrencyRetryExhaustedException)
-            {
-                var progress = cancelledReceiptNumbers.Count > 0
-                    ? $"Şu fiş(ler) başarıyla iptal edildi: {string.Join(", ", cancelledReceiptNumbers)}. "
-                    : "Henüz hiçbir fiş iptal edilmedi. ";
-                throw new InvalidOperationException(
-                    $"{progress}{receipt.ReceiptNumber} iptal edilirken hata oluştu: {ex.Message} " +
-                    "Fatura HENÜZ İPTAL EDİLMEDİ. Kalan fiş(ler)i ve faturayı kontrol edip işlemi tekrar deneyin.", ex);
-            }
-        }
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
 
-        try
-        {
-            await invoicePostingService.CancelAsync(invoiceId, cancelledByUserId, reason, cancellationToken);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or ConcurrencyRetryExhaustedException)
-        {
-            throw new InvalidOperationException(
-                $"Bağlı fiş(ler) ({string.Join(", ", cancelledReceiptNumbers)}) başarıyla iptal edildi, ancak faturanın " +
-                $"kendisi iptal edilirken hata oluştu: {ex.Message} Fatura hâlâ ONAYLI durumda ve AÇIK kalmıştır " +
-                "(bu tüm işlem tek bir veritabanı transaction'ı değildir); lütfen faturayı normal İptal Et akışıyla " +
-                "tekrar deneyin.", ex);
-        }
+                var activeReceiptIds = await dbContext.PaymentReceipts
+                    .Where(x => x.InvoiceId == invoiceId && x.Status == PaymentReceiptStatus.Approved)
+                    .OrderBy(x => x.Id)
+                    .Select(x => x.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (activeReceiptIds.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "Faturaya bağlı aktif bir tahsilat/tediye bulunamadı; normal İptal Et akışını kullanın.");
+                }
+
+                foreach (var receiptId in activeReceiptIds)
+                {
+                    await paymentReceiptPostingService.CancelWithinTransactionAsync(receiptId, cancelledByUserId, reason, cancellationToken);
+                }
+
+                await invoicePostingService.CancelWithinTransactionAsync(invoiceId, cancelledByUserId, reason, cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }, cancellationToken);
     }
 }

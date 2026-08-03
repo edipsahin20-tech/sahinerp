@@ -115,20 +115,28 @@ public sealed class InvoicePostingService(
         return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
             var strategy = dbContext.Database.CreateExecutionStrategy();
-            return strategy.ExecuteAsync(async () => { await CancelCoreAsync(invoiceId, cancelledByUserId, reason, cancellationToken); return true; });
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+                await CancelWithinTransactionAsync(invoiceId, cancelledByUserId, reason, cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
         }, cancellationToken);
     }
 
-    private async Task CancelCoreAsync(
+    // CancelAsync'in kendi transaction'ı içindeki gövde — InvoiceCancellationOrchestrationService
+    // bunu, faturaya bağlı fiş(ler)in iptaliyle AYNI ambient transaction içinde çağırır (bkz.
+    // PaymentReceiptPostingService.CancelWithinTransactionAsync'teki aynı gerekçe). Transaction
+    // burada başlatılmaz/commit edilmez.
+    internal async Task CancelWithinTransactionAsync(
         int invoiceId,
         string cancelledByUserId,
         string reason,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
-
         var invoice = await dbContext.Invoices
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
@@ -209,7 +217,6 @@ public sealed class InvoicePostingService(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 
     // Sipariş → Fatura (doğrudan) ve İrsaliye → Fatura dönüşümlerinden gelen satırlar için kalan
