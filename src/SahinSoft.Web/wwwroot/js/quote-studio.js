@@ -10,6 +10,13 @@ let activeCurrency = 'TRY';
 let liveCustomers = [];
 let selectedCatalogItem = null;
 
+// CSRF token'ını sayfadaki gizli alandan okur (@Html.AntiForgeryToken() ile eklenir); JSON fetch
+// istekleri form alanı gönderemediğinden token X-CSRF-TOKEN header'ıyla taşınır.
+function getCsrfToken() {
+  var input = document.querySelector('input[name="__RequestVerificationToken"]');
+  return input ? input.value : '';
+}
+
 // Büyük/küçük harf ve Türkçe karakter (İ/I/ı/i, ç/ş/ğ/ü/ö) farkı gözetmeden karşılaştırma için normalize eder.
 function turkishNormalize(str) {
   return String(str || '')
@@ -523,7 +530,7 @@ async function addCustomLineItem() {
   try {
     const res = await fetch('/Quotes/CreateCustomProductApi', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
       body: JSON.stringify({ name: name, price: price })
     });
     const data = await res.json().catch(() => null);
@@ -962,7 +969,7 @@ async function saveQuoteToDatabase(status) {
   try {
     res = await fetch('/Quotes/SaveQuoteApi', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
       body: JSON.stringify(proposalObj)
     });
   } catch (err) {

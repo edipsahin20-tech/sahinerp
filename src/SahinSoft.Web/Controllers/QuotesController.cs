@@ -229,6 +229,7 @@ public sealed class QuotesController(
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateCustomProductApi([FromBody] CustomProductRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -291,6 +292,7 @@ public sealed class QuotesController(
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveQuoteApi([FromBody] QuoteStudioSaveRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Company) || request.Items.Count == 0)

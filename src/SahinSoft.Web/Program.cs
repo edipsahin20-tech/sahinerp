@@ -34,6 +34,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add<ConcurrencyExceptionFilter>());
+builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddScoped<StockTransferService>();
 builder.Services.AddScoped<BarcodeGeneratorService>();
 builder.Services.AddScoped<StockCodeGeneratorService>();
