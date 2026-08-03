@@ -1369,7 +1369,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasFilter("[ValidToUtc] IS NULL")
                 .HasDatabaseName("IX_ProductRecipeHeaders_OneActiveVersion");
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(x => x.ProductPortion).WithMany().HasForeignKey(x => x.ProductPortionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductPortion).WithMany(x => x.RecipeHeaders).HasForeignKey(x => x.ProductPortionId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint("CK_ProductRecipeHeaders_Yield", "[YieldQuantity] > 0"));
