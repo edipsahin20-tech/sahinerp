@@ -50,36 +50,76 @@
                         <input asp-for="StockCode" class="form-control" />
                         <span asp-validation-for="StockCode" class="text-danger small"></span>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-6">
                         <label asp-for="Name" class="form-label"></label>
-                        <input asp-for="Name" class="form-control lookup-quicksearch" autofocus autocomplete="off"
-                               data-lookup-endpoint="@Url.Action("Products", "Lookup")"
-                               data-lookup-title="Benzer Stok Ara"
-                               data-target-display="Name"
-                               data-lookup-name-only="true" />
+                        <div class="input-group">
+                            <input asp-for="Name" class="form-control lookup-quicksearch" autofocus autocomplete="off"
+                                   data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                                   data-lookup-title="Benzer Stok Ara"
+                                   data-target-display="Name"
+                                   data-lookup-name-only="true" />
+                            <button type="button" class="btn btn-outline-secondary lookup-trigger"
+                                    data-lookup-endpoint="@Url.Action("Products", "Lookup")"
+                                    data-lookup-title="Benzer Stok Ara"
+                                    data-target-display="Name"
+                                    data-lookup-name-only="true"
+                                    title="Benzer Stok Ara">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </button>
+                        </div>
                         <span asp-validation-for="Name" class="text-danger small"></span>
-                        <div class="form-text">Yazarken benzer stoklar önerilir (mükerrer kayıt oluşturmayı önler). Aramak için "*" ile bitirebilir veya F9'a basabilirsiniz.</div>
+                        <div class="form-text">Yazarken benzer stoklar önerilir (mükerrer kayıt oluşturmayı önler). "..." ile veya F9'a basarak arayabilirsiniz.</div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label asp-for="CategoryId" class="form-label"></label>
-                        <select asp-for="CategoryId" class="form-select" asp-items="Model.CategoryOptions">
-                            <option value="">Kategori seçin</option>
-                        </select>
+                        <div class="input-group">
+                            <select asp-for="CategoryId" class="form-select" asp-items="Model.CategoryOptions" id="CategoryId">
+                                <option value="">Kategori seçin</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary option-picker-btn" data-target="CategoryId" data-title="Kategoriler" data-server-backed="true" title="Kategorileri görüntüle / yeni ekle">+</button>
+                        </div>
                         <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="UnitOfMeasureId" class="form-label"></label>
+                        <select asp-for="UnitOfMeasureId" class="form-select" asp-items="Model.UnitOfMeasureOptions">
+                            <option value="">Birim seçin</option>
+                        </select>
+                        <span asp-validation-for="UnitOfMeasureId" class="text-danger small"></span>
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Brand" class="form-label"></label>
-                        <input asp-for="Brand" class="form-control" />
+                        <div class="input-group">
+                            <select class="form-select" id="brand-select">
+                                <option value="">Marka seçin</option>
+                                @foreach (var brand in Model.BrandOptions)
+                                {
+                                    <option value="@brand" selected="@(brand == Model.Brand)">@brand</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary option-picker-btn" data-target="brand-select" data-title="Markalar" data-server-backed="false" title="Markaları görüntüle / yeni ekle">+</button>
+                        </div>
+                        <input asp-for="Brand" type="hidden" id="Brand" />
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Model" class="form-label"></label>
-                        <input asp-for="Model" class="form-control" />
+                        <div class="input-group">
+                            <select class="form-select" id="model-select">
+                                <option value="">Model seçin</option>
+                                @foreach (var productModel in Model.ModelOptions)
+                                {
+                                    <option value="@productModel" selected="@(productModel == Model.Model)">@productModel</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary option-picker-btn" data-target="model-select" data-title="Modeller" data-server-backed="false" title="Modelleri görüntüle / yeni ekle">+</button>
+                        </div>
+                        <input asp-for="Model" type="hidden" id="Model" />
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Barcode" class="form-label"></label>
                         <div class="input-group">
                             <input asp-for="Barcode" class="form-control" inputmode="numeric" id="barcode-input" />
-                            <select id="barcode-type-select" class="form-select" style="max-width: 8.5rem; flex: 0 0 auto;">
+                            <select id="barcode-type-select" class="form-select barcode-type-select">
                                 <option value="EAN13">EAN13</option>
                                 <option value="EAN8">EAN8</option>
                                 <option value="ASCII">ASCII</option>
@@ -88,13 +128,6 @@
                             <button type="button" class="btn btn-erp-outline" onclick="generateBarcode()">Barkod Üret</button>
                         </div>
                         <span asp-validation-for="Barcode" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-4">
-                        <label asp-for="UnitOfMeasureId" class="form-label"></label>
-                        <select asp-for="UnitOfMeasureId" class="form-select" asp-items="Model.UnitOfMeasureOptions">
-                            <option value="">Birim seçin</option>
-                        </select>
-                        <span asp-validation-for="UnitOfMeasureId" class="text-danger small"></span>
                     </div>
                 </div>
             </div>
@@ -300,6 +333,27 @@
 
 <partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
 
+@* Kategori/Marka/Model "+" düğmeleri bu TEK paylaşılan modalı açar: önce mevcut tüm kayıtların
+   listesini gösterir (satıra tıklayınca o değer seçilir), üstteki mini formdan yeni kayıt eklenir —
+   doğrudan bir prompt() ile "kör" ekleme yapılmaz. *@
+<div class="modal fade" id="optionPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="optionPickerTitle">Liste</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="optionPickerNewValue" class="form-control" placeholder="Yeni değer..." />
+                    <button type="button" class="btn btn-erp-primary" id="optionPickerAddBtn">Ekle</button>
+                </div>
+                <div class="list-group" id="optionPickerList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -368,6 +422,121 @@
             purchaseInput.addEventListener('input', recalcMargin);
             saleInput.addEventListener('input', recalcMargin);
             recalcMargin();
+        })();
+
+        // Marka/Model: ayrı bir tanım tablosu yok, bu yüzden sabit dropdown mevcut ürünlerdeki
+        // farklı değerlerden geliyor (bkz. ProductsController.PopulateSelectionsAsync). Seçilen
+        // değer, formun asıl gönderdiği asp-for="Brand"/"Model" gizli input'una senkronize edilir.
+        (function () {
+            function wireSelect(selectId, hiddenId) {
+                var select = document.getElementById(selectId);
+                var hidden = document.getElementById(hiddenId);
+                if (!select || !hidden) return;
+                select.addEventListener('change', function () {
+                    hidden.value = select.value;
+                });
+            }
+            wireSelect('brand-select', 'Brand');
+            wireSelect('model-select', 'Model');
+        })();
+
+        // Kategori/Marka/Model "+" düğmeleri: tıklanınca önce TÜM mevcut kayıtların listesini
+        // gösteren tek paylaşılan modal açılır (satıra tıklayınca o değer seçilip modal kapanır);
+        // yeni kayıt modalın üstündeki mini formdan eklenir — asla doğrudan bir prompt() ile "kör"
+        // ekleme yapılmaz. Kategori "sunucu destekli" (data-server-backed="true"): gerçek bir
+        // ProductCategory satırı oluşturur (bkz. CategoriesController.CreateQuickApi) — Kategori
+        // zaten kapalı bir liste olduğu için (kullanıcı isteği: "sadece seçim yapılsın"). Marka/Model
+        // ayrı bir tanım tablosuna sahip olmadığından yeni değer yalnızca istemci tarafında dropdown'a
+        // eklenir; ürün kaydedildiğinde bir sonraki üründe listede kendiliğinden görünür (distinct
+        // sorgusu sayesinde).
+        (function () {
+            var modalEl = document.getElementById('optionPickerModal');
+            var titleEl = document.getElementById('optionPickerTitle');
+            var listEl = document.getElementById('optionPickerList');
+            var newValueInput = document.getElementById('optionPickerNewValue');
+            var addBtn = document.getElementById('optionPickerAddBtn');
+            var bsModal = null;
+            var activeConfig = null;
+
+            function ensureModal() {
+                if (!bsModal) bsModal = new bootstrap.Modal(modalEl);
+                return bsModal;
+            }
+
+            function renderList() {
+                var select = document.getElementById(activeConfig.targetSelectId);
+                listEl.innerHTML = '';
+                Array.from(select.options).forEach(function (option) {
+                    if (!option.value) return;
+                    var row = document.createElement('button');
+                    row.type = 'button';
+                    row.className = 'list-group-item list-group-item-action' + (option.selected ? ' active' : '');
+                    row.textContent = option.textContent;
+                    row.addEventListener('click', function () {
+                        select.value = option.value;
+                        select.dispatchEvent(new Event('change'));
+                        bsModal.hide();
+                    });
+                    listEl.appendChild(row);
+                });
+                if (!listEl.children.length) {
+                    listEl.innerHTML = '<p class="text-secondary small mb-0">Henüz kayıt yok — üstteki kutudan ekleyebilirsiniz.</p>';
+                }
+            }
+
+            document.querySelectorAll('.option-picker-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activeConfig = {
+                        targetSelectId: btn.getAttribute('data-target'),
+                        serverBacked: btn.getAttribute('data-server-backed') === 'true'
+                    };
+                    titleEl.textContent = btn.getAttribute('data-title') || 'Liste';
+                    newValueInput.value = '';
+                    renderList();
+                    ensureModal().show();
+                });
+            });
+
+            addBtn.addEventListener('click', function () {
+                var value = newValueInput.value.trim();
+                if (!value || !activeConfig) return;
+                var select = document.getElementById(activeConfig.targetSelectId);
+
+                function appendAndSelect(optionValue, optionLabel) {
+                    var existing = Array.from(select.options).find(function (o) { return o.value === String(optionValue); });
+                    if (!existing) {
+                        existing = document.createElement('option');
+                        existing.value = optionValue;
+                        existing.textContent = optionLabel;
+                        select.appendChild(existing);
+                    }
+                    select.value = optionValue;
+                    select.dispatchEvent(new Event('change'));
+                    bsModal.hide();
+                }
+
+                if (!activeConfig.serverBacked) {
+                    appendAndSelect(value, value);
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('name', value);
+                var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (tokenInput) formData.append('__RequestVerificationToken', tokenInput.value);
+
+                fetch('@Url.Action("CreateQuickApi", "Categories")', { method: 'POST', body: formData })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('İstek başarısız');
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        appendAndSelect(data.id, data.name);
+                    })
+                    .catch(function () {
+                        alert('Kategori eklenirken bir hata oluştu.');
+                    });
+            });
         })();
     </script>
 }

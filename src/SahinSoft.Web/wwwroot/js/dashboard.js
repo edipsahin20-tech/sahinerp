@@ -1,16 +1,6 @@
 (() => {
     "use strict";
 
-    const dataElement = document.getElementById("dashboardChartData");
-    if (!dataElement) return;
-
-    let dashboardData;
-    try {
-        dashboardData = JSON.parse(dataElement.textContent || "{}");
-    } catch {
-        return;
-    }
-
     const money = new Intl.NumberFormat("tr-TR", {
         style: "currency",
         currency: "TRY",
@@ -153,7 +143,7 @@
         canvas.onmouseleave = () => { tooltip.hidden = true; };
     }
 
-    function createCashChart() {
+    function createCashChart(dashboardData) {
         const canvas = document.getElementById("cashFlowChart");
         if (!canvas || !dashboardData.cash) return () => {};
         let points = [];
@@ -179,7 +169,7 @@
         return render;
     }
 
-    function createInvoiceChart() {
+    function createInvoiceChart(dashboardData) {
         const canvas = document.getElementById("invoiceTrendChart");
         if (!canvas || !dashboardData.invoices) return () => {};
         let points = [];
@@ -222,8 +212,27 @@
         return render;
     }
 
-    const renders = [createCashChart(), createInvoiceChart()];
-    renders.forEach(render => render());
+    // Sayfa ilk açıldığında ve her canlı yenilemeden sonra (bkz. dashboard-live.js) tekrar
+    // çağrılabilir olması için tüm kurulum tek bir fonksiyona toplandı — grafik verisini yeniden
+    // okur, canvas elemanlarını yeniden bulur (yenileme .dash-page içeriğini komple değiştirdiği
+    // için eski canvas node'ları artık DOM'da değil) ve yeniden çizer.
+    let renders = [];
+    function initDashboardCharts() {
+        const dataElement = document.getElementById("dashboardChartData");
+        if (!dataElement) return;
+        let dashboardData;
+        try {
+            dashboardData = JSON.parse(dataElement.textContent || "{}");
+        } catch {
+            return;
+        }
+        renders = [createCashChart(dashboardData), createInvoiceChart(dashboardData)];
+        renders.forEach(render => render());
+    }
+
+    window.initDashboardCharts = initDashboardCharts;
+    initDashboardCharts();
+
     let resizeTimer;
     window.addEventListener("resize", () => {
         clearTimeout(resizeTimer);

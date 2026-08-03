@@ -225,7 +225,8 @@
             <div class="dash-task-list">
                 <a asp-controller="Invoices" asp-action="Index" asp-route-status="Draft"><i class="fa-regular fa-file-lines gold"></i><span><strong>Taslak Faturalar</strong><small>Onay bekleyen faturalarınız</small></span><b>@Model.DraftInvoiceCount</b></a>
                 <a asp-controller="BusinessOrders" asp-action="Index" asp-route-status="Draft"><i class="fa-solid fa-cart-flatbed blue"></i><span><strong>Onay Bekleyen Siparişler</strong><small>Hazırlanmayı bekleyen siparişler</small></span><b>@Model.PendingOrderCount</b></a>
-                <a asp-controller="Invoices" asp-action="Index"><i class="fa-solid fa-clock-rotate-left rose"></i><span><strong>Gecikmiş Tahsilatlar</strong><small>Vadesi geçen ödeme planları</small></span><b>@Model.OverdueReceivableCount</b></a>
+                <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-overdue="true"><i class="fa-solid fa-clock-rotate-left rose"></i><span><strong>Gecikmiş Tahsilatlar</strong><small>Alacaklı olduğunuz cariler</small></span><b>@Model.OverdueReceivableCount</b></a>
+                <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-overdue="true"><i class="fa-solid fa-hand-holding-dollar violet"></i><span><strong>Gecikmiş Ödemeler</strong><small>Borçlu olduğunuz cariler</small></span><b>@Model.OverduePayableCount</b></a>
                 <a asp-controller="Products" asp-action="Index"><i class="fa-solid fa-triangle-exclamation orange"></i><span><strong>Kritik Stoklar</strong><small>Minimum seviyedeki ürünler</small></span><b>@(Model.CriticalStockCount + Model.OutOfStockCount)</b></a>
             </div>
         </article>
@@ -236,4 +237,5 @@
 
 @section Scripts {
     <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/dashboard-live.js" asp-append-version="true"></script>
 }

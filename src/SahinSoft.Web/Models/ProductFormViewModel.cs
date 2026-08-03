@@ -108,6 +108,8 @@ public sealed class ProductFormViewModel : IValidatableObject
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> TaxRateOptions { get; set; } = [];
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> CategoryOptions { get; set; } = [];
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> UnitOfMeasureOptions { get; set; } = [];
+    public IEnumerable<string> BrandOptions { get; set; } = [];
+    public IEnumerable<string> ModelOptions { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

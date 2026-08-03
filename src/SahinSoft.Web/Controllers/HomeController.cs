@@ -207,6 +207,10 @@ public sealed class HomeController(ApplicationDbContext dbContext) : Controller
             .CountAsync(x => x.Invoice.Status == InvoiceStatus.Approved &&
                              x.Invoice.InvoiceType == InvoiceType.Sales &&
                              x.DueDateUtc < today && x.Amount > x.PaidAmount);
+        var overduePayableCount = await dbContext.InvoicePaymentSchedules.AsNoTracking()
+            .CountAsync(x => x.Invoice.Status == InvoiceStatus.Approved &&
+                             x.Invoice.InvoiceType == InvoiceType.Purchase &&
+                             x.DueDateUtc < today && x.Amount > x.PaidAmount);
 
         return View(new DashboardViewModel
         {
@@ -231,7 +235,8 @@ public sealed class HomeController(ApplicationDbContext dbContext) : Controller
             RecentActivities = recentActivities,
             DraftInvoiceCount = draftInvoiceCount,
             PendingOrderCount = pendingOrderCount,
-            OverdueReceivableCount = overdueReceivableCount
+            OverdueReceivableCount = overdueReceivableCount,
+            OverduePayableCount = overduePayableCount
         });
     }
 

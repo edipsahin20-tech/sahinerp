@@ -627,6 +627,32 @@ public sealed class ProductsController(
             .OrderBy(x => x.Name)
             .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.Name, x.Id.ToString()))
             .ToListAsync();
+
+        // Marka/Model için ayrı bir tanım tablosu yok (Kategori/Birim/KDV gibi) — sabit dropdown +
+        // "yeni ekle" davranışını, mevcut ürünlerdeki farklı değerlerden türeterek sağlıyoruz. Formda
+        // düzenlenen ürünün kendi mevcut değeri listede yoksa (örn. başka hiçbir üründe kullanılmıyor)
+        // seçenekler arasına eklenir ki seçili değer kaybolmasın.
+        var brands = await dbContext.Products.AsNoTracking()
+            .Where(x => x.Brand != null && x.Brand != "")
+            .Select(x => x.Brand!)
+            .Distinct()
+            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(model.Brand) && !brands.Contains(model.Brand))
+        {
+            brands.Add(model.Brand);
+        }
+        model.BrandOptions = brands.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase);
+
+        var models = await dbContext.Products.AsNoTracking()
+            .Where(x => x.Model != null && x.Model != "")
+            .Select(x => x.Model!)
+            .Distinct()
+            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(model.Model) && !models.Contains(model.Model))
+        {
+            models.Add(model.Model);
+        }
+        model.ModelOptions = models.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase);
     }
 
     private static async Task MapAsync(ProductFormViewModel source, Product target, ApplicationDbContext dbContext)

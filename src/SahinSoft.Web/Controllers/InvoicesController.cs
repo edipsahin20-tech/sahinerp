@@ -30,7 +30,8 @@ public sealed class InvoicesController(
         string? search,
         string? period,
         DateTime? from,
-        DateTime? to)
+        DateTime? to,
+        bool? overdue)
     {
         var query = dbContext.Invoices
             .AsNoTracking()
@@ -47,6 +48,15 @@ public sealed class InvoicesController(
         if (status.HasValue)
         {
             query = query.Where(x => x.Status == status.Value);
+        }
+
+        // Dashboard'daki "Gecikmiş Tahsilatlar"/"Gecikmiş Ödemeler" kartlarından gelir: vadesi geçmiş
+        // ve hâlâ tam ödenmemiş taksidi olan faturalar (bkz. HomeController.Index'teki aynı sorgu).
+        if (overdue == true)
+        {
+            var overdueToday = DateTime.UtcNow.Date;
+            query = query.Where(x => x.Status == InvoiceStatus.Approved &&
+                x.PaymentSchedules.Any(ps => ps.DueDateUtc < overdueToday && ps.Amount > ps.PaidAmount));
         }
 
         if (customerId.HasValue)
@@ -87,6 +97,7 @@ public sealed class InvoicesController(
         ViewBag.Period = period;
         ViewBag.From = from;
         ViewBag.To = to;
+        ViewBag.Overdue = overdue;
 
         try
         {

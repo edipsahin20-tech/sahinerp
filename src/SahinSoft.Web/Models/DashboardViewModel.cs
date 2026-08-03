@@ -21,6 +21,7 @@ public sealed class DashboardViewModel
     public int DraftInvoiceCount { get; set; }
     public int PendingOrderCount { get; set; }
     public int OverdueReceivableCount { get; set; }
+    public int OverduePayableCount { get; set; }
 
     public IReadOnlyList<DailyInvoiceStat> DailyInvoiceStats { get; set; } = [];
     public IReadOnlyList<DailyCashFlowStat> DailyCashFlowStats { get; set; } = [];

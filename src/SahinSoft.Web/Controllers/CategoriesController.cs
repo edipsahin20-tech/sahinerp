@@ -32,6 +32,46 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
         return View("Form", new CategoryFormViewModel());
     }
 
+    // Stok Tanıtım Kartı'ndaki Kategori dropdown'ının yanındaki "+" için: sayfadan hiç ayrılmadan
+    // yeni kategori eklenir. Code alanı isimden türetilir (mevcut ekranda kullanıcı elle giriyor,
+    // burada akışı kesmemek için otomatik üretilir) — çakışırsa sayısal sonek eklenir.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateQuickApi([FromForm] string name)
+    {
+        name = (name ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(new { error = "Kategori adı zorunludur." });
+        }
+
+        var baseCode = new string(name.ToUpperInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
+        if (baseCode.Length > 12)
+        {
+            baseCode = baseCode[..12];
+        }
+        if (baseCode.Length == 0)
+        {
+            baseCode = "KAT";
+        }
+
+        var code = baseCode;
+        var suffix = 1;
+        while (await dbContext.ProductCategories.AnyAsync(x => x.Code == code))
+        {
+            suffix++;
+            code = $"{baseCode}{suffix}";
+        }
+
+        var category = new ProductCategory { Code = code, Name = name };
+        dbContext.ProductCategories.Add(category);
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { id = category.Id, name = category.Name });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CategoryFormViewModel form)

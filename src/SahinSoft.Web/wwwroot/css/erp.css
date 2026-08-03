@@ -617,6 +617,19 @@ body {
     min-height: 64px;
 }
 
+/* Barkod input-group'unda tür seçici (EAN13/EAN8/...) — flex:0 0 auto tek başına yetmiyor,
+   Bootstrap'in .form-select genişlik varsayımlarıyla çakışıp genişliği ~sıfıra düşürüyordu. */
+.erp-compact-product-form .barcode-type-select {
+    flex: 0 0 6.4rem;
+    width: 6.4rem;
+    max-width: 6.4rem;
+}
+
+.erp-compact-product-form .quick-add-option-btn,
+.erp-compact-product-form #add-category-btn {
+    flex: 0 0 auto;
+}
+
 .erp-compact-product-form .form-text {
     margin-top: 0.2rem;
     font-size: 0.72rem;
