@@ -177,6 +177,20 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
             query = query.Where(x => x.TransactionDateUtc < to.Value.AddDays(1));
         }
 
+        // Giriş/Çıkış/Net toplamları, ekrandaki (en fazla 500 satırlık) listeden değil, filtrelenmiş
+        // sorgunun TAMAMINDAN hesaplanır — aksi halde 500'den fazla hareketi olan bir hesapta rapor
+        // toplamı hesabın gerçek bakiyesiyle uyuşmaz hale gelir.
+        var totalIn = await query
+            .Where(x => x.TransactionType == FinancialTransactionType.Collection ||
+                        x.TransactionType == FinancialTransactionType.TransferIn ||
+                        x.TransactionType == FinancialTransactionType.Opening)
+            .SumAsync(x => (decimal?)x.Amount) ?? 0;
+        var totalOut = await query
+            .Where(x => x.TransactionType == FinancialTransactionType.Payment ||
+                        x.TransactionType == FinancialTransactionType.TransferOut ||
+                        x.TransactionType == FinancialTransactionType.Adjustment)
+            .SumAsync(x => (decimal?)x.Amount) ?? 0;
+
         var transactions = await query.Take(500).ToListAsync();
 
         var lines = transactions
@@ -211,9 +225,9 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
                 FinancialAccountType.Bank => "Banka Hareketleri",
                 _ => "Kasa/Banka Hareketleri"
             },
-            TotalIn = lines.Where(x => x.IsIncoming).Sum(x => x.Amount),
-            TotalOut = lines.Where(x => !x.IsIncoming).Sum(x => x.Amount),
-            NetChange = lines.Sum(x => x.IsIncoming ? x.Amount : -x.Amount),
+            TotalIn = totalIn,
+            TotalOut = totalOut,
+            NetChange = totalIn - totalOut,
             Lines = lines,
             FinancialAccounts = await accountsQuery
                 .OrderBy(x => x.Name)
