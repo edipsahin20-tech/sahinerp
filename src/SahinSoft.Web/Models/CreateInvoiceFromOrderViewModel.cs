@@ -47,7 +47,7 @@ public sealed class CreateInvoiceFromOrderLineViewModel
     public decimal DiscountRate { get; set; }
     public decimal TaxRate { get; set; }
 
-    [Range(0, 999999999)]
+    [Range(typeof(decimal), "0", "999999999")]
     [Display(Name = "Faturalanacak miktar")]
     public decimal QuantityToInvoice { get; set; }
 }

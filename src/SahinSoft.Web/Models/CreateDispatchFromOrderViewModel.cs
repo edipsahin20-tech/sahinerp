@@ -50,7 +50,7 @@ public sealed class CreateDispatchFromOrderLineViewModel
     public decimal OrderedQuantity { get; set; }
     public decimal RemainingQuantity { get; set; }
 
-    [Range(0, 999999999)]
+    [Range(typeof(decimal), "0", "999999999")]
     [Display(Name = "Sevk edilecek miktar")]
     public decimal QuantityToShip { get; set; }
 }

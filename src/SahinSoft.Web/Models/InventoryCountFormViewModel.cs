@@ -33,7 +33,7 @@ public sealed class InventoryCountLineFormViewModel
 
     public string? ProductDisplay { get; set; }
 
-    [Range(0, 999999999)]
+    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Sayılan miktar 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Sayılan Miktar")]
     public decimal CountedQuantity { get; set; }
 }

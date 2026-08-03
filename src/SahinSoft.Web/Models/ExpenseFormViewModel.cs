@@ -28,15 +28,15 @@ public sealed class ExpenseFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(0.000001, 999999)]
+    [Range(typeof(decimal), "0.000001", "999999")]
     [Display(Name = "Döviz kuru")]
     public decimal ExchangeRate { get; set; } = 1;
 
-    [Range(0, 999999999)]
+    [Range(typeof(decimal), "0", "999999999")]
     [Display(Name = "Tutar (KDV Hariç)")]
     public decimal NetAmount { get; set; }
 
-    [Range(0, 999999999)]
+    [Range(typeof(decimal), "0", "999999999")]
     [Display(Name = "KDV Tutarı")]
     public decimal TaxAmount { get; set; }
 

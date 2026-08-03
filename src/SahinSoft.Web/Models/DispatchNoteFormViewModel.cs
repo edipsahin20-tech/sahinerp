@@ -53,7 +53,7 @@ public sealed class DispatchNoteLineFormViewModel
 
     public string? ProductDisplay { get; set; }
 
-    [Range(0.001, 999999999)]
+    [Range(typeof(decimal), "0.001", "999999999", ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
 

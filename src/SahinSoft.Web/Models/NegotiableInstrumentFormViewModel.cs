@@ -35,7 +35,7 @@ public sealed class NegotiableInstrumentFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(0.01, 999999999)]
+    [Range(typeof(decimal), "0.01", "999999999")]
     [Display(Name = "Tutar")]
     public decimal Amount { get; set; }
 

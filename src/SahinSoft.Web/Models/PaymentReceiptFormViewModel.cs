@@ -27,7 +27,7 @@ public sealed class PaymentReceiptFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(0.000001, 999999)]
+    [Range(typeof(decimal), "0.000001", "999999")]
     [Display(Name = "Döviz kuru")]
     public decimal ExchangeRate { get; set; } = 1;
 
@@ -53,7 +53,7 @@ public sealed class PaymentReceiptLineFormViewModel
     [DataType(DataType.Date)]
     public DateTime? DueDateUtc { get; set; }
 
-    [Range(0.01, 999999999)]
+    [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "Tutar 0'dan büyük olmalıdır.")]
     [Display(Name = "Tutar")]
     public decimal Amount { get; set; }
 
