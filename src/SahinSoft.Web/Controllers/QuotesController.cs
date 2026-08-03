@@ -298,6 +298,11 @@ public sealed class QuotesController(
             return Json(new { success = false, message = "Firma unvanı ve en az bir kalem zorunludur." });
         }
 
+        if (request.Items.Any(x => x.Qty <= 0 || x.Price < 0))
+        {
+            return Json(new { success = false, message = "Kalemlerdeki miktar 0'dan büyük, birim fiyat 0 veya daha büyük olmalıdır." });
+        }
+
         try
         {
             Customer? customer = request.CustomerId is int customerId
