@@ -21,6 +21,7 @@ public sealed class InvoicesController(
     DocumentNumberGeneratorService documentNumberGenerator,
     InvoicePostingService invoicePostingService,
     InvoiceCancellationOrchestrationService invoiceCancellationOrchestration,
+    OverdueScheduleService overdueScheduleService,
     UserManager<ApplicationUser> userManager) : Controller
 {
     public async Task<IActionResult> Index(
@@ -50,13 +51,18 @@ public sealed class InvoicesController(
             query = query.Where(x => x.Status == status.Value);
         }
 
-        // Dashboard'daki "Gecikmiş Tahsilatlar"/"Gecikmiş Ödemeler" kartlarından gelir: vadesi geçmiş
-        // ve hâlâ tam ödenmemiş taksidi olan faturalar (bkz. HomeController.Index'teki aynı sorgu).
+        // Dashboard'daki "Gecikmiş Tahsilatlar"/"Gecikmiş Ödemeler" kartlarından gelir: faturanın
+        // kendi PaidAmount'ı değil, müşterinin GERÇEK cari bakiyesi baz alınır (bkz.
+        // OverdueScheduleService — elle girilen Tahsilat/Tediye faturaya bağlanmadığından PaidAmount
+        // tek başına yanıltıcı olabiliyordu; aynı hesap HomeController.Index'te de kullanılıyor,
+        // sayaçlar ve bu liste burada birebir eşleşir).
         if (overdue == true)
         {
             var overdueToday = DateTime.UtcNow.Date;
-            query = query.Where(x => x.Status == InvoiceStatus.Approved &&
-                x.PaymentSchedules.Any(ps => ps.DueDateUtc < overdueToday && ps.Amount > ps.PaidAmount));
+            var genuinelyOverdueIds = (await overdueScheduleService.GetNettedSchedulesAsync(overdueToday, type, HttpContext.RequestAborted))
+                .Select(x => x.InvoiceId)
+                .ToList();
+            query = query.Where(x => genuinelyOverdueIds.Contains(x.Id));
         }
 
         if (customerId.HasValue)

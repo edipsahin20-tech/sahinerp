@@ -83,6 +83,31 @@
         </a>
     </section>
 
+    <section class="dash-grid dash-grid-quick-top">
+        <article class="dash-card dash-quick-card">
+            <div class="dash-card-head"><div><h2>Hızlı İşlemler</h2><p>Sık kullanılan kayıtlar</p></div></div>
+            <div class="dash-quick-grid">
+                <a asp-controller="Invoices" asp-action="Create" asp-route-type="Sales"><i class="fa-solid fa-file-circle-plus teal"></i><span>Satış Faturası</span></a>
+                <a asp-controller="Invoices" asp-action="Create" asp-route-type="Purchase"><i class="fa-solid fa-file-arrow-down blue"></i><span>Alış Faturası</span></a>
+                <a asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Collection"><i class="fa-solid fa-hand-holding-dollar green"></i><span>Tahsilat</span></a>
+                <a asp-controller="PaymentReceipts" asp-action="Create" asp-route-type="Payment"><i class="fa-solid fa-money-bill-transfer violet"></i><span>Tediye</span></a>
+                <a asp-controller="Products" asp-action="Create"><i class="fa-solid fa-box gold"></i><span>Stok Kartı</span></a>
+                <a asp-controller="BusinessOrders" asp-action="Create" asp-route-type="Sales"><i class="fa-solid fa-clipboard-list rose"></i><span>Sipariş</span></a>
+            </div>
+        </article>
+
+        <article class="dash-card dash-tasks-card">
+            <div class="dash-card-head"><div><h2>Bekleyen İşler</h2><p>Bugün ilgilenmeniz gerekenler</p></div></div>
+            <div class="dash-task-list">
+                <a asp-controller="Invoices" asp-action="Index" asp-route-status="Draft"><i class="fa-regular fa-file-lines gold"></i><span><strong>Taslak Faturalar</strong><small>Onay bekleyen faturalarınız</small></span><b>@Model.DraftInvoiceCount</b></a>
+                <a asp-controller="BusinessOrders" asp-action="Index" asp-route-status="Draft"><i class="fa-solid fa-cart-flatbed blue"></i><span><strong>Onay Bekleyen Siparişler</strong><small>Hazırlanmayı bekleyen siparişler</small></span><b>@Model.PendingOrderCount</b></a>
+                <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-overdue="true"><i class="fa-solid fa-clock-rotate-left rose"></i><span><strong>Gecikmiş Tahsilatlar</strong><small>Alacaklı olduğunuz cariler</small></span><b>@Model.OverdueReceivableCount</b></a>
+                <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-overdue="true"><i class="fa-solid fa-hand-holding-dollar violet"></i><span><strong>Gecikmiş Ödemeler</strong><small>Borçlu olduğunuz cariler</small></span><b>@Model.OverduePayableCount</b></a>
+                <a asp-controller="Products" asp-action="Index"><i class="fa-solid fa-triangle-exclamation orange"></i><span><strong>Kritik Stoklar</strong><small>Minimum seviyedeki ürünler</small></span><b>@(Model.CriticalStockCount + Model.OutOfStockCount)</b></a>
+            </div>
+        </article>
+    </section>
+
     <section class="dash-grid dash-grid-primary">
         <article class="dash-card dash-cash-card">
             <div class="dash-card-head">

@@ -5,11 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
+using SahinSoft.Web.Services;
 
 namespace SahinSoft.Web.Controllers;
 
 [Authorize]
-public sealed class HomeController(ApplicationDbContext dbContext) : Controller
+public sealed class HomeController(ApplicationDbContext dbContext, OverdueScheduleService overdueScheduleService) : Controller
 {
     public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
@@ -81,32 +82,23 @@ public sealed class HomeController(ApplicationDbContext dbContext) : Controller
             });
         }
 
-        var upcomingUntil = today.AddDays(7);
-        var upcomingRaw = await dbContext.InvoicePaymentSchedules.AsNoTracking()
-            .Where(x => x.Invoice.Status == InvoiceStatus.Approved &&
-                        x.DueDateUtc < upcomingUntil.AddDays(1) &&
-                        x.Amount > x.PaidAmount)
-            .OrderBy(x => x.DueDateUtc)
-            .ThenBy(x => x.Id)
+        // Faturanın kendi PaidAmount'ına değil müşterinin GERÇEK cari bakiyesine göre kalan tutarı
+        // hesaplar — elle girilen Tahsilat/Tediye fişleri belirli bir faturaya bağlanmadığından
+        // (yalnızca Kapalı Fatura otomatik ödemesi bağlanır) PaidAmount tek başına güvenilir değil;
+        // bkz. OverdueScheduleService.
+        var upcomingUntil = today.AddDays(8);
+        var nettedSchedules = await overdueScheduleService.GetNettedSchedulesAsync(upcomingUntil, invoiceType: null, HttpContext.RequestAborted);
+        var upcomingPayments = nettedSchedules
             .Take(6)
-            .Select(x => new
+            .Select(x => new UpcomingPaymentItem
             {
-                x.InvoiceId,
-                x.Invoice.InvoiceNumber,
-                CustomerName = x.Invoice.Customer.Name,
-                x.DueDateUtc,
-                RemainingAmount = x.Amount - x.PaidAmount
-            })
-            .ToListAsync();
-        var upcomingPayments = upcomingRaw.Select(x => new UpcomingPaymentItem
-        {
-            InvoiceId = x.InvoiceId,
-            InvoiceNumber = x.InvoiceNumber,
-            CustomerName = x.CustomerName,
-            DueDateUtc = x.DueDateUtc,
-            RemainingAmount = x.RemainingAmount,
-            DaysUntilDue = (x.DueDateUtc.Date - today).Days
-        }).ToList();
+                InvoiceId = x.InvoiceId,
+                InvoiceNumber = x.InvoiceNumber,
+                CustomerName = x.CustomerName,
+                DueDateUtc = x.DueDateUtc,
+                RemainingAmount = x.RemainingAmount,
+                DaysUntilDue = (x.DueDateUtc.Date - today).Days
+            }).ToList();
 
         var stockSnapshot = await dbContext.Products.AsNoTracking()
             .Where(x => x.IsActive)
@@ -203,14 +195,8 @@ public sealed class HomeController(ApplicationDbContext dbContext) : Controller
             .CountAsync(x => x.Status == InvoiceStatus.Draft);
         var pendingOrderCount = await dbContext.BusinessOrders.AsNoTracking()
             .CountAsync(x => x.Status == BusinessDocumentStatus.Draft);
-        var overdueReceivableCount = await dbContext.InvoicePaymentSchedules.AsNoTracking()
-            .CountAsync(x => x.Invoice.Status == InvoiceStatus.Approved &&
-                             x.Invoice.InvoiceType == InvoiceType.Sales &&
-                             x.DueDateUtc < today && x.Amount > x.PaidAmount);
-        var overduePayableCount = await dbContext.InvoicePaymentSchedules.AsNoTracking()
-            .CountAsync(x => x.Invoice.Status == InvoiceStatus.Approved &&
-                             x.Invoice.InvoiceType == InvoiceType.Purchase &&
-                             x.DueDateUtc < today && x.Amount > x.PaidAmount);
+        var overdueReceivableCount = nettedSchedules.Count(x => x.InvoiceType == InvoiceType.Sales && x.DueDateUtc < today);
+        var overduePayableCount = nettedSchedules.Count(x => x.InvoiceType == InvoiceType.Purchase && x.DueDateUtc < today);
 
         return View(new DashboardViewModel
         {

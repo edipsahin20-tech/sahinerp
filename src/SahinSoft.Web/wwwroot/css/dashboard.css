@@ -94,9 +94,10 @@
 .dash-kpi-rose { --accent: #d72f68; }
 
 .dash-grid { display: grid; gap: .8rem; margin-bottom: .8rem; }
+.dash-grid-quick-top { grid-template-columns: 1fr 1fr; }
 .dash-grid-primary { grid-template-columns: minmax(0, 3fr) minmax(22rem, 2fr); }
-.dash-grid-secondary { grid-template-columns: 1.25fr .9fr 1fr; }
-.dash-grid-bottom { grid-template-columns: 1.1fr 1.2fr .9fr; }
+.dash-grid-secondary { grid-template-columns: 1.3fr 1fr; }
+.dash-grid-bottom { grid-template-columns: 1fr 1.15fr; }
 
 .dash-card { min-width: 0; background: #fff; border: 1px solid var(--dash-border); border-radius: .8rem; padding: .86rem; box-shadow: 0 2px 8px rgba(31, 42, 68, .035); }
 .dash-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .7rem; margin-bottom: .72rem; }

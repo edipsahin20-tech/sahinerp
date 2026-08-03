@@ -223,7 +223,7 @@
             footer.addEventListener('click', function (event) {
                 var btn = event.target.closest('button[data-page]');
                 if (!btn) return;
-                var rows = visibleDataRows(tbody);
+                var rows = searchVisibleRows(tbody);
                 var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
                 if (btn.dataset.page === 'prev') currentPage = Math.max(1, currentPage - 1);
                 else if (btn.dataset.page === 'next') currentPage = Math.min(totalPages, currentPage + 1);
