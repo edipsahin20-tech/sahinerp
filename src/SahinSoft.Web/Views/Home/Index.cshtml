@@ -104,6 +104,7 @@
                 <a asp-controller="Invoices" asp-action="Index" asp-route-type="Sales" asp-route-overdue="true"><i class="fa-solid fa-clock-rotate-left rose"></i><span><strong>Gecikmiş Tahsilatlar</strong><small>Alacaklı olduğunuz cariler</small></span><b>@Model.OverdueReceivableCount</b></a>
                 <a asp-controller="Invoices" asp-action="Index" asp-route-type="Purchase" asp-route-overdue="true"><i class="fa-solid fa-hand-holding-dollar violet"></i><span><strong>Gecikmiş Ödemeler</strong><small>Borçlu olduğunuz cariler</small></span><b>@Model.OverduePayableCount</b></a>
                 <a asp-controller="Products" asp-action="Index"><i class="fa-solid fa-triangle-exclamation orange"></i><span><strong>Kritik Stoklar</strong><small>Minimum seviyedeki ürünler</small></span><b>@(Model.CriticalStockCount + Model.OutOfStockCount)</b></a>
+                <a asp-controller="NegotiableInstruments" asp-action="Index" asp-route-status="Portfolio"><i class="fa-solid fa-money-check teal"></i><span><strong>Portföydeki Çek/Senet</strong><small>Vadesi yaklaşan/geçen @Model.DueSoonInstrumentCount adet</small></span><b>@Model.PortfolioInstrumentCount</b></a>
             </div>
         </article>
     </section>
@@ -218,7 +219,7 @@
                     @foreach (var item in Model.RecentActivities)
                     {
                         <a href="@Url.Action("Details", item.Controller, new { id = item.EntityId })" class="dash-activity-row">
-                            <span class="activity-icon @item.Tone"><i class="fa-solid @(item.Kind == "Fatura" ? "fa-file-invoice" : item.Kind == "Sipariş" ? "fa-clipboard-list" : "fa-wallet")"></i></span>
+                            <span class="activity-icon @item.Tone"><i class="fa-solid @(item.Kind == "Fatura" ? "fa-file-invoice" : item.Kind == "Sipariş" ? "fa-clipboard-list" : item.Kind == "Çek" || item.Kind == "Senet" ? "fa-money-check" : "fa-wallet")"></i></span>
                             <span class="activity-main"><strong>@item.Title</strong><small>@item.DocumentNumber · @item.Description</small></span>
                             <span class="activity-end">
                                 @if (item.Amount.HasValue)

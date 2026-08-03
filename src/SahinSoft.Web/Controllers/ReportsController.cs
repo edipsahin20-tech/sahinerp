@@ -138,6 +138,92 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
         return View(model);
     }
 
+    // Kasa/Banka Hareketleri — Stok Hareketleri ile aynı desen. accountType ("Cash"/"Bank") verilirse
+    // Kasa Hareket / Banka Hareket giriş noktalarından geldiği anlaşılır ve hesap listesi + başlık ona
+    // göre daraltılır; financialAccountId ile tek bir hesaba daha da daraltılabilir.
+    public async Task<IActionResult> FinancialTransactions(int? financialAccountId, string? accountType, DateTime? from, DateTime? to)
+    {
+        FinancialAccountType? parsedAccountType = accountType switch
+        {
+            "Cash" => FinancialAccountType.Cash,
+            "Bank" => FinancialAccountType.Bank,
+            _ => null
+        };
+
+        var query = dbContext.FinancialTransactions
+            .AsNoTracking()
+            .Include(x => x.FinancialAccount)
+            .Include(x => x.Customer)
+            .OrderByDescending(x => x.TransactionDateUtc)
+            .ThenByDescending(x => x.Id)
+            .AsQueryable();
+
+        if (financialAccountId.HasValue)
+        {
+            query = query.Where(x => x.FinancialAccountId == financialAccountId.Value);
+        }
+        else if (parsedAccountType.HasValue)
+        {
+            query = query.Where(x => x.FinancialAccount.AccountType == parsedAccountType.Value);
+        }
+
+        if (from.HasValue)
+        {
+            query = query.Where(x => x.TransactionDateUtc >= from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(x => x.TransactionDateUtc < to.Value.AddDays(1));
+        }
+
+        var transactions = await query.Take(500).ToListAsync();
+
+        var lines = transactions
+            .Select(x => new FinancialTransactionReportLineViewModel
+            {
+                TransactionDateUtc = x.TransactionDateUtc,
+                AccountName = x.FinancialAccount.Name,
+                TransactionType = x.TransactionType.GetDisplayName(),
+                IsIncoming = x.TransactionType is FinancialTransactionType.Collection or FinancialTransactionType.TransferIn or FinancialTransactionType.Opening,
+                Amount = x.Amount,
+                DocumentNumber = x.DocumentNumber,
+                Description = x.Description,
+                CustomerName = x.Customer != null ? x.Customer.Name : null
+            })
+            .ToList();
+
+        var accountsQuery = dbContext.FinancialAccounts.AsNoTracking().Where(x => x.IsActive);
+        if (parsedAccountType.HasValue)
+        {
+            accountsQuery = accountsQuery.Where(x => x.AccountType == parsedAccountType.Value);
+        }
+
+        var model = new FinancialTransactionReportViewModel
+        {
+            FinancialAccountId = financialAccountId,
+            AccountType = accountType,
+            From = from,
+            To = to,
+            PageTitle = parsedAccountType switch
+            {
+                FinancialAccountType.Cash => "Kasa Hareketleri",
+                FinancialAccountType.Bank => "Banka Hareketleri",
+                _ => "Kasa/Banka Hareketleri"
+            },
+            TotalIn = lines.Where(x => x.IsIncoming).Sum(x => x.Amount),
+            TotalOut = lines.Where(x => !x.IsIncoming).Sum(x => x.Amount),
+            NetChange = lines.Sum(x => x.IsIncoming ? x.Amount : -x.Amount),
+            Lines = lines,
+            FinancialAccounts = await accountsQuery
+                .OrderBy(x => x.Name)
+                .Select(x => new SelectListItem($"{x.Code} - {x.Name}", x.Id.ToString()))
+                .ToListAsync()
+        };
+
+        return View(model);
+    }
+
     public async Task<IActionResult> StockReconciliation()
     {
         var movementTotals = await dbContext.StockMovements

@@ -42,6 +42,23 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
             .Where(x => x.ReceiptType == ReceiptType.Payment)
             .SumAsync(x => (decimal?)x.TotalAmount) ?? 0;
 
+        // Çek/Senet Tahsil Edildi/Ödendi (bkz. NegotiableInstrumentPostingService.SettleAsync) bir
+        // PaymentReceipt oluşturmuyor — bu yüzden yukarıdaki PaymentReceipts sorgusuna hiç girmez.
+        // Diğer kartlar gibi (Fatura/Sipariş) "şu an geçerli durum" mantığıyla: yalnızca hâlâ
+        // Tahsil Edildi/Ödendi durumunda olan (İptal edilmemiş) kayıtlar, SettledAtUtc'ye göre sayılır.
+        var instrumentSettlementQuery = dbContext.NegotiableInstruments.AsNoTracking()
+            .Where(x => x.SettledAtUtc != null &&
+                        x.SettledAtUtc >= filterFrom &&
+                        x.SettledAtUtc < filterToExclusive);
+        var instrumentCollectionTotal = await instrumentSettlementQuery
+            .Where(x => x.Status == InstrumentStatus.Collected)
+            .SumAsync(x => (decimal?)x.Amount) ?? 0;
+        var instrumentPaymentTotal = await instrumentSettlementQuery
+            .Where(x => x.Status == InstrumentStatus.Paid)
+            .SumAsync(x => (decimal?)x.Amount) ?? 0;
+        collectionTotal += instrumentCollectionTotal;
+        paymentTotal += instrumentPaymentTotal;
+
         // Borç/alacak kartları tarih filtresinden bağımsız olarak güncel cari pozisyonu gösterir.
         var customerBalances = await dbContext.CurrentAccountTransactions.AsNoTracking()
             .GroupBy(x => x.CustomerId)
@@ -63,6 +80,13 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
             .Select(g => new { g.Key.Date, g.Key.ReceiptType, Total = g.Sum(x => x.TotalAmount) })
             .ToListAsync();
 
+        var instrumentChartRaw = await dbContext.NegotiableInstruments.AsNoTracking()
+            .Where(x => x.SettledAtUtc != null && x.SettledAtUtc >= chartSince &&
+                        (x.Status == InstrumentStatus.Collected || x.Status == InstrumentStatus.Paid))
+            .GroupBy(x => new { Date = x.SettledAtUtc!.Value.Date, x.Status })
+            .Select(g => new { g.Key.Date, g.Key.Status, Total = g.Sum(x => x.Amount) })
+            .ToListAsync();
+
         var dailyInvoiceStats = new List<DailyInvoiceStat>(14);
         var dailyCashFlowStats = new List<DailyCashFlowStat>(14);
         for (var i = 0; i < 14; i++)
@@ -77,8 +101,10 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
             dailyCashFlowStats.Add(new DailyCashFlowStat
             {
                 DateUtc = date,
-                CollectionTotal = cashChartRaw.FirstOrDefault(x => x.Date == date && x.ReceiptType == ReceiptType.Collection)?.Total ?? 0,
-                PaymentTotal = cashChartRaw.FirstOrDefault(x => x.Date == date && x.ReceiptType == ReceiptType.Payment)?.Total ?? 0
+                CollectionTotal = (cashChartRaw.FirstOrDefault(x => x.Date == date && x.ReceiptType == ReceiptType.Collection)?.Total ?? 0) +
+                    (instrumentChartRaw.FirstOrDefault(x => x.Date == date && x.Status == InstrumentStatus.Collected)?.Total ?? 0),
+                PaymentTotal = (cashChartRaw.FirstOrDefault(x => x.Date == date && x.ReceiptType == ReceiptType.Payment)?.Total ?? 0) +
+                    (instrumentChartRaw.FirstOrDefault(x => x.Date == date && x.Status == InstrumentStatus.Paid)?.Total ?? 0)
             });
         }
 
@@ -184,9 +210,36 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
                 Tone = "warning"
             })
             .ToListAsync();
+        var recentInstrumentsRaw = await dbContext.NegotiableInstruments.AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAtUtc ?? x.CreatedAtUtc)
+            .Take(4)
+            .Select(x => new
+            {
+                x.Id,
+                DateUtc = x.UpdatedAtUtc ?? x.CreatedAtUtc,
+                x.InstrumentType,
+                x.Status,
+                x.InstrumentNumber,
+                CustomerName = x.Customer.Name,
+                x.Amount
+            })
+            .ToListAsync();
+        var recentInstruments = recentInstrumentsRaw.Select(x => new RecentActivityItem
+        {
+            DateUtc = x.DateUtc,
+            Kind = x.InstrumentType == NegotiableInstrumentType.Cheque ? "Çek" : "Senet",
+            Title = InstrumentActivityTitle(x.InstrumentType, x.Status),
+            DocumentNumber = x.InstrumentNumber,
+            Description = x.CustomerName,
+            Amount = x.Amount,
+            Controller = "NegotiableInstruments",
+            EntityId = x.Id,
+            Tone = InstrumentActivityTone(x.Status)
+        }).ToList();
         var recentActivities = recentInvoices
             .Concat(recentReceipts)
             .Concat(recentOrders)
+            .Concat(recentInstruments)
             .OrderByDescending(x => x.DateUtc)
             .Take(6)
             .ToList();
@@ -197,6 +250,16 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
             .CountAsync(x => x.Status == BusinessDocumentStatus.Draft);
         var overdueReceivableCount = nettedSchedules.Count(x => x.InvoiceType == InvoiceType.Sales && x.DueDateUtc < today);
         var overduePayableCount = nettedSchedules.Count(x => x.InvoiceType == InvoiceType.Purchase && x.DueDateUtc < today);
+
+        // Portföyde bekleyen (henüz Tahsil Edildi/Ödendi/İptal olmamış) çek/senetler — dashboard'da
+        // hiç görünmüyordu, bkz. "dashbord çek ile ilgili bölüm de yok" geri bildirimi.
+        var portfolioInstruments = await dbContext.NegotiableInstruments.AsNoTracking()
+            .Where(x => x.Status == InstrumentStatus.Portfolio || x.Status == InstrumentStatus.Endorsed)
+            .Select(x => new { x.Amount, x.DueDateUtc })
+            .ToListAsync();
+        var portfolioInstrumentCount = portfolioInstruments.Count;
+        var portfolioInstrumentTotal = portfolioInstruments.Sum(x => x.Amount);
+        var dueSoonInstrumentCount = portfolioInstruments.Count(x => x.DueDateUtc < upcomingUntil);
 
         return View(new DashboardViewModel
         {
@@ -222,9 +285,36 @@ public sealed class HomeController(ApplicationDbContext dbContext, OverdueSchedu
             DraftInvoiceCount = draftInvoiceCount,
             PendingOrderCount = pendingOrderCount,
             OverdueReceivableCount = overdueReceivableCount,
-            OverduePayableCount = overduePayableCount
+            OverduePayableCount = overduePayableCount,
+            PortfolioInstrumentCount = portfolioInstrumentCount,
+            PortfolioInstrumentTotal = portfolioInstrumentTotal,
+            DueSoonInstrumentCount = dueSoonInstrumentCount
         });
     }
+
+    private static string InstrumentActivityTitle(NegotiableInstrumentType type, InstrumentStatus status)
+    {
+        var typeLabel = type == NegotiableInstrumentType.Cheque ? "Çek" : "Senet";
+        return status switch
+        {
+            InstrumentStatus.Collected => $"{typeLabel} tahsil edildi",
+            InstrumentStatus.Paid => $"{typeLabel} ödendi",
+            InstrumentStatus.Endorsed => $"{typeLabel} ciro edildi",
+            InstrumentStatus.Protested => $"{typeLabel} karşılıksız çıktı",
+            InstrumentStatus.Returned => $"{typeLabel} iade edildi",
+            InstrumentStatus.Cancelled => $"{typeLabel} iptal edildi",
+            _ => $"{typeLabel} kaydedildi"
+        };
+    }
+
+    private static string InstrumentActivityTone(InstrumentStatus status) => status switch
+    {
+        InstrumentStatus.Collected or InstrumentStatus.Endorsed => "success",
+        InstrumentStatus.Paid => "info",
+        InstrumentStatus.Protested or InstrumentStatus.Cancelled => "danger",
+        InstrumentStatus.Returned => "warning",
+        _ => "warning"
+    };
 
     private static (DateTime From, DateTime To, string Label) ResolvePeriod(
         string period,

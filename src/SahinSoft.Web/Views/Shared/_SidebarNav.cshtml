@@ -133,6 +133,22 @@
     </div>
 </div>
 
+<button type="button" class="@GroupToggleClass("FinancialAccounts")" data-bs-toggle="collapse" data-bs-target="#@Id("group-kasabanka")" aria-expanded="@Expanded("FinancialAccounts")">
+    <span class="toggle-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v16" /></svg>
+        Kasa/Banka
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div class="@CollapseClass("FinancialAccounts")" id="@Id("group-kasabanka")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index" asp-route-type="Cash">Kasa Kayıt</a>
+        <a class="nav-link" asp-controller="Reports" asp-action="FinancialTransactions" asp-route-accountType="Cash">Kasa Hareket</a>
+        <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index" asp-route-type="Bank">Banka Kayıt</a>
+        <a class="nav-link" asp-controller="Reports" asp-action="FinancialTransactions" asp-route-accountType="Bank">Banka Hareket</a>
+    </div>
+</div>
+
 <button type="button" class="@GroupToggleClass("Reports")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports")">
     <span class="toggle-left">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18.7 8 13 13.7l-4-4L3 16" /></svg>

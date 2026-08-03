@@ -15,9 +15,21 @@ public sealed class FinancialAccountsController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? type)
     {
-        return View(await dbContext.FinancialAccounts.AsNoTracking().OrderBy(x => x.Name).ToListAsync());
+        var query = dbContext.FinancialAccounts.AsNoTracking().OrderBy(x => x.Name).AsQueryable();
+        if (type == "Cash")
+        {
+            query = query.Where(x => x.AccountType == FinancialAccountType.Cash).OrderBy(x => x.Name);
+            ViewData["Title"] = "Kasa Kayıtları";
+        }
+        else if (type == "Bank")
+        {
+            query = query.Where(x => x.AccountType == FinancialAccountType.Bank).OrderBy(x => x.Name);
+            ViewData["Title"] = "Banka Kayıtları";
+        }
+
+        return View(await query.ToListAsync());
     }
 
     public IActionResult Create()

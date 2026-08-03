@@ -1,12 +1,19 @@
 @using SahinSoft.Domain.Enums
 @model IReadOnlyList<SahinSoft.Domain.Entities.FinancialAccount>
 @{
-    ViewData["Title"] = "Kasa/Banka Hesapları";
+    var typeFilter = Context.Request.Query["type"].ToString();
+    var pageTitle = typeFilter switch
+    {
+        "Cash" => "Kasa Kayıtları",
+        "Bank" => "Banka Kayıtları",
+        _ => "Kasa/Banka Hesapları"
+    };
+    ViewData["Title"] = pageTitle;
 }
 
 <div class="erp-toolbar">
     <div class="erp-toolbar-title">
-        <h1>Kasa/Banka Hesapları</h1>
+        <h1>@pageTitle</h1>
         <span class="erp-toolbar-meta">@Model.Count kayıt</span>
     </div>
     <div class="erp-toolbar-actions">

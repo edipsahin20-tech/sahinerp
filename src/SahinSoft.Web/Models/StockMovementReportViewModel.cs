@@ -62,3 +62,29 @@ public sealed class LastPurchasePriceLineViewModel
     public string? InvoiceNumber { get; set; }
     public int PurchaseCount { get; set; }
 }
+
+public sealed class FinancialTransactionReportViewModel
+{
+    public int? FinancialAccountId { get; set; }
+    public string? AccountType { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    public string PageTitle { get; set; } = "Kasa/Banka Hareketleri";
+    public decimal TotalIn { get; set; }
+    public decimal TotalOut { get; set; }
+    public decimal NetChange { get; set; }
+    public IReadOnlyList<FinancialTransactionReportLineViewModel> Lines { get; set; } = [];
+    public IReadOnlyList<SelectListItem> FinancialAccounts { get; set; } = [];
+}
+
+public sealed class FinancialTransactionReportLineViewModel
+{
+    public DateTime TransactionDateUtc { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public string TransactionType { get; set; } = string.Empty;
+    public bool IsIncoming { get; set; }
+    public decimal Amount { get; set; }
+    public string DocumentNumber { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? CustomerName { get; set; }
+}
