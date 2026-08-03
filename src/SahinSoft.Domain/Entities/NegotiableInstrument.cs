@@ -26,4 +26,21 @@ public sealed class NegotiableInstrument : EntityBase
     public Customer Customer { get; set; } = null!;
     public int? FinancialAccountId { get; set; }
     public FinancialAccount? FinancialAccount { get; set; }
+
+    // Tahsil Edildi/Ödendi anında seçilen gerçek kasa/banka — FinancialAccountId'den (oluşturmada
+    // girilen opsiyonel açıklayıcı alan) ayrı: bu, gerçek parasal hareketin hangi hesaba
+    // işlendiğini taşır. Bkz. NegotiableInstrumentPostingService.SettleAsync.
+    public int? SettlementFinancialAccountId { get; set; }
+    public FinancialAccount? SettlementFinancialAccount { get; set; }
+    public DateTime? SettledAtUtc { get; set; }
+
+    // Ciro Edildi anında seçilen gerçek cari — devralan tarafın borcu bu kayıtla azaltılır.
+    // Bkz. NegotiableInstrumentPostingService.EndorseAsync.
+    public int? EndorsedToCustomerId { get; set; }
+    public Customer? EndorsedToCustomer { get; set; }
+    public DateTime? EndorsedAtUtc { get; set; }
+
+    public DateTime? CancelledAtUtc { get; set; }
+    public string? CancelledByUserId { get; set; }
+    public string? CancellationReason { get; set; }
 }

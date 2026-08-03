@@ -21,6 +21,8 @@ public sealed class CurrentAccountTransaction : EntityBase
     public Quote? Quote { get; set; }
     public int? InvoiceId { get; set; }
     public Invoice? Invoice { get; set; }
+    public int? NegotiableInstrumentId { get; set; }
+    public NegotiableInstrument? NegotiableInstrument { get; set; }
     public int? ReversalOfId { get; set; }
     public CurrentAccountTransaction? ReversalOf { get; set; }
     public ICollection<PaymentReceiptLine> PaymentReceiptLines { get; set; } = new List<PaymentReceiptLine>();

@@ -386,6 +386,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(x => x.AccountTransactions)
                 .HasForeignKey(x => x.InvoiceId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.NegotiableInstrument)
+                .WithMany()
+                .HasForeignKey(x => x.NegotiableInstrumentId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.ReversalOf)
                 .WithMany()
                 .HasForeignKey(x => x.ReversalOfId)
@@ -427,6 +431,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.CurrentAccountTransaction)
                 .WithMany()
                 .HasForeignKey(x => x.CurrentAccountTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.NegotiableInstrument)
+                .WithMany()
+                .HasForeignKey(x => x.NegotiableInstrumentId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.ReversalOf)
                 .WithMany()
@@ -1100,6 +1108,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.AccountNumber).HasMaxLength(80);
             entity.Property(x => x.DrawerName).HasMaxLength(200);
             entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => new { x.InstrumentType, x.InstrumentNumber }).IsUnique();
             // Çift tıklama/mükerrer POST koruması — bkz. NegotiableInstrument.SubmissionKey.
             entity.HasIndex(x => new { x.CreatedByUserId, x.SubmissionKey }).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
@@ -1107,6 +1117,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(x => new { x.CustomerId, x.DueDateUtc });
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.SettlementFinancialAccount).WithMany().HasForeignKey(x => x.SettlementFinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.EndorsedToCustomer).WithMany().HasForeignKey(x => x.EndorsedToCustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table =>
                 table.HasCheckConstraint("CK_NegotiableInstruments_Amount", "[Amount] > 0"));
         });

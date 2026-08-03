@@ -1,4 +1,5 @@
 @using SahinSoft.Domain.Enums
+@using SahinSoft.Web.Models
 @model SahinSoft.Domain.Entities.NegotiableInstrument
 @{
     ViewData["Title"] = $"{(Model.InstrumentType == NegotiableInstrumentType.Cheque ? "Çek" : "Senet")} {Model.InstrumentNumber}";
@@ -8,6 +9,7 @@
         InstrumentStatus.Collected or InstrumentStatus.Paid or InstrumentStatus.Endorsed => "erp-status-approved",
         _ => "erp-status-cancelled"
     };
+    var isAdmin = User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator);
 }
 
 <div class="erp-toolbar">
@@ -50,41 +52,110 @@
     </div>
 </div>
 
+@if (Model.Status is InstrumentStatus.Collected or InstrumentStatus.Paid)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Tahsilat/Ödeme Bilgisi</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field"><label>Kasa/Banka</label><div>@Model.SettlementFinancialAccount?.Name</div></div>
+                <div class="erp-field"><label>Tarih</label><div>@Model.SettledAtUtc?.ToString("dd.MM.yyyy HH:mm")</div></div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.Status == InstrumentStatus.Endorsed || Model.EndorsedToCustomerId is not null)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Ciro Bilgisi</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field"><label>Devralan Cari</label><div>@Model.EndorsedToCustomer?.Name</div></div>
+                <div class="erp-field"><label>Tarih</label><div>@Model.EndorsedAtUtc?.ToString("dd.MM.yyyy HH:mm")</div></div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.Status == InstrumentStatus.Cancelled)
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">İptal Bilgisi</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field"><label>Gerekçe</label><div>@Model.CancellationReason</div></div>
+                <div class="erp-field"><label>Tarih</label><div>@Model.CancelledAtUtc?.ToString("dd.MM.yyyy HH:mm")</div></div>
+            </div>
+        </div>
+    </div>
+}
+
 @if (Model.Status is InstrumentStatus.Portfolio or InstrumentStatus.Endorsed)
 {
     <div class="erp-panel">
         <div class="erp-panel-header">Durum Güncelle</div>
-        <div class="erp-panel-body d-flex flex-wrap gap-2">
-            @if (Model.Direction == InstrumentDirection.Received)
+        <div class="erp-panel-body d-flex flex-wrap gap-3">
+            @if (Model.Status == InstrumentStatus.Portfolio)
             {
-                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                    <input type="hidden" name="status" value="@InstrumentStatus.Collected" />
-                    <button type="submit" class="btn btn-erp-primary">Tahsil Edildi</button>
+                <form method="post" asp-action="Settle" asp-route-id="@Model.Id" class="d-flex align-items-end gap-2">
+                    <div style="min-width: 240px;">
+                        <label class="form-label small mb-1">@(Model.Direction == InstrumentDirection.Received ? "Tahsil Edilecek Kasa/Banka" : "Ödemenin Yapılacağı Kasa/Banka")</label>
+                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                            Name = "settlementFinancialAccountId", Id = "settlementFinancialAccountId",
+                            Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                            Title = "Kasa/Banka Hesabı Seç", Placeholder = "Hesap seçin" })" />
+                    </div>
+                    <button type="submit" class="btn btn-erp-primary">@(Model.Direction == InstrumentDirection.Received ? "Tahsil Edildi" : "Ödendi")</button>
                 </form>
-                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                    <input type="hidden" name="status" value="@InstrumentStatus.Endorsed" />
-                    <button type="submit" class="btn btn-erp-outline">Ciro Edildi</button>
-                </form>
-                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                    <input type="hidden" name="status" value="@InstrumentStatus.Protested" />
-                    <button type="submit" class="btn btn-erp-danger">Karşılıksız/Protesto</button>
-                </form>
+
+                @if (Model.Direction == InstrumentDirection.Received)
+                {
+                    <form method="post" asp-action="Endorse" asp-route-id="@Model.Id" class="d-flex align-items-end gap-2">
+                        <div style="min-width: 240px;">
+                            <label class="form-label small mb-1">Devralan Cari</label>
+                            <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                                Name = "endorsedToCustomerId", Id = "endorsedToCustomerId",
+                                Endpoint = Url.Action("Customers", "Lookup")!,
+                                Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        </div>
+                        <button type="submit" class="btn btn-erp-outline">Ciro Edildi</button>
+                    </form>
+
+                    <form method="post" asp-action="Protest" asp-route-id="@Model.Id">
+                        <button type="submit" class="btn btn-erp-danger">Karşılıksız/Protesto</button>
+                    </form>
+                }
             }
-            else
-            {
-                <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                    <input type="hidden" name="status" value="@InstrumentStatus.Paid" />
-                    <button type="submit" class="btn btn-erp-primary">Ödendi</button>
-                </form>
-            }
-            <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                <input type="hidden" name="status" value="@InstrumentStatus.Returned" />
+
+            <form method="post" asp-action="Return" asp-route-id="@Model.Id">
                 <button type="submit" class="btn btn-erp-outline">İade Edildi</button>
             </form>
-            <form method="post" asp-action="ChangeStatus" asp-route-id="@Model.Id">
-                <input type="hidden" name="status" value="@InstrumentStatus.Cancelled" />
-                <button type="submit" class="btn btn-erp-danger">İptal Et</button>
-            </form>
+
+            @if (isAdmin)
+            {
+                <form method="post" asp-action="Cancel" asp-route-id="@Model.Id" class="d-flex align-items-end gap-2"
+                      onsubmit="var r = prompt('İptal gerekçesini yazın:'); if (!r) return false; document.getElementById('ni-cancel-reason').value = r; return true;">
+                    <input type="hidden" id="ni-cancel-reason" name="reason" value="" />
+                    <button type="submit" class="btn btn-erp-danger">İptal Et</button>
+                </form>
+            }
         </div>
     </div>
+}
+else if (Model.Status is InstrumentStatus.Collected or InstrumentStatus.Paid or InstrumentStatus.Protested or InstrumentStatus.Returned)
+{
+    @if (isAdmin)
+    {
+        <div class="erp-panel">
+            <div class="erp-panel-header">Yönetici İşlemleri</div>
+            <div class="erp-panel-body">
+                <form method="post" asp-action="Cancel" asp-route-id="@Model.Id"
+                      onsubmit="var r = prompt('İptal gerekçesini yazın:'); if (!r) return false; document.getElementById('ni-cancel-reason-2').value = r; return true;">
+                    <input type="hidden" id="ni-cancel-reason-2" name="reason" value="" />
+                    <button type="submit" class="btn btn-erp-danger">İptal Et (terminal durumdan)</button>
+                </form>
+            </div>
+        </div>
+    }
 }

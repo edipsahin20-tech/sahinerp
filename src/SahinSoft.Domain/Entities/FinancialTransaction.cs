@@ -18,6 +18,8 @@ public sealed class FinancialTransaction : EntityBase
     public Customer? Customer { get; set; }
     public int? CurrentAccountTransactionId { get; set; }
     public CurrentAccountTransaction? CurrentAccountTransaction { get; set; }
+    public int? NegotiableInstrumentId { get; set; }
+    public NegotiableInstrument? NegotiableInstrument { get; set; }
     public int? ReversalOfId { get; set; }
     public FinancialTransaction? ReversalOf { get; set; }
     public ICollection<PaymentReceiptLine> PaymentReceiptLines { get; set; } = new List<PaymentReceiptLine>();

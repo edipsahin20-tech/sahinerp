@@ -43,20 +43,36 @@
         </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
-                <div class="erp-field">
-                    <label asp-for="Direction"></label>
-                    <select asp-for="Direction" asp-items="Html.GetEnumSelectList<InstrumentDirection>()" class="form-select"></select>
-                </div>
-                <div class="erp-field">
-                    <label asp-for="CustomerId"></label>
-                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
-                        Value = Model.CustomerId?.ToString(),
-                        DisplayValue = Model.CustomerDisplay,
-                        Endpoint = Url.Action("Customers", "Lookup")!,
-                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
-                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
-                </div>
+                @if (isEdit)
+                {
+                    <div class="erp-field">
+                        <label asp-for="Direction"></label>
+                        <input class="form-control" value="@(Model.Direction == InstrumentDirection.Received ? "Alınan" : "Verilen")" readonly title="Kayıt oluşturulduktan sonra yön değiştirilemez." />
+                        <input type="hidden" asp-for="Direction" />
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="CustomerId"></label>
+                        <input class="form-control" value="@Model.CustomerDisplay" readonly title="Kayıt oluşturulduktan sonra cari değiştirilemez." />
+                        <input type="hidden" asp-for="CustomerId" />
+                    </div>
+                }
+                else
+                {
+                    <div class="erp-field">
+                        <label asp-for="Direction"></label>
+                        <select asp-for="Direction" asp-items="Html.GetEnumSelectList<InstrumentDirection>()" class="form-select"></select>
+                    </div>
+                    <div class="erp-field">
+                        <label asp-for="CustomerId"></label>
+                        <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                            Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                            Value = Model.CustomerId?.ToString(),
+                            DisplayValue = Model.CustomerDisplay,
+                            Endpoint = Url.Action("Customers", "Lookup")!,
+                            Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                    </div>
+                }
                 <div class="erp-field">
                     <label asp-for="FinancialAccountId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
@@ -65,15 +81,23 @@
                         DisplayValue = Model.FinancialAccountDisplay,
                         Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
                         Title = "Kasa/Banka Hesabı Seç", Placeholder = "Hesap yok" })" />
-                    </select>
                 </div>
                 <div class="erp-field">
                     <label asp-for="DueDateUtc"></label>
                     <input asp-for="DueDateUtc" class="form-control" />
                 </div>
                 <div class="erp-field">
-                    <label asp-for="Amount"></label>
-                    <input asp-for="Amount" class="form-control" />
+                    @if (isEdit)
+                    {
+                        <label asp-for="Amount"></label>
+                        <input class="form-control" value="@Model.Amount.ToString("N2")" readonly title="Kayıt oluşturulduktan sonra tutar değiştirilemez." />
+                        <input type="hidden" asp-for="Amount" />
+                    }
+                    else
+                    {
+                        <label asp-for="Amount"></label>
+                        <input asp-for="Amount" class="form-control" />
+                    }
                 </div>
                 <div class="erp-field">
                     <label asp-for="CurrencyCode"></label>
