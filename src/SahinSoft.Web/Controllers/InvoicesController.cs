@@ -210,7 +210,11 @@ public sealed class InvoicesController(
                             SubmissionKey = form.SubmissionKey
                         };
                         MapHeader(form, newInvoice);
-                        await MapLinesAsync(form, newInvoice);
+                        if (!await MapLinesAsync(form, newInvoice))
+                        {
+                            ModelState.AddModelError(string.Empty, "İade satırları faturanın toplam tutarını negatife düşüremez.");
+                            return null;
+                        }
 
                         dbContext.Invoices.Add(newInvoice);
                         await dbContext.SaveChangesAsync();
@@ -750,6 +754,7 @@ public sealed class InvoicesController(
         {
             // Numara üretimi ve fatura güncellemesi TEK transaction içinde (bkz. Create'teki gerekçe,
             // eşzamanlılık tekrar denemesi dahil).
+            var negativeTotals = false;
             var saved = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
             {
                 var strategy = dbContext.Database.CreateExecutionStrategy();
@@ -766,7 +771,11 @@ public sealed class InvoicesController(
                     invoice.InvoiceNumber = invoiceNumber;
                     MapHeader(form, invoice);
                     invoice.Lines.Clear();
-                    await MapLinesAsync(form, invoice);
+                    if (!await MapLinesAsync(form, invoice))
+                    {
+                        negativeTotals = true;
+                        return false;
+                    }
                     invoice.UpdatedAtUtc = DateTime.UtcNow;
 
                     await dbContext.SaveChangesAsync();
@@ -777,6 +786,10 @@ public sealed class InvoicesController(
 
             if (!saved)
             {
+                if (negativeTotals)
+                {
+                    ModelState.AddModelError(string.Empty, "İade satırları faturanın toplam tutarını negatife düşüremez.");
+                }
                 await PopulateSelectionsAsync(form);
                 await SetToolbarAsync(id, invoice.InvoiceType);
                 return View("Form", form);
@@ -805,7 +818,10 @@ public sealed class InvoicesController(
                 inv.InvoiceNumber = invoiceNumber;
                 MapHeader(form, inv);
                 inv.Lines.Clear();
-                await MapLinesAsync(form, inv);
+                if (!await MapLinesAsync(form, inv))
+                {
+                    throw new InvalidOperationException("İade satırları faturanın toplam tutarını negatife düşüremez.");
+                }
             });
             TempData["Success"] = "Onaylı fatura düzenlendi; stok ve cari hareketleri güncellendi.";
         }
@@ -1099,6 +1115,15 @@ public sealed class InvoicesController(
         {
             ModelState.AddModelError(string.Empty, "Faturada en az bir satır bulunmalıdır.");
         }
+
+        // Miktar aralığı negatifi (iade satırı) kabul eder — yalnızca tam sıfır anlamsızdır.
+        for (var i = 0; i < form.Lines.Count; i++)
+        {
+            if (form.Lines[i].Quantity == 0)
+            {
+                ModelState.AddModelError($"{nameof(form.Lines)}[{i}].Quantity", "Miktar 0 olamaz.");
+            }
+        }
     }
 
     // Kapalı Fatura işaretliyse ödeme yöntemi ve kapanacak kasa/banka zorunludur — onay anında
@@ -1144,7 +1169,11 @@ public sealed class InvoicesController(
         target.AmountDiscount = source.AmountDiscount;
     }
 
-    private async Task MapLinesAsync(InvoiceFormViewModel source, Invoice target)
+    // İade satırı (negatif miktar) tek başına veya diğer satırları aşarak faturanın toplamlarını
+    // negatife düşürebilir — DB'deki CK_Invoices_Totals check constraint'i (Subtotal/DiscountTotal/
+    // TaxTotal/GrandTotal >= 0) bunu zaten engeller, ama ham SQL hatası yerine burada dostane mesajla
+    // erken kesilsin diye dönüş değeri false olur (true = toplamlar geçerli, satırlar eklendi).
+    private async Task<bool> MapLinesAsync(InvoiceFormViewModel source, Invoice target)
     {
         var productIds = source.Lines
             .Where(x => x.ProductId.HasValue)
@@ -1186,6 +1215,8 @@ public sealed class InvoicesController(
         }
 
         CalculateDraftTotals(target);
+
+        return target.Subtotal >= 0 && target.DiscountTotal >= 0 && target.TaxTotal >= 0 && target.GrandTotal >= 0;
     }
 
     // Onaydan önce (taslak haldeyken) satır ve fatura toplamlarının Detay ekranında 0.00 görünmemesi
