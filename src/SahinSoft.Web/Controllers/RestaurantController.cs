@@ -110,9 +110,14 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             return RedirectToAction(nameof(Index));
         }
 
+        // Kısayolda/Mobilde görünsün mü ayarları hem ürün hem kategori düzeyinde var - ikisi de
+        // AÇIK olmalı ki ürün POS'ta görünsün (Edip, 2026-09-03: "kategorideki kısayolda gözüksün
+        // tiki pasif ise restoranta veya mobil tiki işaretli değilse gözükmesin, stok kartında
+        // aynı tanımlamalar çalışsın").
         var categories = await dbContext.Products
             .AsNoTracking()
-            .Where(x => x.IsActive && x.ShowAsShortcut)
+            .Where(x => x.IsActive && x.ShowAsShortcut && x.ShowInMobile
+                     && x.Category.ShowAsShortcut && x.Category.ShowInMobile)
             .Include(x => x.Category)
             .Include(x => x.TaxRate)
             .Include(x => x.Portions.Where(p => p.IsActive))

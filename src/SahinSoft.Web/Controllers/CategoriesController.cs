@@ -102,6 +102,7 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
             return View("Form", form);
         }
 
+        await SyncTaxRateAndKitchenStationToProductsAsync(category);
         TempData["Success"] = "Kategori kaydedildi.";
         return RedirectToAction(nameof(Create));
     }
@@ -146,10 +147,41 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
         return View("Form", model);
     }
 
-    // "Stoklara Kaydet": kategorideki TÜM ayarları (KDV, mutfak istasyonu, kısayol/mobil/online
-    // sipariş görünürlüğü, şube görünürlüğü, indirim/promosyon kısıtlaması) bu kategorideki TÜM
-    // ürünlere toplu olarak yazar. Normal "Kaydet" sadece kategorinin kendisini kaydeder - bu
-    // ayrı buton bilinçli bir ek adım, kategori kaydedilirken otomatik tetiklenmez.
+    // "Kaydet": KDV ve Mutfak İstasyonu (Yazıcı) HER kategori kaydında otomatik olarak bu
+    // kategorideki TÜM ürünlere yazılır (Edip, 2026-09-03: "buradaki stoklara kayıt ettiğimde
+    // KDV ve yazıcıyı kategoriye göre düzeltsin") - ayrı bir onay adımı gerektirmez.
+    private async Task<int> SyncTaxRateAndKitchenStationToProductsAsync(ProductCategory category)
+    {
+        var products = await dbContext.Products.Where(x => x.CategoryId == category.Id).ToListAsync();
+        var changed = 0;
+        foreach (var product in products)
+        {
+            var before = (product.TaxRateId, product.DefaultKitchenStationId);
+            if (category.TaxRateId is int taxRateId)
+            {
+                product.TaxRateId = taxRateId;
+            }
+            if (category.DefaultKitchenStationId is int stationId)
+            {
+                product.DefaultKitchenStationId = stationId;
+            }
+            if (before != (product.TaxRateId, product.DefaultKitchenStationId))
+            {
+                product.UpdatedAtUtc = DateTime.UtcNow;
+                changed++;
+            }
+        }
+        if (changed > 0)
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        return changed;
+    }
+
+    // "Stoklara Kaydet": KDV/Yazıcı dışındaki DİĞER ayarları (kısayol/mobil/online sipariş
+    // görünürlüğü, şube görünürlüğü, indirim/promosyon kısıtlaması) bu kategorideki TÜM
+    // ürünlere toplu olarak yazar - bunlar her "Kaydet"te otomatik tetiklenmiyor, bilinçli bir
+    // ek adım (KDV/Yazıcı'nın aksine, yukarıdaki SyncTaxRateAndKitchenStationToProductsAsync).
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApplyToProducts(int id)
@@ -160,17 +192,11 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
             return NotFound();
         }
 
+        await SyncTaxRateAndKitchenStationToProductsAsync(category);
+
         var products = await dbContext.Products.Where(x => x.CategoryId == id).ToListAsync();
         foreach (var product in products)
         {
-            if (category.TaxRateId is int taxRateId)
-            {
-                product.TaxRateId = taxRateId;
-            }
-            if (category.DefaultKitchenStationId is int stationId)
-            {
-                product.DefaultKitchenStationId = stationId;
-            }
             product.ShowAsShortcut = category.ShowAsShortcut;
             product.ShowInMobile = category.ShowInMobile;
             product.ShowInOnlineOrder = category.ShowInOnlineOrder;
@@ -182,7 +208,7 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
 
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = $"{products.Count} üründe kategori ayarları (KDV, yazıcı, görünürlük, indirim/promosyon kısıtlaması) eşleştirildi.";
+        TempData["Success"] = $"{products.Count} üründe kategori ayarları (görünürlük, indirim/promosyon kısıtlaması) eşleştirildi.";
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -303,7 +329,10 @@ public sealed class CategoriesController(ApplicationDbContext dbContext) : Contr
             return View("Form", form);
         }
 
-        TempData["Success"] = "Kategori güncellendi.";
+        var correctedCount = await SyncTaxRateAndKitchenStationToProductsAsync(category);
+        TempData["Success"] = correctedCount > 0
+            ? $"Kategori güncellendi. {correctedCount} üründe KDV/Yazıcı kategoriye göre düzeltildi."
+            : "Kategori güncellendi.";
         return RedirectToAction(nameof(Create));
     }
 

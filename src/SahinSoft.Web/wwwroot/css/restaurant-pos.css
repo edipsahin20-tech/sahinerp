@@ -221,28 +221,30 @@
     margin-bottom: 0.75rem;
 }
 
+/* Her sekme HER ZAMAN kendi kategori rengini gösterir - sadece tıklanan/aktif sekme değil
+   (Edip, 2026-09-03: "kategori rengi tıkladığımda değil direk hangi renk kategori tanımlamada
+   seçtiysem o gözüksün"). Aktiflik, opaklık + hafif bir gölge halkasıyla ayırt edilir. */
 .restaurant-pos .category-tab {
     --cat-tab-color: var(--pos-navy);
-    border: 1px solid var(--pos-border);
-    border-left: 4px solid var(--cat-tab-color);
-    background: var(--pos-surface);
+    border: 1px solid var(--cat-tab-color);
+    background: var(--cat-tab-color);
+    color: #fff;
     border-radius: 999px;
-    padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+    padding: 0.4rem 0.9rem;
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+    opacity: .55;
+    transition: opacity 120ms ease, box-shadow 120ms ease;
 }
 
 .restaurant-pos .category-tab:hover {
-    border-color: #D2DAE5;
-    border-left-color: var(--cat-tab-color);
+    opacity: .8;
 }
 
 .restaurant-pos .category-tab.active {
-    background: var(--cat-tab-color);
-    color: #fff;
-    border-color: var(--cat-tab-color);
+    opacity: 1;
+    box-shadow: 0 0 0 2px rgba(11, 34, 57, .25), var(--pos-shadow);
 }
 
 .restaurant-pos .product-grid {
