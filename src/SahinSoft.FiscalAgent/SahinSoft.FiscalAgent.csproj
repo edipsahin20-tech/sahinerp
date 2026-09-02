@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- InposExt.Net.dll (ve arkasındaki native inposext.dll) SADECE x86 process içinde
+         çalışır - vendörün BENİ OKU.txt'sinde açıkça belirtilmiş: "Any CPU veya x64 64-bit
+         islemcilerde çalismayacaktir", BadImageFormatException fırlatır. Bu yüzden bu agent
+         SahinSoft.Web/DesktopShell'in içine GÖMÜLEMEZ (onlar x64) - ayrı, küçük, yerel bir
+         x86 process olarak kasa PC'sinde çalışır ve tarayıcıdan localhost üzerinden çağrılır. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x86</PlatformTarget>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SahinSoftFiscalAgent</AssemblyName>
+    <RootNamespace>SahinSoft.FiscalAgent</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Vendör DLL'i - .NET assembly olarak referans veriliyor (ExtTest.cs örneğindeki gibi
+         InposExt.MethodName(...) şeklinde doğrudan çağrılabiliyor, elle P/Invoke yazmaya
+         gerek yok). Yanındaki native bağımlılıkları (inposext.dll, libeay32.dll, QtCore4.dll,
+         QtNetwork4.dll) çalışma zamanında AYNI dizinde bulunmalı - CopyToOutputDirectory ile
+         sağlanıyor. -->
+    <Reference Include="InposExt.Net">
+      <HintPath>vendor\InposExt.Net.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BENİ OKU.txt: "InposExt.Net.dll ve inposext.dll bagimli oldugu libeay32.dll, qtCore4.dll
+         qtNetwork.dll'leri mutlaka ayni dizinde olmalidir" - Link ile çıktı kökünde düzleştirilir,
+         aksi halde MSBuild vendor/ alt klasör yapısını output'ta da korur ve Windows'un DLL arama
+         sırası bunları bulamaz. -->
+    <None Include="vendor\inposext.dll" CopyToOutputDirectory="PreserveNewest" Link="inposext.dll" />
+    <None Include="vendor\libeay32.dll" CopyToOutputDirectory="PreserveNewest" Link="libeay32.dll" />
+    <None Include="vendor\QtCore4.dll" CopyToOutputDirectory="PreserveNewest" Link="QtCore4.dll" />
+    <None Include="vendor\QtNetwork4.dll" CopyToOutputDirectory="PreserveNewest" Link="QtNetwork4.dll" />
+    <None Include="agent.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

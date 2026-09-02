@@ -1,6 +1,11 @@
+@using Microsoft.EntityFrameworkCore
+@using SahinSoft.Domain.Constants
+@using SahinSoft.Web.Data
+@inject ApplicationDbContext DbContext
 @model string
 @{
     var suffix = Model ?? "";
+    var isRestaurantModuleEnabled = await DbContext.InventorySettings.AsNoTracking().Select(x => x.IsRestaurantModuleEnabled).SingleOrDefaultAsync();
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     string NavClass(string controllerName) => currentController == controllerName ? "nav-link active" : "nav-link";
     bool InGroup(params string[] controllers) => controllers.Contains(currentController);
@@ -149,6 +154,38 @@
     </div>
 </div>
 
+@{
+    // Sunucu tarafında [Authorize(Roles=...)] zaten kesin sınırı çiziyor — burada sadece
+    // erişemeyeceği bir bağlantıya tıklayıp "Erişim Engellendi" görmesin diye linkler role göre
+    // gizleniyor. Kitchen'ın bu fazda hiçbir ekranı yok (mutfak ekranı Faz 3), bu yüzden grup
+    // tamamen görünmez kalır.
+    var canViewFloor = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager) || User.IsInRole(AppRoles.Waiter);
+    var canManageDefinitions = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager);
+}
+@if (isRestaurantModuleEnabled && (canViewFloor || canManageDefinitions))
+{
+    <button type="button" class="@GroupToggleClass("Restaurant", "RestaurantSections", "RestaurantTables")" data-bs-toggle="collapse" data-bs-target="#@Id("group-restoran")" aria-expanded="@Expanded("Restaurant", "RestaurantSections", "RestaurantTables")">
+        <span class="toggle-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1v11" /><path d="M6 2v6" /><path d="M9 2v6" /><path d="M17 2c-1.5 0-3 1.5-3 4v4h2v12" /></svg>
+            Restoran
+        </span>
+        @Html.Raw(chevron)
+    </button>
+    <div class="@CollapseClass("Restaurant", "RestaurantSections", "RestaurantTables")" id="@Id("group-restoran")" data-bs-parent="#@Id("sidebar-accordion")">
+        <div class="erp-sidebar-subnav">
+            @if (canViewFloor)
+            {
+                <a class="nav-link" asp-controller="Restaurant" asp-action="Index">Masa Durumu</a>
+            }
+            @if (canManageDefinitions)
+            {
+                <a class="nav-link" asp-controller="RestaurantSections" asp-action="Index">Salon Tanımla</a>
+                <a class="nav-link" asp-controller="RestaurantTables" asp-action="Index">Masa Tanımla</a>
+            }
+        </div>
+    </div>
+}
+
 <button type="button" class="@GroupToggleClass("Reports")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports")">
     <span class="toggle-left">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18.7 8 13 13.7l-4-4L3 16" /></svg>
@@ -169,14 +206,14 @@
 
 @if (User.IsInRole("Administrator"))
 {
-    <button type="button" class="@GroupToggleClass("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" data-bs-toggle="collapse" data-bs-target="#@Id("group-tanimlar")" aria-expanded="@Expanded("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")">
+    <button type="button" class="@GroupToggleClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" data-bs-toggle="collapse" data-bs-target="#@Id("group-tanimlar")" aria-expanded="@Expanded("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")">
         <span class="toggle-left">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
             Sistem Yönetimi
         </span>
         @Html.Raw(chevron)
     </button>
-    <div class="@CollapseClass("Branches", "Warehouses", "TaxRates", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="@CollapseClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
         <div class="erp-sidebar-subnav">
             <a class="nav-link" asp-controller="Settings" asp-action="Company">Parametreler</a>
             <a class="nav-link" asp-controller="Personnel" asp-action="Index">Personel Yönetimi</a>
@@ -187,6 +224,7 @@
             <a class="nav-link" asp-controller="Branches" asp-action="Index">Şubeler</a>
             <a class="nav-link" asp-controller="Warehouses" asp-action="Index">Depolar</a>
             <a class="nav-link" asp-controller="TaxRates" asp-action="Index">KDV Oranları</a>
+            <a class="nav-link" asp-controller="KitchenStations" asp-action="Index">Mutfak İstasyonları (Yazıcılar)</a>
             <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index">Kasa/Banka Hesapları</a>
             <a class="nav-link" asp-controller="Settings" asp-action="Inventory">Stok Parametreleri</a>
         </div>

@@ -1,0 +1,99 @@
+@model SahinSoft.Web.Models.RestaurantKitchenViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Mutfak";
+
+    static string StatusLabel(SahinSoft.Domain.Enums.KitchenTicketStatus status) => status switch
+    {
+        SahinSoft.Domain.Enums.KitchenTicketStatus.Sent => "Gönderildi",
+        SahinSoft.Domain.Enums.KitchenTicketStatus.InProgress => "Hazırlanıyor",
+        SahinSoft.Domain.Enums.KitchenTicketStatus.Ready => "Hazır",
+        _ => "Servis Edildi"
+    };
+
+    static string NextActionLabel(SahinSoft.Domain.Enums.KitchenTicketStatus status) => status switch
+    {
+        SahinSoft.Domain.Enums.KitchenTicketStatus.Sent => "Hazırlanıyor →",
+        SahinSoft.Domain.Enums.KitchenTicketStatus.InProgress => "Hazır →",
+        _ => "Servis Edildi →"
+    };
+}
+
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">MUTFAK EKRANI</div>
+        <div class="h1">Mutfak (KDS)</div>
+        <div class="sub">İstasyona düşen fişleri sırayla hazırlayın ve durumunu ilerletin.</div>
+    </div>
+</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<div class="rtabs">
+    <a class="rtab @(Model.SelectedStationId is null ? "active" : "")" asp-action="Index">
+        Tümü <span>(@Model.Stations.Sum(x => x.PendingCount))</span>
+    </a>
+    @foreach (var station in Model.Stations)
+    {
+        <a class="rtab @(Model.SelectedStationId == station.Id ? "active" : "")" asp-action="Index" asp-route-stationId="@station.Id">
+            @station.Name <span>(@station.PendingCount)</span>
+        </a>
+    }
+</div>
+
+@if (Model.Tickets.Count == 0)
+{
+    <div class="rcard kds-empty">Bekleyen mutfak fişi yok — her şey yetişti. ✓</div>
+}
+else
+{
+    <div class="kds-grid">
+        @foreach (var ticket in Model.Tickets)
+        {
+            var elapsedMinutes = (int)(DateTime.UtcNow - ticket.SentAtUtc).TotalMinutes;
+            var urgencyClass = elapsedMinutes >= 15 ? "urgent" : elapsedMinutes >= 8 ? "warn" : "";
+            <div class="rcard kds-card @urgencyClass">
+                <div class="kds-head">
+                    <div>
+                        <b>@ticket.TableName</b>
+                        <small>Adisyon @ticket.CheckNumber · Fiş @ticket.TicketNumber</small>
+                        <span class="kds-station-badge">@ticket.StationName</span>
+                    </div>
+                    <div class="kds-timer">@elapsedMinutes dk</div>
+                </div>
+                <div class="kds-lines">
+                    @foreach (var line in ticket.Lines)
+                    {
+                        <div class="kds-line @(line.IsCancelled ? "cancelled" : "")">
+                            <b>@line.Quantity.ToString("0.##")x</b> @line.ProductName
+                            @if (!string.IsNullOrWhiteSpace(line.PortionName))
+                            {
+                                <small>@line.PortionName</small>
+                            }
+                            @if (line.Modifiers.Count > 0)
+                            {
+                                <small>+ @string.Join(", ", line.Modifiers)</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(line.KitchenNote))
+                            {
+                                <small class="kds-note">Not: @line.KitchenNote</small>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="kds-foot">
+                    <span class="rest-pill">@StatusLabel(ticket.Status)</span>
+                    <form method="post" asp-action="Advance">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@ticket.TicketId" />
+                        <input type="hidden" name="stationId" value="@Model.SelectedStationId" />
+                        <button type="submit">@NextActionLabel(ticket.Status)</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+}

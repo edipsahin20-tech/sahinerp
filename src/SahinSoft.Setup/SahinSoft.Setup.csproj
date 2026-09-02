@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SahinSoft</AssemblyName>
+    <RootNamespace>SahinSoft.Setup</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ApplicationIcon>sahinsoft.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Kurulum.ps1 + migration SQL + uygulama zip'i + masaüstü kabuk + ConfigTool - hepsi TEK
+         exe'nin içine gömülü. Kullanıcı setup sırasında hiçbir dosya görmüyor, çalışma anında
+         %TEMP%'e çıkarılıp kurulum bitince temizleniyor (bkz. Program.cs). -->
+    <EmbeddedResource Include="payload.zip" />
+  </ItemGroup>
+
+</Project>

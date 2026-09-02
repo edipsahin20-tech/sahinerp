@@ -74,6 +74,24 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Yazar Kasa Entegrasyonu</div>
+        <div class="card-body">
+            <p class="text-secondary small">Bir yazar kasa seçilip adresi girilirse, restoran Kapat/Öde ekranındaki nakit/kredi kartı/yemek çeki ödemeleri doğrudan fiziksel yazar kasaya gönderilir (fatura kesilen satışlar hariç). "Yok" seçiliyken (varsayılan) hiçbir değişiklik olmaz, bugünkü gibi çalışır.</p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="FiscalDeviceType" class="form-label"></label>
+                    <select asp-for="FiscalDeviceType" asp-items="Html.GetEnumSelectList<SahinSoft.Domain.Enums.FiscalDeviceType>()" class="form-select"></select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="FiscalAgentUrl" class="form-label"></label>
+                    <input asp-for="FiscalAgentUrl" class="form-control" placeholder="http://localhost:9595" />
+                    <span asp-validation-for="FiscalAgentUrl" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Belge Dönüşümü Otomatik Onay</div>
         <div class="card-body">
             <p class="text-secondary small">Açılırsa, ilgili dönüşümle oluşturulan belge kaydedilir ve hemen ardından otomatik onaylanır (mevcut onay servisi üzerinden — stok/cari hareketleri normal onay gibi işlenir). Yalnızca yönetici kullanıcılarda çalışır; kapalıyken (varsayılan) belge Taslak olarak kalır. Otomatik onay başarısız olursa belge Taslak olarak korunur, hiçbir kısmi hareket oluşmaz.</p>

@@ -31,6 +31,9 @@ public sealed class Product : EntityBase
     public bool ShowAsShortcut { get; set; } = true;
     public bool ShowInMobile { get; set; } = true;
     public bool ShowInOnlineOrder { get; set; } = true;
+    public bool VisibleInBranches { get; set; } = true;
+    public bool DiscountNotApplicable { get; set; }
+    public bool PromotionNotApplicable { get; set; }
     public string? KitchenPrinterName { get; set; }
 
     // Ürünün varsayılan mutfak istasyonu (Faz 1 restoran modülü) — mevcut KitchenPrinterName
@@ -55,4 +58,5 @@ public sealed class Product : EntityBase
     public bool TrackLots { get; set; }
     public ICollection<ProductUnitConversion> UnitConversions { get; set; } = new List<ProductUnitConversion>();
     public ICollection<SalesPriceListItem> SalesPriceListItems { get; set; } = new List<SalesPriceListItem>();
+    public ICollection<ProductPortion> Portions { get; set; } = new List<ProductPortion>();
 }

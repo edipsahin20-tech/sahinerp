@@ -1,0 +1,103 @@
+@model SahinSoft.Web.Models.RestaurantShiftViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Vardiya";
+}
+
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">KASA & VARDİYA</div>
+        <div class="h1">Vardiya</div>
+        <div class="sub">@(Model.FinancialAccountName is null ? "Kasa açılışını ve kapanışını buradan yönetin." : $"Kasa: {Model.FinancialAccountName}")</div>
+    </div>
+</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+@if (!Model.HasFinancialAccount)
+{
+    <div class="rcard shift-hero">
+        <div class="shift-icon">⚠</div>
+        <h4>Kasa Tanımlı Değil</h4>
+        <p class="sub">Vardiya açabilmek için personel kartınızda bir kasa (finansal hesap) seçilmiş olmalı. Yöneticinizden Personel Yönetimi ekranından "Varsayılan Kasa" alanını doldurmasını isteyin.</p>
+    </div>
+}
+else if (!Model.HasOpenShift)
+{
+    <div class="rcard shift-hero">
+        <div class="shift-icon">▤</div>
+        <h4>Vardiya Kapalı</h4>
+        <p class="sub">Satışa başlamadan önce kasadaki nakit tutarı girerek vardiyayı açın.</p>
+        <form method="post" asp-action="Open" class="shift-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
+            <label>Açılış Nakit Tutarı</label>
+            <input type="number" name="openingBalance" step="0.01" min="0" value="0" required autofocus />
+            <button type="submit" class="rbtn gold">Vardiyayı Aç</button>
+        </form>
+    </div>
+}
+else
+{
+    <div class="shift-summary">
+        <div class="rcard">
+            <small>Açılış Saati</small>
+            <strong>@Model.OpenedAtUtc!.Value.ToLocalTime().ToString("HH:mm")</strong>
+        </div>
+        <div class="rcard">
+            <small>Açılış Tutarı</small>
+            <strong>@Model.OpeningBalance.ToString("N2") ₺</strong>
+        </div>
+        <div class="rcard">
+            <small>Kapanan Adisyon</small>
+            <strong>@Model.ClosedCheckCount</strong>
+        </div>
+        <div class="rcard">
+            <small>Toplam Ciro (tüm ödeme türleri)</small>
+            <strong>@Model.GrandTotalDuringShift.ToString("N2") ₺</strong>
+        </div>
+    </div>
+
+    <div class="rcard shift-close-panel">
+        <h4>Vardiyayı Kapat</h4>
+        <p class="sub">Beklenen kasa tutarı: <b>@Model.ExpectedBalance.ToString("N2") ₺</b> (açılış @Model.OpeningBalance.ToString("N2") ₺ + bu vardiyada bu kasaya giren nakit @Model.CashInDuringShift.ToString("N2") ₺)</p>
+        <form method="post" asp-action="Close" class="shift-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="shiftId" value="@Model.ShiftId" />
+            <label>Sayılan Nakit Tutarı</label>
+            <input type="number" name="closingBalanceCounted" step="0.01" min="0" value="@Model.ExpectedBalance.ToString("0.00")" required />
+            <button type="submit" class="rbtn gold" onclick="return confirm('Vardiyayı kapatmak istediğinize emin misiniz?');">Vardiyayı Kapat</button>
+        </form>
+    </div>
+}
+
+@if (Model.RecentClosedShifts.Count > 0)
+{
+    <div class="rcard" style="margin-top:18px;padding:16px;">
+        <h4>Son Kapanan Vardiyalar</h4>
+        <div class="shift-history-row">
+            <small>Açılış</small>
+            <small>Kapanış</small>
+            <small>Beklenen / Sayılan</small>
+            <small>Fark</small>
+        </div>
+        @foreach (var row in Model.RecentClosedShifts)
+        {
+            var diff = (row.ClosingBalanceCounted ?? 0) - (row.ClosingBalanceExpected ?? 0);
+            var diffClass = diff > 0 ? "shift-diff-pos" : diff < 0 ? "shift-diff-neg" : "shift-diff-zero";
+            <div class="shift-history-row">
+                <span>@row.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                <span>@(row.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))</span>
+                <span>@(row.ClosingBalanceExpected?.ToString("N2")) ₺ / @(row.ClosingBalanceCounted?.ToString("N2")) ₺</span>
+                <span class="@diffClass">@diff.ToString("N2") ₺</span>
+            </div>
+        }
+    </div>
+}

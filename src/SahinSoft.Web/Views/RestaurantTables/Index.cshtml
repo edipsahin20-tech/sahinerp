@@ -1,0 +1,58 @@
+@model IReadOnlyList<SahinSoft.Domain.Entities.RestaurantTable>
+@{
+    ViewData["Title"] = "Masalar";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Masalar</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Masa</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Salon</th>
+                    <th>Masa Adı</th>
+                    <th>Kapasite</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="@(item.IsActive ? "" : "text-secondary")">
+                    <td>@item.RestaurantSection.Name</td>
+                    <td class="fw-semibold">@item.Name</td>
+                    <td>@item.Capacity</td>
+                    <td>
+                        @if (item.IsActive) { <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span> }
+                        else { <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span> }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

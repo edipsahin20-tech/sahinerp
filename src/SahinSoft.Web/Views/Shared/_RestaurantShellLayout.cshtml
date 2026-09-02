@@ -1,0 +1,96 @@
+@using SahinSoft.Web.Models
+@{
+    var shell = (RestaurantShellViewModel)ViewBag.Shell;
+    string NavClass(string page) => shell.ActivePage == page ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — ŞahinSoft Restoran</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- erp.css SADECE .modal/.alert/.btn-erp-* gibi bileşen sınıfları için yükleniyor - restoran
+         shell'inin kendi renk/layout dili (restaurant-shell.css, sonra yükleniyor) bunların
+         üzerine yazıyor, ön muhasebenin sidebar/topbar kuralları burada hiç kullanılmıyor. -->
+    <link rel="stylesheet" href="~/css/erp.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/restaurant-shell.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+    <div class="rest-shell">
+        <div class="rest-topbar">
+            <div class="rest-brand"><span class="rest-logo">Ş</span><span>ŞahinSoft <b>Restoran</b></span></div>
+            <div class="rest-pill">▣ @shell.BranchName</div>
+            <div class="rest-spacer"></div>
+            @if (shell.IsShiftOpen)
+            {
+                <div class="rest-pill green">● Vardiya Açık @(shell.ShiftOpenedAtUtc.HasValue ? "· " + shell.ShiftOpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")</div>
+            }
+            else
+            {
+                <a href="@Url.Action("Index", "RestaurantShift")" class="rest-pill" style="color:#C73E3E;">● Vardiya Kapalı</a>
+            }
+            <div id="rest-clock" style="font-weight:800;"></div>
+            <a href="@Url.Action("Index", "RestaurantKitchen")" class="rest-pill" style="text-decoration:none; color:inherit;">
+                ♨ <span style="background:#D94A4A;color:#fff;border-radius:99px;padding:2px 6px;">@shell.KitchenPendingCount</span>
+            </a>
+            <div class="rest-pill">● @shell.UserFullName</div>
+            <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "RestaurantAuth")">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="rest-danger-btn">Programı Kapat</button>
+            </form>
+        </div>
+
+        <aside class="rest-sidebar">
+            <div class="rest-nav">
+                <a class="@NavClass("dashboard")" href="@Url.Action("Index", "RestaurantDashboard")"><span>⌂</span><div><b>Dashboard</b><small>Günlük kontrol merkezi</small></div></a>
+                <a class="@NavClass("tables")" href="@Url.Action("Index", "Restaurant")"><span>▦</span><div><b>Masa Satış</b><small>Salon &amp; adisyon</small></div></a>
+                <a class="@NavClass("package")" href="@Url.Action("Index", "RestaurantPackage")"><span>▣</span><div><b>Paket</b><small>Paket &amp; gel-al</small></div></a>
+                <a class="@NavClass("self")" href="@Url.Action("Index", "RestaurantSelfSale")"><span>◇</span><div><b>Self Satış</b><small>Hızlı satış</small></div></a>
+                <a class="@NavClass("reports")" href="@Url.Action("Index", "RestaurantReports")"><span>▥</span><div><b>Raporlar</b><small>Ciro &amp; vardiya</small></div></a>
+                <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>
+            </div>
+            <div class="rest-sidebar-bottom">
+                <a href="@Url.Action("Index", "RestaurantKitchen")">♨<br>Mutfak</a>
+                <a href="@Url.Action("Index", "RestaurantShift")">▤<br>Vardiya</a>
+            </div>
+        </aside>
+
+        <main class="rest-main">
+            @if (TempData["Error"] is string error)
+            {
+                <div class="alert alert-danger py-2">@error</div>
+            }
+            @if (TempData["Success"] is string success)
+            {
+                <div class="alert alert-success py-2">@success</div>
+            }
+            @RenderBody()
+        </main>
+
+        <div class="rest-statusbar">
+            <span>▣ Aktif Masa <b>@shell.ActiveTableCount/@shell.TotalTableCount</b></span>
+            <span>▥ Açık Adisyon <b>@shell.OpenCheckTotal.ToString("N2") ₺</b></span>
+            <span class="rest-spacer"></span>
+            <span>● Çevrimiçi</span>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        function updateRestClock() {
+            var el = document.getElementById('rest-clock');
+            if (!el) return;
+            var now = new Date();
+            el.textContent = '◷ ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        }
+        updateRestClock();
+        setInterval(updateRestClock, 15000);
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

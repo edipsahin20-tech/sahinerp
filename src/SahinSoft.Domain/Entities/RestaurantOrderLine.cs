@@ -14,6 +14,10 @@ public sealed class RestaurantOrderLine : EntityBase
     public decimal TaxRateSnapshot { get; set; }
     public decimal DiscountAmountSnapshot { get; set; }
 
+    // İkram — sunucu tarafında DiscountAmountSnapshot'ı satır brüt tutarına eşitler; İndirim'den
+    // ayrı bir alanla tutulur ki raporlamada "ikram" ile "kısmi indirim" birbirine karışmasın.
+    public bool IsComplimentary { get; set; }
+
     // Kapanışta hangi reçete versiyonunun kullanıldığı.
     public int? RecipeVersionUsed { get; set; }
     public string? KitchenNote { get; set; }

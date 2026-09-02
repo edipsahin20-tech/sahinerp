@@ -1,0 +1,46 @@
+@model SahinSoft.Web.Models.KitchenStationFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Mutfak İstasyonunu Düzenle" : "Yeni Mutfak İstasyonu";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">İstasyon Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus placeholder="Örn: Izgara, Soğuk İçecek, Adisyon" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="PrinterName"></label>
+                    <input asp-for="PrinterName" class="form-control" placeholder="Örn: Yazıcı 2" />
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DisplayOrder"></label>
+                    <input asp-for="DisplayOrder" class="form-control" />
+                </div>
+            </div>
+            <div class="form-check form-switch mt-3">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

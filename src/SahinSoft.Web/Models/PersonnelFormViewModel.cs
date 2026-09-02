@@ -11,7 +11,6 @@ public sealed class PersonnelFormViewModel
     [Display(Name = "Adı Soyadı")]
     public string FullName { get; set; } = string.Empty;
 
-    [Required]
     [EmailAddress]
     [Display(Name = "E-posta")]
     public string Email { get; set; } = string.Empty;
@@ -79,6 +78,20 @@ public sealed class PersonnelFormViewModel
 
     [Display(Name = "Plaka")]
     public string? LicensePlate { get; set; }
+
+    // Restoran POS ekranı girişi - e-posta/şifre yerine bu kısa PIN kullanılır. Var olan bir
+    // PIN'i korumak için boş bırakılabilir (Edit'te); değiştirmek için yeniden girilir.
+    [StringLength(6, MinimumLength = 1)]
+    [Display(Name = "PIN (Restoran Girişi)")]
+    public string? Pin { get; set; }
+
+    [Display(Name = "İndirim Alt Limit %")]
+    [Range(typeof(decimal), "0", "100")]
+    public decimal DiscountLowerLimitPercent { get; set; }
+
+    [Display(Name = "İndirim Üst Limit %")]
+    [Range(typeof(decimal), "0", "100")]
+    public decimal DiscountUpperLimitPercent { get; set; }
 
     public List<SelectListItem> Roles { get; set; } = [];
     public List<SelectListItem> JobTitleOptions { get; set; } = [];

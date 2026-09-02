@@ -1,0 +1,15 @@
+@model (string Eyebrow, string Title, string Subtitle)
+@{
+    ViewData["Title"] = Model.Title;
+}
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">@Model.Eyebrow</div>
+        <div class="h1">@Model.Title</div>
+        <div class="sub">@Model.Subtitle</div>
+    </div>
+</div>
+<div class="rcard" style="padding:40px; text-align:center; color:var(--rs-muted);">
+    <div style="font-size:15px; font-weight:700; color:var(--rs-text); margin-bottom:6px;">Bu ekran yapım aşamasında</div>
+    <div style="font-size:13px;">Master tasarıma göre yakında bu bölüme bağlanacak.</div>
+</div>

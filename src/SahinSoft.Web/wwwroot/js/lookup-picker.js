@@ -328,8 +328,32 @@
             if (nameEl) nameEl.value = item.name || "";
         }
 
+        // Stok Adı gibi "mükerrer kayıt kontrolü" alanlarında: seçilen sonuç şu an düzenlenmekte
+        // olandan FARKLI, gerçekten var olan bir stoksa - kullanıcıya sorup onaylarsa o stoğun
+        // kendi düzenleme sayfasına yönlendirilir (Edip, 2026-09-03: "var olan ürünü çağırmak
+        // istediğim ekrana getirsin düzenleme modunda değişiklik yapılsın ve kayıt edebilsin").
+        // Diğer lookup alanları (fatura satırı, cari, KDV vb.) bu attribute'u taşımadığı için
+        // etkilenmez.
+        if (trigger.getAttribute("data-lookup-navigate-edit") === "true") {
+            var currentId = Number(trigger.getAttribute("data-current-id") || "0");
+            var editUrlBase = trigger.getAttribute("data-lookup-edit-url");
+            if (editUrlBase && item.id && Number(item.id) !== currentId) {
+                var confirmMsg = '"' + (item.name || "") + '" adında bir stok zaten kayıtlı' +
+                    (item.code ? " (" + item.code + ")" : "") + '. Bu stoğu düzenlemek için açmak ister misiniz?\n\n' +
+                    "Bu sayfada şu ana kadar girdiğiniz bilgiler kaydedilmeden kaybolacak.";
+                if (window.confirm(confirmMsg)) {
+                    window.location.href = editUrlBase + "/" + item.id;
+                    return;
+                }
+            }
+        }
+
+        // trigger bazen gerçek bir DOM elemanı değil, pseudoTriggerFor()'un ürettiği sadece
+        // getAttribute() taşıyan sahte bir nesne (quicksearch açılır listesinden/Enter'dan seçim) -
+        // dispatchEvent'i yok, bu yüzden hedefi her zaman gerçek bir DOM elemanına düşürüyoruz.
         var evt = new CustomEvent("lookup:selected", { bubbles: true, detail: { item: item, hiddenEl: hiddenEl, displayEl: displayEl, trigger: trigger } });
-        (hiddenEl || trigger).dispatchEvent(evt);
+        var dispatchTarget = hiddenEl || displayEl || (typeof trigger.dispatchEvent === "function" ? trigger : null);
+        if (dispatchTarget) dispatchTarget.dispatchEvent(evt);
 
         if (row) {
             var qtyInput = row.querySelector(".quantity-input");

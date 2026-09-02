@@ -9,6 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SahinSoftVeritabaniAyarlari</AssemblyName>
     <RootNamespace>SahinSoft.ConfigTool</RootNamespace>
+    <ApplicationIcon>sahinsoft.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

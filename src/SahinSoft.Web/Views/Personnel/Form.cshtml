@@ -42,8 +42,21 @@
                         </div>
                         <div class="erp-field">
                             <label asp-for="Password"></label>
-                            <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" placeholder="@(isEdit ? "Değiştirmek için doldurun" : "")" />
+                            <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" placeholder="@(isEdit ? "Değiştirmek için doldurun" : "E-posta girilmediyse zorunlu değil, PIN yeterli")" />
                             <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="Pin"></label>
+                            <input asp-for="Pin" type="password" inputmode="numeric" maxlength="6" class="form-control" autocomplete="off" placeholder="@(isEdit ? "Değiştirmek için doldurun" : "Örn: 1234 - Restoran ekranında sadece bununla girer")" />
+                            <span asp-validation-for="Pin" class="text-danger small"></span>
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="DiscountLowerLimitPercent"></label>
+                            <input asp-for="DiscountLowerLimitPercent" class="form-control" />
+                        </div>
+                        <div class="erp-field">
+                            <label asp-for="DiscountUpperLimitPercent"></label>
+                            <input asp-for="DiscountUpperLimitPercent" class="form-control" />
                         </div>
                         <div class="erp-field">
                             <label asp-for="JobTitle"></label>

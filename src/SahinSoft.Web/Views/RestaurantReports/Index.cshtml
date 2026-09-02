@@ -1,0 +1,228 @@
+@model SahinSoft.Web.Models.RestaurantReportsViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Raporlar";
+
+    static string SourceTypeLabel(string type) => type switch
+    {
+        "self" => "Self",
+        "package" => "Paket",
+        _ => "Masa"
+    };
+}
+
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">RAPOR MERKEZİ</div>
+        <div class="h1">Restoran Raporları</div>
+        <div class="sub">Satış, ödeme, fiş ve vardiya kapanışlarını tek ekrandan takip edin.</div>
+    </div>
+    <div class="actions no-print">
+        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.AddDays(-1).ToString("yyyy-MM-dd")">◁</a>
+        <span class="rbtn">@Model.ReportDate.ToString("dd.MM.yyyy")</span>
+        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.AddDays(1).ToString("yyyy-MM-dd")">▷</a>
+        <button type="button" class="rbtn gold" onclick="window.print()">▣ Yazdır</button>
+    </div>
+</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="report-hero">
+    <div class="rcard report-hero-main">
+        <div class="eyebrow">GÜNÜN RAPOR ÖZETİ</div>
+        <h2 style="margin:6px 0;">@Model.ReportDate.ToString("dd.MM.yyyy") satış özeti</h2>
+        <div class="report-hero-metrics">
+            <div><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N0") ₺</strong></div>
+            <div><small>FİŞ</small><strong>@Model.ReceiptCount</strong></div>
+            <div><small>ORT. FİŞ</small><strong>@Model.AverageReceipt.ToString("N0") ₺</strong></div>
+            <div><small>İPTAL ORANI</small><strong>%@Model.CancelRatePercent.ToString("0.0")</strong></div>
+        </div>
+    </div>
+    <div class="rcard report-close-card">
+        <div class="close-status">
+            <div><b>Vardiya Durumu</b><div class="sub">@(Model.IsShiftOpen ? $"{Model.ShiftOpenedAtUtc!.Value.ToLocalTime():HH:mm}'den beri açık ({Model.FinancialAccountName})" : "Vardiya kapalı")</div></div>
+            <span class="rest-pill @(Model.IsShiftOpen ? "green" : "")">@(Model.IsShiftOpen ? "● AÇIK" : "● KAPALI")</span>
+        </div>
+        <div class="close-grid">
+            <div class="close-mini"><small>Son Z No</small><b>@(Model.LastZNumber ?? "—")</b></div>
+            <div class="close-mini"><small>Son Z Kapanış</small><b>@(Model.LastZClosedAtUtc?.ToLocalTime().ToString("dd.MM HH:mm") ?? "—")</b></div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-kpi-grid">
+    <div class="rcard kpi-rich"><div class="kpi-icon teal">₺</div><div class="kpi-copy"><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N2") ₺</strong></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon green">●</div><div class="kpi-copy"><small>NAKİT</small><strong>@Model.Cash.ToString("N2") ₺</strong></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon purple">▣</div><div class="kpi-copy"><small>KREDİ KARTI</small><strong>@Model.Card.ToString("N2") ₺</strong></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon gold">◇</div><div class="kpi-copy"><small>YEMEK ÇEKİ</small><strong>@Model.MealCard.ToString("N2") ₺</strong></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon blue">▦</div><div class="kpi-copy"><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong></div></div>
+</div>
+
+<div class="rtabs" style="margin-top:16px;">
+    <a class="rtab @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">▥ Günlük Fişler</a>
+    <a class="rtab @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">X Raporu</a>
+    <a class="rtab @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Z Raporu</a>
+    <a class="rtab @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">▦ Z Listesi</a>
+</div>
+
+@if (Model.ActiveTab == "daily")
+{
+    <div class="report-filter-row">
+        <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Tümü</a>
+        <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Masa</a>
+        <a class="rtab @(Model.SourceFilter == "package" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="package" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Paket</a>
+        <a class="rtab @(Model.SourceFilter == "self" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="self" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Self</a>
+    </div>
+
+    <div class="report-mini-summary">
+        <div><small>LİSTELENEN</small><strong>@Model.ListedCount fiş</strong></div>
+        <div><small>TOPLAM TUTAR</small><strong>@Model.ListedTotal.ToString("N2") ₺</strong></div>
+        <div><small>İNDİRİM</small><strong>@Model.ListedDiscount.ToString("N2") ₺</strong></div>
+        <div><small>İPTAL</small><strong>@Model.ListedCancelledCount</strong></div>
+    </div>
+    <div class="report-table-wrap">
+        <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
+        @if (Model.Receipts.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Bu tarihte/filtrede fiş yok.</div>
+        }
+        @foreach (var r in Model.Receipts)
+        {
+            <div class="rrow2">
+                <div><b>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@r.DocumentNumber</small></div>
+                <div><b>@r.SourceLabel</b><small>@r.SourceSubtitle</small></div>
+                <span><i class="type-badge2 @r.SourceType">@SourceTypeLabel(r.SourceType)</i></span>
+                <span>@r.PaymentSummary</span>
+                <span class="@(r.IsCancelled ? "cancel-badge2" : "ok-badge2")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
+                <b>@r.GrandTotal.ToString("N2") ₺</b>
+                <a class="view-btn no-print" asp-action="Index" asp-route-tab="daily" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-selected="@r.RetailSaleId">Fişi Gör</a>
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "x")
+{
+    <div class="rcard x-report-card">
+        <h4>X Raporu</h4>
+        <p class="sub">Anlık durum raporu — vardiyayı KAPATMAZ, istediğiniz kadar tekrar alabilirsiniz.</p>
+        @if (Model.XReport is null)
+        {
+            <div class="text-secondary small">Açık vardiya yok. X raporu için önce <a asp-controller="RestaurantShift" asp-action="Index">vardiyayı açın</a>.</div>
+        }
+        else
+        {
+            <div class="sub">Vardiya açılışı: @Model.XReport.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+            <div class="x-report-grid">
+                <div><small>NET CİRO</small><strong>@Model.XReport.NetRevenue.ToString("N2") ₺</strong></div>
+                <div><small>FİŞ SAYISI</small><strong>@Model.XReport.ReceiptCount</strong></div>
+                <div><small>NAKİT</small><strong>@Model.XReport.Cash.ToString("N2") ₺</strong></div>
+                <div><small>KREDİ KARTI</small><strong>@Model.XReport.Card.ToString("N2") ₺</strong></div>
+                <div><small>YEMEK ÇEKİ</small><strong>@Model.XReport.MealCard.ToString("N2") ₺</strong></div>
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "z")
+{
+    <div class="rcard z-report-card">
+        <h4>Z Raporu</h4>
+        <p class="sub">Gün sonu kapanışı — vardiyayı kapatır, aynı vardiya için ikinci kez Z alınamaz.</p>
+        @if (!Model.IsShiftOpen)
+        {
+            <div class="text-secondary small">Kapatılacak açık vardiya yok. @(Model.LastZNumber is not null ? $"Son Z: {Model.LastZNumber} ({Model.LastZClosedAtUtc?.ToLocalTime():dd.MM.yyyy HH:mm})" : "")</div>
+        }
+        else
+        {
+            <form method="post" asp-action="CloseShift" class="shift-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="shiftId" value="@Model.OpenShiftId" />
+                <label class="form-label">Sayılan Nakit Tutarı</label>
+                <input type="number" name="closingBalanceCounted" step="0.01" min="0" class="form-control" required />
+                <button type="submit" class="rbtn gold" style="margin-top:10px;" onclick="return confirm('Z Raporu oluşturup vardiyayı kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.');">Z Raporu Oluştur (Vardiyayı Kapat)</button>
+            </form>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "zlist")
+{
+    <div class="report-table-wrap" style="border-top:1px solid var(--rs-border); border-radius:10px;">
+        <div class="rthead" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr;"><span>Z NO</span><span>KASA</span><span>AÇILIŞ</span><span>KAPANIŞ</span><span>BEKLENEN / SAYILAN</span><span>FARK</span></div>
+        @if (Model.ZList.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Henüz kapanmış vardiya (Z) yok.</div>
+        }
+        @foreach (var z in Model.ZList)
+        {
+            var diff = (z.CountedBalance ?? 0) - (z.ExpectedBalance ?? 0);
+            <div class="rrow2" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr;">
+                <b>@z.ZNumber</b>
+                <span>@z.FinancialAccountName</span>
+                <span>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                <span>@z.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                <span>@(z.ExpectedBalance?.ToString("N2")) ₺ / @(z.CountedBalance?.ToString("N2")) ₺</span>
+                <b class="@(diff > 0 ? "ok-badge2" : diff < 0 ? "cancel-badge2" : "")">@diff.ToString("N2") ₺</b>
+            </div>
+        }
+    </div>
+}
+
+<div class="znote sub" style="margin-top:12px;">X Raporu vardiyayı kapatmaz. Z Raporu gün sonu kapanışıdır. Z Listesi geçmiş Z kapanışlarını gösterir.</div>
+
+@if (Model.SelectedReceipt is not null)
+{
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fiş — @Model.SelectedReceipt.DocumentNumber</h5>
+                    <button type="button" class="btn-close no-print" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="sub">@Model.SelectedReceipt.SourceLabel · @Model.SelectedReceipt.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                    @if (Model.SelectedReceipt.IsCancelled)
+                    {
+                        <div class="alert alert-danger py-1 mt-2">İptal edilmiş fiş</div>
+                    }
+                    <div style="margin-top:12px;">
+                        @foreach (var line in Model.SelectedReceipt.Lines)
+                        {
+                            <div class="receipt-line-row"><span>@line.Quantity.ToString("0.##") × @line.ProductName</span><b>@line.LineTotal.ToString("N2") ₺</b></div>
+                        }
+                    </div>
+                    <div style="margin-top:10px;">
+                        <div class="receipt-total-row"><span>Ara Toplam</span><span>@Model.SelectedReceipt.SubtotalAmount.ToString("N2") ₺</span></div>
+                        <div class="receipt-total-row"><span>İndirim</span><span>@Model.SelectedReceipt.DiscountAmount.ToString("N2") ₺</span></div>
+                        <div class="receipt-total-row"><span>KDV</span><span>@Model.SelectedReceipt.TaxAmount.ToString("N2") ₺</span></div>
+                        <div class="receipt-total-row grand"><span>Genel Toplam</span><span>@Model.SelectedReceipt.GrandTotal.ToString("N2") ₺</span></div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        @foreach (var p in Model.SelectedReceipt.Payments)
+                        {
+                            <div class="receipt-line-row"><span>@p.Method</span><b>@p.Amount.ToString("N2") ₺</b></div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer no-print">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-erp-primary" onclick="window.print()">Yazdır</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (Model.SelectedReceipt is not null)
+    {
+        <script>
+            new bootstrap.Modal(document.getElementById('receiptModal')).show();
+        </script>
+    }
+}

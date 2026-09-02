@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Constants;
+using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
 
@@ -79,6 +80,14 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         {
             model.RequireProductVariant = false;
         }
+        if (model.FiscalDeviceType == FiscalDeviceType.None)
+        {
+            model.FiscalAgentUrl = null;
+        }
+        else if (string.IsNullOrWhiteSpace(model.FiscalAgentUrl))
+        {
+            ModelState.AddModelError(nameof(model.FiscalAgentUrl), "Yazar kasa seçiliyken Fiscal Agent adresi zorunludur.");
+        }
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -98,6 +107,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireProductVariant = model.RequireProductVariant;
         settings.AllowSaleBelowCost = model.AllowSaleBelowCost;
         settings.IsRestaurantModuleEnabled = model.IsRestaurantModuleEnabled;
+        settings.FiscalDeviceType = model.FiscalDeviceType;
+        settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
         settings.OrderToDispatchSalesAutoApprove = model.OrderToDispatchSalesAutoApprove;
         settings.OrderToInvoicePurchaseAutoApprove = model.OrderToInvoicePurchaseAutoApprove;
@@ -126,6 +137,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         RequireProductVariant = settings.RequireProductVariant,
         AllowSaleBelowCost = settings.AllowSaleBelowCost,
         IsRestaurantModuleEnabled = settings.IsRestaurantModuleEnabled,
+        FiscalDeviceType = settings.FiscalDeviceType,
+        FiscalAgentUrl = settings.FiscalAgentUrl,
         OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,
         OrderToDispatchSalesAutoApprove = settings.OrderToDispatchSalesAutoApprove,
         OrderToInvoicePurchaseAutoApprove = settings.OrderToInvoicePurchaseAutoApprove,

@@ -1,40 +1,44 @@
-ŞAHİNSOFT SQL SERVER AYARLARI
-=============================
+ŞAHİNSOFT KURULUM - OKUYUN
+===========================
 
-1. Yanındaki "appsettings.Production.json.ornek" dosyasını Not Defteri ile açın.
+TEK ADIM: "SahinSoft.exe" dosyasına çift tıklayın. Başka hiçbir dosyaya
+ihtiyaç yok - uygulama, veritabanı script'i, masaüstü kabuk ve ayar aracı
+hepsi bu tek exe'nin İÇİNDE gömülü.
 
-2. Aşağıdaki iki alanı değiştirin:
+Çift tıklayınca Windows "Yönetici izni ister misiniz?" diye soracak - Evet
+deyin (manifest sayesinde exe kendi kendini yönetici olarak başlatır).
 
-   User Id=SQL_KULLANICI_ADI
-   Password=SQL_SIFRESI
+Otomatik olarak yapılanlar:
+1. IIS ve .NET 10 ASP.NET Core Hosting Bundle kontrol edilir, eksikse kurulur.
+2. Yerel SQL Server bulunamazsa SQL Server Express indirilip Karma Kimlik
+   Doğrulama ile kurulur, sa şifresi otomatik ayarlanır (SahinSoft2026!Kurulum).
+3. Uygulama C:\SitesSahinSoft klasörüne kurulur.
+4. appsettings.json bağlantı dizesi bu makinenin SQL Server'ına (sa/SahinSoft2026!Kurulum)
+   otomatik ayarlanır.
+5. IIS Uygulama Havuzu + Site (port 1666) oluşturulur.
+6. Veritabanı migration'ı uygulanır.
+7. Masaüstü kabuk + ConfigTool, C:\SitesSahinSoft\Araclar'a kurulur, masaüstüne
+   "ŞahinSoft" kısayolu bırakılır.
 
-   Örnek:
+Bittiğinde masaüstündeki "ŞahinSoft" kısayolu ile veya tarayıcıdan
+http://localhost:1666 ile açılabilir.
 
-   User Id=sa
-   Password=BurayaGercekSifreniz
+BAŞKA BİR SUNUCUYA BAĞLANMAK İSTERSENİZ (şube → merkez/bulut)
+================================================================
+Komut satırından şu şekilde çalıştırın (yerel SQL kurmaz, doğrudan
+belirttiğiniz sunucuya bağlanır):
 
-3. Dosyayı şu adla kaydedin:
-
-   appsettings.Production.json
-
-4. Oluşan appsettings.Production.json dosyasını şuraya kopyalayın:
-
-   C:\SitesSahinSoft\appsettings.Production.json
-
-5. IIS Yöneticisi > Uygulama Havuzları > SahinSoft > Geri Dönüştür
-   işlemini uygulayın.
-
-6. Tarayıcıdan açın:
-
-   http://localhost:1666
+  SahinSoft.exe -RemoteSqlServer "10.0.0.5" -SqlUser sa -SqlPassword "sifre"
 
 ÖNEMLİ GÜVENLİK NOTLARI
 =======================
+- Bu paketteki sa şifresi (SahinSoft2026!Kurulum) sabit - aynı şifre buluttaki
+  sunucuda da kullanılıyor. Canlı/çok şubeli kullanımdan önce her makine
+  için ayrı, güçlü bir şifre düşünülmeli.
+- appsettings.json dosyası internetten erişilebilen wwwroot klasörüne
+  konmaz - kurulum zaten C:\SitesSahinSoft ana klasörüne yazıyor.
 
-- Gerçek parolanızı ekran görüntüsünde veya mesajda paylaşmayın.
-- appsettings.Production.json dosyasını internetten erişilebilen wwwroot
-  klasörüne koymayın. C:\SitesSahinSoft ana klasöründe kalmalıdır.
-- İlk kurulumda sa kullanılabilir. Canlı kullanımdan önce yalnızca
-  SahinSoftDb veritabanına yetkili ayrı bir SQL kullanıcısı oluşturulmalıdır.
-- JSON içindeki şifrede ters eğik çizgi (\) veya çift tırnak (") varsa
-  JSON kaçış kurallarına uygun yazılmalıdır.
+(Bu klasördeki Kurulum.ps1 / SahinSoftDb_Migration.sql / SahinSoft-Publish-
+Fresh.zip, SahinSoft.exe'nin içine gömülü olan aynı dosyaların kaynağıdır -
+kurulum için elle kullanmanıza gerek yok, yalnızca ileride paketi yeniden
+oluştururken referans olarak burada duruyor.)

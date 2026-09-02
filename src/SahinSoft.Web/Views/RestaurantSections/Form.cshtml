@@ -1,0 +1,55 @@
+@model SahinSoft.Web.Models.RestaurantSectionFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Salonu Düzenle" : "Yeni Salon";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Salon Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DisplayOrder"></label>
+                    <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    <span asp-validation-for="DisplayOrder" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BranchId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.BranchId), Id = nameof(Model.BranchId),
+                        Value = Model.BranchId?.ToString(),
+                        DisplayValue = Model.BranchDisplay,
+                        Endpoint = Url.Action("Branches", "Lookup")!,
+                        Title = "Şube Seç", Placeholder = "Şube seçin" })" />
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 mt-3">
+                <div class="form-check form-switch">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

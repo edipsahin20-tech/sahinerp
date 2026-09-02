@@ -1,4 +1,5 @@
 using SahinSoft.Domain.Common;
+using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Domain.Entities;
 
@@ -17,6 +18,13 @@ public sealed class InventorySettings : EntityBase
     public bool RequireProductVariant { get; set; }
     public bool AllowSaleBelowCost { get; set; }
     public bool IsRestaurantModuleEnabled { get; set; }
+
+    // Yok (None) iken restoran Kapat/Öde bugünkü gibi hiçbir fiskal cihaz çağrısı yapmadan
+    // çalışır - bkz. SahinSoft.FiscalAgent projesi. Bir cihaz seçilip adres girildiğinde nakit/
+    // kredi kartı/yemek çeki ödemeleri doğrudan yazarkasaya gönderilir (fatura kesilen satışlar
+    // hariç - bkz. RestaurantController.ClosePayment).
+    public FiscalDeviceType FiscalDeviceType { get; set; } = FiscalDeviceType.None;
+    public string? FiscalAgentUrl { get; set; }
 
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }

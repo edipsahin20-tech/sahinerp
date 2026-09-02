@@ -87,6 +87,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<KitchenTicketLine> KitchenTicketLines => Set<KitchenTicketLine>();
     public DbSet<RestaurantPayment> RestaurantPayments => Set<RestaurantPayment>();
     public DbSet<RestaurantCashShift> RestaurantCashShifts => Set<RestaurantCashShift>();
+    public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
 
@@ -98,6 +99,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<ApplicationUser>().Property(x => x.Salary).HasPrecision(18, 2);
         builder.Entity<ApplicationUser>().Property(x => x.Deduction).HasPrecision(18, 2);
         builder.Entity<ApplicationUser>().Property(x => x.CommissionRate).HasPrecision(5, 2);
+        builder.Entity<ApplicationUser>().Property(x => x.DiscountLowerLimitPercent).HasPrecision(5, 2);
+        builder.Entity<ApplicationUser>().Property(x => x.DiscountUpperLimitPercent).HasPrecision(5, 2);
         builder.Entity<ApplicationUser>()
             .HasOne(x => x.Branch)
             .WithMany()
@@ -130,8 +133,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
             entity.Property(x => x.WebsitePath).HasMaxLength(250);
+            entity.Property(x => x.Color).HasMaxLength(7).IsRequired();
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.Name);
+            entity.HasOne(x => x.TaxRate).WithMany().HasForeignKey(x => x.TaxRateId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.DefaultKitchenStation).WithMany().HasForeignKey(x => x.DefaultKitchenStationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ParentCategory).WithMany(x => x.SubCategories).HasForeignKey(x => x.ParentCategoryId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<TaxRate>(entity =>
@@ -660,8 +667,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.ApiKey).HasMaxLength(100);
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.Name);
+            entity.HasIndex(x => x.ApiKey).IsUnique().HasFilter("[ApiKey] IS NOT NULL");
         });
 
         builder.Entity<ProductColor>(entity =>
@@ -1357,7 +1366,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Name).HasMaxLength(50).IsRequired();
             entity.Property(x => x.PriceOverride).HasPrecision(18, 2);
             entity.HasIndex(x => new { x.ProductId, x.Name });
-            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product).WithMany(x => x.Portions).HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ProductRecipeHeader>(entity =>
@@ -1464,6 +1473,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<PackageOrder>(entity =>
+        {
+            entity.Property(x => x.PackageNumber).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CustomerName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.CustomerPhone).HasMaxLength(30);
+            entity.Property(x => x.DeliveryAddress).HasMaxLength(500);
+            entity.HasIndex(x => x.PackageNumber).IsUnique();
+            // 1 adisyon → en fazla 1 paket sipariş kaydı (bkz. entity üstündeki not).
+            entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
+            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
+            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<RetailSale>(entity =>
         {
             entity.Property(x => x.DocumentNumber).HasMaxLength(30).IsRequired();
@@ -1479,6 +1502,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.EInvoiceUuid).HasMaxLength(100);
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.Property(x => x.TradeType).HasMaxLength(100);
             entity.HasIndex(x => x.DocumentNumber).IsUnique();
             // Bir adisyon başına en fazla 1 dahili perakende satış fişi.
             entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
@@ -1506,10 +1530,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.ToTable(table => table.HasCheckConstraint("CK_RetailSaleLines_Quantity", "[Quantity] > 0"));
         });
 
+        // Kategori/Ürün/Barkod demo kataloğu (ŞahinBilişim'in kendi POS donanım kataloğu) artık
+        // yeni müşteri kurulumlarına gitmiyor - her müşterinin veritabanı boş açılmalı. Bkz.
+        // CatalogSeedData.Categories/Products/Barcodes (hâlâ kodda duruyor, sadece HasData'dan
+        // kaldırıldı) ve RemoveDemoCatalogSeedData migration'ı (mevcut kurulumlardan da temizler).
         builder.Entity<TaxRate>().HasData(CatalogSeedData.TaxRates);
-        builder.Entity<ProductCategory>().HasData(CatalogSeedData.Categories);
-        builder.Entity<Product>().HasData(CatalogSeedData.Products);
-        builder.Entity<ProductBarcode>().HasData(CatalogSeedData.Barcodes);
         builder.Entity<InventorySettings>().HasData(new InventorySettings
         {
             Id = 1,
@@ -1755,6 +1780,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Padding = 6,
                 CreatedAtUtc = new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)
             });
+        // Restoran Modülü Faz 2 — RESTAURANT_CHECK NumberSequence satırı burada (HasData ile)
+        // SABİT bir Id vermiyor: 1000'ler aralığı BARCODE_* sayaçlarının organik IDENTITY
+        // büyümesiyle çakışabiliyor (canlıda ilk denemede tam bu şekilde bir PK ihlali yaşandı —
+        // bkz. DocumentNumberGeneratorService yorumu, kullanıcı elle seri girince IDENTITY'den
+        // yeni satırlar organik oluşuyor). Bu satır bunun yerine migration'ın Up() metodunda
+        // "IF NOT EXISTS ... INSERT" ham SQL'iyle eklenir, Id'yi SQL Server IDENTITY'den alır —
+        // hiçbir kurulumda sabit bir Id ile çakışma riski taşımaz. Bkz.
+        // RestaurantModulePhase2Prereqs migration.
         builder.Entity<UnitOfMeasure>().HasData(
             new UnitOfMeasure
             {
@@ -1868,6 +1901,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             IsDefault = true,
             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
         });
+        // "Perakende Satışlar Carisi" seed'i BURADA (HasData) değil, migration'ın Up()'ında ham SQL
+        // + IF NOT EXISTS ile ekleniyor - bkz. RestaurantModulePhase2Prereqs'teki RESTAURANT_CHECK
+        // NumberSequence notu. HasData sabit bir Id ister; Customers tablosunda haftalardır gerçek
+        // cari kayıtları birikmiş olabileceğinden Id=1 prod'da PK çakışmasına yol açardı.
         builder.Entity<PriceList>().HasData(
             new PriceList
             {

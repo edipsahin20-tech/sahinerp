@@ -1,0 +1,304 @@
+@model SahinSoft.Web.Models.RestaurantCheckViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = $"Adisyon {Model.CheckNumber}";
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/restaurant-pos.css" asp-append-version="true" />
+}
+
+<div class="restaurant-pos" id="pos-root"
+     data-check-id="@Model.CheckId"
+     data-send-url="@Url.Action("SendToKitchen")"
+     data-close-url="@Url.Action("ClosePayment")"
+     data-back-url="@Url.Action("Index")"
+     data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+     data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
+     data-fiscal-agent-url="@Model.FiscalAgentUrl"
+     data-cashier-name="@(((SahinSoft.Web.Models.RestaurantShellViewModel)ViewBag.Shell).UserFullName)">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="pos-submission-key" value="@Model.SubmissionKey" />
+    <input type="hidden" id="pos-close-submission-key" value="@Model.ClosePaymentSubmissionKey" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title">
+            <h1>@Model.SectionName — @Model.TableName</h1>
+            <span class="erp-toolbar-meta">Adisyon @Model.CheckNumber · @Model.GuestCount kişi · @Model.OpenedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+        </div>
+        <div class="erp-toolbar-actions">
+            @if (Model.IsSelfSaleCheck)
+            {
+                <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
+            }
+            @if (Model.PayableTotal > 0)
+            {
+                <button type="button" class="btn btn-erp btn-sm" id="open-close-payment-btn">Kapat / Öde</button>
+            }
+            <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
+        </div>
+    </div>
+
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success py-2">@success</div>
+    }
+    <div id="unrouted-warning" class="alert alert-warning py-2" style="display:none;"></div>
+
+    @if (Model.SentOrders.Any(o => o.Lines.Count > 0))
+    {
+        <div class="erp-panel" style="margin-bottom: 1rem;">
+            <div class="erp-panel-header">Mutfağa Gönderilmiş Siparişler</div>
+            <div class="erp-panel-body">
+                @foreach (var order in Model.SentOrders)
+                {
+                    <div class="mb-2">
+                        <strong>@order.OrderedAtUtc.ToLocalTime().ToString("HH:mm") siparişi</strong>
+                        <table class="erp-table" style="margin-top:0.35rem;">
+                            <tbody>
+                            @foreach (var line in order.Lines)
+                            {
+                                <tr class="@(line.Status == "Cancelled" ? "text-secondary text-decoration-line-through" : "")">
+                                    <td>
+                                        @line.ProductName
+                                        @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
+                                        @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis ms-1">İKRAM</span> }
+                                        @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1">İndirim</span> }
+                                        @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
+                                    </td>
+                                    <td>@line.Quantity.ToString("N0")</td>
+                                    <td>@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</td>
+                                    <td><span class="badge text-bg-secondary-subtle">@line.Status</span></td>
+                                    <td class="text-end">
+                                        @if (line.CanCancel)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger cancel-line-btn" data-line-id="@line.LineId">İptal</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="pos-layout">
+        <div class="cart-panel">
+            <div class="cart-header">
+                <strong>Yeni Sipariş</strong>
+            </div>
+            <div class="cart-lines" id="cart-lines">
+                <p class="text-secondary small p-2">Ürün eklemek için sağdan seçim yapın.</p>
+            </div>
+            <div class="cart-footer">
+                <div class="d-flex justify-content-between">
+                    <span>Toplam</span>
+                    <span class="cart-total" id="cart-total">0,00 ₺</span>
+                </div>
+                <button type="button" class="btn-send-kitchen" id="send-kitchen-btn" disabled>Mutfağa Gönder</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="category-tabs" id="category-tabs"></div>
+            <div class="product-grid" id="product-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Satır iptal modalı -->
+<div class="modal fade" id="cancelLineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="CancelOrderLine">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="checkId" value="@Model.CheckId" />
+                <input type="hidden" name="lineId" id="cancelLineId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Sipariş Satırını İptal Et</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">İptal Gerekçesi</label>
+                    <input type="text" name="reason" class="form-control" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-danger">İptal Et</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (Model.IsSelfSaleCheck)
+{
+    <!-- Masaya Aktar modalı - yalnızca Self Satış adisyonlarında render edilir -->
+    <div class="modal fade" id="transferToTableModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-controller="RestaurantSelfSale" asp-action="TransferToTable" id="transfer-to-table-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="checkId" value="@Model.CheckId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Masaya Aktar</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-secondary small">Sepetteki ürünler seçtiğiniz masanın adisyonuna taşınır. Masada açık adisyon varsa oraya eklenir, yoksa yeni açılır.</p>
+                        <label class="form-label">Hedef Masa</label>
+                        <select name="targetTableId" class="form-select" required>
+                            <option value="">Seçiniz...</option>
+                            @foreach (var table in Model.AvailableTables)
+                            {
+                                <option value="@table.TableId">@table.SectionName — @table.TableName @(table.IsOccupied ? "(dolu)" : "(boş)")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-erp-primary" id="confirm-transfer-btn">Masaya Aktar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Kapat / Öde modalı (master tasarım: parçalı ödeme, numpad, hazır para) -->
+<div class="modal fade" id="closePaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content pay-modal">
+            <div class="modal-header">
+                <div>
+                    <div class="pay-eyebrow" id="pay-partial-badge" style="display:none;">PARÇALI ÖDEME AKTİF</div>
+                    <h5 class="modal-title mb-0">Ödeme Al</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="pay-summary-row">
+                    <div><small>Toplam</small><strong id="pay-total"></strong></div>
+                    <div><small>Ödenen</small><strong id="pay-paid">0,00 ₺</strong></div>
+                    <div><small>Kalan</small><strong id="pay-remaining" class="text-danger"></strong></div>
+                </div>
+
+                <div id="close-payment-error" class="alert alert-danger py-2" style="display:none;"></div>
+
+                <div id="close-payment-lines" class="pay-lines"></div>
+
+                <div class="pay-split-row">
+                    <span class="pay-split-label">Kalanı Böl:</span>
+                    <button type="button" class="pay-split-btn" data-split="5">1/5</button>
+                    <button type="button" class="pay-split-btn" data-split="4">1/4</button>
+                    <button type="button" class="pay-split-btn" data-split="3">1/3</button>
+                    <button type="button" class="pay-split-btn" data-split="2">1/2</button>
+                    <button type="button" class="pay-split-btn" data-split="1">1/1</button>
+                </div>
+
+                <div class="pay-amount-card">
+                    <small>ALINACAK TUTAR</small>
+                    <div class="pay-amount-value" id="pay-entry-amount">0,00 ₺</div>
+                </div>
+
+                <div class="pay-numpad">
+                    <button type="button" data-num="7">7</button>
+                    <button type="button" data-num="8">8</button>
+                    <button type="button" data-num="9">9</button>
+                    <button type="button" data-num="4">4</button>
+                    <button type="button" data-num="5">5</button>
+                    <button type="button" data-num="6">6</button>
+                    <button type="button" data-num="1">1</button>
+                    <button type="button" data-num="2">2</button>
+                    <button type="button" data-num="3">3</button>
+                    <button type="button" data-num=",">,</button>
+                    <button type="button" data-num="0">0</button>
+                    <button type="button" id="pay-num-clear">CL</button>
+                </div>
+
+                <div class="pay-cash-row">
+                    <button type="button" class="pay-cash-quick" data-cash="5">5</button>
+                    <button type="button" class="pay-cash-quick" data-cash="10">10</button>
+                    <button type="button" class="pay-cash-quick" data-cash="20">20</button>
+                    <button type="button" class="pay-cash-quick" data-cash="50">50</button>
+                    <button type="button" class="pay-cash-quick" data-cash="100">100</button>
+                    <button type="button" class="pay-cash-quick" data-cash="200">200</button>
+                </div>
+
+                <div class="pay-method-row">
+                    <button type="button" class="pay-method-btn n" data-method="1">₺ Nakit</button>
+                    <button type="button" class="pay-method-btn c" data-method="2">▣ Kredi Kartı</button>
+                    <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Kartı</button>
+                </div>
+            </div>
+            <div class="modal-footer pay-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">× Ödeme İptal</button>
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">‹ Adisyona Dön</button>
+                <button type="button" class="btn btn-erp" id="confirm-close-payment-btn" disabled>Kapat / Öde</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pay-eyebrow { font-size: 11px; letter-spacing: .1em; color: #C99935; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+    .pay-summary-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 12px; }
+    .pay-summary-row > div { background: #FAFBFD; border: 1px solid #E3E8EF; border-radius: 10px; padding: 10px 12px; }
+    .pay-summary-row small { display: block; color: #6F7F92; font-size: 11px; }
+    .pay-summary-row strong { display: block; font-size: 17px; margin-top: 2px; }
+    .pay-lines { margin-bottom: 10px; max-height: 140px; overflow-y: auto; }
+    .pay-line-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid #E3E8EF; border-radius: 8px; margin-bottom: 6px; font-size: 13.5px; background: #fff; }
+    .pay-line-row button { border: none; background: none; color: #D94A4A; font-weight: 700; cursor: pointer; }
+    .pay-split-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .pay-split-label { font-size: 12px; color: #6F7F92; margin-right: 4px; }
+    .pay-split-btn, .pay-cash-quick { border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+    .pay-split-btn:hover, .pay-cash-quick:hover { border-color: #D2DAE5; background: #F4F6F9; }
+    .pay-amount-card { background: #FAFBFD; border: 1px solid #E3E8EF; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+    .pay-amount-card small { color: #6F7F92; font-size: 11px; }
+    .pay-amount-value { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+    .pay-numpad { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+    .pay-numpad button { min-height: 46px; border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; font-weight: 700; font-size: 16px; cursor: pointer; }
+    .pay-numpad button:active { background: #F4F6F9; }
+    .pay-cash-row { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 12px; }
+    .pay-method-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .pay-method-btn { min-height: 48px; border: 0; border-radius: 9px; font-weight: 800; cursor: pointer; font-size: 13.5px; }
+    .pay-method-btn.n { background: #b6dfc8; }
+    .pay-method-btn.c { background: #c2afe9; }
+    .pay-method-btn.y { background: #f3d09a; }
+    .pay-footer { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; }
+</style>
+
+@section Scripts {
+    @{
+        // System.Text.Json.JsonSerializer.Serialize varsayılanı PascalCase üretir (MVC'nin Json()
+        // yardımcısındaki camelCase politikasını KULLANMAZ) — JS tarafı camelCase okuduğu için
+        // burada açıkça belirtilmesi gerekiyor, aksi halde her alan sessizce undefined döner.
+        var catalogJsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        // Yazar kasa entegrasyonu için - sadece iptal edilmemiş, gönderilmiş satırlar. Kapat/Öde
+        // anında JS bunu okuyup fiscal agent'a gönderir (bkz. data-fiscal-enabled).
+        var fiscalLines = Model.SentOrders
+            .SelectMany(o => o.Lines)
+            .Where(l => l.Status != "Cancelled")
+            .Select(l => new { name = l.ProductName, quantity = l.Quantity, unitPrice = l.UnitPrice, discountAmount = l.DiscountAmount });
+    }
+    <script id="pos-catalog-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Catalog, catalogJsonOptions))</script>
+    <script id="pos-financial-accounts-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts, catalogJsonOptions))</script>
+    <script id="pos-fiscal-lines-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(fiscalLines, catalogJsonOptions))</script>
+    <script src="~/js/restaurant-pos.js" asp-append-version="true"></script>
+    <script>
+        document.querySelectorAll('.cancel-line-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('cancelLineId').value = btn.getAttribute('data-line-id');
+                new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
+            });
+        });
+    </script>
+    <script src="~/js/restaurant-close-payment.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,218 @@
+@model SahinSoft.Web.Models.RestaurantPinLoginViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ŞahinSoft Restoran — Kasiyer Girişi</title>
+    <style>
+        :root {
+            --pn-navy: #0B2239;
+            --pn-navy2: #102B46;
+            --pn-gold: #E2A400;
+            --pn-gold-light: #F2B813;
+            --pn-bg: #F5F6F8;
+            --pn-surface: #FFFFFF;
+            --pn-border: #E3E8EF;
+            --pn-text: #132238;
+            --pn-text-2: #6F7F92;
+            --pn-danger: #D94A4A;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            font-family: Inter, "Segoe UI", system-ui, sans-serif;
+            color: var(--pn-text);
+            display: flex;
+            background: linear-gradient(90deg, var(--pn-navy) 0 50%, var(--pn-bg) 50% 100%);
+        }
+        .login-left, .login-right {
+            width: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .hero { color: #fff; width: 100%; max-width: 420px; }
+        .hero .logo { font-size: 60px; color: var(--pn-gold); font-weight: 900; line-height: 1; }
+        .hero .brandline { color: #f1c545; font-weight: 800; letter-spacing: .12em; margin: 10px 0 18px; font-size: 13px; }
+        .hero h1 { font-size: 40px; line-height: 1.12; font-weight: 400; margin: 0 0 16px; }
+        .hero .features { color: rgba(255,255,255,.75); font-size: 13.5px; }
+
+        .login-card { width: 100%; max-width: 380px; background: var(--pn-surface); border: 1px solid var(--pn-border); border-radius: 18px; padding: 28px; box-shadow: 0 8px 24px rgba(15,35,55,.08); }
+        .eyebrow { font-size: 11px; letter-spacing: .11em; color: #C99935; font-weight: 800; text-align: center; text-transform: uppercase; }
+        .login-title { text-align: center; margin: 8px 0 4px; font-size: 20px; }
+        .login-sub { text-align: center; color: var(--pn-text-2); font-size: 13px; margin: 0 0 16px; }
+
+        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 8px; max-height: 280px; overflow-y: auto; }
+        .staff-btn { border: 1px solid var(--pn-border); background: #fff; border-radius: 12px; padding: 14px 10px; text-align: left; font-weight: 700; font-size: 13.5px; cursor: pointer; transition: border-color 120ms ease, transform 100ms ease, box-shadow 120ms ease; }
+        .staff-btn small { display: block; color: var(--pn-text-2); font-weight: 500; font-size: 11.5px; margin-top: 3px; }
+        .staff-btn:hover { border-color: #D2DAE5; box-shadow: 0 8px 18px rgba(15,35,55,.08); transform: translateY(-1px); }
+        .staff-btn.selected { border-color: var(--pn-gold); background: #FFF9EC; }
+
+        .pin-pad-wrap { display: none; }
+        .pin-pad-wrap.active { display: block; }
+        .selected-card { background: #fff; border: 1px solid var(--pn-border); border-radius: 12px; padding: 12px; margin-top: 14px; }
+        .selected-card b { font-size: 14px; }
+        .selected-card small { display: block; color: var(--pn-text-2); margin-top: 2px; }
+        .pin-dots { text-align: center; margin: 14px 0; letter-spacing: 8px; font-size: 18px; color: var(--pn-navy); }
+        .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+        .pin-pad button { padding: 16px; border: 1px solid var(--pn-border); background: #fff; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 16px; transition: transform 100ms ease, background-color 120ms ease; }
+        .pin-pad button:active { transform: scale(.96); background: var(--pn-bg); }
+        .login-btn { width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 10px; background: linear-gradient(90deg,#f0cf73,#e9bd46); font-weight: 800; cursor: pointer; font-size: 14px; }
+        .login-btn:active { transform: scale(.99); }
+        .pin-actions { display: flex; justify-content: center; margin-top: 12px; }
+        .link-btn { background: none; border: none; color: var(--pn-text-2); font-size: 13px; cursor: pointer; padding: 6px; }
+        .pin-error { color: var(--pn-danger); font-size: 13px; text-align: center; margin: 0 0 12px; min-height: 18px; }
+        .admin-login { text-align: center; margin-top: 16px; }
+        .admin-login a { color: var(--pn-text-2); font-size: 12.5px; text-decoration: none; }
+        .admin-login a:hover { text-decoration: underline; }
+        .empty-state { color: var(--pn-text-2); font-size: 13.5px; text-align: center; padding: 20px 0; grid-column: 1/-1; }
+        @@media (max-width: 860px) {
+            body { background: var(--pn-bg); }
+            .login-left { display: none; }
+            .login-right { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-left">
+        <div class="hero">
+            <div class="logo">Ş</div>
+            <div class="brandline">ŞAHİNSOFT RESTORAN</div>
+            <h1>Servis hızını artıran<br />akıllı restoran<br />yönetimi.</h1>
+            <div class="features">• Masa &amp; adisyon &nbsp;&nbsp; • Paket &amp; self satış &nbsp;&nbsp; • Anlık raporlar</div>
+        </div>
+    </div>
+    <div class="login-right">
+        <div class="login-card">
+            <div class="eyebrow">KASİYER GİRİŞİ</div>
+            <div class="login-title">Vardiyaya Hoş Geldiniz</div>
+            @if (TempData["Error"] is string error)
+            {
+                <div class="pin-error">@error</div>
+            }
+            else
+            {
+                <p class="login-sub">Kasiyerinizi seçin ve PIN'inizi girin.</p>
+            }
+
+            <div id="staff-step">
+                <div class="staff-grid">
+                    @foreach (var staff in Model.Staff)
+                    {
+                        <button type="button" class="staff-btn" data-user-id="@staff.Id" data-user-name="@staff.FullName">@staff.FullName<small>Kasiyer</small></button>
+                    }
+                    @if (Model.Staff.Count == 0)
+                    {
+                        <div class="empty-state">Henüz PIN tanımlı restoran personeli yok.<br />Personel ekranından PIN atayın.</div>
+                    }
+                </div>
+            </div>
+
+            <div id="pin-step" class="pin-pad-wrap">
+                <div class="selected-card"><b id="selected-name"></b><small>Kasiyer</small></div>
+                <div class="pin-dots" id="pin-dots">○ ○ ○ ○</div>
+                <div class="pin-pad" id="pin-pad">
+                    <button type="button" data-digit="1">1</button>
+                    <button type="button" data-digit="2">2</button>
+                    <button type="button" data-digit="3">3</button>
+                    <button type="button" data-digit="4">4</button>
+                    <button type="button" data-digit="5">5</button>
+                    <button type="button" data-digit="6">6</button>
+                    <button type="button" data-digit="7">7</button>
+                    <button type="button" data-digit="8">8</button>
+                    <button type="button" data-digit="9">9</button>
+                    <button type="button" id="pin-clear">CL</button>
+                    <button type="button" data-digit="0">0</button>
+                    <button type="button" id="pin-back">⌫</button>
+                </div>
+                <button type="button" class="login-btn" id="pin-confirm">Giriş Yap →</button>
+                <div class="pin-actions">
+                    <button type="button" class="link-btn" id="pin-change-user">← Kullanıcı değiştir</button>
+                </div>
+            </div>
+
+            <div class="admin-login">
+                <a href="/Identity/Account/Login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)">Yönetici Girişi (e-posta/şifre)</a>
+            </div>
+        </div>
+    </div>
+
+    <form id="pin-submit-form" method="post" asp-controller="RestaurantAuth" asp-action="Login" style="display:none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="userId" id="pin-user-id" />
+        <input type="hidden" name="pin" id="pin-value" />
+        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+    </form>
+
+    <script>
+        (function () {
+            var staffStep = document.getElementById('staff-step');
+            var pinStep = document.getElementById('pin-step');
+            var selectedName = document.getElementById('selected-name');
+            var pinDots = document.getElementById('pin-dots');
+            var pinUserId = document.getElementById('pin-user-id');
+            var pinValue = document.getElementById('pin-value');
+            var pin = '';
+            var maxLength = 6;
+
+            function renderDots() {
+                var count = Math.max(pin.length, 4);
+                var parts = [];
+                for (var i = 0; i < count; i++) { parts.push(i < pin.length ? '●' : '○'); }
+                pinDots.textContent = parts.join(' ');
+            }
+
+            document.querySelectorAll('.staff-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.staff-btn').forEach(function (b) { b.classList.remove('selected'); });
+                    btn.classList.add('selected');
+                    pinUserId.value = btn.getAttribute('data-user-id');
+                    selectedName.textContent = btn.getAttribute('data-user-name');
+                    pin = '';
+                    renderDots();
+                    staffStep.style.display = 'none';
+                    pinStep.classList.add('active');
+                });
+            });
+
+            document.getElementById('pin-change-user').addEventListener('click', function () {
+                pin = '';
+                staffStep.style.display = '';
+                pinStep.classList.remove('active');
+            });
+
+            document.getElementById('pin-back').addEventListener('click', function () {
+                pin = pin.slice(0, -1);
+                renderDots();
+            });
+
+            document.getElementById('pin-clear').addEventListener('click', function () {
+                pin = '';
+                renderDots();
+            });
+
+            document.getElementById('pin-pad').querySelectorAll('[data-digit]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (pin.length >= maxLength) { return; }
+                    pin += btn.getAttribute('data-digit');
+                    renderDots();
+                });
+            });
+
+            // PIN 1-6 hane arasında herhangi bir uzunlukta olabilir (Edip'in örneği: tek haneli
+            // "1" gibi) - bu yüzden otomatik gönderim yerine açık bir "Giriş Yap" tuşu var.
+            document.getElementById('pin-confirm').addEventListener('click', function () {
+                if (pin.length === 0) { return; }
+                pinValue.value = pin;
+                document.getElementById('pin-submit-form').submit();
+            });
+        })();
+    </script>
+</body>
+</html>

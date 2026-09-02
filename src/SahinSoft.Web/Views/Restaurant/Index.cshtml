@@ -1,0 +1,221 @@
+@model SahinSoft.Web.Models.RestaurantFloorViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Masa Satış";
+    var allTables = Model.Sections.SelectMany(s => s.Tables).ToList();
+    var emptyCount = allTables.Count(t => !t.IsOccupied);
+    var occupiedCount = allTables.Count(t => t.IsOccupied);
+    var openTotal = allTables.Where(t => t.IsOccupied).Sum(t => t.RunningTotal);
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/restaurant-pos.css" asp-append-version="true" />
+}
+
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">RESTORAN OPERASYONU</div>
+        <div class="h1">Masa Satış</div>
+        <div class="sub">Salonları ve açık adisyonları tek ekrandan yönetin.</div>
+    </div>
+    <div class="actions">
+        <button type="button" class="rbtn" id="move-table-btn" disabled>⇄ Masa Taşı</button>
+        <button type="button" class="rbtn" id="merge-table-btn" disabled>⇄ Birleştir</button>
+    </div>
+</div>
+
+<div class="rcard summary">
+    <div><small>Boş</small><strong>@emptyCount</strong></div>
+    <div><small>Dolu</small><strong>@occupiedCount</strong></div>
+    <div style="margin-left:auto"><small>Açık Adisyon</small><strong>@openTotal.ToString("N2") ₺</strong></div>
+</div>
+
+<div class="restaurant-pos">
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success py-2">@success</div>
+    }
+
+    @foreach (var floorSection in Model.Sections)
+    {
+        <div class="floor-section">
+            <h2>@floorSection.Name</h2>
+            <div class="floor-grid">
+                @foreach (var table in floorSection.Tables)
+                {
+                    if (table.IsOccupied)
+                    {
+                        <button type="button" class="table-tile occupied" data-open-check="@table.CheckId"
+                                data-select-table="@table.TableId" data-session-id="@table.SessionId" data-table-name="@table.Name">
+                            <span class="table-name">@table.Name</span>
+                            <span class="table-meta">
+                                @table.GuestCount kişi ·
+                                @(table.OpenedAtUtc.HasValue ? table.OpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")
+                            </span>
+                            <span class="table-meta">@table.RunningTotal.ToString("N2") ₺</span>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="table-tile" data-open-table="@table.TableId" data-table-name="@table.Name" data-capacity="@table.Capacity"
+                                data-select-table="@table.TableId" data-session-id="">
+                            <span class="table-name">@table.Name</span>
+                            <span class="table-meta">@table.Capacity kişilik · Boş</span>
+                        </button>
+                    }
+                }
+                @if (floorSection.Tables.Count == 0)
+                {
+                    <span class="text-secondary">Bu salonda masa tanımlı değil.</span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Model.Sections.Count == 0)
+    {
+        <div class="erp-panel"><div class="erp-panel-body">Henüz salon/masa tanımlanmamış. <a asp-controller="RestaurantSections" asp-action="Create">Salon ekle</a></div></div>
+    }
+</div>
+
+<!-- Masa açma modalı -->
+<div class="modal fade" id="openTableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="OpenTable">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tableId" id="openTableId" />
+                <input type="hidden" name="submissionKey" id="openTableSubmissionKey" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Masa Aç — <span id="openTableName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Kişi Sayısı</label>
+                    <input type="number" name="guestCount" id="openTableGuestCount" class="form-control" min="1" value="2" autofocus />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Masayı Aç</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Masa taşıma modalı -->
+<div class="modal fade" id="moveTableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="MoveTable">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sessionId" id="moveSessionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Masa Taşı — <span id="moveFromName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Hedef Masa (boş)</label>
+                    <select name="toTableId" id="moveToTableId" class="form-select" required>
+                        <option value="">Seçiniz...</option>
+                        @foreach (var table in allTables.Where(t => !t.IsOccupied))
+                        {
+                            <option value="@table.TableId">@table.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Taşı</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Masa birleştirme modalı -->
+<div class="modal fade" id="mergeTableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="MergeTables">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="fromSessionId" id="mergeFromSessionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Masaları Birleştir — <span id="mergeFromName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small">Seçilen masadaki siparişler, aşağıda seçeceğiniz dolu masanın adisyonuna taşınır.</p>
+                    <label class="form-label">Hedef Masa (dolu)</label>
+                    <select name="intoSessionId" id="mergeIntoSessionId" class="form-select" required>
+                        <option value="">Seçiniz...</option>
+                        @foreach (var table in allTables.Where(t => t.IsOccupied))
+                        {
+                            <option value="@table.SessionId" data-table-id="@table.TableId">@table.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Birleştir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var selectedTableId = null;
+        var selectedSessionId = null;
+
+        document.querySelectorAll('[data-select-table]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.table-tile').forEach(function (t) { t.style.outline = ''; });
+                selectedTableId = btn.getAttribute('data-select-table');
+                selectedSessionId = btn.getAttribute('data-session-id') || null;
+                btn.style.outline = '2px solid var(--pos-navy, #0B2239)';
+                document.getElementById('move-table-btn').disabled = !selectedSessionId;
+                document.getElementById('merge-table-btn').disabled = !selectedSessionId;
+            });
+        });
+
+        document.querySelectorAll('[data-open-table]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('openTableId').value = btn.getAttribute('data-open-table');
+                document.getElementById('openTableName').textContent = btn.getAttribute('data-table-name');
+                document.getElementById('openTableGuestCount').value = Math.min(2, parseInt(btn.getAttribute('data-capacity'), 10) || 2);
+                document.getElementById('openTableSubmissionKey').value = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random()));
+                new bootstrap.Modal(document.getElementById('openTableModal')).show();
+            });
+        });
+        document.querySelectorAll('[data-open-check]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                window.location.href = '@Url.Action("Check")?id=' + btn.getAttribute('data-open-check');
+            });
+        });
+
+        document.getElementById('move-table-btn').addEventListener('click', function () {
+            if (!selectedSessionId) { return; }
+            document.getElementById('moveSessionId').value = selectedSessionId;
+            document.getElementById('moveFromName').textContent = document.querySelector('[data-select-table="' + selectedTableId + '"] .table-name').textContent;
+            new bootstrap.Modal(document.getElementById('moveTableModal')).show();
+        });
+
+        document.getElementById('merge-table-btn').addEventListener('click', function () {
+            if (!selectedSessionId) { return; }
+            document.getElementById('mergeFromSessionId').value = selectedSessionId;
+            document.getElementById('mergeFromName').textContent = document.querySelector('[data-select-table="' + selectedTableId + '"] .table-name').textContent;
+            // Hedef listeden kendi masasını çıkar - bir masa kendisiyle birleştirilemez.
+            var select = document.getElementById('mergeIntoSessionId');
+            Array.from(select.options).forEach(function (opt) {
+                opt.hidden = opt.getAttribute('data-table-id') === selectedTableId;
+            });
+            new bootstrap.Modal(document.getElementById('mergeTableModal')).show();
+        });
+    </script>
+}

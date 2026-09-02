@@ -8,12 +8,20 @@
 *.user
 *.suo
 
-# Build/publish artifacts (compiled output, not source)
+# Build/publish artifacts (compiled output, not source) - installer .exe'leri de burada, ~240MB+
+# oldukları için GitHub'ın 100MB dosya sınırını aşıyorlar, asla commit edilmemeli.
 deploy/iis-publish/
 deploy/dataresettool-publish/
 deploy/*.zip
+deploy/*.exe
+src/SahinSoft.Setup/payload.zip
 publish-fresh/
 **/publish-fresh/
+
+# Kullanıcı tarafından yüklenen ürün fotoğrafları - kaynak kod değil, her kurulumda kendi yerel
+# dosyaları olur (bkz. feedback-sahinsoft-installer-workflow: dotnet publish bu klasöre hiç
+# dokunmaz, dolayısıyla dağıtımlar arasında kaybolmaz).
+src/SahinSoft.Web/wwwroot/uploads/
 
 # macOS
 .DS_Store

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SahinSoft.Domain.Enums;
 
 namespace SahinSoft.Web.Models;
 
@@ -42,6 +43,12 @@ public sealed class InventorySettingsViewModel
 
     [Display(Name = "Restoran Modülü aktif")]
     public bool IsRestaurantModuleEnabled { get; set; }
+
+    [Display(Name = "Yazar Kasa")]
+    public FiscalDeviceType FiscalDeviceType { get; set; }
+
+    [Display(Name = "Fiscal Agent Adresi")]
+    public string? FiscalAgentUrl { get; set; }
 
     [Display(Name = "Alış Siparişi → İrsaliye otomatik onay")]
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }

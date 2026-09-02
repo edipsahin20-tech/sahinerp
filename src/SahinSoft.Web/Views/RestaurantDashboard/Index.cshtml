@@ -1,0 +1,73 @@
+@model SahinSoft.Web.Models.RestaurantDashboardViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    var shell = (SahinSoft.Web.Models.RestaurantShellViewModel)ViewBag.Shell;
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 6 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar";
+    var cashPercent = Model.NetRevenueToday == 0 ? 0 : Model.CashCollectedToday / Model.NetRevenueToday * 100;
+    var cardPercent = Model.NetRevenueToday == 0 ? 0 : Model.CreditCardCollectedToday / Model.NetRevenueToday * 100;
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="eyebrow">GÜNLÜK KONTROL MERKEZİ</div>
+<div class="h1">@greeting, @shell.UserFullName</div>
+<div class="sub">@shell.BranchName · @(shell.IsShiftOpen ? "Vardiya açık" : "Vardiya kapalı") · Son güncelleme @DateTime.Now.ToString("HH:mm")</div>
+
+<div class="dashboard-kpi-grid">
+    <div class="rcard kpi-rich"><div class="kpi-icon teal">₺</div><div class="kpi-copy"><small>Bugünkü Net Ciro</small><strong>@Model.NetRevenueToday.ToString("N2") ₺</strong><em>@Model.ClosedReceiptCountToday kapanan fiş</em></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon blue">▦</div><div class="kpi-copy"><small>Aktif Masalar</small><strong>@shell.ActiveTableCount / @shell.TotalTableCount</strong><em>@shell.OpenCheckTotal.ToString("N2") ₺ açık adisyon</em></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon green">●</div><div class="kpi-copy"><small>Nakit Tahsilat</small><strong>@Model.CashCollectedToday.ToString("N2") ₺</strong><em>Toplam cironun %@cashPercent.ToString("N1")'i</em></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon purple">▣</div><div class="kpi-copy"><small>Kredi Kartı</small><strong>@Model.CreditCardCollectedToday.ToString("N2") ₺</strong><em>Toplam cironun %@cardPercent.ToString("N1")'i</em></div></div>
+    <div class="rcard kpi-rich"><div class="kpi-icon gold">♨</div><div class="kpi-copy"><small>Mutfak Bekleyen</small><strong>@Model.KitchenPendingCount sipariş</strong><em>@(Model.KitchenPendingCount > 0 ? $"En uzun bekleme {Model.KitchenLongestWaitMinutes} dk" : "Bekleyen yok")</em></div></div>
+</div>
+
+<div class="dashboard-main">
+    <div class="rcard quick-panel">
+        <h3>Hızlı Başlat</h3><div class="quick-sub">Sık kullanılan ekranlara tek dokunuşla geçin.</div>
+        <div class="quick-grid">
+            <a class="quick-card" href="@Url.Action("Index", "Restaurant")"><span class="qicon">▦</span><span>Masa Satış<br><small>Salon ve açık adisyonlar</small></span><span style="margin-left:auto">→</span></a>
+            <a class="quick-card" href="@Url.Action("Index", "RestaurantPackage")"><span class="qicon">▣</span><span>Paket<br><small>Paket ve gel-al siparişleri</small></span><span style="margin-left:auto">→</span></a>
+            <a class="quick-card" href="@Url.Action("Index", "RestaurantSelfSale")"><span class="qicon">◇</span><span>Self Satış<br><small>Hızlı perakende satış</small></span><span style="margin-left:auto">→</span></a>
+            <a class="quick-card" href="@Url.Action("Index", "RestaurantReports")"><span class="qicon">▥</span><span>Raporlar<br><small>Ciro, X ve Z raporları</small></span><span style="margin-left:auto">→</span></a>
+            <a class="quick-card" href="@Url.Action("Index", "RestaurantKitchen")"><span class="qicon">♨</span><span>Mutfak<br><small>@Model.KitchenPendingCount bekleyen sipariş</small></span><span style="margin-left:auto">→</span></a>
+        </div>
+    </div>
+
+    <div class="rcard attention-panel">
+        <h3>Şimdi İlgilenilecekler</h3><div class="panel-sub">Operasyondaki öncelikli işler</div>
+        <a class="attn-row @(Model.KitchenPendingCount > 0 ? "urgent" : "")" href="@Url.Action("Index", "RestaurantKitchen")">
+            <div class="attn-num">@Model.KitchenPendingCount</div><div><b>Mutfakta bekleyenler</b><br><small>@(Model.KitchenPendingCount > 0 ? $"En uzun bekleme {Model.KitchenLongestWaitMinutes} dk" : "Şu an bekleyen sipariş yok")</small></div><span>→</span>
+        </a>
+        <a class="attn-row" href="@Url.Action("Index", "Restaurant")">
+            <div class="attn-num">@shell.ActiveTableCount</div><div><b>Açık masalar</b><br><small>@shell.OpenCheckTotal.ToString("N2") ₺ toplam açık adisyon</small></div><span>→</span>
+        </a>
+    </div>
+
+    <div class="rcard moves-panel">
+        <div style="display:flex;justify-content:space-between"><div><h3>Son Hareketler</h3><div class="panel-sub">Vardiyadaki son işlemler</div></div></div>
+        @if (Model.RecentMovements.Count == 0)
+        {
+            <p class="text-secondary small mt-2">Henüz kapanan adisyon yok.</p>
+        }
+        else
+        {
+            @foreach (var movement in Model.RecentMovements)
+            {
+                <div class="move-row"><b>@movement.AtUtc.ToLocalTime().ToString("HH:mm")</b><div><b>@movement.Title</b><br><small>@movement.Subtitle</small></div><b style="color:#168354">@movement.Amount.ToString("N2") ₺</b></div>
+            }
+        }
+    </div>
+
+    <div class="rcard sales-panel">
+        <div style="display:flex;justify-content:space-between"><div><h3>Saatlik Ciro</h3><div class="panel-sub">Bugünkü satış yoğunluğu</div></div><a href="@Url.Action("Index", "RestaurantReports")" style="font-weight:700; text-decoration:none;">Rapora Git →</a></div>
+        <div class="sales-chart-wrap">
+            @{ var maxRevenue = Model.HourlyRevenue.Count > 0 ? Math.Max(Model.HourlyRevenue.Max(), 1) : 1; }
+            @for (var i = 0; i < Model.HourlyRevenue.Count; i++)
+            {
+                var heightPx = (int)(Model.HourlyRevenue[i] / maxRevenue * 180) + 6;
+                var isHot = i >= Model.HourlyRevenue.Count - 4;
+                <div class="sales-col @(isHot ? "hot" : "")"><div class="sales-bar" style="height:@(heightPx)px" title="@Model.HourlyRevenue[i].ToString("N2") ₺"></div><div class="sales-label">@(Model.HourlyRevenueStartHour + i)</div></div>
+            }
+        </div>
+    </div>
+</div>

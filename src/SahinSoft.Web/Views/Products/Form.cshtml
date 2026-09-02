@@ -4,7 +4,7 @@
     ViewData["Title"] = isEdit ? "Stok Kartını Düzenle" : "Yeni Stok Kartı";
 }
 
-<form id="evrak-form" class="erp-compact-product-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+<form id="evrak-form" class="erp-compact-product-form" method="post" enctype="multipart/form-data" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
     <input asp-for="Id" type="hidden" />
     <div class="erp-toolbar">
         <div class="erp-toolbar-title">
@@ -57,18 +57,24 @@
                                    data-lookup-endpoint="@Url.Action("Products", "Lookup")"
                                    data-lookup-title="Benzer Stok Ara"
                                    data-target-display="Name"
-                                   data-lookup-name-only="true" />
+                                   data-lookup-name-only="true"
+                                   data-lookup-navigate-edit="true"
+                                   data-lookup-edit-url="@Url.Action("Edit", "Products")"
+                                   data-current-id="@Model.Id" />
                             <button type="button" class="btn btn-outline-secondary lookup-trigger"
                                     data-lookup-endpoint="@Url.Action("Products", "Lookup")"
                                     data-lookup-title="Benzer Stok Ara"
                                     data-target-display="Name"
                                     data-lookup-name-only="true"
+                                    data-lookup-navigate-edit="true"
+                                    data-lookup-edit-url="@Url.Action("Edit", "Products")"
+                                    data-current-id="@Model.Id"
                                     title="Benzer Stok Ara">
                                 <i class="fa-solid fa-ellipsis"></i>
                             </button>
                         </div>
                         <span asp-validation-for="Name" class="text-danger small"></span>
-                        <div class="form-text">Yazarken benzer stoklar önerilir (mükerrer kayıt oluşturmayı önler). "..." ile veya F9'a basarak arayabilirsiniz.</div>
+                        <div class="form-text">Yazarken benzer stoklar önerilir. Var olan bir stok seçilirse, onayınızla o stoğun düzenleme ekranı açılır. "..." ile veya F9'a basarak arayabilirsiniz.</div>
                     </div>
                     <div class="col-md-3">
                         <label asp-for="CategoryId" class="form-label"></label>
@@ -245,8 +251,24 @@
                         <input asp-for="CountryOfOrigin" class="form-control" />
                     </div>
                     <div class="col-md-8">
-                        <label asp-for="ImagePath" class="form-label"></label>
-                        <input asp-for="ImagePath" class="form-control" placeholder="/images/products/urun.jpg" />
+                        <label class="form-label">Ürün Fotoğrafı</label>
+                        <input asp-for="ImagePath" type="hidden" />
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="@Model.ImagePath" alt=""
+                                 style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #E3E8EF;@(string.IsNullOrWhiteSpace(Model.ImagePath) ? "display:none;" : "")"
+                                 id="product-image-preview" />
+                            <div class="flex-grow-1">
+                                <input asp-for="ImageFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" id="product-image-file-input" />
+                                <span asp-validation-for="ImageFile" class="text-danger small"></span>
+                                @if (!string.IsNullOrWhiteSpace(Model.ImagePath))
+                                {
+                                    <div class="form-check mt-1">
+                                        <input asp-for="RemoveImage" class="form-check-input" id="product-image-remove" />
+                                        <label asp-for="RemoveImage" class="form-check-label small"></label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-4 d-flex align-items-center">
                         <div class="form-check form-switch mb-0">
@@ -357,6 +379,24 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        (function () {
+            var fileInput = document.getElementById('product-image-file-input');
+            var preview = document.getElementById('product-image-preview');
+            var removeCheckbox = document.getElementById('product-image-remove');
+            if (!fileInput || !preview) return;
+            fileInput.addEventListener('change', function () {
+                var file = fileInput.files && fileInput.files[0];
+                if (!file) return;
+                if (removeCheckbox) removeCheckbox.checked = false;
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = '';
+                };
+                reader.readAsDataURL(file);
+            });
+        })();
+
         function generateBarcode() {
             var type = document.getElementById('barcode-type-select').value;
             fetch('@Url.Action("GenerateBarcodeApi", "Products")?type=' + encodeURIComponent(type))

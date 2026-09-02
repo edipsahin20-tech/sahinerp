@@ -26,4 +26,12 @@ public sealed class ApplicationUser : IdentityUser
     public FinancialAccount? DefaultFinancialAccount { get; set; }
     public int? DefaultPriceListId { get; set; }
     public PriceList? DefaultPriceList { get; set; }
+
+    // Restoran POS ekranı (masaüstü kabuk) için hafif giriş: e-posta/karmaşık şifre şartı yok,
+    // kısa bir PIN yeterli. IPasswordHasher ile AYRI olarak hashleniyor - AspNetUsers.PasswordHash
+    // (normal e-posta girişi) ve Identity'nin global karmaşıklık politikasıyla hiç ilişkisi yok,
+    // bu yüzden PIN "1" gibi basit olabilir. Bkz. RestaurantAuthController.
+    public string? RestaurantPinHash { get; set; }
+    public decimal DiscountLowerLimitPercent { get; set; }
+    public decimal DiscountUpperLimitPercent { get; set; }
 }

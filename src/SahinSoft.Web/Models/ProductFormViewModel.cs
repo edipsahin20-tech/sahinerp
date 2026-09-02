@@ -80,8 +80,14 @@ public sealed class ProductFormViewModel : IValidatableObject
     public bool IsActive { get; set; } = true;
 
     [StringLength(500)]
-    [Display(Name = "Görsel yolu")]
     public string? ImagePath { get; set; }
+
+    // Stok Tanıtım Kartı'ndan yüklenen fotoğraf - ImagePath'e kaydedilir, kendisi DB'de tutulmaz.
+    [Display(Name = "Ürün Fotoğrafı")]
+    public Microsoft.AspNetCore.Http.IFormFile? ImageFile { get; set; }
+
+    [Display(Name = "Fotoğrafı kaldır")]
+    public bool RemoveImage { get; set; }
 
     [StringLength(1000)]
     [Display(Name = "Açıklama")]
@@ -101,13 +107,25 @@ public sealed class ProductFormViewModel : IValidatableObject
     [Display(Name = "Online Siparişte Görünsün mü?")]
     public bool ShowInOnlineOrder { get; set; } = true;
 
-    [StringLength(100)]
-    [Display(Name = "Yazıcı")]
+    [Display(Name = "Şubelerde Görünsün mü?")]
+    public bool VisibleInBranches { get; set; } = true;
+
+    [Display(Name = "İndirim Uygulanmaz")]
+    public bool DiscountNotApplicable { get; set; }
+
+    [Display(Name = "Promosyon Uygulanmaz")]
+    public bool PromotionNotApplicable { get; set; }
+
+    [Display(Name = "Mutfak Yazıcı Adı")]
     public string? KitchenPrinterName { get; set; }
+
+    [Display(Name = "Mutfak İstasyonu (Yazıcı)")]
+    public int? DefaultKitchenStationId { get; set; }
 
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> TaxRateOptions { get; set; } = [];
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> CategoryOptions { get; set; } = [];
     public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> UnitOfMeasureOptions { get; set; } = [];
+    public IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> KitchenStationOptions { get; set; } = [];
     public IEnumerable<string> BrandOptions { get; set; } = [];
     public IEnumerable<string> ModelOptions { get; set; } = [];
 

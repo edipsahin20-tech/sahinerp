@@ -1,0 +1,165 @@
+@model SahinSoft.Web.Models.RestaurantPackageViewModel
+@using SahinSoft.Domain.Enums
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Paket & Gel-Al";
+
+    static string ChannelLabel(PackageOrderChannel channel) => channel switch
+    {
+        PackageOrderChannel.Phone => "Telefon",
+        PackageOrderChannel.Web => "Web",
+        _ => "Gel-Al"
+    };
+
+    static string StatusLabel(PackageOrderStatus status) => status switch
+    {
+        PackageOrderStatus.Preparing => "Hazırlanıyor",
+        PackageOrderStatus.Ready => "Hazır",
+        PackageOrderStatus.CourierWaiting => "Kurye Bekliyor",
+        PackageOrderStatus.OnTheWay => "Yolda",
+        PackageOrderStatus.Delivered => "Teslim Edildi",
+        _ => "İptal"
+    };
+
+    static string NextActionLabel(PackageOrderStatus status, PackageOrderChannel channel) => status switch
+    {
+        PackageOrderStatus.Preparing => "Hazır →",
+        PackageOrderStatus.Ready => channel == PackageOrderChannel.PickupInStore ? "Teslim Edildi →" : "Kurye Bekliyor →",
+        PackageOrderStatus.CourierWaiting => "Yolda →",
+        PackageOrderStatus.OnTheWay => "Teslim Edildi →",
+        _ => "Tamamlandı"
+    };
+}
+
+<div class="toolbar">
+    <div>
+        <div class="eyebrow">PAKET OPERASYONU</div>
+        <div class="h1">Paket & Gel-Al</div>
+        <div class="sub">Telefon, web ve şubeden teslim siparişlerini takip edin.</div>
+    </div>
+    <button type="button" class="rbtn gold" data-bs-toggle="modal" data-bs-target="#newPackageModal">+ Yeni Paket Siparişi</button>
+</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="rtabs">
+    <a class="rtab @(Model.ActiveTab == "active" ? "active" : "")" asp-action="Index" asp-route-tab="active">Aktif <span>(@Model.ActiveCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "ready" ? "active" : "")" asp-action="Index" asp-route-tab="ready">Hazır <span>(@Model.ReadyCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "ontheway" ? "active" : "")" asp-action="Index" asp-route-tab="ontheway">Yolda <span>(@Model.OnTheWayCount)</span></a>
+</div>
+
+<div class="pack-layout">
+    <div class="rcard pack-list">
+        @if (Model.Orders.Count == 0)
+        {
+            <div class="text-secondary small p-3">Bu sekmede sipariş yok.</div>
+        }
+        @foreach (var order in Model.Orders)
+        {
+            <a class="pack-item @(Model.Selected?.PackageOrderId == order.PackageOrderId ? "active" : "")"
+               asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-selected="@order.PackageOrderId">
+                <b>@order.PackageNumber · @order.CustomerName</b>
+                <small>@ChannelLabel(order.Channel) · @order.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</small>
+                <div class="pack-item-bottom">
+                    <span class="rest-pill">@StatusLabel(order.Status)</span>
+                    <b>@order.Total.ToString("N2") ₺</b>
+                </div>
+            </a>
+        }
+    </div>
+
+    <div class="rcard pack-detail">
+        @if (Model.Selected is null)
+        {
+            <div class="pack-detail-empty">Detayını görmek için soldan bir sipariş seçin.</div>
+        }
+        else
+        {
+            var s = Model.Selected;
+            <div class="eyebrow">SEÇİLİ SİPARİŞ</div>
+            <h2 style="margin:4px 0;">@s.PackageNumber</h2>
+            <span class="rest-pill">@StatusLabel(s.Status)</span> <span class="rest-pill">@ChannelLabel(s.Channel)</span>
+
+            <div class="pack-customer-card">
+                <h4>@s.CustomerName</h4>
+                @if (!string.IsNullOrWhiteSpace(s.CustomerPhone))
+                {
+                    <div>☎ @s.CustomerPhone</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(s.DeliveryAddress))
+                {
+                    <small>@s.DeliveryAddress</small>
+                }
+            </div>
+
+            <div class="pack-lines">
+                @foreach (var line in s.Lines)
+                {
+                    <div>@line.Quantity.ToString("0.##") × @line.ProductName <b class="pack-line-total">@line.LineTotal.ToString("N2") ₺</b></div>
+                }
+                @if (s.Lines.Count == 0)
+                {
+                    <div class="text-secondary small">Henüz ürün eklenmedi.</div>
+                }
+            </div>
+
+            <h2 style="text-align:right;">@s.Total.ToString("N2") ₺</h2>
+
+            <div class="pack-actions">
+                <a class="rbtn" asp-controller="Restaurant" asp-action="Check" asp-route-id="@s.CheckId">Adisyona Git</a>
+                @if (s.Status != PackageOrderStatus.Delivered)
+                {
+                    <form method="post" asp-action="Advance">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="packageOrderId" value="@s.PackageOrderId" />
+                        <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                        <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
+                        <button type="submit" class="rbtn gold" style="width:100%;">@NextActionLabel(s.Status, s.Channel)</button>
+                    </form>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Yeni Paket Siparişi modalı -->
+<div class="modal fade" id="newPackageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="Create">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Paket Siparişi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Kanal</label>
+                    <select name="channel" class="form-select mb-2" required>
+                        <option value="1">Telefon</option>
+                        <option value="2">Web</option>
+                        <option value="3">Gel-Al</option>
+                    </select>
+                    <label class="form-label">Müşteri Adı</label>
+                    <input type="text" name="customerName" class="form-control mb-2" required />
+                    <label class="form-label">Telefon</label>
+                    <input type="text" name="customerPhone" class="form-control mb-2" />
+                    <label class="form-label">Teslimat Adresi</label>
+                    <textarea name="deliveryAddress" class="form-control" rows="2"></textarea>
+                    <div class="form-text">Gel-Al siparişinde telefon/adres zorunlu değildir; Telefon/Web siparişinde ikisi de zorunludur.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Siparişi Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

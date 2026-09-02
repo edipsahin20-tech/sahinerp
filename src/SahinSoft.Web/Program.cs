@@ -32,6 +32,46 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Restoran modülü açıkken giriş yapılmamış istekler normal e-posta/şifre ekranı (/Identity/Account/Login)
+// yerine PIN ekranına (RestaurantAuthController) yönlendirilir - restoran personelinin e-posta/karmaşık
+// şifre öğrenmesine gerek kalmaz. Modül kapalıysa (ön muhasebe-only kurulum) davranış hiç değişmez.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    var defaultRedirect = options.Events.OnRedirectToLogin;
+    options.Events.OnRedirectToLogin = async context =>
+    {
+        // Edip (2026-09-02): "2 ayrı program olsun bi muhasebe bide restorant olsun" - kök adres
+        // (/) ve muhasebe sayfaları ARTIK restoran'a hiç kaçırılmaz, her zaman normal e-posta/
+        // şifre girişine gider (Program 1). SADECE bir restoran sayfası (/Restaurant...) doğrudan
+        // istenip oturum yoksa Kasiyer Girişi'ne yönlendirilir (Program 2 - masaüstü kabuk
+        // shell.config.json'da doğrudan /RestaurantDashboard'a bakıyor, bkz. SahinSoft.DesktopShell).
+        // Önceki sürüm restaurantEnabled true olduğunda KÖK ADRESİ DE kaçırıyordu - bu, canlıda
+        // muhasebe tarafının "kaybolduğu" izlenimi yaratan gerçek bir kullanılabilirlik hatasıydı.
+        var requestPath = context.Request.Path.Value ?? "/";
+        var isRestaurantPath = requestPath.StartsWith("/Restaurant", StringComparison.OrdinalIgnoreCase);
+
+        if (isRestaurantPath)
+        {
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var restaurantEnabled = await dbContext.InventorySettings
+                .AsNoTracking()
+                .Where(x => x.Id == 1)
+                .Select(x => x.IsRestaurantModuleEnabled)
+                .SingleOrDefaultAsync();
+
+            if (restaurantEnabled)
+            {
+                var returnUrl = requestPath + context.Request.QueryString;
+                context.Response.Redirect($"/RestaurantAuth/Login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+                return;
+            }
+        }
+
+        await defaultRedirect(context);
+    };
+});
+
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add<ConcurrencyExceptionFilter>());
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
@@ -45,9 +85,16 @@ builder.Services.AddScoped<InventoryCountPostingService>();
 builder.Services.AddScoped<InventoryBalanceService>();
 builder.Services.AddScoped<PaymentReceiptPostingService>();
 builder.Services.AddScoped<NegotiableInstrumentPostingService>();
+builder.Services.AddScoped<RestaurantPostingService>();
 builder.Services.AddScoped<OverdueScheduleService>();
 builder.Services.AddScoped<InvoiceCancellationOrchestrationService>();
 builder.Services.AddScoped<DispatchNotePostingService>();
+
+// Hibrit yerel/bulut senkron (Faz B): MerkezSync:Enabled kapalıyken bu servis
+// hemen uyanıp tekrar uyur, hiçbir şeye dokunmaz - şube tamamen bağımsız çalışır.
+builder.Services.Configure<MerkezSyncOptions>(builder.Configuration.GetSection(MerkezSyncOptions.SectionName));
+builder.Services.AddHttpClient("MerkezSync");
+builder.Services.AddHostedService<BranchSyncBackgroundService>();
 
 var app = builder.Build();
 

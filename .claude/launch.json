@@ -4,8 +4,8 @@
     {
       "name": "sahinsoft-web",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/SahinSoft.Web/SahinSoft.Web.csproj", "--urls", "http://localhost:5055"],
-      "port": 5055
+      "runtimeArgs": ["run", "--project", "src/SahinSoft.Web/SahinSoft.Web.csproj", "--urls", "http://localhost:5099"],
+      "port": 5099
     }
   ]
 }

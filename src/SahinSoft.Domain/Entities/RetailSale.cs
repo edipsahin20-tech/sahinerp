@@ -30,6 +30,12 @@ public sealed class RetailSale : EntityBase
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }
 
+    // Faz 3 kararı: restoran satışları her zaman "Perakende Satışlar Carisi" adlı sabit bir cariye
+    // ve "Perakende yurtiçi ticaret" ticaret türüne postalanır (bkz. Invoice.TradeType ile aynı
+    // GİB/e-fatura serbest metin alanı örüntüsü, burada RetailSale kendi kopyasını tutar çünkü
+    // Invoice'a yeni tür eklenmedi - Karar 1).
+    public string? TradeType { get; set; }
+
     public int RestaurantCheckId { get; set; }
     public RestaurantCheck RestaurantCheck { get; set; } = null!;
 

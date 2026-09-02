@@ -247,6 +247,10 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ApiKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -285,6 +289,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApiKey")
+                        .IsUnique()
+                        .HasFilter("[ApiKey] IS NOT NULL");
 
                     b.HasIndex("Code")
                         .IsUnique();
@@ -2029,6 +2037,12 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<bool>("EnforceStockLevel")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FiscalAgentUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FiscalDeviceType")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsRestaurantModuleEnabled")
                         .HasColumnType("bit");
 
@@ -2100,6 +2114,7 @@ namespace SahinSoft.Web.Data.Migrations
                             DispatchToInvoiceSalesAutoApprove = false,
                             EnableMinimumStockWarning = true,
                             EnforceStockLevel = true,
+                            FiscalDeviceType = 0,
                             IsRestaurantModuleEnabled = false,
                             OrderToDispatchPurchaseAutoApprove = false,
                             OrderToDispatchSalesAutoApprove = false,
@@ -3082,6 +3097,88 @@ namespace SahinSoft.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SahinSoft.Domain.Entities.PackageOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("DeliveredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeliveryAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("DispatchedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PackageNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("ReadyAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<int>("RestaurantCheckId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SubmissionKey")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PackageNumber")
+                        .IsUnique();
+
+                    b.HasIndex("RecordId")
+                        .IsUnique();
+
+                    b.HasIndex("RestaurantCheckId")
+                        .IsUnique();
+
+                    b.HasIndex("SubmissionKey")
+                        .IsUnique()
+                        .HasFilter("[SubmissionKey] IS NOT NULL");
+
+                    b.ToTable("PackageOrders");
+                });
+
             modelBuilder.Entity("SahinSoft.Domain.Entities.PaymentReceipt", b =>
                 {
                     b.Property<int>("Id")
@@ -3385,6 +3482,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("DiscountNotApplicable")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ImagePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -3415,6 +3515,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("PromotionNotApplicable")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("PurchasePrice")
                         .HasPrecision(18, 2)
@@ -3479,6 +3582,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("VisibleInBranches")
+                        .HasColumnType("bit");
+
                     b.Property<string>("WebsitePath")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
@@ -3510,1361 +3616,6 @@ namespace SahinSoft.Web.Data.Migrations
                             t.HasCheckConstraint("CK_Products_Prices", "[PurchasePrice] >= 0 AND [SalePrice] >= 0");
 
                             t.HasCheckConstraint("CK_Products_Quantities", "[MinimumStockQuantity] >= 0");
-                        });
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Barcode = "2000000000015",
-                            Brand = "Ingenico",
-                            CategoryId = 1,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "IDE280",
-                            Name = "Ingenico IDE280",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YK-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 1,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Barcode = "2000000000022",
-                            Brand = "Ingenico",
-                            CategoryId = 1,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Move 5000F",
-                            Name = "Ingenico Move 5000F",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YK-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 1,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Barcode = "2000000000039",
-                            Brand = "PayGo",
-                            CategoryId = 1,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "SP630PRO ECR",
-                            Name = "PAYGO SP630PRO ECR",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YK-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 1,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Barcode = "2000000000046",
-                            Brand = "Profilo",
-                            CategoryId = 1,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "S900",
-                            Name = "Profilo S900",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YK-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 1,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Barcode = "2000000000053",
-                            Brand = "inPOS",
-                            CategoryId = 1,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "m530",
-                            Name = "inPOS m530 Mobil POS",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YK-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 1,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Barcode = "2000000000060",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "CL3000",
-                            Name = "CAS CL3000 Market Terazisi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Barcode = "2000000000077",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "CL8000",
-                            Name = "CAS CL8000 Dokunmatik Terazi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Barcode = "2000000000084",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "CN-1",
-                            Name = "CAS CN-1 Sistem Terazisi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Barcode = "2000000000091",
-                            Brand = "Digi",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "SM100P",
-                            Name = "Digi SM100P Boyunlu Terazi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Barcode = "2000000000107",
-                            Brand = "Digi",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "SM-120T",
-                            Name = "Digi SM-120T Dokunmatik Terazi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Barcode = "2000000000114",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "ER-JR",
-                            Name = "CAS ER-JR Masaüstü Terazi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0006",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Barcode = "2000000000121",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "FW-500",
-                            Name = "CAS FW-500 Su Geçirmez Terazi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0007",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 13,
-                            Barcode = "2000000000138",
-                            Brand = "CAS",
-                            CategoryId = 2,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "PDI",
-                            Name = "CAS PDI Ankastre Kasa Terazisi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "TR-0008",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Barcode = "2000000000145",
-                            Brand = "Hillpos",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HRS-28",
-                            Name = "Hillpos HRS-28",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 15,
-                            Barcode = "2000000000152",
-                            Brand = "Hillpos",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HSC-82",
-                            Name = "Hillpos HSC-82",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Barcode = "2000000000169",
-                            Brand = "Hillpos",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HSD-92",
-                            Name = "Hillpos HSD-92",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 17,
-                            Barcode = "2000000000176",
-                            Brand = "Newland",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "TP-13",
-                            Name = "Newland TP-13",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 18,
-                            Barcode = "2000000000183",
-                            Brand = "Newland",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "TP-14",
-                            Name = "Newland TP-14",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 19,
-                            Barcode = "2000000000190",
-                            Brand = "Hillpos",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HS-6700",
-                            Name = "Hillpos HS-6700",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0006",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 20,
-                            Barcode = "2000000000206",
-                            Brand = "Hillpos",
-                            CategoryId = 3,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "VS-6800",
-                            Name = "Hillpos VS-6800",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "BO-0007",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 21,
-                            Barcode = "2000000000213",
-                            Brand = "Argox",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "OS-214 Plus",
-                            Name = "Argox OS-214 Plus Barkod Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 22,
-                            Barcode = "2000000000220",
-                            Brand = "Hillpos",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HDT-400",
-                            Name = "Hillpos HDT-400 Barkod Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 23,
-                            Barcode = "2000000000237",
-                            Brand = "Hillpos",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HTT-440",
-                            Name = "Hillpos HTT-440 Barkod Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 24,
-                            Barcode = "2000000000244",
-                            Brand = "TSC",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "TTP-244CE",
-                            Name = "TSC TTP-244CE Barkod Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 25,
-                            Barcode = "2000000000251",
-                            Brand = "Xprinter",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "XP-470B",
-                            Name = "Xprinter XP-470B Barkod Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 26,
-                            Barcode = "2000000000268",
-                            Brand = "Hillpos",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "H380",
-                            Name = "Hillpos H380 Fiş Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0006",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 27,
-                            Barcode = "2000000000275",
-                            Brand = "Hillpos",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Q800",
-                            Name = "Hillpos Q800 Fiş Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0007",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 28,
-                            Barcode = "2000000000282",
-                            Brand = "Bixolon",
-                            CategoryId = 4,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "SPP-R310",
-                            Name = "Bixolon SPP-R310 Mobil Fiş Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YZ-0008",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 29,
-                            Barcode = "2000000000299",
-                            Brand = "Chainway",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "C61",
-                            Name = "Chainway C61",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 30,
-                            Barcode = "2000000000305",
-                            Brand = "Chainway",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "C66",
-                            Name = "Chainway C66",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 31,
-                            Barcode = "2000000000312",
-                            Brand = "Hillpos",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "C7X",
-                            Name = "Hillpos C7X Tablet",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 32,
-                            Barcode = "2000000000329",
-                            Brand = "Hillpos",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "CM550X",
-                            Name = "Hillpos CM550X",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 33,
-                            Barcode = "2000000000336",
-                            Brand = "Hillpos",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HT42",
-                            Name = "Hillpos HT42",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 34,
-                            Barcode = "2000000000343",
-                            Brand = "Hillpos",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HT42K",
-                            Name = "Hillpos HT42K",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0006",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 35,
-                            Barcode = "2000000000350",
-                            Brand = "Hillpos",
-                            CategoryId = 5,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "HT44",
-                            Name = "Hillpos HT44",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "ET-0007",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 36,
-                            Barcode = "2000000000367",
-                            Brand = "Hillpos",
-                            CategoryId = 6,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Touch Pro 15",
-                            Name = "Hillpos Touch Pro 15",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PC-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "dokunmatik-pos.html"
-                        },
-                        new
-                        {
-                            Id = 37,
-                            Barcode = "2000000000374",
-                            Brand = "Hillpos",
-                            CategoryId = 6,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "All-in-One Dual POS",
-                            Name = "Hillpos All-in-One Dual POS",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PC-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "dokunmatik-pos.html"
-                        },
-                        new
-                        {
-                            Id = 38,
-                            Barcode = "2000000000381",
-                            Brand = "Hillpos",
-                            CategoryId = 6,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Slim Touch 15",
-                            Name = "Hillpos Slim Touch 15",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PC-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "dokunmatik-pos.html"
-                        },
-                        new
-                        {
-                            Id = 39,
-                            Barcode = "2000000000398",
-                            Brand = "Hillpos",
-                            CategoryId = 6,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Kiosk POS 21.5",
-                            Name = "Hillpos Kiosk POS 21.5",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PC-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "dokunmatik-pos.html"
-                        },
-                        new
-                        {
-                            Id = 40,
-                            Barcode = "2000000000404",
-                            CategoryId = 7,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Name = "Özel ERP & CRM Yazılımları",
-                            ProductType = "Yazılım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YW-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 3,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = false,
-                            Unit = "Adet",
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 41,
-                            Barcode = "2000000000411",
-                            CategoryId = 7,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Name = "Stok ve Depo Yönetimi Yazılımı",
-                            ProductType = "Yazılım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YW-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 3,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = false,
-                            Unit = "Adet",
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 42,
-                            Barcode = "2000000000428",
-                            CategoryId = 7,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Name = "Fabrika ve Üretim Takibi Yazılımı",
-                            ProductType = "Yazılım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YW-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 3,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = false,
-                            Unit = "Adet",
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 43,
-                            Barcode = "2000000000435",
-                            CategoryId = 7,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Name = "API ve Donanım Entegrasyonları",
-                            ProductType = "Yazılım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YW-0004",
-                            StockQuantity = 0m,
-                            TaxRateId = 3,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = false,
-                            Unit = "Adet",
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 44,
-                            Barcode = "2000000000442",
-                            CategoryId = 7,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Name = "GİB & E-Fatura Çözümleri",
-                            ProductType = "Yazılım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "YW-0005",
-                            StockQuantity = 0m,
-                            TaxRateId = 3,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = false,
-                            Unit = "Adet",
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 45,
-                            Barcode = "2000000000459",
-                            Brand = "Genel",
-                            CategoryId = 8,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Metal Kasa",
-                            Name = "Para Çekmecesi",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PE-0001",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "index.html"
-                        },
-                        new
-                        {
-                            Id = 46,
-                            Barcode = "2000000000466",
-                            Brand = "Genel",
-                            CategoryId = 8,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Fiyat Sorgulama Terminali",
-                            Name = "Fiyat Gör Cihazı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PE-0002",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "index.html"
-                        },
-                        new
-                        {
-                            Id = 47,
-                            Barcode = "2000000000473",
-                            Brand = "Genel",
-                            CategoryId = 8,
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LoyaltyPoints = 0,
-                            MinimumStockQuantity = 0m,
-                            Model = "Mobil Fiş Yazıcı",
-                            Name = "Mobil Yazıcı",
-                            ProductType = "Donanım",
-                            PurchasePrice = 0m,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            SalePrice = 0m,
-                            ShowAsShortcut = true,
-                            ShowInMobile = true,
-                            ShowInOnlineOrder = true,
-                            StockCode = "PE-0003",
-                            StockQuantity = 0m,
-                            TaxRateId = 2,
-                            TrackLots = false,
-                            TrackSerialNumbers = false,
-                            TrackStock = true,
-                            Unit = "Adet",
-                            WebsitePath = "index.html"
                         });
                 });
 
@@ -4937,619 +3688,6 @@ namespace SahinSoft.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_ProductBarcodes_Numeric", "[BarcodeType] = N'OTHER' OR [Barcode] NOT LIKE '%[^0-9]%'");
                         });
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Barcode = "2000000000015",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 1,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Barcode = "2000000000022",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 2,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Barcode = "2000000000039",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 3,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Barcode = "2000000000046",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 4,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Barcode = "2000000000053",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 5,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Barcode = "2000000000060",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 6,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Barcode = "2000000000077",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 7,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Barcode = "2000000000084",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 8,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Barcode = "2000000000091",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 9,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Barcode = "2000000000107",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 10,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Barcode = "2000000000114",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 11,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Barcode = "2000000000121",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 12,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 13,
-                            Barcode = "2000000000138",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 13,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Barcode = "2000000000145",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 14,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 15,
-                            Barcode = "2000000000152",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 15,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Barcode = "2000000000169",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 16,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 17,
-                            Barcode = "2000000000176",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 17,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 18,
-                            Barcode = "2000000000183",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 18,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 19,
-                            Barcode = "2000000000190",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 19,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 20,
-                            Barcode = "2000000000206",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 20,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 21,
-                            Barcode = "2000000000213",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 21,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 22,
-                            Barcode = "2000000000220",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 22,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 23,
-                            Barcode = "2000000000237",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 23,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 24,
-                            Barcode = "2000000000244",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 24,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 25,
-                            Barcode = "2000000000251",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 25,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 26,
-                            Barcode = "2000000000268",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 26,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 27,
-                            Barcode = "2000000000275",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 27,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 28,
-                            Barcode = "2000000000282",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 28,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 29,
-                            Barcode = "2000000000299",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 29,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 30,
-                            Barcode = "2000000000305",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 30,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 31,
-                            Barcode = "2000000000312",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 31,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 32,
-                            Barcode = "2000000000329",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 32,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 33,
-                            Barcode = "2000000000336",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 33,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 34,
-                            Barcode = "2000000000343",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 34,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 35,
-                            Barcode = "2000000000350",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 35,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 36,
-                            Barcode = "2000000000367",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 36,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 37,
-                            Barcode = "2000000000374",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 37,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 38,
-                            Barcode = "2000000000381",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 38,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 39,
-                            Barcode = "2000000000398",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 39,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 40,
-                            Barcode = "2000000000404",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 40,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 41,
-                            Barcode = "2000000000411",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 41,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 42,
-                            Barcode = "2000000000428",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 42,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 43,
-                            Barcode = "2000000000435",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 43,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 44,
-                            Barcode = "2000000000442",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 44,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 45,
-                            Barcode = "2000000000459",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 45,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 46,
-                            Barcode = "2000000000466",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 46,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        },
-                        new
-                        {
-                            Id = 47,
-                            Barcode = "2000000000473",
-                            BarcodeType = "EAN13",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsPrimary = true,
-                            ProductId = 47,
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            UnitMultiplier = 1m
-                        });
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductCategory", b =>
@@ -5560,21 +3698,56 @@ namespace SahinSoft.Web.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AlternateName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("DefaultKitchenStationId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("DiscountNotApplicable")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("DiscountPercentPurchase")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DiscountPercentSale")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<int>("LoyaltyPoints")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("LoyaltyPointsPercent")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ParentCategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PromotionNotApplicable")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("RecordId")
                         .ValueGeneratedOnAdd()
@@ -5587,8 +3760,29 @@ namespace SahinSoft.Web.Data.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<bool>("ShowAsShortcut")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowInMobile")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowInOnlineOrder")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowInReceiptImage")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("TaxRateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unit")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("VisibleInBranches")
+                        .HasColumnType("bit");
 
                     b.Property<string>("WebsitePath")
                         .HasMaxLength(250)
@@ -5599,102 +3793,18 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("DefaultKitchenStationId");
+
                     b.HasIndex("Name");
+
+                    b.HasIndex("ParentCategoryId");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
 
-                    b.ToTable("ProductCategories");
+                    b.HasIndex("TaxRateId");
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "YAZARKASA",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Yazar Kasa POS",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "yazarkasa-pos.html"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "TERAZI",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Teraziler",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "teraziler.html"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "BARKOD",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Barkod Okuyucular",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "barkod-okuyucular.html"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "YAZICI",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Yazıcılar",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "yazicilar.html"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "ELTERM",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "El Terminalleri",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "el-terminali.html"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Code = "POSPC",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Dokunmatik POS",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "dokunmatik-pos.html"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Code = "YAZILIM",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "Yazılım ve Entegrasyon",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "kurumsal-yazilim.html"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Code = "POSEKIP",
-                            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "POS Çevre Birimleri",
-                            RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            RowVersion = new byte[0],
-                            WebsitePath = "index.html"
-                        });
+                    b.ToTable("ProductCategories");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductColor", b =>
@@ -6771,6 +4881,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("IsComplimentary")
+                        .HasColumnType("bit");
+
                     b.Property<string>("KitchenNote")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -7309,6 +5422,10 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<decimal>("TaxAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("TradeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
@@ -8456,6 +6573,14 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int?>("DefaultPriceListId")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("DiscountLowerLimitPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("DiscountUpperLimitPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -8507,6 +6632,9 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("RestaurantPinHash")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("Salary")
                         .HasPrecision(18, 2)
@@ -9083,6 +7211,17 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("SettlementFinancialAccount");
                 });
 
+            modelBuilder.Entity("SahinSoft.Domain.Entities.PackageOrder", b =>
+                {
+                    b.HasOne("SahinSoft.Domain.Entities.RestaurantCheck", "RestaurantCheck")
+                        .WithMany()
+                        .HasForeignKey("RestaurantCheckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RestaurantCheck");
+                });
+
             modelBuilder.Entity("SahinSoft.Domain.Entities.PaymentReceipt", b =>
                 {
                     b.HasOne("SahinSoft.Domain.Entities.BusinessProject", "BusinessProject")
@@ -9199,6 +7338,30 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("ProductVariant");
                 });
 
+            modelBuilder.Entity("SahinSoft.Domain.Entities.ProductCategory", b =>
+                {
+                    b.HasOne("SahinSoft.Domain.Entities.KitchenStation", "DefaultKitchenStation")
+                        .WithMany()
+                        .HasForeignKey("DefaultKitchenStationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SahinSoft.Domain.Entities.ProductCategory", "ParentCategory")
+                        .WithMany("SubCategories")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SahinSoft.Domain.Entities.TaxRate", "TaxRate")
+                        .WithMany()
+                        .HasForeignKey("TaxRateId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DefaultKitchenStation");
+
+                    b.Navigation("ParentCategory");
+
+                    b.Navigation("TaxRate");
+                });
+
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductImage", b =>
                 {
                     b.HasOne("SahinSoft.Domain.Entities.Product", "Product")
@@ -9220,7 +7383,7 @@ namespace SahinSoft.Web.Data.Migrations
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductPortion", b =>
                 {
                     b.HasOne("SahinSoft.Domain.Entities.Product", "Product")
-                        .WithMany()
+                        .WithMany("Portions")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -10051,6 +8214,8 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Navigation("InvoiceLines");
 
+                    b.Navigation("Portions");
+
                     b.Navigation("PurchasePriceListItems");
 
                     b.Navigation("QuoteLines");
@@ -10071,6 +8236,8 @@ namespace SahinSoft.Web.Data.Migrations
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductCategory", b =>
                 {
                     b.Navigation("Products");
+
+                    b.Navigation("SubCategories");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.ProductColor", b =>
