@@ -17,8 +17,10 @@ Otomatik olarak yapılanlar:
    otomatik ayarlanır.
 5. IIS Uygulama Havuzu + Site (port 1666) oluşturulur.
 6. Veritabanı migration'ı uygulanır.
-7. Masaüstü kabuk + ConfigTool, C:\SitesSahinSoft\Araclar'a kurulur, masaüstüne
-   "ŞahinSoft" kısayolu bırakılır.
+7. Masaüstü kabuk (restoran programı) ve veritabanı aracı (SahinSoftDbKur.exe),
+   C:\SitesSahinSoft\Araclar'a kurulur, masaüstüne "ŞahinSoft" kısayolu bırakılır
+   (bağlantı ayarları artık SahinSoftDbKur.exe'nin kendi arayüzünde - ayrı bir
+   ConfigTool yok).
 
 Bittiğinde masaüstündeki "ŞahinSoft" kısayolu ile veya tarayıcıdan
 http://localhost:1666 ile açılabilir.

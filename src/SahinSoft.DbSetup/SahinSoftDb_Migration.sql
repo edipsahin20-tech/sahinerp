@@ -1,8 +1,4 @@
-﻿SET ANSI_NULLS ON;
-GO
-SET QUOTED_IDENTIFIER ON;
-GO
-IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,
@@ -9378,6 +9374,75 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20260902085448_AddFiscalDeviceSettings', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [AlternateName] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [DiscountPercentPurchase] decimal(18,2) NOT NULL DEFAULT 0.0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [DiscountPercentSale] decimal(18,2) NOT NULL DEFAULT 0.0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [LoyaltyPoints] int NOT NULL DEFAULT 0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [LoyaltyPointsPercent] decimal(18,2) NOT NULL DEFAULT 0.0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [ShowInReceiptImage] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    ALTER TABLE [ProductCategories] ADD [Unit] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260902215835_AddCategoryExtendedFields'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260902215835_AddCategoryExtendedFields', N'10.0.10');
 END;
 
 COMMIT;
