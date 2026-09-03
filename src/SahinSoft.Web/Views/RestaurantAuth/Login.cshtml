@@ -115,7 +115,7 @@
             </div>
 
             <div id="pin-step" class="pin-pad-wrap">
-                <div class="selected-card"><b id="selected-name"></b><small>Kasiyer</small></div>
+                <div class="selected-card" id="selected-card"><b id="selected-name"></b><small>Kasiyer</small></div>
                 <div class="pin-dots" id="pin-dots">○ ○ ○ ○</div>
                 <div class="pin-pad" id="pin-pad">
                     <button type="button" data-digit="1">1</button>
@@ -132,7 +132,7 @@
                     <button type="button" id="pin-back">⌫</button>
                 </div>
                 <button type="button" class="login-btn" id="pin-confirm">Giriş Yap →</button>
-                <div class="pin-actions">
+                <div class="pin-actions" id="pin-actions">
                     <button type="button" class="link-btn" id="pin-change-user">← Kullanıcı değiştir</button>
                 </div>
             </div>
@@ -154,12 +154,16 @@
         (function () {
             var staffStep = document.getElementById('staff-step');
             var pinStep = document.getElementById('pin-step');
+            var selectedCard = document.getElementById('selected-card');
             var selectedName = document.getElementById('selected-name');
+            var pinActions = document.getElementById('pin-actions');
             var pinDots = document.getElementById('pin-dots');
             var pinUserId = document.getElementById('pin-user-id');
             var pinValue = document.getElementById('pin-value');
             var pin = '';
             var maxLength = 6;
+            var autoSubmitLength = 4;
+            var autoSubmitTimer = null;
 
             function renderDots() {
                 var count = Math.max(pin.length, 4);
@@ -168,21 +172,57 @@
                 pinDots.textContent = parts.join(' ');
             }
 
+            function submitPin() {
+                if (pin.length === 0) { return; }
+                pinValue.value = pin;
+                document.getElementById('pin-submit-form').submit();
+            }
+
+            // PIN 1-6 hane arasında herhangi bir uzunlukta olabilir (Edip'in örneği: tek haneli
+            // "1" gibi) - bu yüzden sabit bir "N haneye gelince gönder" kuralı YOK. Bunun yerine:
+            // 4 haneye ulaşınca (master tasarımın öngördüğü tipik uzunluk) hemen, daha kısa
+            // PIN'lerde ise son tuşlamadan ~500ms sonra (Edip, 2026-09-03: "pini yazdığımda direk
+            // açılsın") otomatik gönderilir - "Giriş Yap" tuşu yine de manuel yedek olarak durur.
+            function scheduleAutoSubmit() {
+                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
+                if (pin.length === 0) { return; }
+                if (pin.length >= autoSubmitLength) { submitPin(); return; }
+                autoSubmitTimer = setTimeout(submitPin, 500);
+            }
+
+            function selectStaff(userId, userName, showCard) {
+                pinUserId.value = userId;
+                selectedName.textContent = userName;
+                selectedCard.style.display = showCard ? '' : 'none';
+                pinActions.style.display = showCard ? '' : 'none';
+                pin = '';
+                renderDots();
+                staffStep.style.display = 'none';
+                pinStep.classList.add('active');
+            }
+
             document.querySelectorAll('.staff-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     document.querySelectorAll('.staff-btn').forEach(function (b) { b.classList.remove('selected'); });
                     btn.classList.add('selected');
-                    pinUserId.value = btn.getAttribute('data-user-id');
-                    selectedName.textContent = btn.getAttribute('data-user-name');
-                    pin = '';
-                    renderDots();
-                    staffStep.style.display = 'none';
-                    pinStep.classList.add('active');
+                    selectStaff(btn.getAttribute('data-user-id'), btn.getAttribute('data-user-name'), true);
                 });
             });
 
+            // Tek kasiyer varsa (Edip'in kendi kurulumu) isim seçme adımı hiç gösterilmez, ismi/
+            // rolü tekrar yazan kart da gösterilmez - doğrudan çıplak bir PIN girişi ekranı
+            // (Edip, 2026-09-03: "kasiyer diye yazmasın sadece pin girilecek alan gelsin").
+            // Birden fazla personel varsa (gelecekte gerçek çok kişilik bir kurulum) bugünkü
+            // seç+onayla akışı aynen çalışmaya devam eder.
+            var staffButtons = document.querySelectorAll('.staff-btn');
+            if (staffButtons.length === 1) {
+                var only = staffButtons[0];
+                selectStaff(only.getAttribute('data-user-id'), only.getAttribute('data-user-name'), false);
+            }
+
             document.getElementById('pin-change-user').addEventListener('click', function () {
                 pin = '';
+                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
                 staffStep.style.display = '';
                 pinStep.classList.remove('active');
             });
@@ -190,11 +230,13 @@
             document.getElementById('pin-back').addEventListener('click', function () {
                 pin = pin.slice(0, -1);
                 renderDots();
+                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
             });
 
             document.getElementById('pin-clear').addEventListener('click', function () {
                 pin = '';
                 renderDots();
+                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
             });
 
             document.getElementById('pin-pad').querySelectorAll('[data-digit]').forEach(function (btn) {
@@ -202,16 +244,11 @@
                     if (pin.length >= maxLength) { return; }
                     pin += btn.getAttribute('data-digit');
                     renderDots();
+                    scheduleAutoSubmit();
                 });
             });
 
-            // PIN 1-6 hane arasında herhangi bir uzunlukta olabilir (Edip'in örneği: tek haneli
-            // "1" gibi) - bu yüzden otomatik gönderim yerine açık bir "Giriş Yap" tuşu var.
-            document.getElementById('pin-confirm').addEventListener('click', function () {
-                if (pin.length === 0) { return; }
-                pinValue.value = pin;
-                document.getElementById('pin-submit-form').submit();
-            });
+            document.getElementById('pin-confirm').addEventListener('click', submitPin);
         })();
     </script>
 </body>

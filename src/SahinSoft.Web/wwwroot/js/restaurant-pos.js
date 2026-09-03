@@ -104,6 +104,14 @@
     }
 
     // --- Sepet ---
+    // Satır işlem çubuğu SABİT (bkz. Check.cshtml #cart-line-toolbar) - satıra tıklayınca
+    // seçilir, alttaki tek çubuk (miktar +/-, Not, İndirim, İkram, Sil) o satıra uygulanır.
+    var selectedCartId = null;
+
+    function selectedLine() {
+        return cart.find(function (x) { return x.cartId === selectedCartId; }) || null;
+    }
+
     function addToCart(product) {
         var portionId = null;
         var portionName = null;
@@ -139,6 +147,7 @@
             kitchenNote: null,
             hasKitchenStation: product.hasKitchenStation
         });
+        selectedCartId = cartSeq;
         renderCart();
     }
 
@@ -168,10 +177,13 @@
         var totalEl = document.getElementById('cart-total');
         var sendBtn = document.getElementById('send-kitchen-btn');
 
+        if (!cart.some(function (x) { return x.cartId === selectedCartId; })) selectedCartId = null;
+
         if (cart.length === 0) {
-            linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için sağdan seçim yapın.</p>';
+            linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
             totalEl.textContent = money(0);
             sendBtn.disabled = true;
+            updateLineToolbar();
             return;
         }
 
@@ -180,7 +192,7 @@
         cart.forEach(function (line) {
             total += lineTotal(line);
             var div = document.createElement('div');
-            div.className = 'cart-line';
+            div.className = 'cart-line' + (line.cartId === selectedCartId ? ' selected' : '');
             var badges = '';
             if (line.isComplimentary) badges += ' <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span>';
             else if (line.discountAmount > 0) badges += ' <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim ' + money(line.discountAmount) + '</span>';
@@ -190,44 +202,10 @@
                 '<div>' +
                 '  <div>' + line.quantity + 'x ' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges + '</div>' +
                 '  <div class="small text-secondary">' + money(line.unitPrice) + ' · Tutar: ' + money(lineTotal(line)) + (line.kitchenNote ? ' · Not: ' + escapeHtml(line.kitchenNote) : '') + '</div>' +
-                '  <div class="line-toolbar">' +
-                '    <button type="button" data-act="minus">-</button>' +
-                '    <button type="button" data-act="plus">+</button>' +
-                '    <button type="button" data-act="note">Not</button>' +
-                '    <button type="button" data-act="discount">İndirim</button>' +
-                '    <button type="button" data-act="comp">İkram</button>' +
-                '    <button type="button" data-act="remove">Sil</button>' +
-                '  </div>' +
                 '</div>';
 
-            div.querySelector('[data-act="minus"]').addEventListener('click', function () {
-                line.quantity = Math.max(1, line.quantity - 1);
-                renderCart();
-            });
-            div.querySelector('[data-act="plus"]').addEventListener('click', function () {
-                line.quantity += 1;
-                renderCart();
-            });
-            div.querySelector('[data-act="note"]').addEventListener('click', function () {
-                var note = window.prompt('Not (mutfağa iletilecek):', line.kitchenNote || '');
-                if (note !== null) line.kitchenNote = note.trim() || null;
-                renderCart();
-            });
-            div.querySelector('[data-act="discount"]').addEventListener('click', function () {
-                var amountStr = window.prompt('İndirim tutarı (₺):', line.discountAmount || 0);
-                var amount = parseFloat(amountStr);
-                if (!isNaN(amount) && amount >= 0) {
-                    line.discountAmount = amount;
-                    line.isComplimentary = false;
-                }
-                renderCart();
-            });
-            div.querySelector('[data-act="comp"]').addEventListener('click', function () {
-                line.isComplimentary = !line.isComplimentary;
-                renderCart();
-            });
-            div.querySelector('[data-act="remove"]').addEventListener('click', function () {
-                cart = cart.filter(function (x) { return x.cartId !== line.cartId; });
+            div.addEventListener('click', function () {
+                selectedCartId = line.cartId;
                 renderCart();
             });
 
@@ -236,6 +214,78 @@
 
         totalEl.textContent = money(total);
         sendBtn.disabled = false;
+        updateLineToolbar();
+    }
+
+    // Sabit satır işlem çubuğunun durumu - seçili satır yoksa hepsi disabled, varsa miktar
+    // ve butonlar seçili satırı yansıtır.
+    function updateLineToolbar() {
+        var line = selectedLine();
+        var qtyValueEl = document.getElementById('line-qty-value');
+        var buttons = [
+            document.getElementById('line-qty-minus'),
+            document.getElementById('line-qty-plus'),
+            document.getElementById('line-act-note'),
+            document.getElementById('line-act-discount'),
+            document.getElementById('line-act-comp'),
+            document.getElementById('line-act-remove')
+        ];
+        buttons.forEach(function (btn) { btn.disabled = !line; });
+        qtyValueEl.textContent = line ? line.quantity : '–';
+    }
+
+    document.getElementById('line-qty-minus').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        line.quantity = Math.max(1, line.quantity - 1);
+        renderCart();
+    });
+    document.getElementById('line-qty-plus').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        line.quantity += 1;
+        renderCart();
+    });
+    document.getElementById('line-act-note').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        var note = window.prompt('Not (mutfağa iletilecek):', line.kitchenNote || '');
+        if (note !== null) line.kitchenNote = note.trim() || null;
+        renderCart();
+    });
+    document.getElementById('line-act-discount').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        var amountStr = window.prompt('İndirim tutarı (₺):', line.discountAmount || 0);
+        var amount = parseFloat(amountStr);
+        if (!isNaN(amount) && amount >= 0) {
+            line.discountAmount = amount;
+            line.isComplimentary = false;
+        }
+        renderCart();
+    });
+    document.getElementById('line-act-comp').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        line.isComplimentary = !line.isComplimentary;
+        renderCart();
+    });
+    document.getElementById('line-act-remove').addEventListener('click', function () {
+        var line = selectedLine();
+        if (!line) return;
+        cart = cart.filter(function (x) { return x.cartId !== line.cartId; });
+        selectedCartId = null;
+        renderCart();
+    });
+
+    // Sağ ikon şeridindeki "Mutfak" - alt kısımdaki Mutfağa Gönder ile aynı işlemi tetikler,
+    // ayrı bir gönderim mantığı yazılmaz (Edip, 2026-09-03: sağdaki sabit ikon şeridi isteği).
+    var sideKitchenBtn = document.getElementById('side-kitchen-btn');
+    if (sideKitchenBtn) {
+        sideKitchenBtn.addEventListener('click', function () {
+            var sendBtn = document.getElementById('send-kitchen-btn');
+            if (sendBtn && !sendBtn.disabled) sendBtn.click();
+        });
     }
 
     // Sepetteki bekleyen satırları mutfağa gönderir - hem "Mutfağa Gönder" butonu hem de
