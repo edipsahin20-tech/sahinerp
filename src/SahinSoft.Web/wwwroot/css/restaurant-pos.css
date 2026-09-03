@@ -226,6 +226,26 @@
     box-shadow: none;
 }
 
+.restaurant-pos .product-search-row {
+    margin-bottom: 0.75rem;
+}
+
+.restaurant-pos .product-search-input {
+    width: 100%;
+    max-width: 340px;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--pos-border);
+    border-radius: var(--pos-radius-control);
+    font-size: 0.88rem;
+    background: var(--pos-surface);
+}
+
+.restaurant-pos .product-search-input:focus {
+    outline: none;
+    border-color: var(--pos-gold);
+    box-shadow: 0 0 0 3px rgba(226, 164, 0, .14);
+}
+
 .restaurant-pos .category-tabs {
     display: flex;
     flex-wrap: wrap;

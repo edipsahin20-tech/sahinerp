@@ -19,9 +19,11 @@
         return v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
     }
 
-    // --- Kategori sekmeleri + ürün ızgarası ---
+    // --- Kategori sekmeleri + ürün ızgarası + arama ---
     var tabsEl = document.getElementById('category-tabs');
     var gridEl = document.getElementById('product-grid');
+    var searchEl = document.getElementById('product-search');
+    var activeCategory = null;
 
     function renderCategories() {
         tabsEl.innerHTML = '';
@@ -35,6 +37,7 @@
             btn.addEventListener('click', function () {
                 tabsEl.querySelectorAll('.category-tab').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
+                if (searchEl) searchEl.value = '';
                 renderProducts(cat);
             });
             tabsEl.appendChild(btn);
@@ -43,8 +46,13 @@
     }
 
     function renderProducts(category) {
+        activeCategory = category;
+        renderProductList(category.products);
+    }
+
+    function renderProductList(products) {
         gridEl.innerHTML = '';
-        category.products.forEach(function (p) {
+        products.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'product-tile';
@@ -60,6 +68,30 @@
                 '</span>';
             btn.addEventListener('click', function () { addToCart(p); });
             gridEl.appendChild(btn);
+        });
+        if (products.length === 0) {
+            gridEl.innerHTML = '<p class="text-secondary small p-2">Sonuç bulunamadı.</p>';
+        }
+    }
+
+    // MASTER tasarımdaki "Ürün ara veya barkod okut..." kutusu - aktif kategoriden bağımsız,
+    // TÜM kataloğu ada göre süzer (Edip, 2026-09-03: MASTER_SahinSoft_Restoran_POS_Premium.html).
+    if (searchEl) {
+        searchEl.addEventListener('input', function () {
+            var term = searchEl.value.trim().toLocaleLowerCase('tr-TR');
+            if (!term) {
+                tabsEl.style.display = '';
+                if (activeCategory) renderProducts(activeCategory);
+                return;
+            }
+            tabsEl.style.display = 'none';
+            var matches = [];
+            catalog.forEach(function (cat) {
+                cat.products.forEach(function (p) {
+                    if (p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1) matches.push(p);
+                });
+            });
+            renderProductList(matches);
         });
     }
 
