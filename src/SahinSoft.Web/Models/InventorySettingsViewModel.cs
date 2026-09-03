@@ -44,6 +44,10 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Restoran Modülü aktif")]
     public bool IsRestaurantModuleEnabled { get; set; }
 
+    [Display(Name = "Günlük Ciro Hedefi")]
+    [Range(typeof(decimal), "0", "999999999999")]
+    public decimal? DailyRevenueTarget { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

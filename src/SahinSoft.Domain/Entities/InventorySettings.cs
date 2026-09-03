@@ -19,6 +19,11 @@ public sealed class InventorySettings : EntityBase
     public bool AllowSaleBelowCost { get; set; }
     public bool IsRestaurantModuleEnabled { get; set; }
 
+    // Restoran Dashboard'daki "Günün Hedefi" halkası için - boş/0 ise o bölüm hiç gösterilmez
+    // (Edip, 2026-09-03: MASTER_SahinSoft_Restoran_POS_Premium.html referansı, "hedef" uydurma
+    // bir sayı değil, gerçek ayarlanabilir bir değer).
+    public decimal? DailyRevenueTarget { get; set; }
+
     // Yok (None) iken restoran Kapat/Öde bugünkü gibi hiçbir fiskal cihaz çağrısı yapmadan
     // çalışır - bkz. SahinSoft.FiscalAgent projesi. Bir cihaz seçilip adres girildiğinde nakit/
     // kredi kartı/yemek çeki ödemeleri doğrudan yazarkasaya gönderilir (fatura kesilen satışlar
