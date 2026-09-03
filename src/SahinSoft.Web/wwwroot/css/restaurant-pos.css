@@ -389,10 +389,10 @@
     font-size: 0.68rem;
 }
 
-/* Gönderilmiş satır işlem hücresi - İptal her zaman görünür, İkram/Miktar düzeltme yalnızca
-   "kilit" açıkken görünür (Edip, 2026-09-03: "mutfağa gönderildi diye herşeyi pasif hale
-   getirme, silme ikram düzeltme miktar düzeltme herşey aktif olsun" / "yada kilit tuşu koy ona
-   tıkladığımda aktif etsin herşeyi"). */
+/* Gönderilmiş satır işlem hücresi - İptal, İkram ve Miktar düzeltme ÜÇÜ DE tek "kilit"
+   düğmesiyle birlikte açılıp kapanır (Edip, 2026-09-03: "kilit tuşu koy ona tıkladığımda aktif
+   etsin herşeyi" / "ikram sil kilit olsun" - başlangıçta İptal'i istisna bırakmıştım, sonradan
+   İptal de kilide dahil edilmesi istendi, TEK toplu kilit tüm satırları birden açar/kapatır). */
 .restaurant-pos .sent-line-actions {
     display: flex;
     justify-content: flex-end;
@@ -401,14 +401,16 @@
 }
 
 .restaurant-pos .sent-line-actions .sent-line-comp-btn,
-.restaurant-pos .sent-line-actions .sent-line-qty-btn {
+.restaurant-pos .sent-line-actions .sent-line-qty-btn,
+.restaurant-pos .sent-line-actions .cancel-line-btn {
     display: none;
     padding: 0.15rem 0.35rem;
     font-size: 0.68rem;
 }
 
 .restaurant-pos .cart-sent-lines.unlocked .sent-line-comp-btn,
-.restaurant-pos .cart-sent-lines.unlocked .sent-line-qty-btn {
+.restaurant-pos .cart-sent-lines.unlocked .sent-line-qty-btn,
+.restaurant-pos .cart-sent-lines.unlocked .cancel-line-btn {
     display: inline-block;
 }
 

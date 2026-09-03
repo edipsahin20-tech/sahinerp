@@ -914,11 +914,11 @@
         });
     })();
 
-    // --- Gönderilmiş satırlarda kilit / miktar düzeltme / ikram - Edip, 2026-09-03: "mutfağa
-    // gönderildi diye herşeyi pasif hale getirme, silme ikram düzeltme miktar düzeltme herşey
-    // aktif olsun" / "yada kilit tuşu koy ona tıkladığımda aktif etsin herşeyi ürünleri açık
-    // bıraksın". İptal zaten her koşulda aktif (CanCancel kitchen durumuna bakmaz) - kilit
-    // yalnızca İkram ve Miktar düzeltme butonlarını açığa çıkarır. ---
+    // --- Gönderilmiş satırlarda kilit / miktar düzeltme / ikram / iptal - Edip, 2026-09-03:
+    // "mutfağa gönderildi diye herşeyi pasif hale getirme, silme ikram düzeltme miktar düzeltme
+    // herşey aktif olsun" / "yada kilit tuşu koy ona tıkladığımda aktif etsin herşeyi" / "ikram
+    // sil kilit olsun" - TEK toplu kilit düğmesi İptal/İkram/Miktar düzeltmenin ÜÇÜNÜ birden
+    // açar/kapatır (CSS: .cart-sent-lines.unlocked). ---
     (function () {
         var lockBtn = document.getElementById('sent-lines-lock-btn');
         var sentLinesEl = document.getElementById('cart-sent-lines');
