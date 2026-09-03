@@ -31,7 +31,9 @@
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'category-tab' + (idx === 0 ? ' active' : '');
-            btn.textContent = cat.categoryName;
+            // Kategori adının yanında ürün sayısı - Edip'in kendi eski POS ekranındaki gibi
+            // (2026-09-03).
+            btn.innerHTML = escapeHtml(cat.categoryName) + ' <span class="category-tab-count">' + cat.products.length + '</span>';
             // Kategori Tanımla'da seçilen renk burada aynen kullanılır (Edip, 2026-09-03).
             if (cat.color) btn.style.setProperty('--cat-tab-color', cat.color);
             btn.addEventListener('click', function () {
@@ -187,7 +189,7 @@
             div.innerHTML =
                 '<div>' +
                 '  <div>' + line.quantity + 'x ' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges + '</div>' +
-                '  <div class="small text-secondary">' + money(lineTotal(line)) + (line.kitchenNote ? ' · Not: ' + escapeHtml(line.kitchenNote) : '') + '</div>' +
+                '  <div class="small text-secondary">' + money(line.unitPrice) + ' · Tutar: ' + money(lineTotal(line)) + (line.kitchenNote ? ' · Not: ' + escapeHtml(line.kitchenNote) : '') + '</div>' +
                 '  <div class="line-toolbar">' +
                 '    <button type="button" data-act="minus">-</button>' +
                 '    <button type="button" data-act="plus">+</button>' +

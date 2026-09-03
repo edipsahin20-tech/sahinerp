@@ -65,7 +65,21 @@
                 {
                     <div class="mb-2">
                         <strong>@order.OrderedAtUtc.ToLocalTime().ToString("HH:mm") siparişi</strong>
+                        @if (!string.IsNullOrEmpty(order.OrderedByName))
+                        {
+                            <span class="text-secondary small ms-1">· @order.OrderedByName</span>
+                        }
                         <table class="erp-table" style="margin-top:0.35rem;">
+                            <thead>
+                                <tr class="text-secondary small">
+                                    <th>Ürün</th>
+                                    <th>Adet</th>
+                                    <th>Birim Fiyat</th>
+                                    <th>Tutar</th>
+                                    <th>Durum</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
                             <tbody>
                             @foreach (var line in order.Lines)
                             {
@@ -78,6 +92,7 @@
                                         @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
                                     </td>
                                     <td>@line.Quantity.ToString("N0")</td>
+                                    <td>@line.UnitPrice.ToString("N2") ₺</td>
                                     <td>@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</td>
                                     <td><span class="badge text-bg-secondary-subtle">@line.Status</span></td>
                                     <td class="text-end">

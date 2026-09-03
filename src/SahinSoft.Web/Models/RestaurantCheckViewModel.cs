@@ -46,6 +46,7 @@ public sealed class RestaurantSentOrderViewModel
 {
     public int OrderId { get; set; }
     public DateTime OrderedAtUtc { get; set; }
+    public string OrderedByName { get; set; } = string.Empty;
     public List<RestaurantSentOrderLineViewModel> Lines { get; set; } = [];
 }
 

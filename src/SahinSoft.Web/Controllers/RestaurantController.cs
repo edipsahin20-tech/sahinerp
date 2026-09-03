@@ -167,6 +167,14 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             return NotFound();
         }
 
+        // Sipariş satırı listesinde "kim, ne zaman gönderdi" bilgisi için (Edip, 2026-09-03:
+        // kendi eski POS'undaki gibi her siparişin altında garson adı görünsün).
+        var orderedByIds = check.Orders.Select(x => x.OrderedByUserId).Distinct().ToList();
+        var orderedByNames = await dbContext.Users
+            .AsNoTracking()
+            .Where(x => orderedByIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.FullName);
+
         if (check.Status != RestaurantCheckStatus.Open)
         {
             TempData["Error"] = "Bu adisyon artık açık değil.";
@@ -237,6 +245,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             {
                 OrderId = order.Id,
                 OrderedAtUtc = order.OrderedAtUtc,
+                OrderedByName = orderedByNames.GetValueOrDefault(order.OrderedByUserId, ""),
                 Lines = order.Lines.OrderBy(x => x.Id).Select(line => new RestaurantSentOrderLineViewModel
                 {
                     LineId = line.Id,

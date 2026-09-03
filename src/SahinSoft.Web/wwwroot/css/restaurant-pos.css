@@ -343,6 +343,16 @@
     box-shadow: 0 0 0 2px rgba(11, 34, 57, .25), var(--pos-shadow);
 }
 
+.restaurant-pos .category-tab-count {
+    display: inline-block;
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .25);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
 .restaurant-pos .product-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
