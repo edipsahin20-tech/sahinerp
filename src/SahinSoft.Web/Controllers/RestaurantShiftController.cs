@@ -45,9 +45,12 @@ public sealed class RestaurantShiftController(ApplicationDbContext dbContext, Re
         if (openShift is not null)
         {
             var now = DateTime.UtcNow;
+            // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
+            // negatif işaretle - aksi halde vardiya içinde iptal edilen bir fişin ödemesi beklenen
+            // kasa tutarında hâlâ "alınmış" gibi sayılmaya devam ederdi.
             var cashIn = await dbContext.RestaurantPayments
-                .Where(x => x.FinancialAccountId == financialAccountId && !x.IsReversal && x.PaidAtUtc >= openShift.OpenedAtUtc && x.PaidAtUtc <= now)
-                .SumAsync(x => (decimal?)x.Amount) ?? 0m;
+                .Where(x => x.FinancialAccountId == financialAccountId && x.PaidAtUtc >= openShift.OpenedAtUtc && x.PaidAtUtc <= now)
+                .SumAsync(x => (decimal?)(x.IsReversal ? -x.Amount : x.Amount)) ?? 0m;
 
             var closedChecksQuery = dbContext.RestaurantChecks
                 .Where(x => x.Status == RestaurantCheckStatus.Closed && x.ClosedAtUtc >= openShift.OpenedAtUtc && x.ClosedAtUtc <= now);

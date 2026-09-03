@@ -241,7 +241,7 @@ else if (Model.ActiveTab == "zlist")
                 }
             </div>
         </div>
-        <div class="znote sub" style="margin-top:8px;">Bu listede düzenleme/silme henüz yok - salt okunur görüntüleme.</div>
+        <div class="znote sub" style="margin-top:8px;">Bir fişi silmek için "Fişi Gör" ile açıp altındaki "Fişi Sil" butonunu kullanın (yalnızca yönetici).</div>
     }
 }
 
@@ -282,12 +282,33 @@ else if (Model.ActiveTab == "zlist")
                     </div>
                 </div>
                 <div class="modal-footer no-print">
+                    @if (!Model.SelectedReceipt.IsCancelled && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+                    {
+                        <form method="post" asp-action="CancelReceipt" id="cancel-receipt-form" style="margin-right:auto;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="retailSaleId" value="@Model.SelectedReceiptId" />
+                            <input type="hidden" name="returnTab" value="@Model.ActiveTab" />
+                            <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="zShiftId" value="@Model.SelectedZShiftId" />
+                            <input type="hidden" name="reason" id="cancel-receipt-reason" />
+                            <button type="button" class="btn btn-danger" onclick="submitCancelReceipt()">Fişi Sil</button>
+                        </form>
+                    }
                     <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
                     <button type="button" class="btn btn-erp-primary" onclick="window.print()">Yazdır</button>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        function submitCancelReceipt() {
+            var reason = window.prompt('İptal gerekçesi (fiş silinip yerine ters kayıt oluşturulacak):');
+            if (!reason || !reason.trim()) { return; }
+            if (!window.confirm('Bu fişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) { return; }
+            document.getElementById('cancel-receipt-reason').value = reason.trim();
+            document.getElementById('cancel-receipt-form').submit();
+        }
+    </script>
 }
 
 @section Scripts {

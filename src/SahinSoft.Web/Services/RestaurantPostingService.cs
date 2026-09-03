@@ -961,12 +961,14 @@ public sealed class RestaurantPostingService(
                 }
 
                 var closedAt = DateTime.UtcNow;
+                // Ters kayıtlar (bkz. CancelRetailSaleAsync) DAHİL edilir ama negatif işaretle -
+                // aksi halde vardiya içinde iptal edilen bir fişin ödemesi beklenen kasa tutarında
+                // hâlâ "alınmış" gibi sayılmaya devam ederdi.
                 var cashInDuringShift = await dbContext.RestaurantPayments
                     .Where(x => x.FinancialAccountId == shift.FinancialAccountId
-                        && !x.IsReversal
                         && x.PaidAtUtc >= shift.OpenedAtUtc
                         && x.PaidAtUtc <= closedAt)
-                    .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
+                    .SumAsync(x => (decimal?)(x.IsReversal ? -x.Amount : x.Amount), cancellationToken) ?? 0m;
 
                 shift.Status = RestaurantCashShiftStatus.Closed;
                 shift.ClosedAtUtc = closedAt;
@@ -1297,6 +1299,121 @@ public sealed class RestaurantPostingService(
             .FirstOrDefaultAsync(x => x.Code == "PERAKENDE-SATIS", cancellationToken);
         return customer?.Id
             ?? throw new InvalidOperationException("\"Perakende Satışlar Carisi\" tanımlı değil. Lütfen sistem yöneticisine başvurun.");
+    }
+
+    // Raporlar/Z Listesi ekranından kapanmış (ödemesi alınmış) bir fişi "silmek" için (Edip,
+    // 2026-09-03: "restoranda sil mantığı işlesin"). GERÇEK HARD-DELETE YAPILMAZ - kapanış anında
+    // CloseCheckAsync'in yazdığı CurrentAccountTransaction/FinancialTransaction/RestaurantPayment
+    // satırları MUHASEBE tarafının da kullandığı gerçek cari/kasa hareketleridir (bkz. yorumu),
+    // bunları satır satır silmek cari bakiyeyi/kasa mutabakatını sessizce bozardı ve zaten bu
+    // kod tabanının HİÇBİR YERİNDE (RestaurantOrderLine.CancelledAtUtc dahil) hard-delete YOK -
+    // her yerde ters kayıt (ReversalOfId) deseni var, bkz. [[feedback_sahinsoft_conventions]].
+    // Bu yüzden: RetailSale.Status=Cancelled + her hareket için ReversalOfId ile işaretli, ters
+    // işaretli bir "IPTAL-" kaydı (InvoicePostingService'in fatura iptalindeki AYNI desen) -
+    // kullanıcı için fiş "gitmiş" gibi görünür (tüm raporlarda zaten Status != Cancelled filtresi
+    // var), ama muhasebe geçmişi/denetim izi bozulmaz. Masa/adisyon durumuna DOKUNULMAZ - bilinen,
+    // henüz çözülmemiş "masa tekrar açılamıyor" hatasına (deferred) bağımlı olunmasın diye.
+    public Task CancelRetailSaleAsync(
+        int retailSaleId,
+        string cancelledByUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var retailSale = await dbContext.RetailSales
+                    .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
+                    .SingleOrDefaultAsync(x => x.Id == retailSaleId, cancellationToken)
+                    ?? throw new InvalidOperationException("Fiş bulunamadı.");
+
+                if (retailSale.Status == RetailSaleStatus.Cancelled)
+                {
+                    throw new InvalidOperationException("Bu fiş zaten iptal edilmiş.");
+                }
+
+                var reversalDocumentNumber = $"IPTAL-{retailSale.DocumentNumber}";
+
+                var originalAccountTransactions = await dbContext.CurrentAccountTransactions
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .ToListAsync(cancellationToken);
+                foreach (var original in originalAccountTransactions)
+                {
+                    dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                    {
+                        TransactionDateUtc = DateTime.UtcNow,
+                        TransactionType = original.TransactionType == CurrentAccountTransactionType.Sale
+                            ? CurrentAccountTransactionType.CreditNote
+                            : CurrentAccountTransactionType.DebitNote,
+                        DocumentNumber = reversalDocumentNumber,
+                        CurrencyCode = original.CurrencyCode,
+                        ExchangeRate = original.ExchangeRate,
+                        Debit = original.Credit,
+                        Credit = original.Debit,
+                        CustomerId = original.CustomerId,
+                        Description = $"Restoran fişi iptali - {retailSale.DocumentNumber} - {reason}",
+                        ReversalOfId = original.Id
+                    });
+                }
+
+                var originalFinancialTransactions = await dbContext.FinancialTransactions
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .ToListAsync(cancellationToken);
+                foreach (var original in originalFinancialTransactions)
+                {
+                    dbContext.FinancialTransactions.Add(new FinancialTransaction
+                    {
+                        TransactionDateUtc = DateTime.UtcNow,
+                        TransactionType = FinancialTransactionType.Payment,
+                        DocumentNumber = reversalDocumentNumber,
+                        Amount = original.Amount,
+                        ExchangeRate = original.ExchangeRate,
+                        Description = $"Restoran fişi iptali - {retailSale.DocumentNumber} - {reason}",
+                        FinancialAccountId = original.FinancialAccountId,
+                        CustomerId = original.CustomerId,
+                        ReversalOfId = original.Id
+                    });
+                }
+
+                // .ToList() ile kopyalanır - aksi halde Add edilen yeni RestaurantPayment (aynı
+                // RestaurantCheckId ile) EF'nin change tracker'ı tarafından bu navigation
+                // koleksiyonuna otomatik eklenir ve "Collection was modified" hatası verir.
+                foreach (var payment in retailSale.RestaurantCheck.Payments.Where(x => !x.IsReversal).ToList())
+                {
+                    dbContext.RestaurantPayments.Add(new RestaurantPayment
+                    {
+                        PaymentMethod = payment.PaymentMethod,
+                        Amount = payment.Amount,
+                        PaidAtUtc = DateTime.UtcNow,
+                        RestaurantCheckId = payment.RestaurantCheckId,
+                        FinancialAccountId = payment.FinancialAccountId,
+                        IsReversal = true,
+                        ReversalOfId = payment.Id
+                    });
+                }
+
+                retailSale.Status = RetailSaleStatus.Cancelled;
+                retailSale.CancelledByUserId = cancelledByUserId;
+                retailSale.CancelledAtUtc = DateTime.UtcNow;
+                retailSale.CancellationReason = reason;
+                retailSale.UpdatedAtUtc = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }, cancellationToken);
     }
 
     // --- Masa taşıma/birleştirme (bkz. CLEAN_ROOM_DEVELOPMENT.md §11 Karar 5) ---

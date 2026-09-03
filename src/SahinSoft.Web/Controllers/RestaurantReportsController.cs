@@ -87,11 +87,14 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         };
 
         // Ödeme yöntemi kırılımı - tutar bazında, RestaurantPayments'tan (RetailSale'de yok).
+        // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
+        // negatif işaretle - aksi halde iptal edilen bir fişin ödemesi bu toplamlarda hâlâ
+        // "alınmış" gibi görünmeye devam ederdi (Edip, 2026-09-03: fiş iptali sonrası fark edildi).
         var dayPayments = await dbContext.RestaurantPayments
             .AsNoTracking()
-            .Where(x => x.PaidAtUtc >= dayStartUtc && x.PaidAtUtc < dayEndUtc && !x.IsReversal)
+            .Where(x => x.PaidAtUtc >= dayStartUtc && x.PaidAtUtc < dayEndUtc)
             .GroupBy(x => x.PaymentMethod)
-            .Select(g => new { Method = g.Key, Total = g.Sum(x => x.Amount) })
+            .Select(g => new { Method = g.Key, Total = g.Sum(x => x.IsReversal ? -x.Amount : x.Amount) })
             .ToListAsync();
         vm.Cash = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.Cash)?.Total ?? 0;
         vm.Card = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.CreditCard)?.Total ?? 0;
@@ -180,7 +183,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         {
             var shiftPayments = await dbContext.RestaurantPayments
                 .AsNoTracking()
-                .Where(x => x.PaidAtUtc >= openShift.OpenedAtUtc && !x.IsReversal)
+                .Where(x => x.PaidAtUtc >= openShift.OpenedAtUtc)
                 .ToListAsync();
             var shiftReceiptCount = await dbContext.RetailSales
                 .AsNoTracking()
@@ -190,10 +193,10 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             {
                 OpenedAtUtc = openShift.OpenedAtUtc,
                 ReceiptCount = shiftReceiptCount,
-                NetRevenue = shiftPayments.Sum(x => x.Amount),
-                Cash = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.Amount),
-                Card = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.Amount),
-                MealCard = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.MealCard).Sum(x => x.Amount)
+                NetRevenue = shiftPayments.Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+                Cash = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+                Card = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+                MealCard = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.MealCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount)
             };
         }
 
@@ -343,5 +346,28 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         }
 
         return RedirectToAction(nameof(Index), new { tab = "zlist" });
+    }
+
+    // Kapanmış (ödemesi alınmış) bir fişi "silmek" için - Edip'in isteği (2026-09-03: "restoranda
+    // sil mantığı işlesin"). Gerçek hard-delete DEĞİL, ters kayıtlı iptal (bkz.
+    // RestaurantPostingService.CancelRetailSaleAsync yorumu) - kullanıcı için fiş raporlarda/
+    // toplamlarda kaybolur ama muhasebe denetim izi korunur. "Yetki bazlı" - sadece Administrator,
+    // controller'ın genel yetki listesinden (Cashier/RestaurantManager de girebilir) daha dar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Administrator)]
+    public async Task<IActionResult> CancelReceipt(int retailSaleId, string reason, string returnTab = "daily", DateOnly? date = null, int? zShiftId = null)
+    {
+        try
+        {
+            await postingService.CancelRetailSaleAsync(retailSaleId, CurrentUserId, reason);
+            TempData["Success"] = "Fiş iptal edildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { tab = returnTab, date, zShiftId });
     }
 }

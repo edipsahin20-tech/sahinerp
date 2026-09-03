@@ -41,11 +41,14 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             .Select(x => new { x.GrandTotal, x.IssuedAtUtc })
             .ToListAsync();
 
+        // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
+        // negatif işaretle - aksi halde iptal edilen bir fişin ödemesi bu toplamlarda hâlâ
+        // "alınmış" gibi görünmeye devam ederdi.
         var todayPayments = await dbContext.RestaurantPayments
             .AsNoTracking()
-            .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc && !x.IsReversal)
+            .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc)
             .GroupBy(x => x.PaymentMethod)
-            .Select(g => new { Method = g.Key, Total = g.Sum(x => x.Amount) })
+            .Select(g => new { Method = g.Key, Total = g.Sum(x => x.IsReversal ? -x.Amount : x.Amount) })
             .ToListAsync();
 
         var pendingTickets = await dbContext.KitchenTicketLines
