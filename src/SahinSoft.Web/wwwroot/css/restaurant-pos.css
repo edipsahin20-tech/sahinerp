@@ -222,8 +222,81 @@
     border: 1px solid var(--pos-border);
     box-shadow: var(--pos-shadow);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
     max-height: calc(100vh - 220px);
+    overflow: hidden;
+}
+
+.restaurant-pos .cart-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Sol taraftaki sabit numpad (Edip, 2026-09-03: eski POS ekranındaki P/rakam şeridi). */
+.restaurant-pos .cart-numpad {
+    display: flex;
+    flex-direction: column;
+    width: 44px;
+    flex: 0 0 auto;
+    background: var(--pos-navy);
+    border-right: 1px solid var(--pos-border);
+    overflow-y: auto;
+}
+
+.restaurant-pos .cart-numpad button {
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: transparent;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.5rem 0.1rem;
+    cursor: pointer;
+    line-height: 1.1;
+}
+
+.restaurant-pos .cart-numpad button:hover {
+    background: rgba(255,255,255,.08);
+}
+
+.restaurant-pos .cart-numpad-p {
+    background: var(--pos-gold) !important;
+    color: var(--pos-navy) !important;
+}
+
+.restaurant-pos .cart-numpad-p.active {
+    background: #C99935 !important;
+    box-shadow: inset 0 0 0 2px #fff;
+}
+
+.restaurant-pos .cart-numpad-grid,
+.restaurant-pos .cart-numpad-portion-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.restaurant-pos .cart-numpad-portion-grid button {
+    font-size: 0.68rem;
+}
+
+.restaurant-pos .cart-numpad-pending {
+    background: #fff;
+    color: var(--pos-navy);
+    font-weight: 800;
+    text-align: center;
+    padding: 0.45rem 0.1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.restaurant-pos .cart-numpad-clear {
+    background: rgba(217, 74, 74, .35) !important;
+}
+
+.restaurant-pos .cart-numpad-back {
+    background: rgba(255,255,255,.05) !important;
 }
 
 .restaurant-pos .cart-header {

@@ -160,6 +160,17 @@
         return cart.find(function (x) { return x.cartId === selectedCartId; }) || null;
     }
 
+    // Sol numpad'ın bekleyen miktarı (Edip, 2026-09-03: "numaralara tıkladı örnek 5 tıkladı
+    // çorbaya tıkladı ekrana 5 tane çorba attı" / "P porsiyon demek 1.5 duble 0.5 seçebilir").
+    // Ürün eklendikten sonra 1'e sıfırlanır - bkz. numpad wiring aşağıda.
+    var pendingQuantity = 1;
+
+    function setPendingQuantity(v) {
+        pendingQuantity = v;
+        var el = document.getElementById('numpad-pending');
+        if (el) el.textContent = (v % 1 === 0 ? v.toString() : v.toString());
+    }
+
     function addToCart(product) {
         var portionId = null;
         var portionName = null;
@@ -189,13 +200,14 @@
             portionName: portionName,
             unitPrice: unitPrice,
             taxRate: product.taxRate,
-            quantity: 1,
+            quantity: pendingQuantity,
             discountAmount: 0,
             isComplimentary: false,
             kitchenNote: null,
             hasKitchenStation: product.hasKitchenStation
         });
         selectedCartId = cartSeq;
+        setPendingQuantity(1);
         renderCart();
     }
 
@@ -569,6 +581,55 @@
         });
     })();
 
+    // --- Sol numpad - bekleyen miktarı belirler, ürün tıklandığında o miktarda eklenir
+    // (Edip, 2026-09-03: eski POS ekranındaki P/rakam şeridi referansı). ---
+    (function () {
+        var numpadEl = document.getElementById('cart-numpad');
+        if (!numpadEl) return;
+        var pBtn = document.getElementById('numpad-p-btn');
+        var digitGrids = numpadEl.querySelectorAll('.cart-numpad-grid');
+        var portionGrid = document.getElementById('numpad-portion-grid');
+        var pendingStr = '';
+        var portionMode = false;
+
+        function setPortionMode(on) {
+            portionMode = on;
+            pBtn.classList.toggle('active', on);
+            portionGrid.style.display = on ? '' : 'none';
+            digitGrids.forEach(function (g) { g.style.display = on ? 'none' : ''; });
+            pendingStr = '';
+        }
+
+        pBtn.addEventListener('click', function () { setPortionMode(!portionMode); });
+
+        numpadEl.querySelectorAll('[data-digit]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                pendingStr = (pendingStr + btn.getAttribute('data-digit')).replace(/^0+(?=\d)/, '');
+                var n = parseInt(pendingStr, 10);
+                if (!isNaN(n) && n > 0) setPendingQuantity(n);
+            });
+        });
+
+        numpadEl.querySelectorAll('[data-portion]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setPendingQuantity(parseFloat(btn.getAttribute('data-portion')));
+                setPortionMode(false);
+            });
+        });
+
+        document.getElementById('numpad-clear-btn').addEventListener('click', function () {
+            pendingStr = '';
+            setPendingQuantity(1);
+            if (portionMode) setPortionMode(false);
+        });
+
+        document.getElementById('numpad-back-btn').addEventListener('click', function () {
+            pendingStr = pendingStr.slice(0, -1);
+            var n = parseInt(pendingStr, 10);
+            setPendingQuantity(!isNaN(n) && n > 0 ? n : 1);
+        });
+    })();
+
     // --- Fişi Beklet ---
     (function () {
         var holdBtn = document.getElementById('side-hold-btn');
@@ -637,13 +698,46 @@
         });
     })();
 
-    // --- Fiş Listesi - bugün kesilmiş fişler, "Ekrana Al" ile satırları sepete klonlar. ---
+    // --- Fiş Listesi - bugün kesilmiş fişler. "Ekrana Al" GERÇEK BİR DÜZELTME: kapanmış fiş
+    // muhasebe bütünlüğü gereği yerinde değiştirilemez, bu yüzden önce fiş ters kayıtla iptal
+    // edilir (Administrator gerektirir - bkz. CancelReceiptForEdit), sonra satırları sepete
+    // klonlanır ki kasiyer ürün ekleyip/silip/ödeme tipini değiştirip yeniden ringleyebilsin
+    // (Edip, 2026-09-03: "muhasebe mantığında öyle çalışsın ama restoran mantığında adisyonu
+    // ekrana alıp düzenleyebilir/ürün ekleyip silebilir/ödeme tipini değiştirebilir"). ---
     (function () {
         var modalEl = document.getElementById('receiptListModal');
         if (!modalEl) return;
         var listEl = document.getElementById('receipt-list-body');
         var todayReceiptsUrl = root.getAttribute('data-today-receipts-url');
         var receiptLinesUrl = root.getAttribute('data-receipt-lines-url');
+        var cancelReceiptUrl = root.getAttribute('data-cancel-receipt-url');
+        var isAdmin = root.getAttribute('data-is-admin') === 'true';
+
+        function cloneLinesIntoCart(lines) {
+            var missing = 0;
+            lines.forEach(function (l) {
+                var product = findCatalogProduct(l.productId);
+                if (!product) { missing += 1; return; }
+                cart.push({
+                    cartId: ++cartSeq,
+                    productId: product.productId,
+                    productPortionId: null,
+                    name: product.name,
+                    portionName: null,
+                    unitPrice: product.salePrice,
+                    taxRate: product.taxRate,
+                    quantity: l.quantity,
+                    discountAmount: 0,
+                    isComplimentary: false,
+                    kitchenNote: null,
+                    hasKitchenStation: product.hasKitchenStation
+                });
+            });
+            renderCart();
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) instance.hide();
+            if (missing > 0) window.alert(missing + ' kalem artık kataloğa dahil değil, eklenemedi.');
+        }
 
         modalEl.addEventListener('show.bs.modal', function () {
             listEl.innerHTML = '<p class="text-secondary small p-2">Yükleniyor...</p>';
@@ -658,32 +752,23 @@
                     row.className = 'price-check-result-row';
                     row.innerHTML = '<span>' + escapeHtml(r.timeLabel) + ' · ' + escapeHtml(r.documentNumber) + ' <span class="text-secondary small">(' + escapeHtml(r.tableName) + ')</span></span><strong>' + money(r.grandTotal) + '</strong>';
                     row.addEventListener('click', function () {
-                        if (!window.confirm(r.documentNumber + ' fişinin satırları sepete eklensin mi?')) return;
-                        fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(function (lines) {
-                            var missing = 0;
-                            lines.forEach(function (l) {
-                                var product = findCatalogProduct(l.productId);
-                                if (!product) { missing += 1; return; }
-                                cart.push({
-                                    cartId: ++cartSeq,
-                                    productId: product.productId,
-                                    productPortionId: null,
-                                    name: product.name,
-                                    portionName: null,
-                                    unitPrice: product.salePrice,
-                                    taxRate: product.taxRate,
-                                    quantity: l.quantity,
-                                    discountAmount: 0,
-                                    isComplimentary: false,
-                                    kitchenNote: null,
-                                    hasKitchenStation: product.hasKitchenStation
-                                });
+                        if (!isAdmin) {
+                            window.alert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
+                            return;
+                        }
+                        if (!window.confirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?')) return;
+                        var fd = new FormData();
+                        fd.append('__RequestVerificationToken', getCsrfToken());
+                        fd.append('retailSaleId', r.id);
+                        fetch(cancelReceiptUrl, { method: 'POST', body: fd })
+                            .then(function (resp) { return resp.json(); })
+                            .then(function (result) {
+                                if (!result.success) {
+                                    window.alert(result.message || 'Fiş iptal edilemedi.');
+                                    return;
+                                }
+                                fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
                             });
-                            renderCart();
-                            var instance = bootstrap.Modal.getInstance(modalEl);
-                            if (instance) instance.hide();
-                            if (missing > 0) window.alert(missing + ' kalem artık kataloğa dahil değil, eklenemedi.');
-                        });
                     });
                     listEl.appendChild(row);
                 });

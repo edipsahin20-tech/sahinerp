@@ -19,6 +19,8 @@
      data-back-url="@Url.Action("Index")"
      data-today-receipts-url="@Url.Action("TodayReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
+     data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
+     data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
@@ -127,48 +129,85 @@
         </div>
 
         <div class="cart-panel">
-            <div class="cart-header">
-                <strong>Yeni Sipariş</strong>
-            </div>
-            <!-- Satır işlem çubuğu SABİT - her satırın altında tekrarlanmaz, seçili satıra
-                 uygulanır (Edip, 2026-09-03: "Not İndirim İptal Sil İkram bölümleri sabit
-                 olsun sana gönderdiğim resimdeki gibi" - eski POS ekranındaki tek, hep aynı
-                 yerde duran işlem şeridi referansı). -->
-            <div class="cart-line-toolbar" id="cart-line-toolbar">
-                <div class="cart-qty-stepper">
-                    <button type="button" id="line-qty-minus" disabled>−</button>
-                    <span id="line-qty-value">–</span>
-                    <button type="button" id="line-qty-plus" disabled>+</button>
+            <!-- Sol taraftaki sabit numpad - Edip'in eski POS ekranındaki P/rakam şeridi
+                 (Edip, 2026-09-03: "bide sol tarafında olsun turuncu ile işaretlediğim alana
+                 koysun"). Rakamlar bir sonraki ürüne eklenecek ADEDİ belirler (örn: 5'e, sonra
+                 çorbaya tıklarsa 5 çorba birden eklenir). P (Porsiyon) ise 0.5/1/1.5/Duble gibi
+                 kesirli miktar seçtirir - fiyat zaten quantity*unitPrice ile orantılı hesaplandığı
+                 için ayrı bir fiyat mantığı gerekmez, sadece miktar kesirli olur. ★'ın eski
+                 ekrandaki tam karşılığı belirtilmediği için burada onun yerine o an bekleyen
+                 miktarı canlı gösteren bir gösterge var (bkz. yanıt). -->
+            <div class="cart-numpad" id="cart-numpad">
+                <button type="button" class="cart-numpad-p" id="numpad-p-btn">P</button>
+                <div class="cart-numpad-grid" id="numpad-digit-grid">
+                    <button type="button" data-digit="1">1</button>
+                    <button type="button" data-digit="2">2</button>
+                    <button type="button" data-digit="3">3</button>
+                    <button type="button" data-digit="4">4</button>
+                    <button type="button" data-digit="5">5</button>
+                    <button type="button" data-digit="6">6</button>
                 </div>
-                <button type="button" id="line-act-note" disabled>Not</button>
-                <button type="button" id="line-act-discount" disabled>İndirim</button>
-                <button type="button" id="line-act-comp" disabled>İkram</button>
-                <button type="button" id="line-act-remove" class="danger" disabled>Sil</button>
-            </div>
-            <div class="cart-lines" id="cart-lines">
-                <p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>
-            </div>
-            <div class="cart-footer">
-                <div class="d-flex justify-content-between">
-                    <span>Toplam</span>
-                    <span class="cart-total" id="cart-total">0,00 ₺</span>
+                <div class="cart-numpad-portion-grid" id="numpad-portion-grid" style="display:none;">
+                    <button type="button" data-portion="0.5">0.5</button>
+                    <button type="button" data-portion="1">1</button>
+                    <button type="button" data-portion="1.5">1.5</button>
+                    <button type="button" data-portion="2">Duble</button>
                 </div>
-                @if (Model.IsSelfSaleCheck)
-                {
-                    <div class="self-payrow">
-                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled>♨ Mutfağa Gönder</button>
-                        <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
+                <div class="cart-numpad-pending" id="numpad-pending" title="Eklenecek miktar">1</div>
+                <button type="button" class="cart-numpad-clear" id="numpad-clear-btn">CL</button>
+                <button type="button" class="cart-numpad-back" id="numpad-back-btn">⌫</button>
+                <div class="cart-numpad-grid">
+                    <button type="button" data-digit="7">7</button>
+                    <button type="button" data-digit="8">8</button>
+                    <button type="button" data-digit="9">9</button>
+                    <button type="button" data-digit="0">0</button>
+                </div>
+            </div>
+
+            <div class="cart-main">
+                <div class="cart-header">
+                    <strong>Yeni Sipariş</strong>
+                </div>
+                <!-- Satır işlem çubuğu SABİT - her satırın altında tekrarlanmaz, seçili satıra
+                     uygulanır (Edip, 2026-09-03: "Not İndirim İptal Sil İkram bölümleri sabit
+                     olsun sana gönderdiğim resimdeki gibi" - eski POS ekranındaki tek, hep aynı
+                     yerde duran işlem şeridi referansı). -->
+                <div class="cart-line-toolbar" id="cart-line-toolbar">
+                    <div class="cart-qty-stepper">
+                        <button type="button" id="line-qty-minus" disabled>−</button>
+                        <span id="line-qty-value">–</span>
+                        <button type="button" id="line-qty-plus" disabled>+</button>
                     </div>
-                    <div class="self-quickpay" id="self-quickpay">
-                        <button type="button" class="pay-method-btn n" data-quick-method="1">₺ Nakit</button>
-                        <button type="button" class="pay-method-btn c" data-quick-method="2">▣ Kredi Kartı</button>
-                        <button type="button" class="pay-method-btn y" data-quick-method="3">◇ Yemek Çeki</button>
+                    <button type="button" id="line-act-note" disabled>Not</button>
+                    <button type="button" id="line-act-discount" disabled>İndirim</button>
+                    <button type="button" id="line-act-comp" disabled>İkram</button>
+                    <button type="button" id="line-act-remove" class="danger" disabled>Sil</button>
+                </div>
+                <div class="cart-lines" id="cart-lines">
+                    <p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>
+                </div>
+                <div class="cart-footer">
+                    <div class="d-flex justify-content-between">
+                        <span>Toplam</span>
+                        <span class="cart-total" id="cart-total">0,00 ₺</span>
                     </div>
-                }
-                else
-                {
-                    <button type="button" class="btn-send-kitchen" id="send-kitchen-btn" disabled>Mutfağa Gönder</button>
-                }
+                    @if (Model.IsSelfSaleCheck)
+                    {
+                        <div class="self-payrow">
+                            <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled>♨ Mutfağa Gönder</button>
+                            <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
+                        </div>
+                        <div class="self-quickpay" id="self-quickpay">
+                            <button type="button" class="pay-method-btn n" data-quick-method="1">₺ Nakit</button>
+                            <button type="button" class="pay-method-btn c" data-quick-method="2">▣ Kredi Kartı</button>
+                            <button type="button" class="pay-method-btn y" data-quick-method="3">◇ Yemek Çeki</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn-send-kitchen" id="send-kitchen-btn" disabled>Mutfağa Gönder</button>
+                    }
+                </div>
             </div>
         </div>
 

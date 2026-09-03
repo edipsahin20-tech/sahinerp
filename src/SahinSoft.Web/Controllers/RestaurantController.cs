@@ -207,6 +207,31 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return Json(lines);
     }
 
+    // "Düzelt" (Fiş Listesi > Ekrana Al, kapanmış bir fiş üzerinde) - Edip, 2026-09-03: "muhasebe
+    // mantığında öyle çalışsın ama restorant mantığında adisyonu veya fişi ekrana alıp ödeme
+    // tipini değiştirebilir düzenleyebilir ürün ekleyip silebilir". Muhasebe bütünlüğü (kapanmış
+    // fiş asla yerinde değişmez, sadece ters kayıtla iptal edilir - bkz. CancelRetailSaleAsync)
+    // KORUNUR: restoran ekranındaki "düzelt" aslında ÖNCE mevcut RestaurantReportsController.
+    // CancelReceipt ile AYNI iptali tetikler (bu yüzden Administrator gerekir - sıradan bir
+    // kasiyer düzenleme diye kapanmış fişleri iptal edemez), SONRA satırları sepete klonlar ki
+    // kasiyer ürün ekleyip/silip/ödeme tipini değiştirip yeniden ringleyebilsin. JSON döner (bu
+    // sayfa modal içinde kullanır, Raporlar'daki tam sayfa yönlendirmeli sürümden ayrı).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = AppRoles.Administrator)]
+    public async Task<IActionResult> CancelReceiptForEdit(int retailSaleId)
+    {
+        try
+        {
+            await postingService.CancelRetailSaleAsync(retailSaleId, CurrentUserId, "Restoran ekranından düzeltme (ekrana alındı)");
+            return Json(new { success = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
     public async Task<IActionResult> Check(int id)
     {
         ActivePage = "tables";
