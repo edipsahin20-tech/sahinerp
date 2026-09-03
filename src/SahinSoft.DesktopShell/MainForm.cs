@@ -7,8 +7,9 @@ namespace SahinSoft.DesktopShell;
 /// ŞahinSoft'u gerçek bir Windows programı gibi açan ince bir kabuk. İçeride
 /// tarayıcı, dışarıda kendi penceresi/görev çubuğu ikonu olan bir uygulama -
 /// mevcut web uygulamasının UI'ı tekrar yazılmadan aynen kullanılıyor. Hangi
-/// adrese (yerel kurulum / merkez PC / bulut) baktığı shell.config.json'da
-/// tutulur ve Ayarlar penceresinden değiştirilebilir.
+/// adrese baktığı web uygulamasıyla AYNI appsettings.json'daki "RestaurantShell"
+/// bölümünden okunur (bkz. ShellConfig) - Edip'in isteği (2026-09-03): ayrı bir
+/// ayar dosyası/penceresi yok, tek kaynak.
 /// </summary>
 public sealed class MainForm : Form
 {
@@ -16,10 +17,9 @@ public sealed class MainForm : Form
     private readonly Button _backButton = new() { Text = "◀", Width = 36 };
     private readonly Button _forwardButton = new() { Text = "▶", Width = 36 };
     private readonly Button _refreshButton = new() { Text = "⟳", Width = 36 };
-    private readonly Button _settingsButton = new() { Text = "⚙ Ayarlar", AutoSize = true };
     private readonly Label _statusLabel = new() { AutoSize = true, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft };
 
-    private ShellConfig _config;
+    private readonly ShellConfig _config;
 
     public MainForm()
     {
@@ -52,12 +52,10 @@ public sealed class MainForm : Form
         _backButton.Click += (_, _) => { if (_webView.CanGoBack) _webView.GoBack(); };
         _forwardButton.Click += (_, _) => { if (_webView.CanGoForward) _webView.GoForward(); };
         _refreshButton.Click += (_, _) => _webView.Reload();
-        _settingsButton.Click += SettingsButton_Click;
 
         toolbar.Controls.Add(_backButton);
         toolbar.Controls.Add(_forwardButton);
         toolbar.Controls.Add(_refreshButton);
-        toolbar.Controls.Add(_settingsButton);
         toolbar.Controls.Add(_statusLabel);
 
         Controls.Add(_webView);
@@ -104,20 +102,6 @@ public sealed class MainForm : Form
         catch (Exception ex)
         {
             SetStatus($"Bağlantı hatası: {ex.Message}");
-        }
-    }
-
-    private void SettingsButton_Click(object? sender, EventArgs e)
-    {
-        using var settingsForm = new SettingsForm(_config);
-        if (settingsForm.ShowDialog(this) == DialogResult.OK)
-        {
-            _config.Url = settingsForm.ResultUrl;
-            _config.Title = settingsForm.ResultTitle;
-            _config.Save();
-
-            Text = _config.Title;
-            _ = InitializeWebViewAsync();
         }
     }
 

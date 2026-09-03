@@ -44,8 +44,9 @@ builder.Services.ConfigureApplicationCookie(options =>
         // Edip (2026-09-02): "2 ayrı program olsun bi muhasebe bide restorant olsun" - kök adres
         // (/) ve muhasebe sayfaları ARTIK restoran'a hiç kaçırılmaz, her zaman normal e-posta/
         // şifre girişine gider (Program 1). SADECE bir restoran sayfası (/Restaurant...) doğrudan
-        // istenip oturum yoksa Kasiyer Girişi'ne yönlendirilir (Program 2 - masaüstü kabuk
-        // shell.config.json'da doğrudan /RestaurantDashboard'a bakıyor, bkz. SahinSoft.DesktopShell).
+        // istenip oturum yoksa Kasiyer Girişi'ne yönlendirilir (Program 2 - masaüstü kabuk bu
+        // appsettings.json'daki "RestaurantShell:Url" ayarıyla doğrudan /RestaurantDashboard'a
+        // bakıyor, bkz. SahinSoft.DesktopShell/ShellConfig.cs).
         // Önceki sürüm restaurantEnabled true olduğunda KÖK ADRESİ DE kaçırıyordu - bu, canlıda
         // muhasebe tarafının "kaybolduğu" izlenimi yaratan gerçek bir kullanılabilirlik hatasıydı.
         var requestPath = context.Request.Path.Value ?? "/";
