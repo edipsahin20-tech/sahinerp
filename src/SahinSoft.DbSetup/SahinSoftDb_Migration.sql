@@ -1,3 +1,7 @@
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
 ﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
@@ -9443,6 +9447,190 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20260902215835_AddCategoryExtendedFields', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903002840_AddTableReservationsAndBillRequested'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [BillRequestedAtUtc] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903002840_AddTableReservationsAndBillRequested'
+)
+BEGIN
+    CREATE TABLE [RestaurantTableReservations] (
+        [Id] int NOT NULL IDENTITY,
+        [RestaurantTableId] int NOT NULL,
+        [ReservedForUtc] datetime2 NOT NULL,
+        [GuestCount] int NOT NULL,
+        [Note] nvarchar(300) NULL,
+        [IsActive] bit NOT NULL,
+        [CreatedByUserId] nvarchar(450) NOT NULL,
+        [CancelledAtUtc] datetime2 NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantTableReservations] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RestaurantTableReservations_RestaurantTables_RestaurantTableId] FOREIGN KEY ([RestaurantTableId]) REFERENCES [RestaurantTables] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903002840_AddTableReservationsAndBillRequested'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_RestaurantTableReservations_OneActivePerTable] ON [RestaurantTableReservations] ([RestaurantTableId]) WHERE [IsActive] = 1');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903002840_AddTableReservationsAndBillRequested'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantTableReservations_RecordId] ON [RestaurantTableReservations] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903002840_AddTableReservationsAndBillRequested'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903002840_AddTableReservationsAndBillRequested', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903010006_AddDailyRevenueTarget'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [DailyRevenueTarget] decimal(18,2) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903010006_AddDailyRevenueTarget'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [DailyRevenueTarget] = NULL
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903010006_AddDailyRevenueTarget'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903010006_AddDailyRevenueTarget', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903072133_AddKitchenAutoReadyMinutes'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [KitchenAutoReadyMinutes] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903072133_AddKitchenAutoReadyMinutes'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [KitchenAutoReadyMinutes] = NULL
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903072133_AddKitchenAutoReadyMinutes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903072133_AddKitchenAutoReadyMinutes', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903073046_AddKitchenTrackingEnabled'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [IsKitchenTrackingEnabled] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903073046_AddKitchenTrackingEnabled'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [IsKitchenTrackingEnabled] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903073046_AddKitchenTrackingEnabled'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903073046_AddKitchenTrackingEnabled', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903075421_AddRequireOpenShiftForSales'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireOpenShiftForSales] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903075421_AddRequireOpenShiftForSales'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [RequireOpenShiftForSales] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903075421_AddRequireOpenShiftForSales'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903075421_AddRequireOpenShiftForSales', N'10.0.10');
 END;
 
 COMMIT;

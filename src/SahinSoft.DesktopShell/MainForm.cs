@@ -13,19 +13,55 @@ namespace SahinSoft.DesktopShell;
 /// </summary>
 public sealed class MainForm : Form
 {
+    // Marka renkleri - web uygulamasındaki --rs-navy/--rs-gold ile aynı (Edip, 2026-09-03:
+    // "üst bar daha düzgün gözüksün karanlık ve ne olduğu belli değil" - jenerik koyu gri yerine
+    // uygulamanın kendi lacivert/altın kimliği, artı ne olduğu belli olsun diye bir uygulama adı).
+    private static readonly Color NavyBg = Color.FromArgb(11, 34, 57);
+    private static readonly Color GoldAccent = Color.FromArgb(226, 164, 0);
+
     private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
-    private readonly Button _backButton = new() { Text = "◀", Width = 36 };
-    private readonly Button _forwardButton = new() { Text = "▶", Width = 36 };
-    private readonly Button _refreshButton = new() { Text = "⟳", Width = 36 };
-    private readonly Label _statusLabel = new() { AutoSize = true, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Button _backButton = NavButton("◀");
+    private readonly Button _forwardButton = NavButton("▶");
+    private readonly Button _refreshButton = NavButton("⟳");
+    private readonly Label _titleLabel = new()
+    {
+        AutoSize = true,
+        ForeColor = GoldAccent,
+        Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+        TextAlign = ContentAlignment.MiddleLeft,
+        Margin = new Padding(10, 11, 16, 0)
+    };
+    private readonly Label _statusLabel = new()
+    {
+        AutoSize = true,
+        ForeColor = Color.FromArgb(180, 195, 210),
+        Font = new Font("Segoe UI", 8.5F),
+        TextAlign = ContentAlignment.MiddleLeft,
+        Margin = new Padding(0, 13, 0, 0)
+    };
 
     private readonly ShellConfig _config;
+
+    private static Button NavButton(string text) => new()
+    {
+        Text = text,
+        Width = 34,
+        Height = 30,
+        Margin = new Padding(2, 4, 2, 4),
+        FlatStyle = FlatStyle.Flat,
+        BackColor = Color.FromArgb(22, 50, 78),
+        ForeColor = Color.White,
+        Font = new Font("Segoe UI", 10F),
+        Cursor = Cursors.Hand,
+        FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.FromArgb(34, 66, 99) }
+    };
 
     public MainForm()
     {
         _config = ShellConfig.Load();
 
         Text = _config.Title;
+        _titleLabel.Text = _config.Title;
         try
         {
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -46,7 +82,7 @@ public sealed class MainForm : Form
             Height = 40,
             FlowDirection = FlowDirection.LeftToRight,
             Padding = new Padding(6, 4, 6, 4),
-            BackColor = Color.FromArgb(30, 30, 30)
+            BackColor = NavyBg
         };
 
         _backButton.Click += (_, _) => { if (_webView.CanGoBack) _webView.GoBack(); };
@@ -56,6 +92,7 @@ public sealed class MainForm : Form
         toolbar.Controls.Add(_backButton);
         toolbar.Controls.Add(_forwardButton);
         toolbar.Controls.Add(_refreshButton);
+        toolbar.Controls.Add(_titleLabel);
         toolbar.Controls.Add(_statusLabel);
 
         Controls.Add(_webView);
