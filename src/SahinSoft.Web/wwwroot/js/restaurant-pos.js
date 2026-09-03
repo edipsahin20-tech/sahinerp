@@ -8,6 +8,11 @@
     var checkNumber = root.getAttribute('data-check-number');
     var tableLabel = root.getAttribute('data-table-label');
     var isSelfSale = root.getAttribute('data-is-self-sale') === 'true';
+    // Zaten gönderilmiş/kalıcı satırların tutarı (bkz. Check.cshtml #cart-sent-lines) - "Toplam"
+    // sadece bekleyen sepeti değil BUNU DA içermeli, aksi halde mutfağa gönderdikten sonra
+    // Toplam sıfıra düşüyormuş gibi görünür (Edip, 2026-09-03: "mutfağa gönderdikten sonra tutar
+    // kısmı 0 geliyor").
+    var sentLinesTotal = parseFloat(root.getAttribute('data-payable-total')) || 0;
     var sendUrl = root.getAttribute('data-send-url');
     var catalog = JSON.parse(document.getElementById('pos-catalog-data').textContent || '[]');
     var cart = [];
@@ -241,7 +246,7 @@
 
         if (cart.length === 0) {
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
-            totalEl.textContent = money(0);
+            totalEl.textContent = money(sentLinesTotal);
             sendBtn.disabled = true;
             updateLineToolbar();
             return;
@@ -272,7 +277,7 @@
             linesEl.appendChild(div);
         });
 
-        totalEl.textContent = money(total);
+        totalEl.textContent = money(total + sentLinesTotal);
         sendBtn.disabled = false;
         updateLineToolbar();
     }

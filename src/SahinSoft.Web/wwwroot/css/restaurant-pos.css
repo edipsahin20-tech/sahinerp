@@ -241,6 +241,10 @@
     flex-direction: column;
     flex: 1;
     min-width: 0;
+    /* flex item'ların varsayılan min-height:auto'su içerik büyüdükçe paneli taşırıp alt kısımdaki
+       Toplam/Ödemeyi Al'ı ekran dışına iter (Edip, 2026-09-03: "sabit alanlar oynamasın, kaydırsın")
+       - min-height:0 ile cart-lines kendi içinde kaydırılabilir hale gelir, üst/alt sabit kalır. */
+    min-height: 0;
 }
 
 /* Sol taraftaki sabit numpad (Edip, 2026-09-03: eski POS ekranındaki P/rakam şeridi). */
@@ -318,6 +322,7 @@
     overflow-y: auto;
     padding: 0.5rem 0.75rem;
     flex: 1;
+    min-height: 0;
 }
 
 .restaurant-pos .cart-line {
@@ -343,6 +348,9 @@
 .restaurant-pos .cart-sent-lines {
     padding: 0.5rem 0.75rem 0;
     border-bottom: 1px dashed var(--pos-border);
+    max-height: 40%;
+    overflow-y: auto;
+    flex: 0 0 auto;
 }
 
 .restaurant-pos .cart-line .line-actions button {
