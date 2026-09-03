@@ -22,15 +22,28 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         var todayEndUtc = todayStartUtc.AddDays(1);
         var nowUtc = DateTime.UtcNow;
 
+        // Z Raporu, o ana kadar yapılan her şeyi sıfırlar - gün takvim gece yarısından değil,
+        // BUGÜN alınmış SON Z'nin kapanış saatinden itibaren yeniden başlar (Edip, 2026-09-03:
+        // "z raporu aldığın o zamana kadar yapılan herşeyi sıfırlar güne sıfırdan başlar"). Bugün
+        // hiç Z alınmadıysa (ya da son Z dünse) davranış aynen eskisi gibi, takvim gece yarısından
+        // başlar. Hangi kasaya/kullanıcıya ait olduğuna bakılmaz (Vardiya'nın FinancialAccountId
+        // bazlı kapsam hatası AYRI, henüz düzeltilmedi - buna bağımlı olmamak için kasıtlı).
+        var lastZClosedTodayUtc = await dbContext.RestaurantCashShifts
+            .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartUtc && x.ClosedAtUtc < todayEndUtc)
+            .OrderByDescending(x => x.ClosedAtUtc)
+            .Select(x => (DateTime?)x.ClosedAtUtc)
+            .FirstOrDefaultAsync();
+        var periodStartUtc = lastZClosedTodayUtc ?? todayStartUtc;
+
         var todaySales = await dbContext.RetailSales
             .AsNoTracking()
-            .Where(x => x.IssuedAtUtc >= todayStartUtc && x.IssuedAtUtc < todayEndUtc && x.Status != RetailSaleStatus.Cancelled)
+            .Where(x => x.IssuedAtUtc >= periodStartUtc && x.IssuedAtUtc < todayEndUtc && x.Status != RetailSaleStatus.Cancelled)
             .Select(x => new { x.GrandTotal, x.IssuedAtUtc })
             .ToListAsync();
 
         var todayPayments = await dbContext.RestaurantPayments
             .AsNoTracking()
-            .Where(x => x.PaidAtUtc >= todayStartUtc && x.PaidAtUtc < todayEndUtc && !x.IsReversal)
+            .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc && !x.IsReversal)
             .GroupBy(x => x.PaymentMethod)
             .Select(g => new { Method = g.Key, Total = g.Sum(x => x.Amount) })
             .ToListAsync();
@@ -84,7 +97,7 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         var closedSessionsToday = await dbContext.RestaurantChecks
             .AsNoTracking()
             .Where(x => x.Status == RestaurantCheckStatus.Closed && x.ClosedAtUtc != null
-                     && x.ClosedAtUtc >= todayStartUtc && x.ClosedAtUtc < todayEndUtc)
+                     && x.ClosedAtUtc >= periodStartUtc && x.ClosedAtUtc < todayEndUtc)
             .Select(x => new { x.RestaurantTableSession.OpenedAtUtc, x.ClosedAtUtc, x.BillRequestedAtUtc })
             .ToListAsync();
         var avgTableTurnMinutes = closedSessionsToday.Count == 0
@@ -103,7 +116,7 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         var deliveredPackagesToday = await dbContext.PackageOrders
             .AsNoTracking()
             .Where(x => x.Status == PackageOrderStatus.Delivered && x.DeliveredAtUtc != null
-                     && x.DeliveredAtUtc >= todayStartUtc && x.DeliveredAtUtc < todayEndUtc)
+                     && x.DeliveredAtUtc >= periodStartUtc && x.DeliveredAtUtc < todayEndUtc)
             .Select(x => new { x.CreatedAtUtc, x.DeliveredAtUtc })
             .ToListAsync();
         var avgPackageDeliveryMinutes = deliveredPackagesToday.Count == 0
