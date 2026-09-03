@@ -153,6 +153,25 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return RedirectToAction(nameof(Check), new { id = checkId });
     }
 
+    // "Masayı Boşalt" - her şey iptal edildiğinde/hiç sipariş girilmediğinde ödemesiz çıkış -
+    // bkz. VoidEmptyCheckAsync yorumu (Edip, 2026-09-03).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VoidEmptyCheck(int checkId)
+    {
+        try
+        {
+            await postingService.VoidEmptyCheckAsync(checkId, CurrentUserId);
+            TempData["Success"] = "Masa boşaltıldı.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Check), new { id = checkId });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateCheckNote(int checkId, string? note)

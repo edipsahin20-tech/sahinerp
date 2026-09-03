@@ -184,6 +184,40 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // "Masayı Boşalt" - müşteri hiçbir şey almadan gitti ya da sipariş edilen her şey iptal
+    // edildi; CloseCheckAsync bu durumda "Boş adisyon kapatılamaz" diye reddeder, adisyon açık
+    // kalır ve masa DOLU görünmeye devam eder. Bu, ödemesiz bir çıkış yolu: adisyon İPTAL
+    // (ödeme/fiş üretimi yok, muhasebeye hiç girmedi zaten) işaretlenir, masa oturumu kapanır,
+    // masa yeniden BOŞ'a döner - yeni müşteri tertemiz bir adisyonla başlar (Edip, 2026-09-03:
+    // "masa boşaldı tekrar farklı müşteriye gireceğim o iptal hareketleri gelmesin boş gelsin").
+    public async Task VoidEmptyCheckAsync(int checkId, string userId, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks
+            .Include(x => x.Orders).ThenInclude(x => x.Lines)
+            .Include(x => x.RestaurantTableSession)
+            .SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+
+        if (check.Status != RestaurantCheckStatus.Open)
+        {
+            throw new InvalidOperationException("Bu adisyon zaten kapalı veya iptal edilmiş.");
+        }
+
+        var hasActiveLine = check.Orders.SelectMany(o => o.Lines).Any(l => l.Status != RestaurantOrderLineStatus.Cancelled);
+        if (hasActiveLine)
+        {
+            throw new InvalidOperationException("Adisyonda hâlâ aktif ürün var - önce hepsini iptal edin.");
+        }
+
+        var now = DateTime.UtcNow;
+        check.Status = RestaurantCheckStatus.Cancelled;
+        check.UpdatedAtUtc = now;
+        check.RestaurantTableSession.Status = RestaurantTableSessionStatus.Closed;
+        check.RestaurantTableSession.ClosedAtUtc = now;
+        check.RestaurantTableSession.ClosedByUserId = userId;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // Masa başına en fazla bir aktif rezervasyon (DB'deki filtered unique index son güvenlik ağı,
     // bkz. ApplicationDbContext) - boş bir masa rezerve edilebilir, dolu/zaten rezerve bir masa
     // edilemez. Reservation notu/saat/kişi sayısı serbest metin/sayı, doğrulanacak başka bir

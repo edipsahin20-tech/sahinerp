@@ -69,6 +69,17 @@
                     <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
                 }
                 <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
+                @if (!Model.IsSelfSaleCheck && Model.PayableTotal <= 0)
+                {
+                    <!-- Müşteri hiçbir şey almadan gitti / her şey iptal edildi - normal ödeme
+                         akışı "Boş adisyon kapatılamaz" diyip masayı DOLU'da tutardı (Edip,
+                         2026-09-03: "masa boşaldı ... o iptal hareketleri gelmesin boş gelsin"). -->
+                    <form method="post" asp-action="VoidEmptyCheck" class="d-inline" onsubmit="return confirm('Masa boşaltılsın mı? Bu adisyon iptal edilecek.');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="checkId" value="@Model.CheckId" />
+                        <button type="submit" class="btn btn-erp-outline btn-sm">✕ Masayı Boşalt</button>
+                    </form>
+                }
             </div>
             <div class="product-search-row">
                 <input type="text" id="product-search" class="product-search-input" placeholder="Ürün ara veya barkod okut..." autocomplete="off" />
