@@ -11,8 +11,11 @@
 
     var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki' };
 
-    var openBtn = document.getElementById('open-close-payment-btn');
-    if (!openBtn) return; // PayableTotal = 0, buton yok.
+    // Self satış ve masa satışta AYNI tek tetikleyici - "Kapat/Öde" ayrı bir buton olarak
+    // kaldırıldı (Edip, 2026-09-03: "kapat ve ödeme mantığı kalksın"), her ikisi de sepetin
+    // altındaki "Ödemeyi Al"ı kullanır (bkz. Check.cshtml #self-pay-btn).
+    var openBtn = document.getElementById('self-pay-btn');
+    if (!openBtn) return; // PayableTotal = 0, buton disabled ama DOM'da var - yine de devam eder.
 
     var linesContainer = document.getElementById('close-payment-lines');
     var totalEl = document.getElementById('pay-total');
@@ -113,15 +116,6 @@
     }
 
     openBtn.addEventListener('click', openPaymentModal);
-
-    // Self Satış'ta MASTER tasarımdaki gibi ödeme tetikleyicisi sepetin altındaki "Ödemeyi Al"
-    // butonundadır (bkz. Check.cshtml #self-pay-btn) - toolbar'daki #open-close-payment-btn aynı
-    // sayfada hala DOM'dadır (bu script'in çalışması buna bağlı) ama görsel olarak gizlenir (d-none);
-    // burada sadece aynı tıklama olayını tetikleyip mevcut modalı bire bir yeniden kullanıyoruz.
-    var selfPayBtn = document.getElementById('self-pay-btn');
-    if (selfPayBtn) {
-        selfPayBtn.addEventListener('click', function () { openBtn.click(); });
-    }
 
     // Self Satış hızlı ödeme kısayolları (MASTER tasarım, Edip 2026-09-03) - ürün panelinin
     // altındaki Nakit/Kredi Kartı/Yemek Çeki butonları restaurant-pos.js'ten burayı çağırır.
