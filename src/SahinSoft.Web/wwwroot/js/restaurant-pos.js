@@ -331,20 +331,14 @@
         updateLineToolbar();
     }
 
-    // Sabit satır işlem çubuğunun durumu - seçili satır yoksa hepsi disabled, varsa miktar
-    // ve butonlar seçili satırı yansıtır.
+    // Sabit satır işlem çubuğu - Edip, 2026-09-03: "mutfağa gönder dediğimizde bu butonlar
+    // pasif oluyor artık olmasın hep aktif olsun ... sipariş sil butonu her zaman aktif olsun".
+    // Butonlar ARTIK hiçbir zaman disabled olmuyor (mutfağa gönderilince sepet boşalıp seçili
+    // satır kalmasa bile); her tıklama zaten kendi içinde "seçili satır yoksa hiçbir şey yapma"
+    // koruması taşıyor (bkz. aşağıdaki click handler'ları), bu yüzden güvenli.
     function updateLineToolbar() {
         var line = selectedLine();
         var qtyValueEl = document.getElementById('line-qty-value');
-        var buttons = [
-            document.getElementById('line-qty-minus'),
-            document.getElementById('line-qty-plus'),
-            document.getElementById('line-act-note'),
-            document.getElementById('line-act-discount'),
-            document.getElementById('line-act-comp'),
-            document.getElementById('line-act-remove')
-        ];
-        buttons.forEach(function (btn) { btn.disabled = !line; });
         qtyValueEl.textContent = line ? line.quantity : '–';
     }
 
