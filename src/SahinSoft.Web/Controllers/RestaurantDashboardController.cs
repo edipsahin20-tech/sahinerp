@@ -67,9 +67,11 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             _ => "Karma Ödeme"
         };
 
+        // Yoğunluk Haritası günün TAMAMINI (00-23) gösterir, kayan 12 saatlik pencere değil
+        // (Edip, 2026-09-03).
         var hourlyRevenue = new List<decimal>();
-        var startHour = Math.Max(0, DateTime.Now.Hour - 11);
-        for (var hour = startHour; hour <= DateTime.Now.Hour; hour++)
+        var startHour = 0;
+        for (var hour = 0; hour <= 23; hour++)
         {
             var hourTotal = todaySales
                 .Where(x => x.IssuedAtUtc.ToLocalTime().Hour == hour)
