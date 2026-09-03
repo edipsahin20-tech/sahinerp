@@ -48,7 +48,7 @@
             }
             @if (Model.PayableTotal > 0)
             {
-                <button type="button" class="btn btn-erp btn-sm" id="open-close-payment-btn">Kapat / Öde</button>
+                <button type="button" class="btn btn-erp btn-sm@(Model.IsSelfSaleCheck ? " d-none" : "")" id="open-close-payment-btn">Kapat / Öde</button>
             }
             <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
         </div>
@@ -109,7 +109,17 @@
                     <span>Toplam</span>
                     <span class="cart-total" id="cart-total">0,00 ₺</span>
                 </div>
-                <button type="button" class="btn-send-kitchen" id="send-kitchen-btn" disabled>Mutfağa Gönder</button>
+                @if (Model.IsSelfSaleCheck)
+                {
+                    <div class="self-payrow">
+                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled>♨ Mutfağa Gönder</button>
+                        <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="btn-send-kitchen" id="send-kitchen-btn" disabled>Mutfağa Gönder</button>
+                }
             </div>
         </div>
 
@@ -296,6 +306,15 @@
        Nakit/Kredi Kartı/Yemek Çeki satırı (bkz. restaurant-pos.js/restaurant-close-payment.js). */
     .self-quickpay { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 1rem; }
     .self-quickpay .pay-method-btn:disabled { opacity: .5; cursor: default; }
+
+    /* Self Satış sepet altı - MASTER'ın order-foot/payrow'u birebir (Mutfağa Gönder + Ödemeyi Al
+       yan yana, aynı renkler); toolbar'daki Kapat/Öde bu ekranda gizlenir (bkz. self-pay-btn'in
+       onu tetiklediği restaurant-close-payment.js). */
+    .self-payrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 0.5rem; }
+    .self-payrow button { padding: 14px; border: 0; border-radius: 9px; font-weight: 800; cursor: pointer; font-size: 0.95rem; }
+    .self-payrow button:disabled { opacity: .5; cursor: default; }
+    .self-payrow-kitchen { background: #FFF2D1; color: #A96E00; }
+    .self-payrow-pay { background: #E5A600; color: #fff; }
 </style>
 
 @section Scripts {

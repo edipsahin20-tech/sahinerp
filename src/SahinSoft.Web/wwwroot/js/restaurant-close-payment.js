@@ -114,6 +114,15 @@
 
     openBtn.addEventListener('click', openPaymentModal);
 
+    // Self Satış'ta MASTER tasarımdaki gibi ödeme tetikleyicisi sepetin altındaki "Ödemeyi Al"
+    // butonundadır (bkz. Check.cshtml #self-pay-btn) - toolbar'daki #open-close-payment-btn aynı
+    // sayfada hala DOM'dadır (bu script'in çalışması buna bağlı) ama görsel olarak gizlenir (d-none);
+    // burada sadece aynı tıklama olayını tetikleyip mevcut modalı bire bir yeniden kullanıyoruz.
+    var selfPayBtn = document.getElementById('self-pay-btn');
+    if (selfPayBtn) {
+        selfPayBtn.addEventListener('click', function () { openBtn.click(); });
+    }
+
     // Self Satış hızlı ödeme kısayolları (MASTER tasarım, Edip 2026-09-03) - ürün panelinin
     // altındaki Nakit/Kredi Kartı/Yemek Çeki butonları restaurant-pos.js'ten burayı çağırır.
     // Modalı TAM tutarla tek satır ön dolu açar ama otomatik KAPATMAZ - son onay yine kasiyerin
