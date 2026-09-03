@@ -36,6 +36,14 @@ public sealed class InventorySettings : EntityBase
     // SendOrderToKitchenCoreAsync.
     public bool IsKitchenTrackingEnabled { get; set; }
 
+    // Kapalıyken (varsayılan - Edip, 2026-09-03: "kapalı default olsun") yeni masa/self satış/
+    // paket siparişi açmak için açık bir vardiya ŞART DEĞİL, bugünkü gibi çalışır. Açıkken hiç
+    // açık RestaurantCashShift yoksa yeni satış başlatılamaz - bkz. RestaurantPostingService.
+    // EnsureShiftOpenIfRequiredAsync. Vardiya'nın kendi FinancialAccountId bazlı kapsam hatası
+    // AYRI ve HENÜZ DÜZELTİLMEDİ (Edip'in deyimiyle "sonra yapacağız") - bu parametre sadece
+    // "satış başlatmak için açık vardiya şart mı" sorusuna cevap verir, o hatayı çözmez.
+    public bool RequireOpenShiftForSales { get; set; }
+
     // Yok (None) iken restoran Kapat/Öde bugünkü gibi hiçbir fiskal cihaz çağrısı yapmadan
     // çalışır - bkz. SahinSoft.FiscalAgent projesi. Bir cihaz seçilip adres girildiğinde nakit/
     // kredi kartı/yemek çeki ödemeleri doğrudan yazarkasaya gönderilir (fatura kesilen satışlar

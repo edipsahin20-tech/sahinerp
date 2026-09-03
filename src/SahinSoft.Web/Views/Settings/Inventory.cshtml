@@ -76,6 +76,10 @@
                 <div class="form-text">Restoran Dashboard'daki "Günün Hedefi" halkası için. Boş bırakılırsa o bölüm hiç gösterilmez.</div>
             </div>
             <div class="mt-3">
+                <div class="form-check form-switch"><input asp-for="RequireOpenShiftForSales" class="form-check-input" /><label asp-for="RequireOpenShiftForSales" class="form-check-label"></label></div>
+                <div class="form-text">Kapalıyken (varsayılan) bugünkü gibi çalışır, vardiya açık olmasa da masa/self satış/paket siparişi başlatılabilir. Açıkken hiç açık vardiya yoksa yeni satış başlatılamaz.</div>
+            </div>
+            <div class="mt-3">
                 <div class="form-check form-switch"><input asp-for="IsKitchenTrackingEnabled" class="form-check-input" /><label asp-for="IsKitchenTrackingEnabled" class="form-check-label"></label></div>
                 <div class="form-text">Kapalıyken (varsayılan) mutfağa gönderilen siparişler hiç KDS takibine girmez, doğrudan servis edilmiş sayılır - Mutfak ekranında Hazır/Servis Edildi gibi tıklamalara gerek kalmaz. Açıkken bugünkü mutfak fişi akışı çalışır.</div>
             </div>

@@ -41,6 +41,32 @@ public sealed class RestaurantPostingService(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator)
 {
+    // Masa/Self Satış/Paket - üç "yeni satış başlat" giriş noktasının hepsi bunu çağırır.
+    // InventorySettings.RequireOpenShiftForSales kapalıyken (varsayılan) hiçbir şey yapmaz.
+    // Açıkken herhangi bir açık RestaurantCashShift var mı diye bakar - hangi kasaya/kullanıcıya
+    // ait olduğuna bakmaz (Vardiya'nın FinancialAccountId bazlı kapsam hatası AYRI, henüz
+    // düzeltilmedi - burada o hataya bağımlı olmamak için kasıtlı olarak hesap-agnostik).
+    private async Task EnsureShiftOpenIfRequiredAsync(CancellationToken cancellationToken)
+    {
+        var requireOpenShift = await dbContext.InventorySettings
+            .Where(x => x.Id == 1)
+            .Select(x => x.RequireOpenShiftForSales)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (!requireOpenShift)
+        {
+            return;
+        }
+
+        var hasOpenShift = await dbContext.RestaurantCashShifts
+            .AnyAsync(x => x.Status == RestaurantCashShiftStatus.Open, cancellationToken);
+
+        if (!hasOpenShift)
+        {
+            throw new InvalidOperationException("Satış başlatmak için önce vardiya açılmalıdır.");
+        }
+    }
+
     public Task<(RestaurantTableSession Session, RestaurantCheck Check)> OpenTableSessionAsync(
         int restaurantTableId,
         int guestCount,
@@ -69,6 +95,8 @@ public sealed class RestaurantPostingService(
                         return (existing, existing.Checks.Single());
                     }
                 }
+
+                await EnsureShiftOpenIfRequiredAsync(cancellationToken);
 
                 var table = await dbContext.RestaurantTables
                     .SingleOrDefaultAsync(x => x.Id == restaurantTableId, cancellationToken)
@@ -289,6 +317,8 @@ public sealed class RestaurantPostingService(
                     IsolationLevel.Serializable,
                     cancellationToken);
 
+                await EnsureShiftOpenIfRequiredAsync(cancellationToken);
+
                 var (_, check) = await CreateHiddenVirtualCheckAsync(
                     SelfSaleSectionName, SelfSaleSectionName, branchId, userId, submissionKey: null, cancellationToken);
 
@@ -425,6 +455,8 @@ public sealed class RestaurantPostingService(
                 {
                     return existingByKey;
                 }
+
+                await EnsureShiftOpenIfRequiredAsync(cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(customerName))
                 {

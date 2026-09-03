@@ -48,6 +48,9 @@ public sealed class InventorySettingsViewModel
     [Range(typeof(decimal), "0", "999999999999")]
     public decimal? DailyRevenueTarget { get; set; }
 
+    [Display(Name = "Satış İçin Açık Vardiya Şart")]
+    public bool RequireOpenShiftForSales { get; set; }
+
     [Display(Name = "Mutfak KDS Takibi")]
     public bool IsKitchenTrackingEnabled { get; set; }
 
