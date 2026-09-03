@@ -202,16 +202,47 @@ else if (Model.ActiveTab == "zlist")
         @foreach (var z in Model.ZList)
         {
             var diff = (z.CountedBalance ?? 0) - (z.ExpectedBalance ?? 0);
-            <div class="rrow2" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr;">
+            <a class="rrow2" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr; text-decoration:none; color:inherit; cursor:pointer;@(Model.SelectedZShiftId == z.ShiftId ? " background:#FFF6DF;" : "")"
+               asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@z.ShiftId">
                 <b>@z.ZNumber</b>
                 <span>@z.FinancialAccountName</span>
                 <span>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                 <span>@z.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                 <span>@(z.ExpectedBalance?.ToString("N2")) ₺ / @(z.CountedBalance?.ToString("N2")) ₺</span>
                 <b class="@(diff > 0 ? "ok-badge2" : diff < 0 ? "cancel-badge2" : "")">@diff.ToString("N2") ₺</b>
-            </div>
+            </a>
         }
     </div>
+
+    @if (Model.SelectedZShiftId is not null)
+    {
+        <div class="rcard" style="margin-top:12px; padding:0;">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--rs-border); display:flex; justify-content:space-between; align-items:center;">
+                <div><b>@Model.SelectedZNumber</b> <span class="sub">satış hareketleri</span></div>
+                <span class="sub">@Model.SelectedZReceipts.Count fiş</span>
+            </div>
+            <div class="report-table-wrap">
+                <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
+                @if (Model.SelectedZReceipts.Count == 0)
+                {
+                    <div class="p-3 text-secondary small">Bu Z'de fiş yok.</div>
+                }
+                @foreach (var r in Model.SelectedZReceipts)
+                {
+                    <div class="rrow2">
+                        <div><b>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@r.DocumentNumber</small></div>
+                        <div><b>@r.SourceLabel</b><small>@r.SourceSubtitle</small></div>
+                        <span><i class="type-badge2 @r.SourceType">@SourceTypeLabel(r.SourceType)</i></span>
+                        <span>@r.PaymentSummary</span>
+                        <span class="@(r.IsCancelled ? "cancel-badge2" : "ok-badge2")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
+                        <b>@r.GrandTotal.ToString("N2") ₺</b>
+                        <a class="view-btn no-print" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@Model.SelectedZShiftId" asp-route-selected="@r.RetailSaleId">Fişi Gör</a>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="znote sub" style="margin-top:8px;">Bu listede düzenleme/silme henüz yok - salt okunur görüntüleme.</div>
+    }
 }
 
 <div class="znote sub" style="margin-top:12px;">X Raporu vardiyayı kapatmaz. Z Raporu gün sonu kapanışıdır. Z Listesi geçmiş Z kapanışlarını gösterir.</div>

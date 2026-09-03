@@ -34,7 +34,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         _ => "Karma Ödeme"
     };
 
-    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null)
+    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null)
     {
         ActivePage = "reports";
 
@@ -204,8 +204,74 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .OrderByDescending(x => x.ClosedAtUtc)
             .Take(30)
             .Select(x => new RestaurantZListRowViewModel(
-                $"Z-{x.Id:D6}", x.FinancialAccount.Name, x.OpenedAtUtc, x.ClosedAtUtc!.Value, x.OpeningBalance, x.ClosingBalanceExpected, x.ClosingBalanceCounted))
+                x.Id, $"Z-{x.Id:D6}", x.FinancialAccount.Name, x.OpenedAtUtc, x.ClosedAtUtc!.Value, x.OpeningBalance, x.ClosingBalanceExpected, x.ClosingBalanceCounted))
             .ToListAsync();
+
+        // Z Listesi'nde bir Z'ye tıklanınca o vardiyanın (Açılış→Kapanış) satış hareketleri -
+        // Edip'in isteği (2026-09-03). Düzenleme/silme burada YOK - reversal muhasebe kuralına
+        // aykırı olur (bkz. [[feedback_sahinsoft_conventions]]), Edip'ten ayrıca netleştirme
+        // bekleniyor; şimdilik salt-okunur "Fişi Gör" ile aynı detay modalı.
+        if (zShiftId is not null)
+        {
+            var selectedShift = await dbContext.RestaurantCashShifts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == zShiftId.Value && x.Status == RestaurantCashShiftStatus.Closed);
+
+            if (selectedShift is not null)
+            {
+                var zSales = await dbContext.RetailSales
+                    .AsNoTracking()
+                    .Where(x => x.IssuedAtUtc >= selectedShift.OpenedAtUtc && x.IssuedAtUtc < selectedShift.ClosedAtUtc!.Value)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.IssuedAtUtc,
+                        x.DocumentNumber,
+                        x.GrandTotal,
+                        x.Status,
+                        x.RestaurantCheckId,
+                        TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+                        SectionName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name,
+                        OpenerName = x.RestaurantCheck.RestaurantTableSession.OpenedByUserId,
+                        Payments = x.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => p.PaymentMethod).ToList()
+                    })
+                    .ToListAsync();
+
+                var zOpenerIds = zSales.Select(x => x.OpenerName).Distinct().ToList();
+                var zOpenerNames = await dbContext.Users
+                    .AsNoTracking()
+                    .Where(x => zOpenerIds.Contains(x.Id))
+                    .ToDictionaryAsync(x => x.Id, x => x.FullName);
+
+                var zCheckIds = zSales.Select(x => x.RestaurantCheckId).ToList();
+                var zPackageNumbers = await dbContext.PackageOrders
+                    .AsNoTracking()
+                    .Where(x => zCheckIds.Contains(x.RestaurantCheckId))
+                    .ToDictionaryAsync(x => x.RestaurantCheckId, x => new { x.PackageNumber, x.CustomerName });
+
+                vm.SelectedZShiftId = zShiftId;
+                vm.SelectedZNumber = $"Z-{selectedShift.Id:D6}";
+                vm.SelectedZReceipts = zSales
+                    .OrderByDescending(x => x.IssuedAtUtc)
+                    .Select(x =>
+                    {
+                        var sourceType = SourceTypeOf(x.SectionName);
+                        var isPackage = sourceType == "package";
+                        var pkg = isPackage && zPackageNumbers.TryGetValue(x.RestaurantCheckId, out var p) ? p : null;
+                        return new RestaurantReceiptRowViewModel(
+                            x.Id,
+                            x.IssuedAtUtc,
+                            x.DocumentNumber,
+                            isPackage ? pkg?.PackageNumber ?? x.TableName : sourceType == "self" ? "Self Satış" : x.TableName,
+                            isPackage ? pkg?.CustomerName ?? "" : zOpenerNames.GetValueOrDefault(x.OpenerName, ""),
+                            sourceType,
+                            PaymentSummary(x.Payments),
+                            x.Status == RetailSaleStatus.Cancelled,
+                            x.GrandTotal);
+                    })
+                    .ToList();
+            }
+        }
 
         if (selected is not null)
         {

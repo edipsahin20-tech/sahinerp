@@ -43,6 +43,14 @@ public sealed class RestaurantReportsViewModel
     // Z Listesi - geçmiş kapanışlar.
     public List<RestaurantZListRowViewModel> ZList { get; set; } = [];
 
+    // Z Listesi'nde bir Z'ye tıklanınca o vardiyanın (Açılış→Kapanış) satış hareketleri - Edip'in
+    // isteği (2026-09-03): "z listesine girer o günkü z tıklar ve görmek istediği z nın günlük
+    // satış hareketleri gelir". Düzenleme/silme henüz yok (reversal muhasebe kuralına aykırı
+    // olur - bkz. [[feedback_sahinsoft_conventions]] - Edip'ten ayrıca netleştirme bekleniyor).
+    public int? SelectedZShiftId { get; set; }
+    public string? SelectedZNumber { get; set; }
+    public List<RestaurantReceiptRowViewModel> SelectedZReceipts { get; set; } = [];
+
     // Fişi Gör modalı için.
     public int? SelectedReceiptId { get; set; }
     public RestaurantReceiptDetailViewModel? SelectedReceipt { get; set; }
@@ -70,6 +78,7 @@ public sealed class RestaurantXReportViewModel
 }
 
 public sealed record RestaurantZListRowViewModel(
+    int ShiftId,
     string ZNumber,
     string FinancialAccountName,
     DateTime OpenedAtUtc,
