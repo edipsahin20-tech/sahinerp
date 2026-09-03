@@ -48,6 +48,13 @@ public sealed class InventorySettingsViewModel
     [Range(typeof(decimal), "0", "999999999999")]
     public decimal? DailyRevenueTarget { get; set; }
 
+    [Display(Name = "Mutfak KDS Takibi")]
+    public bool IsKitchenTrackingEnabled { get; set; }
+
+    [Display(Name = "Mutfak Otomatik Hazır Süresi (dk)")]
+    [Range(0, 1440)]
+    public int? KitchenAutoReadyMinutes { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

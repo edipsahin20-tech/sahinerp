@@ -669,6 +669,27 @@ public sealed class RestaurantPostingService(
             }
         }
 
+        // KDS takibi kapalıysa (Edip, 2026-09-03: varsayılan kapalı) hiçbir KitchenTicket
+        // oluşturulmaz - satırlar doğrudan Servis Edildi sayılır, Mutfak ekranında Hazır/Servis
+        // Edildi tıklamalarına gerek kalmaz. Açıksa bugünkü davranış (istasyona göre fiş) aynen
+        // sürer.
+        var isKitchenTrackingEnabled = await dbContext.InventorySettings
+            .Where(x => x.Id == 1)
+            .Select(x => x.IsKitchenTrackingEnabled)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (!isKitchenTrackingEnabled)
+        {
+            foreach (var line in orderLines)
+            {
+                line.Status = RestaurantOrderLineStatus.Served;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new SendOrderToKitchenResult(order, []);
+        }
+
         // Ürünün varsayılan mutfak istasyonuna göre grupla. İstasyonu olmayan ürünler mutfak fişine
         // eklenmez ama kalemin kendisi kaydedilir (ör. şişe içecek) — yalnızca sessizce atlanmaz,
         // isim listesi çağırana döndürülür (bkz. SendOrderToKitchenResult.UnroutedProductNames).
@@ -986,6 +1007,44 @@ public sealed class RestaurantPostingService(
                 return ticket;
             });
         }, cancellationToken);
+
+    // KitchenAutoReadyBackgroundService bunu periyodik çağırır - InventorySettings.
+    // KitchenAutoReadyMinutes doluysa, gönderileli o süreden fazla geçmiş ama hâlâ Sent/InProgress
+    // durumundaki fişleri AdvanceKitchenTicketAsync ile AYNI durum geçiş kurallarını izleyerek
+    // (Sent→InProgress→Ready, tek adımda iki kez ilerletilerek) Hazır'a taşır - mutfak personeli
+    // hiç dokunmasa bile (Edip, 2026-09-03). Zaten Ready/Served olan fişlere dokunulmaz.
+    public async Task<int> AutoAdvanceOverdueKitchenTicketsAsync(CancellationToken cancellationToken = default)
+    {
+        var thresholdMinutes = await dbContext.InventorySettings
+            .Where(x => x.Id == 1)
+            .Select(x => x.KitchenAutoReadyMinutes)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (thresholdMinutes is not > 0)
+        {
+            return 0;
+        }
+
+        var cutoffUtc = DateTime.UtcNow.AddMinutes(-thresholdMinutes.Value);
+        var overdueTicketIds = await dbContext.KitchenTickets
+            .Where(x => x.SentAtUtc <= cutoffUtc
+                && (x.Status == KitchenTicketStatus.Sent || x.Status == KitchenTicketStatus.InProgress))
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var advancedCount = 0;
+        foreach (var ticketId in overdueTicketIds)
+        {
+            var ticket = await AdvanceKitchenTicketAsync(ticketId, cancellationToken);
+            if (ticket.Status is KitchenTicketStatus.Sent or KitchenTicketStatus.InProgress)
+            {
+                await AdvanceKitchenTicketAsync(ticketId, cancellationToken);
+            }
+            advancedCount++;
+        }
+
+        return advancedCount;
+    }
 
     // Faz 3: adisyon kapanışı - ödeme alma + RetailSale/cari/finansal hareket postalama.
     // Fiyatlar KDV DAHİL tutulduğu için (bkz. RestaurantPricingCalculator) matrah/KDV ayrımı

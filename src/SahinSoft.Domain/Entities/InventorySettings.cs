@@ -24,6 +24,18 @@ public sealed class InventorySettings : EntityBase
     // bir sayı değil, gerçek ayarlanabilir bir değer).
     public decimal? DailyRevenueTarget { get; set; }
 
+    // Mutfağa gönderilen bir sipariş, bu süre (dk) dolduğunda mutfak personeli hiç dokunmasa
+    // bile otomatik "Hazır" durumuna geçer (Edip, 2026-09-03) - boş/0 ise otomatik geçiş kapalı,
+    // her şey elle ilerletilir (bugünkü davranış). Bkz. KitchenAutoReadyBackgroundService.
+    public int? KitchenAutoReadyMinutes { get; set; }
+
+    // Kapalıyken (varsayılan - Edip, 2026-09-03: "default yapılmasın") mutfağa gönderilen
+    // siparişler hiç KitchenTicket/KDS takibine girmez, doğrudan Servis Edildi sayılır - Mutfak
+    // ekranında Hazır/Servis Edildi gibi tıklamalara gerek kalmaz. Açıkken bugünkü KDS akışı
+    // (Sent→InProgress→Ready→Served) aynen çalışır. Bkz. RestaurantPostingService.
+    // SendOrderToKitchenCoreAsync.
+    public bool IsKitchenTrackingEnabled { get; set; }
+
     // Yok (None) iken restoran Kapat/Öde bugünkü gibi hiçbir fiskal cihaz çağrısı yapmadan
     // çalışır - bkz. SahinSoft.FiscalAgent projesi. Bir cihaz seçilip adres girildiğinde nakit/
     // kredi kartı/yemek çeki ödemeleri doğrudan yazarkasaya gönderilir (fatura kesilen satışlar

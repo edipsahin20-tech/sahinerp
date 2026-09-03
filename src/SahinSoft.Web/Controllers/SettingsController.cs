@@ -108,6 +108,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.AllowSaleBelowCost = model.AllowSaleBelowCost;
         settings.IsRestaurantModuleEnabled = model.IsRestaurantModuleEnabled;
         settings.DailyRevenueTarget = model.DailyRevenueTarget;
+        settings.IsKitchenTrackingEnabled = model.IsKitchenTrackingEnabled;
+        settings.KitchenAutoReadyMinutes = model.KitchenAutoReadyMinutes;
         settings.FiscalDeviceType = model.FiscalDeviceType;
         settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
@@ -139,6 +141,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         AllowSaleBelowCost = settings.AllowSaleBelowCost,
         IsRestaurantModuleEnabled = settings.IsRestaurantModuleEnabled,
         DailyRevenueTarget = settings.DailyRevenueTarget,
+        IsKitchenTrackingEnabled = settings.IsKitchenTrackingEnabled,
+        KitchenAutoReadyMinutes = settings.KitchenAutoReadyMinutes,
         FiscalDeviceType = settings.FiscalDeviceType,
         FiscalAgentUrl = settings.FiscalAgentUrl,
         OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,

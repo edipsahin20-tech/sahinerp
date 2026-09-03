@@ -95,6 +95,7 @@ builder.Services.AddScoped<DispatchNotePostingService>();
 builder.Services.Configure<MerkezSyncOptions>(builder.Configuration.GetSection(MerkezSyncOptions.SectionName));
 builder.Services.AddHttpClient("MerkezSync");
 builder.Services.AddHostedService<BranchSyncBackgroundService>();
+builder.Services.AddHostedService<KitchenAutoReadyBackgroundService>();
 
 var app = builder.Build();
 
