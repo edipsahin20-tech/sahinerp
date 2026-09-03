@@ -49,11 +49,12 @@
 }
 
 .restaurant-pos .table-tile {
+    position: relative;
     border: 1px solid var(--pos-border);
     border-left: 3px solid var(--pos-free);
     border-radius: var(--pos-radius-card);
-    padding: 1rem 0.9rem;
-    min-height: 96px;
+    padding: 1.9rem 0.9rem 1rem;
+    min-height: 108px;
     color: var(--pos-text);
     text-align: left;
     cursor: pointer;
@@ -63,6 +64,39 @@
     justify-content: space-between;
     box-shadow: var(--pos-shadow);
     transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+/* MASTER tasarımdaki masa kartı rozeti (Edip, 2026-09-03: MASTER_SahinSoft_Restoran_POS_Premium.html
+   referansı) - şu an sadece Boş/Dolu gerçek veriden geliyor. Rezerve/Hesap İstendi rozetleri
+   master'da var ama bu iki durumu karşılayan bir veri/özellik henüz sistemde yok, o yüzden
+   burada uydurulmadı - ayrıca konuşulacak. */
+.restaurant-pos .table-tile .status-badge {
+    position: absolute;
+    left: 12px;
+    top: 10px;
+    font-size: 10px;
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.restaurant-pos .table-tile .status-badge.empty {
+    background: #E8F8F0;
+    color: #188354;
+}
+
+.restaurant-pos .table-tile .status-badge.busy {
+    background: #EAF3FF;
+    color: #1760B4;
+}
+
+.restaurant-pos .table-tile .amt {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
 }
 
 .restaurant-pos .table-tile:hover {
@@ -83,28 +117,6 @@
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: -.01em;
-}
-
-.restaurant-pos .table-tile:not(.occupied) .table-name::before {
-    content: "";
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--pos-free);
-    margin-right: 6px;
-    vertical-align: middle;
-}
-
-.restaurant-pos .table-tile.occupied .table-name::before {
-    content: "";
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--pos-occupied);
-    margin-right: 6px;
-    vertical-align: middle;
 }
 
 .restaurant-pos .table-tile .table-meta {

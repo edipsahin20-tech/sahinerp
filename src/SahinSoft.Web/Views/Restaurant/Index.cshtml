@@ -40,9 +40,20 @@
         <div class="alert alert-success py-2">@success</div>
     }
 
+    @if (Model.Sections.Count > 1)
+    {
+        <div class="rtabs" id="sectionTabs">
+            <button type="button" class="rtab active" data-section-filter="all">Tümü <small>@allTables.Count</small></button>
+            @foreach (var floorSection in Model.Sections)
+            {
+                <button type="button" class="rtab" data-section-filter="@floorSection.Name">@floorSection.Name <small>@floorSection.Tables.Count</small></button>
+            }
+        </div>
+    }
+
     @foreach (var floorSection in Model.Sections)
     {
-        <div class="floor-section">
+        <div class="floor-section" data-section-id="@floorSection.Name">
             <h2>@floorSection.Name</h2>
             <div class="floor-grid">
                 @foreach (var table in floorSection.Tables)
@@ -51,20 +62,22 @@
                     {
                         <button type="button" class="table-tile occupied" data-open-check="@table.CheckId"
                                 data-select-table="@table.TableId" data-session-id="@table.SessionId" data-table-name="@table.Name">
+                            <span class="status-badge busy">DOLU</span>
                             <span class="table-name">@table.Name</span>
                             <span class="table-meta">
                                 @table.GuestCount kişi ·
                                 @(table.OpenedAtUtc.HasValue ? table.OpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")
                             </span>
-                            <span class="table-meta">@table.RunningTotal.ToString("N2") ₺</span>
+                            <span class="amt">@table.RunningTotal.ToString("N2") ₺</span>
                         </button>
                     }
                     else
                     {
                         <button type="button" class="table-tile" data-open-table="@table.TableId" data-table-name="@table.Name" data-capacity="@table.Capacity"
                                 data-select-table="@table.TableId" data-session-id="">
+                            <span class="status-badge empty">BOŞ</span>
                             <span class="table-name">@table.Name</span>
-                            <span class="table-meta">@table.Capacity kişilik · Boş</span>
+                            <span class="table-meta">@table.Capacity kişilik</span>
                         </button>
                     }
                 }
@@ -170,6 +183,21 @@
 
 @section Scripts {
     <script>
+        var sectionTabs = document.getElementById('sectionTabs');
+        if (sectionTabs) {
+            sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    sectionTabs.querySelectorAll('.rtab').forEach(function (t) { t.classList.remove('active'); });
+                    tab.classList.add('active');
+                    var filter = tab.getAttribute('data-section-filter');
+                    document.querySelectorAll('.floor-section').forEach(function (section) {
+                        var show = filter === 'all' || section.getAttribute('data-section-id') === filter;
+                        section.style.display = show ? '' : 'none';
+                    });
+                });
+            });
+        }
+
         var selectedTableId = null;
         var selectedSessionId = null;
 
