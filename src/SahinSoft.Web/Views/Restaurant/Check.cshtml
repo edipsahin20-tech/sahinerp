@@ -150,6 +150,11 @@
                     <button type="button" id="line-act-discount" disabled>İndirim</button>
                     <button type="button" id="line-act-comp" disabled>İkram</button>
                     <button type="button" id="line-act-remove" class="danger" disabled>Sil</button>
+                    <!-- Kilit tuşu SİL'in yanına - gönderilmiş satırlarda İptal/İkram/Miktar
+                         düzeltmeyi açar/kapatır (Edip, 2026-09-03: "kilit butonunu sil yanına
+                         koy"). Sayfa yeniden yüklense de (her aksiyon reload'a sebep oluyor)
+                         kilit tekrar KAPANMASIN diye açık durumu sessionStorage'da tutulur. -->
+                    <button type="button" id="sent-lines-lock-btn" class="sent-lines-lock-btn">🔒 Satırlar Kilitli</button>
                 </div>
                 <!-- Gönderilmiş (kalıcı) satırlar - "sepet"le AYNI yerde, ödeme ekranında
                      görünür, ayrı bir "mutfak" paneline hapsedilmez (Edip, 2026-09-03: "masa
@@ -172,11 +177,6 @@
                 }
                 @if (visibleSentLines.Count > 0)
                 {
-                    <!-- Kilit tuşu - varsayılan kilitli, tıklanınca gönderilmiş satırlarda İkram/Miktar
-                         düzeltme butonlarını açığa çıkarır (Edip, 2026-09-03). -->
-                    <div class="sent-lines-lock-row">
-                        <button type="button" id="sent-lines-lock-btn" class="sent-lines-lock-btn">🔒 Gönderilen Satırlar Kilitli</button>
-                    </div>
                     <div class="cart-sent-lines" id="cart-sent-lines">
                         @foreach (var (order, line) in visibleSentLines)
                         {

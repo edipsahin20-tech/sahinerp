@@ -918,18 +918,30 @@
     // "mutfağa gönderildi diye herşeyi pasif hale getirme, silme ikram düzeltme miktar düzeltme
     // herşey aktif olsun" / "yada kilit tuşu koy ona tıkladığımda aktif etsin herşeyi" / "ikram
     // sil kilit olsun" - TEK toplu kilit düğmesi İptal/İkram/Miktar düzeltmenin ÜÇÜNÜ birden
-    // açar/kapatır (CSS: .cart-sent-lines.unlocked). ---
+    // açar/kapatır (CSS: .cart-sent-lines.unlocked). Kilit butonu SABİT üst çubukta Sil'in yanında
+    // (Edip: "kilit butonunu sil yanına koy"). Miktar/İkram aksiyonları sayfayı yeniden
+    // yüklüyor - kilit her aksiyonda tekrar KAPANMASIN diye açık durumu sessionStorage'da
+    // adisyon bazında tutulur (Edip: "tekrar kilitlemesin"). ---
     (function () {
         var lockBtn = document.getElementById('sent-lines-lock-btn');
         var sentLinesEl = document.getElementById('cart-sent-lines');
-        if (!lockBtn || !sentLinesEl) return;
+        if (!lockBtn) return;
 
+        var storageKey = 'pos-sent-lines-unlocked-' + checkId;
         var unlocked = false;
+        try { unlocked = sessionStorage.getItem(storageKey) === '1'; } catch (e) { unlocked = false; }
+
+        function applyLockState() {
+            if (sentLinesEl) sentLinesEl.classList.toggle('unlocked', unlocked);
+            lockBtn.classList.toggle('unlocked', unlocked);
+            lockBtn.textContent = unlocked ? '🔓 Satırlar Açık' : '🔒 Satırlar Kilitli';
+        }
+        applyLockState();
+
         lockBtn.addEventListener('click', function () {
             unlocked = !unlocked;
-            sentLinesEl.classList.toggle('unlocked', unlocked);
-            lockBtn.classList.toggle('unlocked', unlocked);
-            lockBtn.textContent = unlocked ? '🔓 Gönderilen Satırlar Açık' : '🔒 Gönderilen Satırlar Kilitli';
+            try { sessionStorage.setItem(storageKey, unlocked ? '1' : '0'); } catch (e) { /* yok say */ }
+            applyLockState();
         });
 
         document.querySelectorAll('.sent-line-qty-btn').forEach(function (btn) {
