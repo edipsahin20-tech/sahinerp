@@ -167,10 +167,11 @@
         </div>
 
         <!-- Sağdaki sabit ikon şeridi - Edip'in eski POS ekranındaki hep aynı yerde duran
-             yan panel (Edip, 2026-09-03: "sağ taraftaki sabit alanlar bizde de olsun"). Şimdilik
-             sadece gerçekten karşılığı olan işlevler var; Fiş Notu/Fiyat Gör/Klavye için ayrı
-             netleştirme gerekiyor (bkz. yanıt). -->
+             yan panel (Edip, 2026-09-03: "sağ taraftaki sabit alanlar bizde de olsun"). -->
         <div class="pos-side-icons">
+            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#ticketNoteModal">
+                <span class="pos-side-icon-glyph">🗒</span>Fiş<br />Notu
+            </button>
             @if (Model.IsSelfSaleCheck)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#transferToTableModal">
@@ -180,7 +181,89 @@
             <button type="button" class="pos-side-icon" id="side-kitchen-btn">
                 <span class="pos-side-icon-glyph">♨</span>Mutfak
             </button>
+            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#priceCheckModal">
+                <span class="pos-side-icon-glyph">🔍</span>Fiyat<br />Gör
+            </button>
+            <button type="button" class="pos-side-icon" id="side-keyboard-btn">
+                <span class="pos-side-icon-glyph">⌨</span>Klavye
+            </button>
         </div>
+    </div>
+</div>
+
+<!-- Fiş Notu - adisyonun TAMAMINI ilgilendiren not (ürün bazlı Not'tan ayrı). -->
+<div class="modal fade" id="ticketNoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="UpdateCheckNote">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="checkId" value="@Model.CheckId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Fiş Notu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small">Bu not ürüne değil, adisyonun tamamına aittir.</p>
+                    <textarea name="note" class="form-control" rows="4" maxlength="500" placeholder="Örn: Müşteri alerjik, fındık istemiyor.">@Model.TicketNote</textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Fiyat Gör - müşteri kasada ürünün fiyatını/KDV'sini sormak için, kataloğu tekrar sorgulamadan
+     (Edip, 2026-09-03: "müşteri rafta fiyatı göremedi, kasaya geldi, fiyat göre tıkla, ürün adı
+     fiyatı KDV'si gelsin, ister iptal ister ekrana alsın"). Sunucudan zaten yüklü kataloğu
+     kullanır - bkz. restaurant-pos.js. -->
+<div class="modal fade" id="priceCheckModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiyat Gör</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="price-check-search" class="product-search-input" style="max-width:none;" placeholder="Ürün ara..." autocomplete="off" />
+                <div id="price-check-results" class="price-check-results"></div>
+                <div id="price-check-detail" class="price-check-detail" style="display:none;">
+                    <div class="price-check-detail-name" id="price-check-name"></div>
+                    <div class="price-check-detail-row"><span>Fiyat (KDV Dahil)</span><strong id="price-check-price"></strong></div>
+                    <div class="price-check-detail-row"><span>KDV Oranı</span><strong id="price-check-tax"></strong></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-erp" id="price-check-add-btn" disabled>Ekrana Al</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Klavye - dokunmatik ekranlarda fiziksel klavye olmadığı için sayfa üzerinde açılıp kapanan
+     sanal klavye (Edip, 2026-09-03: "ekranlar dokunmatik olduğu için klavye gibi kullansın").
+     Odaklanılan son metin alanına yazar - bkz. restaurant-pos.js. -->
+<div class="pos-virtual-keyboard" id="pos-virtual-keyboard" style="display:none;">
+    <div class="pos-vk-row">
+        <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="0">0</button>
+        <button type="button" class="pos-vk-wide" data-action="backspace">⌫</button>
+    </div>
+    <div class="pos-vk-row">
+        <button type="button" data-key="q">q</button><button type="button" data-key="w">w</button><button type="button" data-key="e">e</button><button type="button" data-key="r">r</button><button type="button" data-key="t">t</button><button type="button" data-key="y">y</button><button type="button" data-key="u">u</button><button type="button" data-key="ı">ı</button><button type="button" data-key="o">o</button><button type="button" data-key="p">p</button><button type="button" data-key="ğ">ğ</button><button type="button" data-key="ü">ü</button>
+    </div>
+    <div class="pos-vk-row">
+        <button type="button" data-key="a">a</button><button type="button" data-key="s">s</button><button type="button" data-key="d">d</button><button type="button" data-key="f">f</button><button type="button" data-key="g">g</button><button type="button" data-key="h">h</button><button type="button" data-key="j">j</button><button type="button" data-key="k">k</button><button type="button" data-key="l">l</button><button type="button" data-key="ş">ş</button><button type="button" data-key="i">i</button>
+    </div>
+    <div class="pos-vk-row">
+        <button type="button" class="pos-vk-wide" data-action="shift">⇧</button>
+        <button type="button" data-key="z">z</button><button type="button" data-key="x">x</button><button type="button" data-key="c">c</button><button type="button" data-key="v">v</button><button type="button" data-key="b">b</button><button type="button" data-key="n">n</button><button type="button" data-key="m">m</button><button type="button" data-key="ö">ö</button><button type="button" data-key="ç">ç</button>
+        <button type="button" class="pos-vk-wide" data-action="close">✕ Kapat</button>
+    </div>
+    <div class="pos-vk-row">
+        <button type="button" class="pos-vk-space" data-key=" ">boşluk</button>
     </div>
 </div>
 

@@ -153,6 +153,22 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return RedirectToAction(nameof(Check), new { id = checkId });
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateCheckNote(int checkId, string? note)
+    {
+        try
+        {
+            await postingService.UpdateCheckNoteAsync(checkId, note);
+            TempData["Success"] = "Fiş notu kaydedildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        return RedirectToAction(nameof(Check), new { id = checkId });
+    }
+
     public async Task<IActionResult> Check(int id)
     {
         ActivePage = "tables";
@@ -239,6 +255,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             IsSelfSaleCheck = isSelfSaleCheck,
             AvailableTables = availableTables,
             BillRequested = check.BillRequestedAtUtc is not null,
+            TicketNote = check.Note,
             IsFiscalEnabled = fiscalSettings is { FiscalDeviceType: not FiscalDeviceType.None } && !string.IsNullOrWhiteSpace(fiscalSettings.FiscalAgentUrl),
             FiscalAgentUrl = fiscalSettings?.FiscalAgentUrl,
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

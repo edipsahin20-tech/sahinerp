@@ -390,6 +390,137 @@
         });
     });
 
+    // --- Fiyat Gör - müşteri kasada fiyat sorduğunda kataloğu tekrar sorgulamadan (zaten
+    // yüklü) hızlı bakış (Edip, 2026-09-03). Seçilen ürün "Ekrana Al" ile sepete eklenir. ---
+    (function () {
+        var modalEl = document.getElementById('priceCheckModal');
+        if (!modalEl) return;
+        var searchEl = document.getElementById('price-check-search');
+        var resultsEl = document.getElementById('price-check-results');
+        var detailEl = document.getElementById('price-check-detail');
+        var nameEl = document.getElementById('price-check-name');
+        var priceEl = document.getElementById('price-check-price');
+        var taxEl = document.getElementById('price-check-tax');
+        var addBtn = document.getElementById('price-check-add-btn');
+        var allProducts = [];
+        catalog.forEach(function (cat) { cat.products.forEach(function (p) { allProducts.push(p); }); });
+        var selected = null;
+
+        function renderResults(products) {
+            resultsEl.innerHTML = '';
+            products.slice(0, 30).forEach(function (p) {
+                var row = document.createElement('div');
+                row.className = 'price-check-result-row';
+                row.innerHTML = '<span>' + escapeHtml(p.name) + '</span><strong>' + money(p.salePrice) + '</strong>';
+                row.addEventListener('click', function () { selectProduct(p); });
+                resultsEl.appendChild(row);
+            });
+        }
+
+        function selectProduct(p) {
+            selected = p;
+            nameEl.textContent = p.name;
+            priceEl.textContent = money(p.salePrice);
+            taxEl.textContent = '%' + p.taxRate;
+            detailEl.style.display = '';
+            addBtn.disabled = false;
+        }
+
+        function reset() {
+            selected = null;
+            detailEl.style.display = 'none';
+            addBtn.disabled = true;
+            searchEl.value = '';
+            renderResults(allProducts);
+        }
+
+        searchEl.addEventListener('input', function () {
+            var term = searchEl.value.trim().toLocaleLowerCase('tr-TR');
+            renderResults(!term ? allProducts : allProducts.filter(function (p) {
+                return p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1;
+            }));
+        });
+
+        addBtn.addEventListener('click', function () {
+            if (!selected) return;
+            addToCart(selected);
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) instance.hide();
+        });
+
+        modalEl.addEventListener('show.bs.modal', reset);
+    })();
+
+    // --- Klavye - dokunmatik ekranlarda fiziksel klavye olmadığı için (Edip, 2026-09-03:
+    // "ekranlar dokunmatik olduğu için ona tıkladığım klavye açsın"). Son odaklanılan metin
+    // alanına, imleç konumuna yazar. ---
+    (function () {
+        var keyboardEl = document.getElementById('pos-virtual-keyboard');
+        var toggleBtn = document.getElementById('side-keyboard-btn');
+        if (!keyboardEl || !toggleBtn) return;
+        var activeTarget = null;
+        var shiftOn = false;
+
+        document.addEventListener('focusin', function (e) {
+            var t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') && t.type !== 'hidden' && t.type !== 'checkbox') {
+                activeTarget = t;
+            }
+        });
+
+        function insertText(text) {
+            if (!activeTarget) return;
+            var start = activeTarget.selectionStart ?? activeTarget.value.length;
+            var end = activeTarget.selectionEnd ?? activeTarget.value.length;
+            var value = activeTarget.value;
+            activeTarget.value = value.slice(0, start) + text + value.slice(end);
+            var caret = start + text.length;
+            activeTarget.setSelectionRange(caret, caret);
+            activeTarget.dispatchEvent(new Event('input', { bubbles: true }));
+            activeTarget.focus();
+        }
+
+        function backspace() {
+            if (!activeTarget) return;
+            var start = activeTarget.selectionStart ?? activeTarget.value.length;
+            var end = activeTarget.selectionEnd ?? activeTarget.value.length;
+            var value = activeTarget.value;
+            if (start === end && start > 0) { start -= 1; }
+            activeTarget.value = value.slice(0, start) + value.slice(end);
+            activeTarget.setSelectionRange(start, start);
+            activeTarget.dispatchEvent(new Event('input', { bubbles: true }));
+            activeTarget.focus();
+        }
+
+        function applyShift() {
+            keyboardEl.querySelectorAll('[data-key]').forEach(function (btn) {
+                var key = btn.getAttribute('data-key');
+                if (key.length === 1) btn.textContent = shiftOn ? key.toLocaleUpperCase('tr-TR') : key;
+            });
+        }
+
+        keyboardEl.querySelectorAll('[data-key]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var key = btn.getAttribute('data-key');
+                insertText(shiftOn && key.length === 1 ? key.toLocaleUpperCase('tr-TR') : key);
+                if (shiftOn) { shiftOn = false; applyShift(); }
+            });
+        });
+
+        keyboardEl.querySelector('[data-action="backspace"]').addEventListener('click', backspace);
+        keyboardEl.querySelector('[data-action="shift"]').addEventListener('click', function () {
+            shiftOn = !shiftOn;
+            applyShift();
+        });
+        keyboardEl.querySelector('[data-action="close"]').addEventListener('click', function () {
+            keyboardEl.style.display = 'none';
+        });
+
+        toggleBtn.addEventListener('click', function () {
+            keyboardEl.style.display = keyboardEl.style.display === 'none' ? '' : 'none';
+        });
+    })();
+
     renderCategories();
     renderCart();
 })();

@@ -377,6 +377,98 @@
     font-size: 1.15rem;
 }
 
+/* Fiyat Gör modalı */
+.price-check-results {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 0.6rem;
+    border: 1px solid var(--pos-border);
+    border-radius: var(--pos-radius-control);
+}
+
+.price-check-result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #EEF2F6;
+    cursor: pointer;
+    font-size: 0.88rem;
+}
+
+.price-check-result-row:last-child { border-bottom: none; }
+.price-check-result-row:hover { background: var(--pos-bg); }
+
+.price-check-detail {
+    margin-top: 0.9rem;
+    padding: 0.9rem 1rem;
+    background: var(--pos-bg);
+    border-radius: var(--pos-radius-panel);
+    text-align: center;
+}
+
+.price-check-detail-name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+    color: var(--pos-navy);
+}
+
+.price-check-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+/* Sanal klavye - dokunmatik ekranlar için (Edip, 2026-09-03). Ekranın altına sabitlenir, en üst
+   katmanda durur. */
+.pos-virtual-keyboard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1080;
+    background: var(--pos-navy, #0B2239);
+    padding: 0.6rem 0.75rem 0.8rem;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.25);
+}
+
+.pos-vk-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.pos-virtual-keyboard button {
+    min-width: 2.4rem;
+    min-height: 2.4rem;
+    border: none;
+    border-radius: 7px;
+    background: #16324E;
+    color: #fff;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.pos-virtual-keyboard button:active {
+    background: var(--pos-gold);
+    color: var(--pos-navy);
+}
+
+.pos-virtual-keyboard button.pos-vk-wide {
+    min-width: 4.5rem;
+    font-size: 0.82rem;
+}
+
+.pos-virtual-keyboard button[data-action="close"] {
+    background: #7a2b2b;
+}
+
+.pos-virtual-keyboard button.pos-vk-space {
+    min-width: 16rem;
+}
+
 .restaurant-pos .cart-total {
     font-size: 1.3rem;
     font-weight: 700;

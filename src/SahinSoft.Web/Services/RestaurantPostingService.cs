@@ -172,6 +172,18 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Fiş Notu - kapanmış bir adisyonda da düzenlenebilir (geçmişe dönük "müşteri şikayet etti"
+    // gibi bir not eklenmesi gerekebilir), bu yüzden Status kontrolü YOK - RequestBillAsync'in
+    // aksine.
+    public async Task UpdateCheckNoteAsync(int checkId, string? note, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        check.Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        check.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // Masa başına en fazla bir aktif rezervasyon (DB'deki filtered unique index son güvenlik ağı,
     // bkz. ApplicationDbContext) - boş bir masa rezerve edilebilir, dolu/zaten rezerve bir masa
     // edilemez. Reservation notu/saat/kişi sayısı serbest metin/sayı, doğrulanacak başka bir

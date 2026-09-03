@@ -29,6 +29,10 @@ public sealed class RestaurantCheck : EntityBase
     // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
     public Guid? SubmissionKey { get; set; }
 
+    // Fiş Notu - ürün bazlı KitchenNote'tan FARKLI, adisyonun TAMAMINI ilgilendiren serbest not
+    // (Edip, 2026-09-03: eski POS ekranındaki "Fiş Notu" ikonu referansı).
+    public string? Note { get; set; }
+
     public int RestaurantTableSessionId { get; set; }
     public RestaurantTableSession RestaurantTableSession { get; set; } = null!;
 

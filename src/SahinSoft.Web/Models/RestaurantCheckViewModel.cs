@@ -22,6 +22,10 @@ public sealed class RestaurantCheckViewModel
     // gösterilebilir olsun diye Self Satış'a da kısıtlanmadı.
     public bool BillRequested { get; set; }
 
+    // Fiş Notu - adisyonun TAMAMINI ilgilendiren serbest not, ürün bazlı KitchenNote'tan ayrı
+    // (Edip, 2026-09-03: eski POS ekranındaki "Fiş Notu" ikonu).
+    public string? TicketNote { get; set; }
+
     // Yazar kasa entegrasyonu - Ayarlar > Stok Parametreleri'nde bir cihaz seçilip adres
     // girilmişse true, restaurant-close-payment.js ödemeyi önce buradaki adrese (yerel
     // SahinSoft.FiscalAgent) gönderir. Fatura kesilen satışlarda (CustomerId seçiliyse) bu
