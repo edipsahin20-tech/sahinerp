@@ -5,6 +5,8 @@
     var allTables = Model.Sections.SelectMany(s => s.Tables).ToList();
     var emptyCount = allTables.Count(t => !t.IsOccupied);
     var occupiedCount = allTables.Count(t => t.IsOccupied);
+    var billRequestedCount = allTables.Count(t => t.BillRequested);
+    var reservedCount = allTables.Count(t => t.IsReserved);
     var openTotal = allTables.Where(t => t.IsOccupied).Sum(t => t.RunningTotal);
 }
 
@@ -27,6 +29,8 @@
 <div class="rcard summary">
     <div><small>Boş</small><strong>@emptyCount</strong></div>
     <div><small>Dolu</small><strong>@occupiedCount</strong></div>
+    <div><small>Hesap İstendi</small><strong>@billRequestedCount</strong></div>
+    <div><small>Rezerve</small><strong>@reservedCount</strong></div>
     <div style="margin-left:auto"><small>Açık Adisyon</small><strong>@openTotal.ToString("N2") ₺</strong></div>
 </div>
 

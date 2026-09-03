@@ -270,6 +270,15 @@
 .rest-shell .close-mini { background: #FBFCFE; border: 1px solid var(--rs-border); border-radius: 9px; padding: 8px 10px; }
 .rest-shell .close-mini small { display: block; color: var(--rs-muted); font-size: 10px; }
 
+/* Raporlar - 5 KPI kartı, master'ın renkli köşe-daireli report-kpi2 kartları (rs- token'larla
+   uyarlandı; önceki dashboard-kpi-grid/kpi-rich varyantının yerini aldı, Edip 2026-09-03). */
+.rest-shell .report-kpis2 { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-top: 16px; }
+.rest-shell .report-kpi2 { padding: 14px; position: relative; overflow: hidden; }
+.rest-shell .report-kpi2:after { content: ""; position: absolute; right: -22px; bottom: -26px; width: 80px; height: 80px; border-radius: 50%; background: var(--soft, #EEF3F9); }
+.rest-shell .report-kpi2 small { color: var(--rs-muted); font-size: 10px; }
+.rest-shell .report-kpi2 strong { display: block; font-size: 20px; margin: 5px 0; position: relative; z-index: 1; }
+.rest-shell .report-kpi2 em { font-style: normal; font-size: 10px; color: #8290A1; position: relative; z-index: 1; }
+
 /* Raporlar - saatlik ciro akışı + ödeme dağılımı (master'ın report-analytics/donut2 bölümü,
    gerçek HourlyRevenue/Cash-Card-MealCard verisiyle). */
 .rest-shell .report-analytics { display: grid; grid-template-columns: 1.65fr .85fr; gap: 12px; margin-top: 14px; }
@@ -423,6 +432,6 @@
 @media (max-width: 1300px) {
     .rest-shell .report-hero, .rest-shell .report-analytics { grid-template-columns: 1fr; }
     .rest-shell .rthead, .rest-shell .rrow2 { grid-template-columns: 1fr; }
-    .rest-shell .dashboard-kpi-grid, .rest-shell .report-kpi-grid { grid-template-columns: repeat(3,1fr); }
+    .rest-shell .dashboard-kpi-grid, .rest-shell .report-kpi-grid, .rest-shell .report-kpis2 { grid-template-columns: repeat(3,1fr); }
     .rest-shell .dashboard-main { grid-template-columns: 1fr; }
 }
