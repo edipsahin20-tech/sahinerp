@@ -44,6 +44,21 @@ public sealed class InventorySettings : EntityBase
     // "satış başlatmak için açık vardiya şart mı" sorusuna cevap verir, o hatayı çözmez.
     public bool RequireOpenShiftForSales { get; set; }
 
+    // Kapalıyken (varsayılan - Edip, 2026-09-03: "şimdilik default sorulmasın") sipariş satırı
+    // iptalinde gerekçe sorulmaz, otomatik bir gerekçeyle direkt iptal edilir. Açıkken kasiyerden
+    // gerekçe istenir (bkz. Check.cshtml #cancelLineModal, CancellationReasonPresets varsa hazır
+    // seçenekler de gösterilir).
+    public bool RequireCancellationReason { get; set; }
+
+    // Sipariş satırı iptalinde hazır gerekçe seçenekleri - her satır bir gerekçe, boşsa hazır
+    // seçenek gösterilmez sadece serbest metin kutusu kalır (Edip, 2026-09-03: "otomatik iptal
+    // nedenleri girilecek alanlar ekle").
+    public string? CancellationReasonPresets { get; set; }
+
+    // Ürün notu (mutfağa iletilecek) için hazır not seçenekleri - her satır bir not (Edip,
+    // 2026-09-03: "otomatik not girilecek alanlar ekle").
+    public string? QuickNotePresets { get; set; }
+
     // Yok (None) iken restoran Kapat/Öde bugünkü gibi hiçbir fiskal cihaz çağrısı yapmadan
     // çalışır - bkz. SahinSoft.FiscalAgent projesi. Bir cihaz seçilip adres girildiğinde nakit/
     // kredi kartı/yemek çeki ödemeleri doğrudan yazarkasaya gönderilir (fatura kesilen satışlar

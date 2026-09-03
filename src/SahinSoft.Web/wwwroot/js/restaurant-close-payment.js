@@ -142,6 +142,17 @@
         window.history.replaceState({}, '', cleanUrl.toString());
     }
 
+    // Mutfağa göndermeden "Ödemeyi Al" akışının devamı - restaurant-pos.js sepeti gönderip
+    // ?openPayment=1 ile sayfayı yeniler, bu sayfa yüklemesindeki payableTotal artık güncel
+    // (yeni eklenenler dahil) olduğu için modal doğru tutarla açılabilir.
+    var openPaymentParam = new URLSearchParams(window.location.search).get('openPayment');
+    if (openPaymentParam) {
+        openPaymentModal();
+        var cleanUrl2 = new URL(window.location.href);
+        cleanUrl2.searchParams.delete('openPayment');
+        window.history.replaceState({}, '', cleanUrl2.toString());
+    }
+
     document.querySelectorAll('.pay-numpad [data-num]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var digit = btn.getAttribute('data-num');
@@ -235,7 +246,7 @@
 
     confirmBtn.addEventListener('click', function () {
         confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Kapatılıyor...';
+        confirmBtn.textContent = 'Tamamlanıyor...';
         errorEl.style.display = 'none';
 
         var customerId = null;
@@ -264,7 +275,7 @@
                         errorEl.textContent = result.data.error || 'Adisyon kapatılamadı.';
                         errorEl.style.display = 'block';
                         confirmBtn.disabled = false;
-                        confirmBtn.textContent = 'Kapat / Öde';
+                        confirmBtn.textContent = 'Siparişi Tamamla';
                         return;
                     }
                     window.location.href = root.getAttribute('data-back-url');
@@ -273,13 +284,13 @@
                     errorEl.textContent = 'Bağlantı hatası oluştu.';
                     errorEl.style.display = 'block';
                     confirmBtn.disabled = false;
-                    confirmBtn.textContent = 'Kapat / Öde';
+                    confirmBtn.textContent = 'Siparişi Tamamla';
                 });
         }, function (fiscalErrorMessage) {
             errorEl.textContent = fiscalErrorMessage;
             errorEl.style.display = 'block';
             confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Kapat / Öde';
+            confirmBtn.textContent = 'Siparişi Tamamla';
         });
     });
 })();

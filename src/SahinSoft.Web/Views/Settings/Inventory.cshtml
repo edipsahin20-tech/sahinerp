@@ -88,6 +88,20 @@
                 <input asp-for="KitchenAutoReadyMinutes" type="number" step="1" min="0" class="form-control" placeholder="Örn: 15" />
                 <div class="form-text">Mutfak KDS Takibi açıkken geçerlidir: gönderilen bir fiş bu süre dolduğunda mutfak personeli hiç dokunmasa bile otomatik "Hazır" durumuna geçer. Boş/0 bırakılırsa kapalıdır, ilerletme elle yapılır.</div>
             </div>
+            <div class="mt-3">
+                <div class="form-check form-switch"><input asp-for="RequireCancellationReason" class="form-check-input" /><label asp-for="RequireCancellationReason" class="form-check-label"></label></div>
+                <div class="form-text">Kapalıyken (varsayılan) sipariş satırı iptalinde kasiyere hiçbir şey sorulmaz, otomatik bir gerekçeyle direkt iptal edilir. Açıkken gerekçe sorulur - aşağıdaki hazır seçenekler varsa onlar da gösterilir.</div>
+            </div>
+            <div class="mt-3" style="max-width:420px;">
+                <label asp-for="CancellationReasonPresets" class="form-label"></label>
+                <textarea asp-for="CancellationReasonPresets" class="form-control" rows="4" placeholder="Örn:&#10;Müşteri vazgeçti&#10;Yanlış girildi&#10;Ürün tükendi"></textarea>
+                <div class="form-text">Her satıra bir gerekçe. "Sipariş İptalinde Gerekçe Sorulsun" açıkken kasiyer bunlardan seçer, serbest metin de yazabilir.</div>
+            </div>
+            <div class="mt-3" style="max-width:420px;">
+                <label asp-for="QuickNotePresets" class="form-label"></label>
+                <textarea asp-for="QuickNotePresets" class="form-control" rows="4" placeholder="Örn:&#10;Acısız olsun&#10;Şekersiz&#10;Ayrı paketlensin"></textarea>
+                <div class="form-text">Her satıra bir not. Sipariş ekranında bir ürüne "Not" eklerken hazır seçenek olarak gösterilir, serbest metin de yazılabilir.</div>
+            </div>
         </div>
     </div>
 

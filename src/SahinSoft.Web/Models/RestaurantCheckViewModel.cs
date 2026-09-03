@@ -37,6 +37,13 @@ public sealed class RestaurantCheckViewModel
     // edilecek bir şey yok, sadece kalabalık yapar (Edip, 2026-09-03).
     public bool IsKitchenTrackingEnabled { get; set; }
 
+    // İptal ederken gerekçe sorulsun mu ve hazır gerekçe/not seçenekleri (Edip, 2026-09-03:
+    // "iptal nedeni sorulsun mu diye parametre bağla ... otomatik iptal nedenleri/not girilecek
+    // alanlar ekle"). Kapalıyken JS hiç modal açmadan otomatik bir gerekçeyle direkt iptal eder.
+    public bool RequireCancellationReason { get; set; }
+    public List<string> CancellationReasonPresets { get; set; } = [];
+    public List<string> QuickNotePresets { get; set; } = [];
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
@@ -91,6 +98,11 @@ public sealed class RestaurantCatalogProductViewModel
     public decimal TaxRate { get; set; }
     public bool HasKitchenStation { get; set; }
     public string? ImagePath { get; set; }
+
+    // Barkod okuyucu ile satış için - hem Stok Tanıtım Kartı'ndaki tekil Barcode alanı hem de
+    // ProductBarcode'daki ek kodlar (farklı paket boyutları vb.) dahil (Edip, 2026-09-03: "tek
+    // satırda barkod ve isimden satış yapabilsin").
+    public List<string> Barcodes { get; set; } = [];
     public List<RestaurantCatalogPortionViewModel> Portions { get; set; } = [];
 }
 

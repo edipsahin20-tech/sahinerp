@@ -58,6 +58,15 @@ public sealed class InventorySettingsViewModel
     [Range(0, 1440)]
     public int? KitchenAutoReadyMinutes { get; set; }
 
+    [Display(Name = "Sipariş İptalinde Gerekçe Sorulsun")]
+    public bool RequireCancellationReason { get; set; }
+
+    [Display(Name = "Hazır İptal Gerekçeleri (her satıra bir tane)")]
+    public string? CancellationReasonPresets { get; set; }
+
+    [Display(Name = "Hazır Ürün Notları (her satıra bir tane)")]
+    public string? QuickNotePresets { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

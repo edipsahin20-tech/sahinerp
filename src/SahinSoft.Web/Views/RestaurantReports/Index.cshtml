@@ -153,21 +153,17 @@ else if (Model.ActiveTab == "x")
     <div class="rcard x-report-card">
         <h4>X Raporu</h4>
         <p class="sub">Anlık durum raporu — vardiyayı KAPATMAZ, istediğiniz kadar tekrar alabilirsiniz.</p>
-        @if (Model.XReport is null)
-        {
-            <div class="text-secondary small">Açık vardiya yok. X raporu için önce <a asp-controller="RestaurantShift" asp-action="Index">vardiyayı açın</a>.</div>
-        }
-        else
-        {
-            <div class="sub">Vardiya açılışı: @Model.XReport.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
-            <div class="x-report-grid">
-                <div><small>NET CİRO</small><strong>@Model.XReport.NetRevenue.ToString("N2") ₺</strong></div>
-                <div><small>FİŞ SAYISI</small><strong>@Model.XReport.ReceiptCount</strong></div>
-                <div><small>NAKİT</small><strong>@Model.XReport.Cash.ToString("N2") ₺</strong></div>
-                <div><small>KREDİ KARTI</small><strong>@Model.XReport.Card.ToString("N2") ₺</strong></div>
-                <div><small>YEMEK ÇEKİ</small><strong>@Model.XReport.MealCard.ToString("N2") ₺</strong></div>
-            </div>
-        }
+        <!-- X Raporu artık açık vardiya ŞART DEĞİL - dönem başlangıcı bugün alınmış son Z'nin
+             kapanışı (yoksa gece yarısı), açık bir vardiya varsa o da bilgi amaçlı gösterilir
+             (Edip, 2026-09-03: "X ve Z raporu almak için vardiya girilmesi zorunlu değil"). -->
+        <div class="sub">@(Model.IsShiftOpen ? "Vardiya açılışı" : "Dönem başlangıcı"): @Model.XReport!.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+        <div class="x-report-grid">
+            <div><small>NET CİRO</small><strong>@Model.XReport.NetRevenue.ToString("N2") ₺</strong></div>
+            <div><small>FİŞ SAYISI</small><strong>@Model.XReport.ReceiptCount</strong></div>
+            <div><small>NAKİT</small><strong>@Model.XReport.Cash.ToString("N2") ₺</strong></div>
+            <div><small>KREDİ KARTI</small><strong>@Model.XReport.Card.ToString("N2") ₺</strong></div>
+            <div><small>YEMEK ÇEKİ</small><strong>@Model.XReport.MealCard.ToString("N2") ₺</strong></div>
+        </div>
     </div>
 }
 else if (Model.ActiveTab == "z")

@@ -179,26 +179,35 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         vm.LastZNumber = lastClosedShift is null ? null : $"Z-{lastClosedShift.Id:D6}";
         vm.LastZClosedAtUtc = lastClosedShift?.ClosedAtUtc;
 
-        if (openShift is not null)
-        {
-            var shiftPayments = await dbContext.RestaurantPayments
-                .AsNoTracking()
-                .Where(x => x.PaidAtUtc >= openShift.OpenedAtUtc)
-                .ToListAsync();
-            var shiftReceiptCount = await dbContext.RetailSales
-                .AsNoTracking()
-                .CountAsync(x => x.IssuedAtUtc >= openShift.OpenedAtUtc && x.Status != RetailSaleStatus.Cancelled);
+        // X Raporu artık AÇIK VARDİYA ŞART DEĞİL (Edip, 2026-09-03: "X ve Z raporu almak için
+        // vardiya girilmesi zorunlu değil") - Dashboard'daki AYNI dönem mantığı: bugün alınmış
+        // son Z'nin kapanışından beri (yoksa takvim gece yarısından beri) satılan her şey.
+        // Açık bir vardiya varsa onun açılış saati bilgi amaçlı gösterilir, dönemi BELİRLEMEZ.
+        var todayStartForXUtc = DateTime.Now.Date.ToUniversalTime();
+        var lastZClosedTodayForXUtc = await dbContext.RestaurantCashShifts
+            .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartForXUtc && x.ClosedAtUtc < todayStartForXUtc.AddDays(1))
+            .OrderByDescending(x => x.ClosedAtUtc)
+            .Select(x => (DateTime?)x.ClosedAtUtc)
+            .FirstOrDefaultAsync();
+        var xPeriodStartUtc = lastZClosedTodayForXUtc ?? todayStartForXUtc;
 
-            vm.XReport = new RestaurantXReportViewModel
-            {
-                OpenedAtUtc = openShift.OpenedAtUtc,
-                ReceiptCount = shiftReceiptCount,
-                NetRevenue = shiftPayments.Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-                Cash = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-                Card = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-                MealCard = shiftPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.MealCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount)
-            };
-        }
+        var periodPayments = await dbContext.RestaurantPayments
+            .AsNoTracking()
+            .Where(x => x.PaidAtUtc >= xPeriodStartUtc)
+            .ToListAsync();
+        var periodReceiptCount = await dbContext.RetailSales
+            .AsNoTracking()
+            .CountAsync(x => x.IssuedAtUtc >= xPeriodStartUtc && x.Status != RetailSaleStatus.Cancelled);
+
+        vm.XReport = new RestaurantXReportViewModel
+        {
+            OpenedAtUtc = openShift?.OpenedAtUtc ?? xPeriodStartUtc,
+            ReceiptCount = periodReceiptCount,
+            NetRevenue = periodPayments.Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+            Cash = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+            Card = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+            MealCard = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.MealCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount)
+        };
 
         vm.ZList = await dbContext.RestaurantCashShifts
             .AsNoTracking()

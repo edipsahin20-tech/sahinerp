@@ -78,6 +78,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     // kaynak politikası izlenir: UnitPriceSnapshot zaten KDV dahildir, burada KDV bir daha
     // eklenmez. TaxRateSnapshot yalnızca adisyon KAPANIŞINDA (Faz 3, RetailSale/Fatura üretirken)
     // KDV'yi tutardan geriye doğru ayrıştırmak için saklanır.
+    private static List<string> SplitPresetLines(string? raw) =>
+        string.IsNullOrWhiteSpace(raw)
+            ? []
+            : raw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
     private decimal ComputeCheckRunningTotal(int checkId) =>
         dbContext.RestaurantOrderLines
             .Where(x => x.RestaurantOrder.RestaurantCheckId == checkId && x.Status != RestaurantOrderLineStatus.Cancelled)
@@ -290,6 +295,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Include(x => x.Category)
             .Include(x => x.TaxRate)
             .Include(x => x.Portions.Where(p => p.IsActive))
+            .Include(x => x.Barcodes.Where(b => b.IsActive))
             .OrderBy(x => x.Category.Name).ThenBy(x => x.Name)
             .ToListAsync();
 
@@ -307,7 +313,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -341,6 +347,9 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             IsFiscalEnabled = fiscalSettings is { FiscalDeviceType: not FiscalDeviceType.None } && !string.IsNullOrWhiteSpace(fiscalSettings.FiscalAgentUrl),
             FiscalAgentUrl = fiscalSettings?.FiscalAgentUrl,
             IsKitchenTrackingEnabled = fiscalSettings?.IsKitchenTrackingEnabled ?? false,
+            RequireCancellationReason = fiscalSettings?.RequireCancellationReason ?? false,
+            CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
+            QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel
             {
                 OrderId = order.Id,
@@ -376,6 +385,10 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                         TaxRate = p.TaxRate.Rate,
                         HasKitchenStation = p.DefaultKitchenStationId is not null,
                         ImagePath = p.ImagePath,
+                        Barcodes = (p.Barcode != null ? new[] { p.Barcode } : Array.Empty<string>())
+                            .Concat(p.Barcodes.Select(b => b.Barcode))
+                            .Distinct()
+                            .ToList(),
                         Portions = p.Portions.OrderBy(x => x.DisplayOrder).Select(portion => new RestaurantCatalogPortionViewModel
                         {
                             PortionId = portion.Id,

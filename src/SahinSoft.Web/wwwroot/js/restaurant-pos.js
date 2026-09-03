@@ -140,14 +140,48 @@
                 return;
             }
             tabsEl.style.display = 'none';
-            var matches = [];
+            renderProductList(filterCatalog(term));
+        });
+
+        // Barkod okuyucu Enter ile gönderir - tam barkod eşleşmesi varsa direkt sepete eklenir
+        // (bekleyen numpad miktarıyla), yoksa ada göre filtrelenmiş TEK sonuç varsa o eklenir -
+        // isimle yazıp Enter'a basmak da aynı şekilde çalışsın diye (Edip, 2026-09-03: "tek
+        // satırda barkod ve isimden satış yapabilsin").
+        searchEl.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            var raw = searchEl.value.trim();
+            if (!raw) return;
+            var byBarcode = null;
             catalog.forEach(function (cat) {
                 cat.products.forEach(function (p) {
-                    if (p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1) matches.push(p);
+                    if (p.barcodes && p.barcodes.indexOf(raw) !== -1) byBarcode = p;
                 });
             });
-            renderProductList(matches);
+            var target = byBarcode;
+            if (!target) {
+                var matches = filterCatalog(raw.toLocaleLowerCase('tr-TR'));
+                if (matches.length === 1) target = matches[0];
+            }
+            if (target) {
+                addToCart(target);
+                searchEl.value = '';
+                tabsEl.style.display = '';
+                if (activeCategory) renderProducts(activeCategory);
+            }
         });
+    }
+
+    function filterCatalog(term) {
+        var matches = [];
+        catalog.forEach(function (cat) {
+            cat.products.forEach(function (p) {
+                if (p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1
+                    || (p.barcodes && p.barcodes.some(function (b) { return b.indexOf(term) !== -1; }))) {
+                    matches.push(p);
+                }
+            });
+        });
+        return matches;
     }
 
     function escapeHtml(s) {
@@ -244,10 +278,13 @@
 
         if (!cart.some(function (x) { return x.cartId === selectedCartId; })) selectedCartId = null;
 
+        var payBtn = document.getElementById('self-pay-btn');
+
         if (cart.length === 0) {
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
             totalEl.textContent = money(sentLinesTotal);
             sendBtn.disabled = true;
+            if (payBtn) payBtn.disabled = sentLinesTotal <= 0;
             updateLineToolbar();
             return;
         }
@@ -263,11 +300,14 @@
             else if (line.discountAmount > 0) badges += ' <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim ' + money(line.discountAmount) + '</span>';
             if (!line.hasKitchenStation) badges += ' <span class="badge text-bg-secondary-subtle" title="Mutfak istasyonu tanımlı değil">İstasyonsuz</span>';
 
+            // Sabit şablon: Ürün Adı | Miktar | Birim Fiyat | Tutar (Edip, 2026-09-03).
             div.innerHTML =
-                '<div>' +
-                '  <div>' + line.quantity + 'x ' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges + '</div>' +
-                '  <div class="small text-secondary">' + money(line.unitPrice) + ' · Tutar: ' + money(lineTotal(line)) + (line.kitchenNote ? ' · Not: ' + escapeHtml(line.kitchenNote) : '') + '</div>' +
-                '</div>';
+                '<div class="cart-line-col-name">' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges +
+                (line.kitchenNote ? '<div class="small text-secondary">Not: ' + escapeHtml(line.kitchenNote) + '</div>' : '') + '</div>' +
+                '<div class="cart-line-col-qty">' + line.quantity + '</div>' +
+                '<div class="cart-line-col-price">' + money(line.unitPrice) + '</div>' +
+                '<div class="cart-line-col-total">' + money(lineTotal(line)) + '</div>' +
+                '<div></div>';
 
             div.addEventListener('click', function () {
                 selectedCartId = line.cartId;
@@ -279,6 +319,7 @@
 
         totalEl.textContent = money(total + sentLinesTotal);
         sendBtn.disabled = false;
+        if (payBtn) payBtn.disabled = (total + sentLinesTotal) <= 0;
         updateLineToolbar();
     }
 
@@ -311,10 +352,23 @@
         line.quantity += 1;
         renderCart();
     });
+    // Hazır not seçenekleri varsa (Edip, 2026-09-03: "otomatik not girilecek alanlar ekle")
+    // porsiyon seçimindeki AYNI numaralı liste deseni - ayrı bir modal gerekmez, kasiyer numara
+    // girip hazır notu seçebilir ya da kendi notunu yazabilir.
+    var quickNotePresets = JSON.parse(document.getElementById('pos-quick-notes-data').textContent || '[]');
     document.getElementById('line-act-note').addEventListener('click', function () {
         var line = selectedLine();
         if (!line) return;
-        var note = window.prompt('Not (mutfağa iletilecek):', line.kitchenNote || '');
+        var note;
+        if (quickNotePresets.length > 0) {
+            var options = quickNotePresets.map(function (n, i) { return (i + 1) + ') ' + n; }).join('\n');
+            var choice = window.prompt('Not (mutfağa iletilecek):\n' + options + '\n\n(Hazır not için numara girin, ya da kendi notunuzu yazın)', line.kitchenNote || '');
+            if (choice === null) { return; }
+            var idx = parseInt(choice, 10);
+            note = (!isNaN(idx) && idx >= 1 && idx <= quickNotePresets.length && String(idx) === choice.trim()) ? quickNotePresets[idx - 1] : choice;
+        } else {
+            note = window.prompt('Not (mutfağa iletilecek):', line.kitchenNote || '');
+        }
         if (note !== null) line.kitchenNote = note.trim() || null;
         renderCart();
     });
@@ -454,6 +508,31 @@
                 function () { quickPayButtons.forEach(function (b) { b.disabled = false; }); });
         });
     });
+
+    // "Ödemeyi Al" - mutfağa hiç gönderilmeden de tahsilat alınabilsin diye, tıklanınca sepette
+    // bekleyen (henüz gönderilmemiş) ürün varsa ÖNCE onlar sunucuya yazılır (KDS kapalıyken
+    // doğrudan Servis Edildi olur, mutfak fişi açılmaz), SONRA sayfa ?openPayment=1 ile yeniden
+    // yüklenir ki ödeme modalı güncel (yeni eklenenleri de içeren) tutarla açılsın - aksi halde
+    // restaurant-close-payment.js sayfa yüklendiğindeki ESKİ PayableTotal'ı kullanırdı (Edip,
+    // 2026-09-03: "masa siparişi giriyorum mutfağa göndermeden de tahsilat alabileyim"). Bu
+    // listener restaurant-close-payment.js'in kendi tıklama dinleyicisinden ÖNCE eklenir (script
+    // sırası) - sepette bir şey varsa stopImmediatePropagation ile o dinleyiciyi (eski tutarla
+    // modalı direkt açardı) devre dışı bırakır; sepet boşsa dokunmadan geçer.
+    var selfPayBtn = document.getElementById('self-pay-btn');
+    if (selfPayBtn) {
+        selfPayBtn.addEventListener('click', function (e) {
+            if (cart.length === 0) return;
+            e.stopImmediatePropagation();
+            selfPayBtn.disabled = true;
+            flushCartToKitchen(
+                function () {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('openPayment', '1');
+                    window.location.href = url.toString();
+                },
+                function () { selfPayBtn.disabled = false; });
+        });
+    }
 
     // --- Fiyat Gör - müşteri kasada fiyat sorduğunda kataloğu tekrar sorgulamadan (zaten
     // yüklü) hızlı bakış (Edip, 2026-09-03). Seçilen ürün "Ekrana Al" ile sepete eklenir. ---

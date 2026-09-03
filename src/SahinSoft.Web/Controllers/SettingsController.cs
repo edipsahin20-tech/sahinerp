@@ -111,6 +111,9 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireOpenShiftForSales = model.RequireOpenShiftForSales;
         settings.IsKitchenTrackingEnabled = model.IsKitchenTrackingEnabled;
         settings.KitchenAutoReadyMinutes = model.KitchenAutoReadyMinutes;
+        settings.RequireCancellationReason = model.RequireCancellationReason;
+        settings.CancellationReasonPresets = model.CancellationReasonPresets;
+        settings.QuickNotePresets = model.QuickNotePresets;
         settings.FiscalDeviceType = model.FiscalDeviceType;
         settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="~/css/restaurant-pos.css" asp-append-version="true" />
 }
 
-<div class="restaurant-pos" id="pos-root"
+<div class="restaurant-pos pos-check-page" id="pos-root"
      data-check-id="@Model.CheckId"
      data-check-number="@Model.CheckNumber"
      data-table-label="@Model.SectionName — @Model.TableName"
@@ -21,6 +21,7 @@
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
+     data-require-cancellation-reason="@Model.RequireCancellationReason.ToString().ToLowerInvariant()"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
@@ -148,32 +149,44 @@
                      sipariş girdiğimde ödeme ekranında gözüksün mutfağın içinde değil"). Durum
                      rozeti sadece KDS takibi açıkken anlamlı, kapalıyken hepsi zaten doğrudan
                      Servis Edildi olduğundan gösterilmez. -->
-                @if (Model.SentOrders.Any(o => o.Lines.Count > 0))
+                <!-- Sabit şablon: Ürün Adı | Miktar | Birim Fiyat | Tutar - gönderilmiş ve
+                     bekleyen satırlarda AYNI (Edip, 2026-09-03: "şablon bu şekilde sabit kalsın
+                     ürün adı miktar birim fiyat tutar şeklinde olsun"). -->
+                <div class="cart-lines-header">
+                    <span>Ürün Adı</span><span>Miktar</span><span>Birim Fiyat</span><span>Tutar</span><span></span>
+                </div>
+                @{
+                    // İptal edilen satırlar üzeri çizili göstermek yerine listeden TAMAMEN
+                    // kaldırılır - kayıt DB'de reversal mantığıyla korunur, sadece ekranda
+                    // görünmez (Edip, 2026-09-03: "iptal dediğimde direk silsin ekrandan, üzerini
+                    // silmesin").
+                    var visibleSentLines = Model.SentOrders.SelectMany(o => o.Lines.Select(l => (order: o, line: l)))
+                        .Where(x => x.line.Status != "Cancelled")
+                        .ToList();
+                }
+                @if (visibleSentLines.Count > 0)
                 {
                     <div class="cart-sent-lines" id="cart-sent-lines">
-                        @foreach (var order in Model.SentOrders)
+                        @foreach (var (order, line) in visibleSentLines)
                         {
-                            @foreach (var line in order.Lines)
-                            {
-                                <div class="cart-line sent@(line.Status == "Cancelled" ? " cancelled" : "")">
-                                    <div>
-                                        <div>@line.Quantity.ToString("N0")x @line.ProductName
-                                            @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
-                                            @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
-                                            @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span> }
-                                            @if (Model.IsKitchenTrackingEnabled) { <span class="badge text-bg-secondary-subtle">@line.Status</span> }
-                                        </div>
-                                        <div class="small text-secondary">
-                                            @line.UnitPrice.ToString("N2") ₺ · Tutar: @((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺
-                                            @if (!string.IsNullOrEmpty(line.KitchenNote)) { <text> · Not: @line.KitchenNote</text> }
-                                        </div>
-                                    </div>
+                            <div class="cart-line sent">
+                                <div class="cart-line-col-name">@line.ProductName
+                                    @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
+                                    @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
+                                    @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span> }
+                                    @if (Model.IsKitchenTrackingEnabled) { <span class="badge text-bg-secondary-subtle">@line.Status</span> }
+                                    @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
+                                </div>
+                                <div class="cart-line-col-qty">@line.Quantity.ToString("N0")</div>
+                                <div class="cart-line-col-price">@line.UnitPrice.ToString("N2") ₺</div>
+                                <div class="cart-line-col-total">@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</div>
+                                <div>
                                     @if (line.CanCancel)
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-danger cancel-line-btn" data-line-id="@line.LineId">İptal</button>
                                     }
                                 </div>
-                            }
+                            </div>
                         }
                     </div>
                 }
@@ -377,7 +390,8 @@
                 </div>
                 <div class="modal-body">
                     <label class="form-label">İptal Gerekçesi</label>
-                    <input type="text" name="reason" class="form-control" required />
+                    <div id="cancel-reason-presets" class="mb-2 d-flex flex-wrap gap-1"></div>
+                    <input type="text" name="reason" id="cancelReasonInput" class="form-control" required />
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
@@ -491,7 +505,7 @@
             <div class="modal-footer pay-footer">
                 <button type="button" class="btn btn-danger" data-bs-dismiss="modal">× Ödeme İptal</button>
                 <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">‹ Adisyona Dön</button>
-                <button type="button" class="btn btn-erp" id="confirm-close-payment-btn" disabled>Kapat / Öde</button>
+                <button type="button" class="btn btn-erp" id="confirm-close-payment-btn" disabled>Siparişi Tamamla</button>
             </div>
         </div>
     </div>
@@ -555,14 +569,41 @@
     <script id="pos-catalog-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Catalog, catalogJsonOptions))</script>
     <script id="pos-financial-accounts-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts, catalogJsonOptions))</script>
     <script id="pos-fiscal-lines-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(fiscalLines, catalogJsonOptions))</script>
+    <script id="pos-cancellation-reasons-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CancellationReasonPresets, catalogJsonOptions))</script>
+    <script id="pos-quick-notes-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickNotePresets, catalogJsonOptions))</script>
     <script src="~/js/restaurant-pos.js" asp-append-version="true"></script>
     <script>
-        document.querySelectorAll('.cancel-line-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.getElementById('cancelLineId').value = btn.getAttribute('data-line-id');
-                new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
+        (function () {
+            // İptal gerekçesi sorulsun mu - parametre (Edip, 2026-09-03: "iptal nedeni sorulsun
+            // mu diye parametre bağla, şimdilik default sorulmasın"). Kapalıyken modal hiç
+            // açılmaz, otomatik bir gerekçeyle direkt iptal edilir.
+            var requireReason = document.getElementById('pos-root').getAttribute('data-require-cancellation-reason') === 'true';
+            var reasonPresets = JSON.parse(document.getElementById('pos-cancellation-reasons-data').textContent || '[]');
+            var cancelForm = document.querySelector('#cancelLineModal form');
+            var reasonInput = document.getElementById('cancelReasonInput');
+            var presetsEl = document.getElementById('cancel-reason-presets');
+
+            reasonPresets.forEach(function (reasonText) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-secondary';
+                btn.textContent = reasonText;
+                btn.addEventListener('click', function () { reasonInput.value = reasonText; });
+                presetsEl.appendChild(btn);
             });
-        });
+
+            document.querySelectorAll('.cancel-line-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.getElementById('cancelLineId').value = btn.getAttribute('data-line-id');
+                    if (requireReason) {
+                        new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
+                    } else {
+                        reasonInput.value = 'Kasiyer iptali';
+                        cancelForm.submit();
+                    }
+                });
+            });
+        })();
     </script>
     <script src="~/js/restaurant-close-payment.js" asp-append-version="true"></script>
 }
