@@ -177,6 +177,25 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         }
     }
 
+    // "İndirim" (alttaki hızlı işlem / Tahsilat'taki İndirim) - satır bazlı (sabit çubuktaki)
+    // İndirim'den FARKLI, adisyonun TOPLAMINA bir tutar indirimi uygular (Edip, 2026-09-03:
+    // "altta bastığında indirim tuşuna tutar indirimi toplam tutara, bide tahsilatta indirim
+    // o da tutar indirimi sayılsın"). JSON döner - restaurant-pos.js sayfayı kendi yeniler.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyDiscount(int checkId, decimal amount)
+    {
+        try
+        {
+            await postingService.ApplyTicketDiscountAsync(checkId, amount);
+            return Json(new { success = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateCheckNote(int checkId, string? note)
@@ -539,6 +558,38 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         {
             await postingService.CancelOrderLineAsync(lineId, userId, reason);
             TempData["Success"] = "Sipariş satırı iptal edildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Check), new { id = checkId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdjustOrderLineQuantity(int lineId, int checkId, decimal quantity)
+    {
+        try
+        {
+            await postingService.AdjustOrderLineQuantityAsync(lineId, quantity);
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Check), new { id = checkId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleLineComplimentary(int lineId, int checkId)
+    {
+        try
+        {
+            await postingService.ToggleLineComplimentaryAsync(lineId);
         }
         catch (InvalidOperationException ex)
         {

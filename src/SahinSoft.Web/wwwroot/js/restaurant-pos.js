@@ -741,21 +741,7 @@
         });
 
         discountBtn.addEventListener('click', function () {
-            if (cart.length === 0) { window.alert('Sepette ürün yok.'); return; }
-            var grossTotal = cart.reduce(function (sum, l) { return sum + l.quantity * l.unitPrice; }, 0);
-            var input = window.prompt('Sepetin tamamına uygulanacak toplam indirim tutarı (₺):', '0');
-            if (input === null) return;
-            var amount = parseFloat(input.replace(',', '.'));
-            if (isNaN(amount) || amount < 0) return;
-            if (amount > grossTotal) amount = grossTotal;
-            // Her satıra kendi payına göre orantılı dağıtılır (Edip, 2026-09-03: "indirim").
-            cart.forEach(function (line) {
-                var lineGross = line.quantity * line.unitPrice;
-                var share = grossTotal > 0 ? lineGross / grossTotal : 0;
-                line.discountAmount = Math.round(amount * share * 100) / 100;
-                line.isComplimentary = false;
-            });
-            renderCart();
+            if (window.openTicketDiscountModal) window.openTicketDiscountModal(false);
         });
 
         // Adisyonda hiçbir aktif ürün yoksa (hiç eklenmedi ya da hepsi iptal edildi) "Kapat"
@@ -769,6 +755,202 @@
             } else {
                 window.location.href = root.getAttribute('data-back-url');
             }
+        });
+    })();
+
+    // --- İndirim modalı (adisyon TOPLAMINA tutar indirimi) - "İndirim" butonuna tıklayınca
+    // (Edip, 2026-09-03: "indirim butonuna tıkladığımda böyle küçük bir pencere açılsın yüzdeler
+    // ve tutarsal indirim yapma yapılsın") yüzde/tutar modu + numpad + canlı önizleme. ÜSTTEKİ
+    // (satır bazlı, cart-line-toolbar) İndirim'den AYRI: bu her zaman TOPLAM tutara uygulanır
+    // (Edip: "üstte ürünü seçip indirim tuşuna bastığında satır indirimi, altta bastığında
+    // indirim tuşuna tutar indirimi toplam tutara, bide tahsilatta indirim o da tutar indirimi
+    // sayılsın"). Sepette bekleyen (henüz gönderilmemiş) satır varsa uygulamadan önce mutfağa
+    // yazılır (ApplyDiscount yalnızca kalıcı RestaurantOrderLine'ları günceller), SONRA sunucuya
+    // gönderilir ve sayfa yeniden yüklenir - Tahsilat akışından açıldıysa ?openPayment=1 ile. ---
+    (function () {
+        var modalEl = document.getElementById('ticketDiscountModal');
+        if (!modalEl) return;
+        var applyDiscountUrl = root.getAttribute('data-apply-discount-url');
+        // Sunucudaki ApplyTicketDiscountAsync girilen tutarı satırların HAM brüt tutarına
+        // (Quantity * UnitPriceSnapshot, önceki indirimler hariç) göre dağıtır ve önceki satır
+        // indirimlerinin YERİNE geçer - bu yüzden önizleme de aynı HAM brüt tutarı esas almalı,
+        // yoksa satırlarda önceden indirim varsa (örn. ikinci kez indirim uygulanırken) önizleme
+        // ile gerçek sonuç uyuşmaz.
+        var sentLinesGrossTotal = parseFloat(root.getAttribute('data-sent-lines-gross-total')) || 0;
+        var mode = 'percent';
+        var digits = '';
+        var fromPayment = false;
+
+        function cartGrossTotal() {
+            return cart.reduce(function (sum, l) { return sum + l.quantity * l.unitPrice; }, 0);
+        }
+
+        function grossTotal() {
+            return cartGrossTotal() + sentLinesGrossTotal;
+        }
+
+        function enteredValue() {
+            var n = parseFloat(digits.replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+        }
+
+        function computedDiscountAmount() {
+            var gross = grossTotal();
+            var raw = mode === 'percent' ? gross * (enteredValue() / 100) : enteredValue();
+            return Math.max(0, Math.min(raw, gross));
+        }
+
+        function refreshPreview() {
+            var gross = grossTotal();
+            var discount = computedDiscountAmount();
+            document.getElementById('discount-gross-total').textContent = money(gross);
+            document.getElementById('discount-amount-preview').textContent = money(discount);
+            document.getElementById('discount-net-total').textContent = money(gross - discount);
+            document.getElementById('discount-entry-display').textContent = digits === '' ? '0' : digits;
+            document.getElementById('discount-entry-label').textContent = mode === 'percent' ? 'GİRİLEN YÜZDE' : 'GİRİLEN TUTAR (₺)';
+        }
+
+        window.openTicketDiscountModal = function (isFromPayment) {
+            if (grossTotal() <= 0) { window.alert('Adisyonda ürün yok.'); return; }
+            fromPayment = !!isFromPayment;
+            mode = 'percent';
+            digits = '';
+            modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-discount-mode') === mode);
+            });
+            refreshPreview();
+            new bootstrap.Modal(modalEl).show();
+        };
+
+        var payDiscountBtn = document.getElementById('pay-discount-btn');
+        if (payDiscountBtn) {
+            payDiscountBtn.addEventListener('click', function () {
+                var payModalEl = document.getElementById('closePaymentModal');
+                var payModalInstance = payModalEl && bootstrap.Modal.getInstance(payModalEl);
+                if (payModalInstance) payModalInstance.hide();
+                window.openTicketDiscountModal(true);
+            });
+        }
+
+        modalEl.querySelectorAll('[data-discount-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                mode = btn.getAttribute('data-discount-mode');
+                digits = '';
+                modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) { b.classList.toggle('active', b === btn); });
+                refreshPreview();
+            });
+        });
+
+        modalEl.querySelectorAll('[data-percent]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                mode = 'percent';
+                digits = btn.getAttribute('data-percent');
+                modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-discount-mode') === 'percent');
+                });
+                refreshPreview();
+            });
+        });
+
+        modalEl.querySelectorAll('[data-dnum]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var v = btn.getAttribute('data-dnum');
+                if (v === ',' && digits.indexOf(',') !== -1) return;
+                if (digits === '0' && v !== ',') digits = '';
+                digits += v;
+                refreshPreview();
+            });
+        });
+
+        document.getElementById('discount-num-clear').addEventListener('click', function () {
+            digits = '';
+            refreshPreview();
+        });
+
+        document.getElementById('discount-clear-btn').addEventListener('click', function () {
+            mode = 'percent';
+            digits = '';
+            refreshPreview();
+            submitDiscount(0);
+        });
+
+        function submitDiscount(amount) {
+            var applyBtn = document.getElementById('discount-apply-btn');
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Uygulanıyor...';
+            flushCartToKitchen(
+                function () {
+                    fetch(applyDiscountUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
+                        body: 'checkId=' + encodeURIComponent(checkId) + '&amount=' + encodeURIComponent(amount)
+                    })
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                window.alert('Hata: ' + (data.message || 'İndirim uygulanamadı.'));
+                                applyBtn.disabled = false;
+                                applyBtn.textContent = 'Uygula';
+                                return;
+                            }
+                            var url = new URL(window.location.href);
+                            if (fromPayment) url.searchParams.set('openPayment', '1');
+                            window.location.href = url.toString();
+                        })
+                        .catch(function () {
+                            window.alert('Bağlantı hatası oluştu.');
+                            applyBtn.disabled = false;
+                            applyBtn.textContent = 'Uygula';
+                        });
+                },
+                function () {
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = 'Uygula';
+                });
+        }
+
+        document.getElementById('discount-apply-btn').addEventListener('click', function () {
+            submitDiscount(computedDiscountAmount());
+        });
+    })();
+
+    // --- Gönderilmiş satırlarda kilit / miktar düzeltme / ikram - Edip, 2026-09-03: "mutfağa
+    // gönderildi diye herşeyi pasif hale getirme, silme ikram düzeltme miktar düzeltme herşey
+    // aktif olsun" / "yada kilit tuşu koy ona tıkladığımda aktif etsin herşeyi ürünleri açık
+    // bıraksın". İptal zaten her koşulda aktif (CanCancel kitchen durumuna bakmaz) - kilit
+    // yalnızca İkram ve Miktar düzeltme butonlarını açığa çıkarır. ---
+    (function () {
+        var lockBtn = document.getElementById('sent-lines-lock-btn');
+        var sentLinesEl = document.getElementById('cart-sent-lines');
+        if (!lockBtn || !sentLinesEl) return;
+
+        var unlocked = false;
+        lockBtn.addEventListener('click', function () {
+            unlocked = !unlocked;
+            sentLinesEl.classList.toggle('unlocked', unlocked);
+            lockBtn.classList.toggle('unlocked', unlocked);
+            lockBtn.textContent = unlocked ? '🔓 Gönderilen Satırlar Açık' : '🔒 Gönderilen Satırlar Kilitli';
+        });
+
+        document.querySelectorAll('.sent-line-qty-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var current = btn.getAttribute('data-qty');
+                var input = window.prompt('Yeni miktar:', current);
+                if (input === null) return;
+                var qty = parseFloat(input.replace(',', '.'));
+                if (isNaN(qty) || qty <= 0) { window.alert('Geçersiz miktar.'); return; }
+                document.getElementById('adjustQtyLineId').value = btn.getAttribute('data-line-id');
+                document.getElementById('adjustQtyValue').value = qty;
+                document.getElementById('adjust-line-qty-form').submit();
+            });
+        });
+
+        document.querySelectorAll('.sent-line-comp-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
+                document.getElementById('toggleCompLineId').value = btn.getAttribute('data-line-id');
+                document.getElementById('toggle-line-comp-form').submit();
+            });
         });
     })();
 

@@ -17,13 +17,16 @@
      data-send-url="@Url.Action("SendToKitchen")"
      data-close-url="@Url.Action("ClosePayment")"
      data-back-url="@Url.Action("Index")"
+     data-self-sale-url="@Url.Action("Index", "RestaurantSelfSale")"
      data-today-receipts-url="@Url.Action("TodayReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-search-products-url="@Url.Action("SearchProducts")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
+     data-apply-discount-url="@Url.Action("ApplyDiscount")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
      data-require-cancellation-reason="@Model.RequireCancellationReason.ToString().ToLowerInvariant()"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+     data-sent-lines-gross-total="@Model.SentOrders.SelectMany(o => o.Lines).Where(l => l.Status != "Cancelled").Sum(l => l.Quantity * l.UnitPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
      data-cashier-name="@(((SahinSoft.Web.Models.RestaurantShellViewModel)ViewBag.Shell).UserFullName)">
@@ -169,6 +172,11 @@
                 }
                 @if (visibleSentLines.Count > 0)
                 {
+                    <!-- Kilit tuşu - varsayılan kilitli, tıklanınca gönderilmiş satırlarda İkram/Miktar
+                         düzeltme butonlarını açığa çıkarır (Edip, 2026-09-03). -->
+                    <div class="sent-lines-lock-row">
+                        <button type="button" id="sent-lines-lock-btn" class="sent-lines-lock-btn">🔒 Gönderilen Satırlar Kilitli</button>
+                    </div>
                     <div class="cart-sent-lines" id="cart-sent-lines">
                         @foreach (var (order, line) in visibleSentLines)
                         {
@@ -185,9 +193,11 @@
                                 <div class="cart-line-col-kdv">%@line.TaxRate.ToString("N0")</div>
                                 <div class="cart-line-col-price">@line.UnitPrice.ToString("N2") ₺</div>
                                 <div class="cart-line-col-total">@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</div>
-                                <div>
+                                <div class="sent-line-actions">
                                     @if (line.CanCancel)
                                     {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary sent-line-comp-btn" data-line-id="@line.LineId" title="İkram">🎁</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary sent-line-qty-btn" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" title="Miktar Düzelt">✎</button>
                                         <button type="button" class="btn btn-sm btn-outline-danger cancel-line-btn" data-line-id="@line.LineId">İptal</button>
                                     }
                                 </div>
@@ -282,6 +292,20 @@
 <form method="post" asp-action="VoidEmptyCheck" id="void-empty-check-form" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="checkId" value="@Model.CheckId" />
+</form>
+
+<!-- Gönderilmiş satırda miktar düzeltme / ikram aç-kapa - kilit açıkken satır butonlarından
+     tetiklenir, bkz. restaurant-pos.js (Edip, 2026-09-03). -->
+<form method="post" asp-action="AdjustOrderLineQuantity" id="adjust-line-qty-form" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="checkId" value="@Model.CheckId" />
+    <input type="hidden" name="lineId" id="adjustQtyLineId" />
+    <input type="hidden" name="quantity" id="adjustQtyValue" />
+</form>
+<form method="post" asp-action="ToggleLineComplimentary" id="toggle-line-comp-form" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="checkId" value="@Model.CheckId" />
+    <input type="hidden" name="lineId" id="toggleCompLineId" />
 </form>
 
 <!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
@@ -460,6 +484,70 @@
     </div>
 }
 
+<!-- İndirim modalı - "İndirim" butonu artık window.prompt yerine bunu açar, yüzdesel/tutarsal
+     seçim + numpad + canlı önizleme (Edip, 2026-09-03: referans görsel, "indirim butonuna
+     tıkladığımda böyle küçük bir pencere açılsın yüzdeler ve tutarsal indirim yapma yapılsın
+     bide ekran indirim tutarını göstersin sonra indirim düşülen toplam tutarı göstersin"). -->
+<div class="modal fade" id="ticketDiscountModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content pay-modal">
+            <div class="modal-header">
+                <h5 class="modal-title mb-0">İndirim</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="pay-summary-row">
+                    <div><small>Toplam</small><strong id="discount-gross-total"></strong></div>
+                    <div><small>İndirim</small><strong id="discount-amount-preview" class="text-danger"></strong></div>
+                    <div><small>İndirimli Toplam</small><strong id="discount-net-total" class="text-success"></strong></div>
+                </div>
+
+                <div class="pay-split-row">
+                    <span class="pay-split-label">Hazır Yüzde:</span>
+                    <button type="button" class="pay-split-btn" data-percent="5">%5</button>
+                    <button type="button" class="pay-split-btn" data-percent="10">%10</button>
+                    <button type="button" class="pay-split-btn" data-percent="15">%15</button>
+                    <button type="button" class="pay-split-btn" data-percent="20">%20</button>
+                    <button type="button" class="pay-split-btn" data-percent="25">%25</button>
+                    <button type="button" class="pay-split-btn" data-percent="30">%30</button>
+                    <button type="button" class="pay-split-btn" data-percent="40">%40</button>
+                    <button type="button" class="pay-split-btn" data-percent="50">%50</button>
+                </div>
+
+                <div class="discount-mode-row">
+                    <button type="button" class="discount-mode-btn active" data-discount-mode="percent">% Yüzde</button>
+                    <button type="button" class="discount-mode-btn" data-discount-mode="amount">₺ Tutar</button>
+                </div>
+
+                <div class="pay-amount-card">
+                    <small id="discount-entry-label">GİRİLEN YÜZDE</small>
+                    <div class="pay-amount-value" id="discount-entry-display">0</div>
+                </div>
+
+                <div class="pay-numpad">
+                    <button type="button" data-dnum="7">7</button>
+                    <button type="button" data-dnum="8">8</button>
+                    <button type="button" data-dnum="9">9</button>
+                    <button type="button" data-dnum="4">4</button>
+                    <button type="button" data-dnum="5">5</button>
+                    <button type="button" data-dnum="6">6</button>
+                    <button type="button" data-dnum="1">1</button>
+                    <button type="button" data-dnum="2">2</button>
+                    <button type="button" data-dnum="3">3</button>
+                    <button type="button" data-dnum=",">,</button>
+                    <button type="button" data-dnum="0">0</button>
+                    <button type="button" id="discount-num-clear">CL</button>
+                </div>
+            </div>
+            <div class="modal-footer pay-footer">
+                <button type="button" class="btn btn-danger" id="discount-clear-btn">✕ İndirim İptal</button>
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">‹ Vazgeç</button>
+                <button type="button" class="btn btn-erp" id="discount-apply-btn">Uygula</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Kapat / Öde modalı (master tasarım: parçalı ödeme, numpad, hazır para) -->
 <div class="modal fade" id="closePaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -489,6 +577,10 @@
                     <button type="button" class="pay-split-btn" data-split="3">1/3</button>
                     <button type="button" class="pay-split-btn" data-split="2">1/2</button>
                     <button type="button" class="pay-split-btn" data-split="1">1/1</button>
+                    <!-- Tahsilat ekranındaki İndirim de TUTAR indirimi sayılır - üstteki hızlı
+                         işlem satırındaki İndirim ile AYNI modalı açar (Edip, 2026-09-03: "bide
+                         tahsilatta indirim o da tutar indirimi sayılsın"). -->
+                    <button type="button" class="pay-split-btn" id="pay-discount-btn" style="margin-left:auto;">% İndirim</button>
                 </div>
 
                 <div class="pay-amount-card">
@@ -548,6 +640,9 @@
     .pay-split-label { font-size: 12px; color: #6F7F92; margin-right: 4px; }
     .pay-split-btn, .pay-cash-quick { border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 12.5px; cursor: pointer; }
     .pay-split-btn:hover, .pay-cash-quick:hover { border-color: #D2DAE5; background: #F4F6F9; }
+    .discount-mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .discount-mode-btn { border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; padding: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .discount-mode-btn.active { background: var(--pos-navy, #1F3B57); border-color: var(--pos-navy, #1F3B57); color: #fff; }
     .pay-amount-card { background: #FAFBFD; border: 1px solid #E3E8EF; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
     .pay-amount-card small { color: #6F7F92; font-size: 11px; }
     .pay-amount-value { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }

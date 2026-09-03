@@ -278,7 +278,10 @@
                         confirmBtn.textContent = 'Siparişi Tamamla';
                         return;
                     }
-                    window.location.href = root.getAttribute('data-back-url');
+                    // Ödeme tamamlandıktan sonra masa/self/paket fark etmeksizin HER ZAMAN Self
+                    // Satış ekranında kalınır (Edip, 2026-09-03: "masa ödemesini de alsa self
+                    // ödeme de alsa pakette de ödeme alsa self satış ekranında kalsın hep").
+                    window.location.href = root.getAttribute('data-self-sale-url');
                 })
                 .catch(function () {
                     errorEl.textContent = 'Bağlantı hatası oluştu.';

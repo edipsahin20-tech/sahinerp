@@ -184,6 +184,46 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // "İndirim" (alttaki hızlı işlem / Tahsilat'taki İndirim) - satır bazlı İndirim'den (sabit
+    // çubuktaki, tek seçili satıra uygulanan) FARKLI: bu bir TUTAR/YÜZDE indirimini adisyonun
+    // TOPLAMINA uygular (Edip, 2026-09-03: "üstte ürünü seçip indirim tuşuna bastığında satır
+    // indirimi, altta bastığında indirim tuşuna tutar indirimi toplam tutara, bide tahsilatta
+    // indirim o da tutar indirimi sayılsın"). RestaurantCheck.GrandTotal vb. alanlar sadece
+    // kapanışta (CloseCheckAsync) yazılır - burada dokunmaya gerek yok, PayableTotal her zaman
+    // canlı RestaurantOrderLine'lardan hesaplanır (bkz. ComputeCheckRunningTotal), bu yüzden her
+    // satırın DiscountAmountSnapshot'ını kendi payına göre orantılı güncellemek yeterli. Hem
+    // henüz mutfağa gönderilmemiş (client'ta bekleyen, zaten flushCartToKitchen ile önce
+    // gönderilir) hem gönderilmiş satırlarda AYNI şekilde çalışır - Tahsilat anında genelde her
+    // şey zaten gönderilmiş olur.
+    public async Task ApplyTicketDiscountAsync(int checkId, decimal totalDiscountAmount, CancellationToken cancellationToken = default)
+    {
+        if (totalDiscountAmount < 0)
+        {
+            throw new InvalidOperationException("İndirim tutarı negatif olamaz.");
+        }
+
+        var lines = await dbContext.RestaurantOrderLines
+            .Where(x => x.RestaurantOrder.RestaurantCheckId == checkId && x.Status != RestaurantOrderLineStatus.Cancelled)
+            .ToListAsync(cancellationToken);
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Adisyonda ürün yok.");
+        }
+
+        var grossTotal = lines.Sum(x => x.Quantity * x.UnitPriceSnapshot);
+        var clampedAmount = Math.Min(totalDiscountAmount, grossTotal);
+
+        foreach (var line in lines)
+        {
+            var lineGross = line.Quantity * line.UnitPriceSnapshot;
+            var share = grossTotal > 0 ? lineGross / grossTotal : 0;
+            line.DiscountAmountSnapshot = Math.Round(clampedAmount * share, 2, MidpointRounding.AwayFromZero);
+            line.IsComplimentary = false;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // "Masayı Boşalt" - müşteri hiçbir şey almadan gitti ya da sipariş edilen her şey iptal
     // edildi; CloseCheckAsync bu durumda "Boş adisyon kapatılamaz" diye reddeder, adisyon açık
     // kalır ve masa DOLU görünmeye devam eder. Bu, ödemesiz bir çıkış yolu: adisyon İPTAL
@@ -914,6 +954,95 @@ public sealed class RestaurantPostingService(
             });
         }, cancellationToken);
     }
+
+    // Mutfağa gönderilmiş bir satırın miktarını sonradan düzeltme - Edip, 2026-09-03: "mutfağa
+    // gönderildi diye herşeyi pasif hale getirme, miktar düzeltme aktif olsun". KitchenTicketLine
+    // kendi miktarını tutmaz (RestaurantOrderLine.Quantity'den okunur), bu yüzden tek satır
+    // güncellemesi yeterli.
+    public Task AdjustOrderLineQuantityAsync(
+        int restaurantOrderLineId,
+        decimal newQuantity,
+        CancellationToken cancellationToken = default)
+    {
+        if (newQuantity <= 0)
+        {
+            throw new InvalidOperationException("Miktar sıfırdan büyük olmalıdır.");
+        }
+
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var line = await dbContext.RestaurantOrderLines
+                    .Include(x => x.RestaurantOrder).ThenInclude(x => x.RestaurantCheck)
+                    .SingleOrDefaultAsync(x => x.Id == restaurantOrderLineId, cancellationToken)
+                    ?? throw new InvalidOperationException("Sipariş satırı bulunamadı.");
+
+                if (line.RestaurantOrder.RestaurantCheck.Status != RestaurantCheckStatus.Open)
+                {
+                    throw new InvalidOperationException("Yalnızca açık adisyondaki satırlar düzenlenebilir.");
+                }
+
+                if (line.Status == RestaurantOrderLineStatus.Cancelled)
+                {
+                    throw new InvalidOperationException("İptal edilmiş satır düzenlenemez.");
+                }
+
+                line.Quantity = newQuantity;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }, cancellationToken);
+    }
+
+    // Mutfağa gönderilmiş bir satırda ikram durumunu aç/kapat - Edip, 2026-09-03: "mutfağa
+    // gönderildi diye herşeyi pasif hale getirme, ikram düzeltme aktif olsun". İkram AÇILIRKEN
+    // satırın brüt tutarı kadar indirim uygulanır (pending sepetteki İkram tuşuyla AYNI mantık),
+    // KAPATILIRKEN indirim sıfırlanır.
+    public Task ToggleLineComplimentaryAsync(
+        int restaurantOrderLineId,
+        CancellationToken cancellationToken = default) =>
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var line = await dbContext.RestaurantOrderLines
+                    .Include(x => x.RestaurantOrder).ThenInclude(x => x.RestaurantCheck)
+                    .SingleOrDefaultAsync(x => x.Id == restaurantOrderLineId, cancellationToken)
+                    ?? throw new InvalidOperationException("Sipariş satırı bulunamadı.");
+
+                if (line.RestaurantOrder.RestaurantCheck.Status != RestaurantCheckStatus.Open)
+                {
+                    throw new InvalidOperationException("Yalnızca açık adisyondaki satırlar düzenlenebilir.");
+                }
+
+                if (line.Status == RestaurantOrderLineStatus.Cancelled)
+                {
+                    throw new InvalidOperationException("İptal edilmiş satır düzenlenemez.");
+                }
+
+                line.IsComplimentary = !line.IsComplimentary;
+                line.DiscountAmountSnapshot = line.IsComplimentary
+                    ? line.Quantity * line.UnitPriceSnapshot
+                    : 0;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }, cancellationToken);
 
     // Vardiya aç - kasa (FinancialAccount) kullanıcı bazlı değil ŞUBE bazlı paylaşılır (Edip, 2026-08-08:
     // "kasa kullanıcı bazlı değil sube bazlı olucak... 5 tane kasıyer var hepsi nakıtlerı aynı kassaya

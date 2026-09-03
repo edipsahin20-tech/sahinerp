@@ -211,7 +211,7 @@
    uzat" - numpad eklendikten sonra dar kalıyordu). */
 .restaurant-pos .pos-layout {
     display: grid;
-    grid-template-columns: 1fr minmax(480px, 580px) 76px;
+    grid-template-columns: 1fr minmax(510px, 610px) 76px;
     gap: 1rem;
     align-items: stretch;
     flex: 1;
@@ -226,7 +226,7 @@
 
 @media (max-width: 1200px) {
     .restaurant-pos .pos-layout {
-        grid-template-columns: 1fr minmax(420px, 500px);
+        grid-template-columns: 1fr minmax(440px, 520px);
     }
 
     .restaurant-pos .pos-side-icons {
@@ -355,7 +355,7 @@
    kalır, grid'i bozmaz. */
 .restaurant-pos .cart-line {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 48px;
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 84px;
     align-items: center;
     gap: 0.6rem;
     padding: 0.55rem 0.4rem;
@@ -389,9 +389,55 @@
     font-size: 0.68rem;
 }
 
+/* Gönderilmiş satır işlem hücresi - İptal her zaman görünür, İkram/Miktar düzeltme yalnızca
+   "kilit" açıkken görünür (Edip, 2026-09-03: "mutfağa gönderildi diye herşeyi pasif hale
+   getirme, silme ikram düzeltme miktar düzeltme herşey aktif olsun" / "yada kilit tuşu koy ona
+   tıkladığımda aktif etsin herşeyi"). */
+.restaurant-pos .sent-line-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.restaurant-pos .sent-line-actions .sent-line-comp-btn,
+.restaurant-pos .sent-line-actions .sent-line-qty-btn {
+    display: none;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.68rem;
+}
+
+.restaurant-pos .cart-sent-lines.unlocked .sent-line-comp-btn,
+.restaurant-pos .cart-sent-lines.unlocked .sent-line-qty-btn {
+    display: inline-block;
+}
+
+.restaurant-pos .sent-lines-lock-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.35rem 0.75rem 0;
+}
+
+.restaurant-pos .sent-lines-lock-btn {
+    border: 1px solid var(--pos-border);
+    background: #fff;
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--pos-text-2);
+    cursor: pointer;
+}
+
+.restaurant-pos .sent-lines-lock-btn.unlocked {
+    background: #FFF4E5;
+    border-color: #F0C27B;
+    color: #A9631A;
+}
+
 .restaurant-pos .cart-lines-header {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 48px;
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 84px;
     gap: 0.6rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
