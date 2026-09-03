@@ -357,6 +357,26 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         return RedirectToAction(nameof(Index), new { tab = "zlist" });
     }
 
+    // Vardiya açmadan doğrudan Z Raporu - Edip, 2026-09-03: "vardiya mantığı şu an kapalı olsun
+    // Z raporunda direkt rapor alsın ve günü sıfırlasın herşeyi". Kasa sayımı YOK - bu "yumuşak"
+    // bir gün sonu, gerçek bir kasa mutabakatı değil (bkz. CreateDirectZReportAsync yorumu).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateDirectZReport()
+    {
+        try
+        {
+            var shift = await postingService.CreateDirectZReportAsync(CurrentUserId);
+            TempData["Success"] = $"Z-{shift.Id:D6} raporu oluşturuldu, gün sıfırlandı.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { tab = "zlist" });
+    }
+
     // Kapanmış (ödemesi alınmış) bir fişi "silmek" için - Edip'in isteği (2026-09-03: "restoranda
     // sil mantığı işlesin"). Gerçek hard-delete DEĞİL, ters kayıtlı iptal (bkz.
     // RestaurantPostingService.CancelRetailSaleAsync yorumu) - kullanıcı için fiş raporlarda/

@@ -1027,6 +1027,66 @@ public sealed class RestaurantPostingService(
             });
         }, cancellationToken);
 
+    // "Z Raporu Al" - vardiya (açılış/kasa sayımı) mantığı olmadan doğrudan gün sonu kapanışı
+    // (Edip, 2026-09-03: "vardiya mantığı şu an kapalı olsun Z raporunda direkt rapor alsın ve
+    // günü sıfırlasın herşeyi"). Kapatılacak bir RestaurantCashShift YOKTUR - bu çağrı bizzat
+    // kapalı bir tane OLUŞTURUR: dönem (bugün alınmış son Z'den beri, yoksa gece yarısından beri -
+    // X Raporu/Dashboard ile AYNI mantık) şimdi kapanır, bu kaydın ClosedAtUtc'si bir sonraki
+    // dönemin başlangıcı olur - "günü sıfırlama" budur. FinancialAccountId/BranchId şema zorunluluğu
+    // için doldurulur ama tutarlar HİÇBİR hesaba göre filtrelenmez, dönemdeki TÜM ödemeler sayılır
+    // ("herşeyi sıfırlasın").
+    public Task<RestaurantCashShift> CreateDirectZReportAsync(
+        string cashierUserId,
+        CancellationToken cancellationToken = default) =>
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var now = DateTime.UtcNow;
+                var todayStartUtc = DateTime.Now.Date.ToUniversalTime();
+                var lastZClosedTodayUtc = await dbContext.RestaurantCashShifts
+                    .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartUtc && x.ClosedAtUtc < todayStartUtc.AddDays(1))
+                    .OrderByDescending(x => x.ClosedAtUtc)
+                    .Select(x => (DateTime?)x.ClosedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken);
+                var periodStartUtc = lastZClosedTodayUtc ?? todayStartUtc;
+
+                var periodNet = await dbContext.RestaurantPayments
+                    .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc <= now)
+                    .SumAsync(x => (decimal?)(x.IsReversal ? -x.Amount : x.Amount), cancellationToken) ?? 0m;
+
+                var branchId = await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync(cancellationToken);
+                var financialAccountId = await dbContext.Users
+                    .Where(x => x.Id == cashierUserId)
+                    .Select(x => x.DefaultFinancialAccountId)
+                    .SingleOrDefaultAsync(cancellationToken)
+                    ?? await dbContext.FinancialAccounts.Where(x => x.IsActive).Select(x => x.Id).FirstAsync(cancellationToken);
+
+                var shift = new RestaurantCashShift
+                {
+                    CashierUserId = cashierUserId,
+                    Status = RestaurantCashShiftStatus.Closed,
+                    OpenedAtUtc = periodStartUtc,
+                    ClosedAtUtc = now,
+                    OpeningBalance = 0,
+                    ClosingBalanceExpected = periodNet,
+                    ClosingBalanceCounted = periodNet,
+                    BranchId = branchId,
+                    FinancialAccountId = financialAccountId
+                };
+                dbContext.RestaurantCashShifts.Add(shift);
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return shift;
+            });
+        }, cancellationToken);
+
     // Mutfak ekranı (KDS) - bir fiş TEK BÜTÜN olarak ilerletilir (Sent→InProgress→Ready→Served),
     // satır bazlı değil - gerçek mutfakta bir istasyona düşen sipariş toptan hazırlanır. İptal
     // edilmiş satırlar (KitchenTicketLineStatus.Cancelled) ilerletmeye dahil edilmez.

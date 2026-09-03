@@ -170,19 +170,31 @@ else if (Model.ActiveTab == "z")
 {
     <div class="rcard z-report-card">
         <h4>Z Raporu</h4>
-        <p class="sub">Gün sonu kapanışı — vardiyayı kapatır, aynı vardiya için ikinci kez Z alınamaz.</p>
-        @if (!Model.IsShiftOpen)
+        @if (Model.IsShiftOpen)
         {
-            <div class="text-secondary small">Kapatılacak açık vardiya yok. @(Model.LastZNumber is not null ? $"Son Z: {Model.LastZNumber} ({Model.LastZClosedAtUtc?.ToLocalTime():dd.MM.yyyy HH:mm})" : "")</div>
-        }
-        else
-        {
+            <p class="sub">Gün sonu kapanışı — vardiyayı kapatır, aynı vardiya için ikinci kez Z alınamaz.</p>
             <form method="post" asp-action="CloseShift" class="shift-form">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="shiftId" value="@Model.OpenShiftId" />
                 <label class="form-label">Sayılan Nakit Tutarı</label>
                 <input type="number" name="closingBalanceCounted" step="0.01" min="0" class="form-control" required />
                 <button type="submit" class="rbtn gold" style="margin-top:10px;" onclick="return confirm('Z Raporu oluşturup vardiyayı kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.');">Z Raporu Oluştur (Vardiyayı Kapat)</button>
+            </form>
+        }
+        else
+        {
+            <!-- Vardiya mantığı kapalıyken (varsayılan) normal akış - Z Raporu vardiya
+                 açmaya/kasa saymaya gerek olmadan direkt alınır ve günü sıfırlar (Edip,
+                 2026-09-03: "vardiya mantığı şu an kapalı olsun Z raporunda direkt rapor alsın
+                 ve günü sıfırlasın herşeyi"). -->
+            <p class="sub">Bugün alınmış son Z'den beri (yoksa gece yarısından beri) yapılan her şeyi kapatır, gün sıfırdan başlar.</p>
+            @if (Model.LastZNumber is not null)
+            {
+                <div class="text-secondary small mb-2">Son Z: @Model.LastZNumber (@Model.LastZClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))</div>
+            }
+            <form method="post" asp-action="CreateDirectZReport" class="shift-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="rbtn gold" onclick="return confirm('Z Raporu alınacak ve gün sıfırlanacak. Bu işlem geri alınamaz. Devam edilsin mi?');">Z Raporu Al (Günü Sıfırla)</button>
             </form>
         }
     </div>
