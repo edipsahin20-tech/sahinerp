@@ -270,6 +270,38 @@
 .rest-shell .close-mini { background: #FBFCFE; border: 1px solid var(--rs-border); border-radius: 9px; padding: 8px 10px; }
 .rest-shell .close-mini small { display: block; color: var(--rs-muted); font-size: 10px; }
 
+/* Raporlar - saatlik ciro akışı + ödeme dağılımı (master'ın report-analytics/donut2 bölümü,
+   gerçek HourlyRevenue/Cash-Card-MealCard verisiyle). */
+.rest-shell .report-analytics { display: grid; grid-template-columns: 1.65fr .85fr; gap: 12px; margin-top: 14px; }
+.rest-shell .analytics-card { padding: 14px; }
+.rest-shell .analytics-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.rest-shell .analytics-head h3 { margin: 0; }
+.rest-shell .analytics-head small { color: var(--rs-muted); }
+.rest-shell .premium-chart { height: 220px; display: flex; align-items: flex-end; gap: 9px; padding: 18px 6px 0; }
+.rest-shell .pc-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; }
+.rest-shell .pc-bar { width: 100%; max-width: 34px; border-radius: 5px 5px 0 0; background: linear-gradient(180deg,#28b9a6,#138f81); min-height: 2px; }
+.rest-shell .pc-col.hot .pc-bar { background: linear-gradient(180deg,var(--rs-gold2),var(--rs-gold)); }
+.rest-shell .pc-label { font-size: 9px; color: var(--rs-muted); }
+.rest-shell .pc-value { font-size: 8px; color: #657387; }
+.rest-shell .analytics-empty { display: flex; align-items: center; justify-content: center; height: 220px; color: var(--rs-muted); font-size: 12.5px; }
+.rest-shell .donut2-wrap { display: grid; place-items: center; margin-top: 10px; }
+.rest-shell .donut2 { width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.rest-shell .donut2:before { content: ""; width: 102px; height: 102px; border-radius: 50%; background: #fff; }
+.rest-shell .donut2-center { position: absolute; text-align: center; }
+.rest-shell .donut2-center strong { display: block; font-size: 20px; }
+.rest-shell .donut2-center small { color: var(--rs-muted); }
+.rest-shell .payment-legend { margin-top: 14px; }
+.rest-shell .payment-legend .legend-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; font-size: 12.5px; }
+.rest-shell .payment-legend .legend-row .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.rest-shell .payment-legend .legend-row b { margin-left: auto; }
+
+/* Raporlar - Günlük Fişler/X/Z/Z Listesi sekmeleri master'ın .rnav ikon+alt başlık kartlarıyla. */
+.rest-shell .report-nav2 { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.rest-shell .rnav { border: 1px solid var(--rs-border); background: #fff; border-radius: 9px; padding: 10px 13px; text-align: left; min-width: 145px; text-decoration: none; color: var(--rs-text); }
+.rest-shell .rnav b { display: block; }
+.rest-shell .rnav small { color: var(--rs-muted); font-size: 9px; }
+.rest-shell .rnav.active { background: #FFF6DF; border-color: var(--rs-gold); color: #936800; }
+
 .rest-shell .report-filter-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .rest-shell .report-filter-row .spacer { flex: 1; }
 .rest-shell .report-mini-summary { display: grid; grid-template-columns: repeat(4,1fr); border: 1px solid var(--rs-border); border-radius: 10px 10px 0 0; overflow: hidden; }
@@ -388,7 +420,7 @@
 }
 
 @media (max-width: 1300px) {
-    .rest-shell .report-hero { grid-template-columns: 1fr; }
+    .rest-shell .report-hero, .rest-shell .report-analytics { grid-template-columns: 1fr; }
     .rest-shell .rthead, .rest-shell .rrow2 { grid-template-columns: 1fr; }
     .rest-shell .dashboard-kpi-grid, .rest-shell .report-kpi-grid { grid-template-columns: repeat(3,1fr); }
     .rest-shell .dashboard-main { grid-template-columns: 1fr; }

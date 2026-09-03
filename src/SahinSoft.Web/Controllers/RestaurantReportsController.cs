@@ -97,6 +97,30 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         vm.Card = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.CreditCard)?.Total ?? 0;
         vm.MealCard = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.MealCard)?.Total ?? 0;
 
+        var paymentTotal = vm.Cash + vm.Card + vm.MealCard;
+        if (paymentTotal > 0)
+        {
+            vm.CashPercent = Math.Round(vm.Cash / paymentTotal * 100, 1);
+            vm.CardPercent = Math.Round(vm.Card / paymentTotal * 100, 1);
+            vm.MealCardPercent = Math.Round(100 - vm.CashPercent - vm.CardPercent, 1);
+        }
+
+        // Saatlik ciro akışı - Dashboard'daki Yoğunluk Haritası ile AYNI hesap deseni, rapor
+        // tarihine göre (bugünle sınırlı değil). Veri yoksa varsayılan olarak tipik restoran
+        // açılış saatleri (08-22) gösterilir, boş bir grafik yerine.
+        var hourTotals = new decimal[24];
+        foreach (var s in nonCancelled)
+        {
+            hourTotals[s.IssuedAtUtc.ToLocalTime().Hour] += s.GrandTotal;
+        }
+        var activeHours = Enumerable.Range(0, 24).Where(h => hourTotals[h] > 0).ToList();
+        var chartStartHour = activeHours.Count > 0 ? Math.Max(0, activeHours.Min() - 1) : 8;
+        var chartEndHour = activeHours.Count > 0 ? Math.Min(23, activeHours.Max() + 1) : 22;
+        vm.HourlyRevenueStartHour = chartStartHour;
+        vm.HourlyRevenue = Enumerable.Range(chartStartHour, chartEndHour - chartStartHour + 1)
+            .Select(h => hourTotals[h])
+            .ToList();
+
         var filtered = source switch
         {
             "table" => daySales.Where(x => SourceTypeOf(x.SectionName) == "table"),

@@ -14,6 +14,13 @@ public sealed class RestaurantReportsViewModel
     public decimal Cash { get; set; }
     public decimal Card { get; set; }
     public decimal MealCard { get; set; }
+    public decimal CashPercent { get; set; }
+    public decimal CardPercent { get; set; }
+    public decimal MealCardPercent { get; set; }
+
+    // Saatlik ciro akışı (rapor tarihi için, iptal hariç) - Dashboard'daki Yoğunluk Haritası ile AYNI hesap deseni.
+    public List<decimal> HourlyRevenue { get; set; } = [];
+    public int HourlyRevenueStartHour { get; set; }
 
     // Vardiya/Z durumu (RestaurantCashShift'ten - yeni bir kapanış kavramı İCAT EDİLMEDİ).
     public bool IsShiftOpen { get; set; }

@@ -56,11 +56,61 @@
     <div class="rcard kpi-rich"><div class="kpi-icon blue">▦</div><div class="kpi-copy"><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong></div></div>
 </div>
 
-<div class="rtabs" style="margin-top:16px;">
-    <a class="rtab @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">▥ Günlük Fişler</a>
-    <a class="rtab @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">X Raporu</a>
-    <a class="rtab @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Z Raporu</a>
-    <a class="rtab @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">▦ Z Listesi</a>
+<div class="report-analytics">
+    <div class="rcard analytics-card">
+        <div class="analytics-head">
+            <div><h3>Saatlik Ciro Akışı</h3><small>@Model.ReportDate.ToString("dd.MM.yyyy") satış ritmi</small></div>
+        </div>
+        @{ var maxHourly = Model.HourlyRevenue.Count > 0 ? Math.Max(Model.HourlyRevenue.Max(), 1) : 1; }
+        @if (Model.HourlyRevenue.Count == 0 || Model.HourlyRevenue.Sum() == 0)
+        {
+            <div class="analytics-empty">Bu tarihte satış verisi yok.</div>
+        }
+        else
+        {
+            <div class="premium-chart">
+                @for (var i = 0; i < Model.HourlyRevenue.Count; i++)
+                {
+                    var v = Model.HourlyRevenue[i];
+                    var heightPct = Math.Max(2, (int)Math.Round(v / maxHourly * 100));
+                    var isPeak = v == Model.HourlyRevenue.Max() && v > 0;
+                    <div class="pc-col @(isPeak ? "hot" : "")">
+                        <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
+                        <div class="pc-bar" style="height:@(heightPct)%"></div>
+                        <div class="pc-label">@(Model.HourlyRevenueStartHour + i):00</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    <div class="rcard analytics-card">
+        <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Net ciro içindeki ödeme türleri</small></div></div>
+        @{ var paymentTotal = Model.Cash + Model.Card + Model.MealCard; }
+        @if (paymentTotal <= 0)
+        {
+            <div class="analytics-empty">Bu tarihte ödeme verisi yok.</div>
+        }
+        else
+        {
+            <div class="donut2-wrap">
+                <div class="donut2" style="background:conic-gradient(var(--rs-purple) 0 @(Model.CardPercent)%, var(--rs-green) @(Model.CardPercent)% @(Model.CardPercent + Model.CashPercent)%, var(--rs-gold) @(Model.CardPercent + Model.CashPercent)% 100%)">
+                    <div class="donut2-center"><strong>@paymentTotal.ToString("N0") ₺</strong><small>Net Ciro</small></div>
+                </div>
+            </div>
+            <div class="payment-legend">
+                <div class="legend-row"><span class="dot" style="background:var(--rs-green)"></span><span>Nakit</span><b>%@(Model.CashPercent.ToString("0.0"))</b></div>
+                <div class="legend-row"><span class="dot" style="background:var(--rs-purple)"></span><span>Kredi Kartı</span><b>%@(Model.CardPercent.ToString("0.0"))</b></div>
+                <div class="legend-row"><span class="dot" style="background:var(--rs-gold)"></span><span>Yemek Çeki</span><b>%@(Model.MealCardPercent.ToString("0.0"))</b></div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="report-nav2" style="margin-top:16px;">
+    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Günlük Fişler</b><small>Bugünkü tüm satışlar</small></a>
+    <a class="rnav @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>X &nbsp; X Raporu</b><small>Anlık, vardiyayı kapatmaz</small></a>
+    <a class="rnav @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>Z &nbsp; Z Raporu</b><small>Gün sonu kapanışı</small></a>
+    <a class="rnav @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Z Listesi</b><small>Geçmiş kapanışlar</small></a>
 </div>
 
 @if (Model.ActiveTab == "daily")
