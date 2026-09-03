@@ -9636,3 +9636,24 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903093813_AddRestaurantCheckNote'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [Note] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260903093813_AddRestaurantCheckNote'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260903093813_AddRestaurantCheckNote', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

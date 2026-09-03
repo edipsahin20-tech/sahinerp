@@ -169,6 +169,44 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return RedirectToAction(nameof(Check), new { id = checkId });
     }
 
+    // Fiş Listesi (POS ekranındaki sağ ikon şeridi) - bugün kesilmiş fişlerin kısa listesi,
+    // sayfa yenilemeden modalda gösterilsin diye JSON (Edip, 2026-09-03: "fiş listesi günlük fiş
+    // listesini gösterir isterse ekrana alıp düzeltebilir"). Raporlar'daki Günlük sekmesiyle AYNI
+    // kapsam (tüm restoran, tek kullanıcıya özel değil) - sadece burada tam sayfa yerine modal.
+    [HttpGet]
+    public async Task<IActionResult> TodayReceipts()
+    {
+        var todayStartUtc = DateTime.Now.Date.ToUniversalTime();
+        var todayEndUtc = todayStartUtc.AddDays(1);
+        var receipts = await dbContext.RetailSales
+            .AsNoTracking()
+            .Where(x => x.IssuedAtUtc >= todayStartUtc && x.IssuedAtUtc < todayEndUtc && x.Status != RetailSaleStatus.Cancelled)
+            .OrderByDescending(x => x.IssuedAtUtc)
+            .Select(x => new
+            {
+                id = x.Id,
+                documentNumber = x.DocumentNumber,
+                timeLabel = x.IssuedAtUtc.ToLocalTime().ToString("HH:mm"),
+                grandTotal = x.GrandTotal,
+                tableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name
+            })
+            .ToListAsync();
+        return Json(receipts);
+    }
+
+    // "Ekrana Al" - fişin satırlarını (productId/quantity) döner, istemci zaten yüklü kataloğundan
+    // eşleştirip sepete ekler (bkz. restaurant-pos.js) - ayrı bir ürün DTO'su gerekmez.
+    [HttpGet]
+    public async Task<IActionResult> ReceiptLines(int retailSaleId)
+    {
+        var lines = await dbContext.RetailSaleLines
+            .AsNoTracking()
+            .Where(x => x.RetailSaleId == retailSaleId)
+            .Select(x => new { productId = x.ProductId, quantity = x.Quantity })
+            .ToListAsync();
+        return Json(lines);
+    }
+
     public async Task<IActionResult> Check(int id)
     {
         ActivePage = "tables";

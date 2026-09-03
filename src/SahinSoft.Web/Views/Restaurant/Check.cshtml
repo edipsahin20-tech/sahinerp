@@ -10,9 +10,15 @@
 
 <div class="restaurant-pos" id="pos-root"
      data-check-id="@Model.CheckId"
+     data-check-number="@Model.CheckNumber"
+     data-table-label="@Model.SectionName — @Model.TableName"
+     data-is-self-sale="@Model.IsSelfSaleCheck.ToString().ToLowerInvariant()"
+     data-hold-url="@Url.Action("Hold", "RestaurantSelfSale")"
      data-send-url="@Url.Action("SendToKitchen")"
      data-close-url="@Url.Action("ClosePayment")"
      data-back-url="@Url.Action("Index")"
+     data-today-receipts-url="@Url.Action("TodayReceipts")"
+     data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
@@ -187,6 +193,67 @@
             <button type="button" class="pos-side-icon" id="side-keyboard-btn">
                 <span class="pos-side-icon-glyph">⌨</span>Klavye
             </button>
+            <button type="button" class="pos-side-icon" id="side-hold-btn">
+                <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
+            </button>
+            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal">
+                <span class="pos-side-icon-glyph">📋</span>Bekleyen<br />Fişler
+            </button>
+            <button type="button" class="pos-side-icon" id="side-ticket-comp-btn">
+                <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
+            </button>
+            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#receiptListModal">
+                <span class="pos-side-icon-glyph">🧾</span>Fiş<br />Listesi
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (Model.IsSelfSaleCheck)
+{
+    <!-- "Fişi Beklet" self satışta BİLEREK yeni bir adisyon açar (bkz. RestaurantSelfSaleController.
+         Hold ve restaurant-pos.js) - masa satışta buna gerek yok, masa zaten kendi kalıcı kaydı. -->
+    <form method="post" asp-controller="RestaurantSelfSale" asp-action="Hold" id="hold-self-sale-form" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+}
+
+<!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
+     gönderilmemiş sepetlerin listesi (Edip, 2026-09-03). Sunucuya bağlı DEĞİL, sadece bu
+     cihazda/tarayıcıda görünür - bkz. restaurant-pos.js. -->
+<div class="modal fade" id="heldReceiptsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bekleyen Fişler</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="held-receipts-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fiş Listesi - bugün kesilmiş fişlerin kısa listesi, istenirse satırları sepete klonlanıp
+     düzeltilebilir (Edip, 2026-09-03: "fiş listesi günlük fiş listesini gösterir isterse ekrana
+     alıp düzeltebilir"). -->
+<div class="modal fade" id="receiptListModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiş Listesi — Bugün</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="receipt-list-body" class="price-check-results"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+            </div>
         </div>
     </div>
 </div>

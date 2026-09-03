@@ -55,6 +55,26 @@ public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext,
         return RedirectToAction("Check", "Restaurant", new { id = checkId });
     }
 
+    // "Fişi Beklet" - Index()'in aksine BİLEREK yeni bir Self Satış adisyonu açar, mevcut açık
+    // olanı (henüz mutfağa gönderilmemiş sepeti localStorage'da - bkz. restaurant-pos.js) olduğu
+    // gibi bırakır (Edip, 2026-09-03: "sağ tarafa fişi beklet, bekleyen fişler"). Kasiyer bir
+    // sonraki müşteriye boş bir sepetle başlar; bekleyen fiş "Bekleyen Fişler" listesinden geri
+    // çağrılır.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Hold()
+    {
+        var userId = CurrentUserId;
+        var userBranchId = await dbContext.Users
+            .Where(x => x.Id == userId)
+            .Select(x => x.BranchId)
+            .SingleOrDefaultAsync();
+        var branchId = userBranchId ?? await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync();
+
+        var check = await postingService.CreateSelfSaleCheckAsync(branchId, userId);
+        return RedirectToAction("Check", "Restaurant", new { id = check.Id });
+    }
+
     // Ödeme alınmadan önce açık Self Satış sepetini gerçek bir masaya taşır - bkz.
     // RestaurantPostingService.TransferSelfSaleToTableAsync yorumu (ürün/mutfak fişi ikinci
     // kez oluşmaz, sadece mevcut RestaurantOrder'lar hedef adisyona yeniden bağlanır).
