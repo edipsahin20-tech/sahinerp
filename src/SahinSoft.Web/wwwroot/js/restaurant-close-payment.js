@@ -9,7 +9,7 @@
     var payableTotal = parseFloat(root.getAttribute('data-payable-total')) || 0;
     var financialAccounts = JSON.parse(document.getElementById('pos-financial-accounts-data').textContent || '[]');
 
-    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Kartı' };
+    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki' };
 
     var openBtn = document.getElementById('open-close-payment-btn');
     if (!openBtn) return; // PayableTotal = 0, buton yok.
@@ -101,7 +101,7 @@
         }
     }
 
-    openBtn.addEventListener('click', function () {
+    function openPaymentModal() {
         errorEl.style.display = 'none';
         totalEl.textContent = money(payableTotal);
         paymentLines = [];
@@ -110,7 +110,34 @@
         setEntryFromNumber(payableTotal);
         refresh();
         new bootstrap.Modal(document.getElementById('closePaymentModal')).show();
-    });
+    }
+
+    openBtn.addEventListener('click', openPaymentModal);
+
+    // Self Satış hızlı ödeme kısayolları (MASTER tasarım, Edip 2026-09-03) - ürün panelinin
+    // altındaki Nakit/Kredi Kartı/Yemek Çeki butonları restaurant-pos.js'ten burayı çağırır.
+    // Modalı TAM tutarla tek satır ön dolu açar ama otomatik KAPATMAZ - son onay yine kasiyerin
+    // "Kapat / Öde" tıklamasıyla olur, tek tuşla sessizce tahsilat tamamlanmaz.
+    window.RestaurantQuickPay = function (method) {
+        if (payableTotal <= 0) return;
+        openPaymentModal();
+        paymentLines = [{
+            lineId: ++lineSeq,
+            method: parseInt(method, 10),
+            financialAccountId: financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null,
+            amount: payableTotal
+        }];
+        entryDigits = '';
+        refresh();
+    };
+
+    var quickPayParam = new URLSearchParams(window.location.search).get('quickpay');
+    if (quickPayParam) {
+        window.RestaurantQuickPay(quickPayParam);
+        var cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('quickpay');
+        window.history.replaceState({}, '', cleanUrl.toString());
+    }
 
     document.querySelectorAll('.pay-numpad [data-num]').forEach(function (btn) {
         btn.addEventListener('click', function () {

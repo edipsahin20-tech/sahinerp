@@ -119,6 +119,14 @@
             </div>
             <div class="category-tabs" id="category-tabs"></div>
             <div class="product-grid" id="product-grid"></div>
+            @if (Model.IsSelfSaleCheck)
+            {
+                <div class="self-quickpay" id="self-quickpay">
+                    <button type="button" class="pay-method-btn n" data-quick-method="1">₺ Nakit</button>
+                    <button type="button" class="pay-method-btn c" data-quick-method="2">▣ Kredi Kartı</button>
+                    <button type="button" class="pay-method-btn y" data-quick-method="3">◇ Yemek Çeki</button>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -245,7 +253,7 @@
                 <div class="pay-method-row">
                     <button type="button" class="pay-method-btn n" data-method="1">₺ Nakit</button>
                     <button type="button" class="pay-method-btn c" data-method="2">▣ Kredi Kartı</button>
-                    <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Kartı</button>
+                    <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Çeki</button>
                 </div>
             </div>
             <div class="modal-footer pay-footer">
@@ -283,6 +291,11 @@
     .pay-method-btn.c { background: #c2afe9; }
     .pay-method-btn.y { background: #f3d09a; }
     .pay-footer { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; }
+
+    /* Self Satış hızlı ödeme kısayolları - MASTER tasarımdaki ürün panelinin altındaki
+       Nakit/Kredi Kartı/Yemek Çeki satırı (bkz. restaurant-pos.js/restaurant-close-payment.js). */
+    .self-quickpay { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 1rem; }
+    .self-quickpay .pay-method-btn:disabled { opacity: .5; cursor: default; }
 </style>
 
 @section Scripts {

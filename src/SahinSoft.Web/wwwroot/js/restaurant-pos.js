@@ -309,6 +309,35 @@
         });
     }
 
+    // Self Satış hızlı ödeme kısayolları (MASTER tasarım) - sepette bekleyen ürün varsa önce
+    // mutfağa gönderilir (Self Satış'ta da ürünler normal sipariş satırı olarak işlenir), sonra
+    // ?quickpay=<method> ile SAYFA YENİDEN YÜKLENİR ki PayableTotal sunucuda güncel hesaplansın;
+    // asıl ödeme modalını açıp ön dolduran kısım restaurant-close-payment.js'teki
+    // window.RestaurantQuickPay'dedir - burada sadece tetikleniyor.
+    var quickPayButtons = document.querySelectorAll('.self-quickpay [data-quick-method]');
+    quickPayButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var method = btn.getAttribute('data-quick-method');
+            quickPayButtons.forEach(function (b) { b.disabled = true; });
+
+            if (cart.length === 0) {
+                if (window.RestaurantQuickPay) {
+                    window.RestaurantQuickPay(method);
+                }
+                quickPayButtons.forEach(function (b) { b.disabled = false; });
+                return;
+            }
+
+            flushCartToKitchen(
+                function () {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('quickpay', method);
+                    window.location.href = url.toString();
+                },
+                function () { quickPayButtons.forEach(function (b) { b.disabled = false; }); });
+        });
+    });
+
     renderCategories();
     renderCart();
 })();
