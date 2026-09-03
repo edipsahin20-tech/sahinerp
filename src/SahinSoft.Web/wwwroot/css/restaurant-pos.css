@@ -355,9 +355,9 @@
    kalır, grid'i bozmaz. */
 .restaurant-pos .cart-line {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 30px 42px 34px 60px 64px 48px;
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 48px;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.6rem;
     padding: 0.55rem 0.4rem;
     border-bottom: 1px solid #EEF2F6;
     font-size: 0.85rem;
@@ -391,8 +391,8 @@
 
 .restaurant-pos .cart-lines-header {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 30px 42px 34px 60px 64px 48px;
-    gap: 0.4rem;
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 48px;
+    gap: 0.6rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
     font-weight: 700;

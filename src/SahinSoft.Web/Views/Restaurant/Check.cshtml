@@ -19,6 +19,7 @@
      data-back-url="@Url.Action("Index")"
      data-today-receipts-url="@Url.Action("TodayReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
+     data-search-products-url="@Url.Action("SearchProducts")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
      data-require-cancellation-reason="@Model.RequireCancellationReason.ToString().ToLowerInvariant()"
@@ -271,6 +272,17 @@
         @Html.AntiForgeryToken()
     </form>
 }
+
+<!-- "Kapat" butonu için - adisyonda hiçbir aktif ürün yoksa (hiç eklenmedi ya da hepsi iptal
+     edildi) masa DOLU görünmeye devam etmesin diye Masayı Boşalt ile AYNI işlemi tetikler
+     (Edip, 2026-09-03: "boş masayı açtım kapattım masada hiç işlem yapmasın masa 0.00 yazmasın
+     ... kapat tuşuna bastığında masayı boşaltsın"). Üstteki "Masayı Boşalt" butonundan farklı
+     olarak sayfa yüklendiğindeki PayableTotal'a değil, JS'in o anki (yeni iptal edilenler dahil)
+     hesabına göre koşullu tetiklenir - bkz. restaurant-pos.js #close-check-btn. -->
+<form method="post" asp-action="VoidEmptyCheck" id="void-empty-check-form" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="checkId" value="@Model.CheckId" />
+</form>
 
 <!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
      gönderilmemiş sepetlerin listesi (Edip, 2026-09-03). Sunucuya bağlı DEĞİL, sadece bu

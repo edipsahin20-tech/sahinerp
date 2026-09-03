@@ -129,59 +129,64 @@
         }
     }
 
-    // MASTER tasarımdaki "Ürün ara veya barkod okut..." kutusu - aktif kategoriden bağımsız,
-    // TÜM kataloğu ada göre süzer (Edip, 2026-09-03: MASTER_SahinSoft_Restoran_POS_Premium.html).
+    // Ürün ara / barkod okut kutusu - kısayol grid'i sadece kategori altına tanımlı ürünleri
+    // gösterir, ama ARAMA tüm aktif stoktan sunucuya sorulur (Edip, 2026-09-03: "stok ve ürün
+    // arama sol tarafta kategoride değil stok listesinde arasın veritabanında stok" / "stoklarda
+    // arama yapsın") - kısayol olarak tanımlanmamış bir ürün de böylece bulunup satılabilir.
+    var searchProductsUrl = root.getAttribute('data-search-products-url');
+    var searchDebounceTimer = null;
+    var lastSearchResults = [];
+
+    function runSearch(term, onDone) {
+        fetch(searchProductsUrl + '?term=' + encodeURIComponent(term))
+            .then(function (r) { return r.json(); })
+            .then(function (results) {
+                lastSearchResults = results;
+                if (onDone) onDone(results);
+            })
+            .catch(function () { /* bağlantı hatası - sessizce yok say, kısayol grid'i kalır */ });
+    }
+
     if (searchEl) {
         searchEl.addEventListener('input', function () {
-            var term = searchEl.value.trim().toLocaleLowerCase('tr-TR');
+            var term = searchEl.value.trim();
             if (!term) {
                 tabsEl.style.display = '';
+                lastSearchResults = [];
                 if (activeCategory) renderProducts(activeCategory);
                 return;
             }
             tabsEl.style.display = 'none';
-            renderProductList(filterCatalog(term));
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(function () {
+                runSearch(term, function (results) { renderProductList(results); });
+            }, 250);
         });
 
         // Barkod okuyucu Enter ile gönderir - tam barkod eşleşmesi varsa direkt sepete eklenir
-        // (bekleyen numpad miktarıyla), yoksa ada göre filtrelenmiş TEK sonuç varsa o eklenir -
-        // isimle yazıp Enter'a basmak da aynı şekilde çalışsın diye (Edip, 2026-09-03: "tek
-        // satırda barkod ve isimden satış yapabilsin").
+        // (bekleyen numpad miktarıyla), yoksa arama TEK sonuca düştüyse o eklenir - isimle yazıp
+        // Enter'a basmak da aynı şekilde çalışsın diye (Edip, 2026-09-03: "tek satırda barkod ve
+        // isimden satış yapabilsin"). Debounce'u beklemeden ANINDA sunucudan taze sonuç alır ki
+        // hızlı okutan bir barkod tabancası kaçırılmasın.
         searchEl.addEventListener('keydown', function (e) {
             if (e.key !== 'Enter') return;
             var raw = searchEl.value.trim();
             if (!raw) return;
-            var byBarcode = null;
-            catalog.forEach(function (cat) {
-                cat.products.forEach(function (p) {
-                    if (p.barcodes && p.barcodes.indexOf(raw) !== -1) byBarcode = p;
-                });
-            });
-            var target = byBarcode;
-            if (!target) {
-                var matches = filterCatalog(raw.toLocaleLowerCase('tr-TR'));
-                if (matches.length === 1) target = matches[0];
-            }
-            if (target) {
-                addToCart(target);
-                searchEl.value = '';
-                tabsEl.style.display = '';
-                if (activeCategory) renderProducts(activeCategory);
-            }
-        });
-    }
-
-    function filterCatalog(term) {
-        var matches = [];
-        catalog.forEach(function (cat) {
-            cat.products.forEach(function (p) {
-                if (p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1
-                    || (p.barcodes && p.barcodes.some(function (b) { return b.indexOf(term) !== -1; }))) {
-                    matches.push(p);
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            runSearch(raw, function (results) {
+                var byBarcode = results.find(function (p) { return p.barcodes && p.barcodes.indexOf(raw) !== -1; });
+                var target = byBarcode || (results.length === 1 ? results[0] : null);
+                if (target) {
+                    addToCart(target);
+                    searchEl.value = '';
+                    tabsEl.style.display = '';
+                    lastSearchResults = [];
+                    if (activeCategory) renderProducts(activeCategory);
+                } else {
+                    renderProductList(results);
                 }
             });
         });
-        return matches;
     }
 
     function escapeHtml(s) {
@@ -753,8 +758,17 @@
             renderCart();
         });
 
+        // Adisyonda hiçbir aktif ürün yoksa (hiç eklenmedi ya da hepsi iptal edildi) "Kapat"
+        // masayı da boşaltır - "Masayı Boşalt" ile aynı işlem, self-pay-btn zaten aynı koşulla
+        // (bekleyen + gönderilmiş toplam <= 0) disabled oluyor, o bayrağı tekrar kullanılır
+        // (Edip, 2026-09-03: "kapat tuşuna bastığında masayı boşaltsın").
         closeBtn.addEventListener('click', function () {
-            window.location.href = root.getAttribute('data-back-url');
+            var payBtn = document.getElementById('self-pay-btn');
+            if (payBtn && payBtn.disabled) {
+                document.getElementById('void-empty-check-form').submit();
+            } else {
+                window.location.href = root.getAttribute('data-back-url');
+            }
         });
     })();
 

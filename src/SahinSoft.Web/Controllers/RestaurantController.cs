@@ -218,6 +218,53 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return Json(receipts);
     }
 
+    // Ürün/barkod arama - POS ekranındaki kategori kısayolu grid'i sadece ShowAsShortcut/
+    // ShowInMobile işaretli ürünleri gösterir (bkz. Check action), ama kasiyer arama kutusuna
+    // yazdığında TÜM aktif stoktan aramalı - kısayol olarak tanımlanmamış ama satılabilir bir
+    // ürün de bulunabilsin diye (Edip, 2026-09-03: "stok ve ürün arama sol tarafta kategoride
+    // değil stok listesinde arasın veritabanında stok" / "stoklarda arama yapsın"). Aynı JSON
+    // şekli (RestaurantCatalogProductViewModel ile aynı alanlar) - istemci addToCart'ı hiç
+    // değiştirmeden kullanabilsin diye.
+    [HttpGet]
+    public async Task<IActionResult> SearchProducts(string term)
+    {
+        term = (term ?? string.Empty).Trim();
+        if (term.Length == 0) return Json(Array.Empty<object>());
+
+        var products = await dbContext.Products
+            .AsNoTracking()
+            .Where(x => x.IsActive && (x.Name.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term)))
+            .Include(x => x.TaxRate)
+            .Include(x => x.Portions.Where(p => p.IsActive))
+            .Include(x => x.Barcodes.Where(b => b.IsActive))
+            .OrderBy(x => x.Name)
+            .Take(30)
+            .Select(p => new
+            {
+                productId = p.Id,
+                name = p.Name,
+                salePrice = p.SalePrice,
+                taxRate = p.TaxRate.Rate,
+                hasKitchenStation = p.DefaultKitchenStationId != null,
+                imagePath = p.ImagePath,
+                unit = p.Unit,
+                barcodes = (p.Barcode != null ? new[] { p.Barcode } : Array.Empty<string>())
+                    .Concat(p.Barcodes.Select(b => b.Barcode))
+                    .Distinct()
+                    .ToList(),
+                portions = p.Portions.OrderBy(x => x.DisplayOrder).Select(portion => new
+                {
+                    portionId = portion.Id,
+                    name = portion.Name,
+                    priceOverride = portion.PriceOverride,
+                    isDefault = portion.IsDefault
+                }).ToList()
+            })
+            .ToListAsync();
+
+        return Json(products, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+    }
+
     // "Ekrana Al" - fişin satırlarını (productId/quantity) döner, istemci zaten yüklü kataloğundan
     // eşleştirip sepete ekler (bkz. restaurant-pos.js) - ayrı bir ürün DTO'su gerekmez.
     [HttpGet]
