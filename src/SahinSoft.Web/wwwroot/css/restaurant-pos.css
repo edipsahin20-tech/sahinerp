@@ -192,22 +192,30 @@
 /* Kategoriler + ürünler SOLDA, adisyon/ödeme SAĞDA (Edip, 2026-09-03: "ödeme sağda kategoriler
    ve ürünler solda gözüksün") - Edip'in kendi eski POS ekranına referansla. Üçüncü sütun, en
    sağdaki sabit ikon şeridi (Masa Transfer / Mutfak vb.). */
+/* Sağdaki sipariş/ödeme alanı genişletildi (Edip, 2026-09-03: "sağ tarafta ürün ekleme alanını
+   uzat" - numpad eklendikten sonra dar kalıyordu). */
 .restaurant-pos .pos-layout {
     display: grid;
-    grid-template-columns: 1fr minmax(300px, 380px) 76px;
+    grid-template-columns: 1fr minmax(420px, 520px) 76px;
     gap: 1rem;
     align-items: start;
 }
 
 @media (max-width: 1200px) {
     .restaurant-pos .pos-layout {
-        grid-template-columns: 1fr minmax(300px, 380px);
+        grid-template-columns: 1fr minmax(380px, 460px);
     }
 
     .restaurant-pos .pos-side-icons {
         grid-column: 1 / -1;
         flex-direction: row;
     }
+}
+
+.restaurant-pos .product-panel-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
 @media (max-width: 900px) {
@@ -239,7 +247,7 @@
 .restaurant-pos .cart-numpad {
     display: flex;
     flex-direction: column;
-    width: 44px;
+    width: 64px;
     flex: 0 0 auto;
     background: var(--pos-navy);
     border-right: 1px solid var(--pos-border);
@@ -251,9 +259,9 @@
     border-bottom: 1px solid rgba(255,255,255,.08);
     background: transparent;
     color: #fff;
-    font-size: 0.78rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    padding: 0.5rem 0.1rem;
+    padding: 0.7rem 0.1rem;
     cursor: pointer;
     line-height: 1.1;
 }
@@ -279,15 +287,16 @@
 }
 
 .restaurant-pos .cart-numpad-portion-grid button {
-    font-size: 0.68rem;
+    font-size: 0.82rem;
 }
 
 .restaurant-pos .cart-numpad-pending {
     background: #fff;
     color: var(--pos-navy);
     font-weight: 800;
+    font-size: 1.1rem;
     text-align: center;
-    padding: 0.45rem 0.1rem;
+    padding: 0.55rem 0.1rem;
     font-variant-numeric: tabular-nums;
 }
 

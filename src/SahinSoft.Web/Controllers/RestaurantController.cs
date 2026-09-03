@@ -288,7 +288,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -321,6 +321,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             TicketNote = check.Note,
             IsFiscalEnabled = fiscalSettings is { FiscalDeviceType: not FiscalDeviceType.None } && !string.IsNullOrWhiteSpace(fiscalSettings.FiscalAgentUrl),
             FiscalAgentUrl = fiscalSettings?.FiscalAgentUrl,
+            IsKitchenTrackingEnabled = fiscalSettings?.IsKitchenTrackingEnabled ?? false,
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel
             {
                 OrderId = order.Id,

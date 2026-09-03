@@ -33,6 +33,10 @@ public sealed class RestaurantCheckViewModel
     public bool IsFiscalEnabled { get; set; }
     public string? FiscalAgentUrl { get; set; }
 
+    // KDS takibi kapalıyken "Mutfağa Gönderilmiş Siparişler" paneli hiç gösterilmez - takip
+    // edilecek bir şey yok, sadece kalabalık yapar (Edip, 2026-09-03).
+    public bool IsKitchenTrackingEnabled { get; set; }
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];

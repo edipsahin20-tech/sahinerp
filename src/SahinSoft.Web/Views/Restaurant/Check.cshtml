@@ -35,10 +35,6 @@
             <span class="erp-toolbar-meta">Adisyon @Model.CheckNumber · @Model.GuestCount kişi · @Model.OpenedAtUtc.ToLocalTime().ToString("HH:mm")</span>
         </div>
         <div class="erp-toolbar-actions">
-            @if (Model.IsSelfSaleCheck)
-            {
-                <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
-            }
             @if (!Model.IsSelfSaleCheck && Model.PayableTotal > 0)
             {
                 @if (Model.BillRequested)
@@ -58,13 +54,12 @@
             {
                 <button type="button" class="btn btn-erp btn-sm@(Model.IsSelfSaleCheck ? " d-none" : "")" id="open-close-payment-btn">Kapat / Öde</button>
             }
-            <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
         </div>
     </div>
 
     <div id="unrouted-warning" class="alert alert-warning py-2" style="display:none;"></div>
 
-    @if (Model.SentOrders.Any(o => o.Lines.Count > 0))
+    @if (Model.IsKitchenTrackingEnabled && Model.SentOrders.Any(o => o.Lines.Count > 0))
     {
         <div class="erp-panel" style="margin-bottom: 1rem;">
             <div class="erp-panel-header">Mutfağa Gönderilmiş Siparişler</div>
@@ -121,6 +116,15 @@
 
     <div class="pos-layout">
         <div class="product-panel">
+            <!-- Masaya Aktar / Masa Durumu üst başlıktan buraya taşındı - üstte yer açılsın
+                 (Edip, 2026-09-03: "masa aktar masa durumunu da sol tarafa taşı yer açılsın"). -->
+            <div class="product-panel-actions">
+                @if (Model.IsSelfSaleCheck)
+                {
+                    <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
+                }
+                <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
+            </div>
             <div class="product-search-row">
                 <input type="text" id="product-search" class="product-search-input" placeholder="Ürün ara veya barkod okut..." autocomplete="off" />
             </div>
