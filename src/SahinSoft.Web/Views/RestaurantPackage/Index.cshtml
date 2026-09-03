@@ -40,14 +40,6 @@
     <button type="button" class="rbtn gold" data-bs-toggle="modal" data-bs-target="#newPackageModal">+ Yeni Paket Siparişi</button>
 </div>
 
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger py-2">@error</div>
-}
-@if (TempData["Success"] is string success)
-{
-    <div class="alert alert-success py-2">@success</div>
-}
 
 <div class="rtabs">
     <a class="rtab @(Model.ActiveTab == "active" ? "active" : "")" asp-action="Index" asp-route-tab="active">Aktif <span>(@Model.ActiveCount)</span></a>

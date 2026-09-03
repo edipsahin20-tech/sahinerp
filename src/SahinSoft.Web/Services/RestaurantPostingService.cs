@@ -115,11 +115,93 @@ public sealed class RestaurantPostingService(
                 };
                 dbContext.RestaurantChecks.Add(check);
 
+                // Masa açıldığında üzerindeki rezervasyon (varsa) tüketilmiş sayılır - artık
+                // gerçekten oturan bir müşteri var, rozet DOLU'ya döner (Edip, 2026-09-03).
+                var activeReservation = await dbContext.RestaurantTableReservations
+                    .SingleOrDefaultAsync(x => x.RestaurantTableId == restaurantTableId && x.IsActive, cancellationToken);
+                if (activeReservation is not null)
+                {
+                    activeReservation.IsActive = false;
+                    activeReservation.CancelledAtUtc = DateTime.UtcNow;
+                }
+
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return (session, check);
             });
         }, cancellationToken);
+
+    public async Task RequestBillAsync(int checkId, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        if (check.Status != RestaurantCheckStatus.Open)
+        {
+            throw new InvalidOperationException("Bu adisyon artık açık değil.");
+        }
+        check.BillRequestedAtUtc = DateTime.UtcNow;
+        check.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Masa başına en fazla bir aktif rezervasyon (DB'deki filtered unique index son güvenlik ağı,
+    // bkz. ApplicationDbContext) - boş bir masa rezerve edilebilir, dolu/zaten rezerve bir masa
+    // edilemez. Reservation notu/saat/kişi sayısı serbest metin/sayı, doğrulanacak başka bir
+    // kaynak yok (MASTER tasarımdaki "21:00 · Doğum günü" gibi).
+    public async Task CreateReservationAsync(
+        int restaurantTableId,
+        DateTime reservedForUtc,
+        int guestCount,
+        string? note,
+        string createdByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (guestCount <= 0)
+        {
+            throw new InvalidOperationException("Kişi sayısı sıfırdan büyük olmalıdır.");
+        }
+
+        var table = await dbContext.RestaurantTables.SingleOrDefaultAsync(x => x.Id == restaurantTableId, cancellationToken)
+            ?? throw new InvalidOperationException("Masa bulunamadı.");
+        if (!table.IsActive)
+        {
+            throw new InvalidOperationException("Bu masa pasif durumda.");
+        }
+
+        var isOccupied = await dbContext.RestaurantTableSessions
+            .AnyAsync(x => x.RestaurantTableId == restaurantTableId && x.Status == RestaurantTableSessionStatus.Open, cancellationToken);
+        if (isOccupied)
+        {
+            throw new InvalidOperationException("Bu masa şu an dolu, rezerve edilemez.");
+        }
+
+        var alreadyReserved = await dbContext.RestaurantTableReservations
+            .AnyAsync(x => x.RestaurantTableId == restaurantTableId && x.IsActive, cancellationToken);
+        if (alreadyReserved)
+        {
+            throw new InvalidOperationException("Bu masa için zaten aktif bir rezervasyon var.");
+        }
+
+        dbContext.RestaurantTableReservations.Add(new RestaurantTableReservation
+        {
+            RestaurantTableId = restaurantTableId,
+            ReservedForUtc = reservedForUtc,
+            GuestCount = guestCount,
+            Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+            CreatedByUserId = createdByUserId
+        });
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task CancelReservationAsync(int reservationId, CancellationToken cancellationToken = default)
+    {
+        var reservation = await dbContext.RestaurantTableReservations.SingleOrDefaultAsync(x => x.Id == reservationId, cancellationToken)
+            ?? throw new InvalidOperationException("Rezervasyon bulunamadı.");
+        reservation.IsActive = false;
+        reservation.CancelledAtUtc = DateTime.UtcNow;
+        reservation.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     // Self Satış ve Paket/Gel-Al'ın ORTAK deseni: gerçek bir masaya değil, sistemin gizli
     // (IsActive=false, Masa Satış salon listesinde hiç görünmeyen) bir salonu altında talep

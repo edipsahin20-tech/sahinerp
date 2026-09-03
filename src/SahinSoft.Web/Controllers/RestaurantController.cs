@@ -32,6 +32,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Include(x => x.Checks)
             .ToListAsync();
 
+        var activeReservations = await dbContext.RestaurantTableReservations
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .ToListAsync();
+
         var model = new RestaurantFloorViewModel
         {
             Sections = sections.Select(section => new RestaurantFloorSectionViewModel
@@ -41,6 +46,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 {
                     var session = openSessions.SingleOrDefault(s => s.RestaurantTableId == table.Id);
                     var check = session?.Checks.SingleOrDefault(c => c.Status == RestaurantCheckStatus.Open);
+                    var reservation = session is null ? activeReservations.SingleOrDefault(r => r.RestaurantTableId == table.Id) : null;
                     return new RestaurantFloorTableViewModel
                     {
                         TableId = table.Id,
@@ -51,7 +57,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                         CheckId = check?.Id,
                         GuestCount = session?.GuestCount,
                         OpenedAtUtc = session?.OpenedAtUtc,
-                        RunningTotal = check is null ? 0 : ComputeCheckRunningTotal(check.Id)
+                        RunningTotal = check is null ? 0 : ComputeCheckRunningTotal(check.Id),
+                        BillRequested = check?.BillRequestedAtUtc is not null,
+                        IsReserved = reservation is not null,
+                        ReservationId = reservation?.Id,
+                        ReservedForUtc = reservation?.ReservedForUtc,
+                        ReservationGuestCount = reservation?.GuestCount,
+                        ReservationNote = reservation?.Note
                     };
                 }).ToList()
             }).ToList()
@@ -88,6 +100,57 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             TempData["Error"] = ex.Message;
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    // MASTER tasarımdaki REZERVE rozeti - boş bir masayı ileri bir saat için ayırır.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reserve(int tableId, DateTime reservedForLocal, int guestCount, string? note)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        try
+        {
+            await postingService.CreateReservationAsync(tableId, reservedForLocal.ToUniversalTime(), guestCount, note, userId);
+            TempData["Success"] = "Masa rezerve edildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelReservation(int reservationId)
+    {
+        try
+        {
+            await postingService.CancelReservationAsync(reservationId);
+            TempData["Success"] = "Rezervasyon iptal edildi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    // MASTER tasarımdaki HESAP İSTENDİ rozeti - garson adisyon ekranından işaretler.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestBill(int checkId)
+    {
+        try
+        {
+            await postingService.RequestBillAsync(checkId);
+            TempData["Success"] = "Hesap istendi olarak işaretlendi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        return RedirectToAction(nameof(Check), new { id = checkId });
     }
 
     public async Task<IActionResult> Check(int id)
@@ -167,6 +230,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             OpenedAtUtc = check.RestaurantTableSession.OpenedAtUtc,
             IsSelfSaleCheck = isSelfSaleCheck,
             AvailableTables = availableTables,
+            BillRequested = check.BillRequestedAtUtc is not null,
             IsFiscalEnabled = fiscalSettings is { FiscalDeviceType: not FiscalDeviceType.None } && !string.IsNullOrWhiteSpace(fiscalSettings.FiscalAgentUrl),
             FiscalAgentUrl = fiscalSettings?.FiscalAgentUrl,
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

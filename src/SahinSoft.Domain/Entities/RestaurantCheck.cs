@@ -21,6 +21,11 @@ public sealed class RestaurantCheck : EntityBase
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }
 
+    // Müşteri hesap istediğinde işaretlenir (Edip, 2026-09-03: MASTER tasarımdaki "HESAP İSTENDİ"
+    // rozeti) - kapanışta zaten Status=Closed olacağı için ayrıca temizlenmesine gerek yok, açık
+    // adisyon listelerinde bu alan null olmayan her check zaten "hesap bekliyor" demektir.
+    public DateTime? BillRequestedAtUtc { get; set; }
+
     // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
     public Guid? SubmissionKey { get; set; }
 

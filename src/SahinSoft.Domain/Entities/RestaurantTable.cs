@@ -19,4 +19,5 @@ public sealed class RestaurantTable : EntityBase
     // Masanın dolu/boş durumu her zaman RestaurantTableSessions'ta Status=Open olan bir
     // kayıt var mı diye sorgulanarak hesaplanır.
     public ICollection<RestaurantTableSession> Sessions { get; set; } = new List<RestaurantTableSession>();
+    public ICollection<RestaurantTableReservation> Reservations { get; set; } = new List<RestaurantTableReservation>();
 }

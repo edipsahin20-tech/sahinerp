@@ -31,15 +31,6 @@
 </div>
 
 <div class="restaurant-pos">
-    @if (TempData["Error"] is string error)
-    {
-        <div class="alert alert-danger py-2">@error</div>
-    }
-    @if (TempData["Success"] is string success)
-    {
-        <div class="alert alert-success py-2">@success</div>
-    }
-
     @if (Model.Sections.Count > 1)
     {
         <div class="rtabs" id="sectionTabs">
@@ -60,25 +51,59 @@
                 {
                     if (table.IsOccupied)
                     {
-                        <button type="button" class="table-tile occupied" data-open-check="@table.CheckId"
-                                data-select-table="@table.TableId" data-session-id="@table.SessionId" data-table-name="@table.Name">
-                            <span class="status-badge busy">DOLU</span>
-                            <span class="table-name">@table.Name</span>
-                            <span class="table-meta">
-                                @table.GuestCount kişi ·
-                                @(table.OpenedAtUtc.HasValue ? table.OpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")
-                            </span>
-                            <span class="amt">@table.RunningTotal.ToString("N2") ₺</span>
-                        </button>
+                        <div class="table-tile-wrap">
+                            <button type="button" class="table-tile occupied@(table.BillRequested ? " bill-requested" : "")" data-open-check="@table.CheckId"
+                                    data-select-table="@table.TableId" data-session-id="@table.SessionId" data-table-name="@table.Name">
+                                @if (table.BillRequested)
+                                {
+                                    <span class="status-badge bill">HESAP İSTENDİ</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge busy">DOLU</span>
+                                }
+                                <span class="table-name">@table.Name</span>
+                                <span class="table-meta">
+                                    @table.GuestCount kişi ·
+                                    @(table.OpenedAtUtc.HasValue ? table.OpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")
+                                </span>
+                                <span class="amt">@table.RunningTotal.ToString("N2") ₺</span>
+                            </button>
+                        </div>
+                    }
+                    else if (table.IsReserved)
+                    {
+                        <div class="table-tile-wrap">
+                            <button type="button" class="table-tile reserved" data-open-table="@table.TableId" data-table-name="@table.Name"
+                                    data-capacity="@(table.ReservationGuestCount ?? table.Capacity)"
+                                    data-select-table="@table.TableId" data-session-id="">
+                                <span class="status-badge res">REZERVE</span>
+                                <span class="table-name">@table.Name</span>
+                                <span class="table-meta">
+                                    @table.ReservationGuestCount kişi ·
+                                    @(table.ReservedForUtc.HasValue ? table.ReservedForUtc.Value.ToLocalTime().ToString("HH:mm") : "")
+                                    @(string.IsNullOrWhiteSpace(table.ReservationNote) ? "" : " · " + table.ReservationNote)
+                                </span>
+                            </button>
+                            <form method="post" asp-action="CancelReservation" class="table-cancel-reservation"
+                                  onsubmit="return confirm('&quot;' + '@table.Name'.replace(/'/g,'') + '&quot; rezervasyonu iptal edilsin mi?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="reservationId" value="@table.ReservationId" />
+                                <button type="submit" title="Rezervasyonu İptal Et">✕</button>
+                            </form>
+                        </div>
                     }
                     else
                     {
-                        <button type="button" class="table-tile" data-open-table="@table.TableId" data-table-name="@table.Name" data-capacity="@table.Capacity"
-                                data-select-table="@table.TableId" data-session-id="">
-                            <span class="status-badge empty">BOŞ</span>
-                            <span class="table-name">@table.Name</span>
-                            <span class="table-meta">@table.Capacity kişilik</span>
-                        </button>
+                        <div class="table-tile-wrap">
+                            <button type="button" class="table-tile" data-open-table="@table.TableId" data-table-name="@table.Name" data-capacity="@table.Capacity"
+                                    data-select-table="@table.TableId" data-session-id="">
+                                <span class="status-badge empty">BOŞ</span>
+                                <span class="table-name">@table.Name</span>
+                                <span class="table-meta">@table.Capacity kişilik</span>
+                            </button>
+                            <button type="button" class="table-reserve-btn" data-reserve-table="@table.TableId" data-table-name="@table.Name" title="Rezerve Et">▤</button>
+                        </div>
                     }
                 }
                 @if (floorSection.Tables.Count == 0)
@@ -181,6 +206,40 @@
     </div>
 </div>
 
+<!-- Masa rezervasyon modalı -->
+<div class="modal fade" id="reserveTableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="Reserve">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tableId" id="reserveTableId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Masa Rezerve Et — <span id="reserveTableName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Saat</label>
+                        <input type="datetime-local" name="reservedForLocal" id="reserveDateTime" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kişi Sayısı</label>
+                        <input type="number" name="guestCount" class="form-control" min="1" value="2" required />
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label">Not (opsiyonel)</label>
+                        <input type="text" name="note" class="form-control" maxlength="300" placeholder="Örn: Doğum günü" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Rezerve Et</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         var sectionTabs = document.getElementById('sectionTabs');
@@ -197,6 +256,20 @@
                 });
             });
         }
+
+        document.querySelectorAll('[data-reserve-table]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('reserveTableId').value = btn.getAttribute('data-reserve-table');
+                document.getElementById('reserveTableName').textContent = btn.getAttribute('data-table-name');
+                // Varsayılan: bir sonraki saat başı (Edip'in eliyle saat girmesini kolaylaştırmak için).
+                var d = new Date();
+                d.setMinutes(0, 0, 0);
+                d.setHours(d.getHours() + 1);
+                var pad = function (n) { return String(n).padStart(2, '0'); };
+                document.getElementById('reserveDateTime').value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':00';
+                new bootstrap.Modal(document.getElementById('reserveTableModal')).show();
+            });
+        });
 
         var selectedTableId = null;
         var selectedSessionId = null;

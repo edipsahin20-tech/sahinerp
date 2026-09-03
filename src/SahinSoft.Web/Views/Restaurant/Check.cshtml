@@ -31,6 +31,21 @@
             {
                 <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
             }
+            @if (!Model.IsSelfSaleCheck && Model.PayableTotal > 0)
+            {
+                @if (Model.BillRequested)
+                {
+                    <span class="badge text-bg-warning-subtle text-warning-emphasis">Hesap İstendi</span>
+                }
+                else
+                {
+                    <form method="post" asp-action="RequestBill" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="checkId" value="@Model.CheckId" />
+                        <button type="submit" class="btn btn-erp-outline btn-sm">Hesap İstendi</button>
+                    </form>
+                }
+            }
             @if (Model.PayableTotal > 0)
             {
                 <button type="button" class="btn btn-erp btn-sm" id="open-close-payment-btn">Kapat / Öde</button>
@@ -39,14 +54,6 @@
         </div>
     </div>
 
-    @if (TempData["Error"] is string error)
-    {
-        <div class="alert alert-danger py-2">@error</div>
-    }
-    @if (TempData["Success"] is string success)
-    {
-        <div class="alert alert-success py-2">@success</div>
-    }
     <div id="unrouted-warning" class="alert alert-warning py-2" style="display:none;"></div>
 
     @if (Model.SentOrders.Any(o => o.Lines.Count > 0))

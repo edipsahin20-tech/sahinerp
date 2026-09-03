@@ -75,6 +75,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
     public DbSet<RestaurantTableSession> RestaurantTableSessions => Set<RestaurantTableSession>();
     public DbSet<RestaurantTableSessionMove> RestaurantTableSessionMoves => Set<RestaurantTableSessionMove>();
+    public DbSet<RestaurantTableReservation> RestaurantTableReservations => Set<RestaurantTableReservation>();
     public DbSet<RestaurantCheck> RestaurantChecks => Set<RestaurantCheck>();
     public DbSet<RestaurantOrder> RestaurantOrders => Set<RestaurantOrder>();
     public DbSet<RestaurantOrderLine> RestaurantOrderLines => Set<RestaurantOrderLine>();
@@ -1273,6 +1274,21 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.MergedIntoSession)
                 .WithMany()
                 .HasForeignKey(x => x.MergedIntoSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantTableReservation>(entity =>
+        {
+            entity.Property(x => x.Note).HasMaxLength(300);
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            // Masa başına aynı anda en fazla bir aktif rezervasyon - DB seviyesinde garanti.
+            entity.HasIndex(x => x.RestaurantTableId)
+                .IsUnique()
+                .HasFilter("[IsActive] = 1")
+                .HasDatabaseName("IX_RestaurantTableReservations_OneActivePerTable");
+            entity.HasOne(x => x.RestaurantTable)
+                .WithMany(x => x.Reservations)
+                .HasForeignKey(x => x.RestaurantTableId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

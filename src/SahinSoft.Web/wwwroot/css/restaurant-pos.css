@@ -67,9 +67,8 @@
 }
 
 /* MASTER tasarımdaki masa kartı rozeti (Edip, 2026-09-03: MASTER_SahinSoft_Restoran_POS_Premium.html
-   referansı) - şu an sadece Boş/Dolu gerçek veriden geliyor. Rezerve/Hesap İstendi rozetleri
-   master'da var ama bu iki durumu karşılayan bir veri/özellik henüz sistemde yok, o yüzden
-   burada uydurulmadı - ayrıca konuşulacak. */
+   referansı) - Boş/Dolu/Rezerve/Hesap İstendi hepsi gerçek veriden geliyor (rezervasyon ve hesap
+   isteme artık gerçek özellikler, bkz. RestaurantTableReservation / RestaurantCheck.BillRequestedAtUtc). */
 .restaurant-pos .table-tile .status-badge {
     position: absolute;
     left: 12px;
@@ -91,12 +90,69 @@
     color: #1760B4;
 }
 
+.restaurant-pos .table-tile .status-badge.bill {
+    background: #FFF1D5;
+    color: #A16C00;
+}
+
+.restaurant-pos .table-tile .status-badge.res {
+    background: #EFEAFF;
+    color: #6946C4;
+}
+
 .restaurant-pos .table-tile .amt {
     position: absolute;
     right: 12px;
     bottom: 12px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
+}
+
+.restaurant-pos .table-tile-wrap {
+    position: relative;
+}
+
+.restaurant-pos .table-tile-wrap .table-tile {
+    width: 100%;
+}
+
+.restaurant-pos .table-reserve-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 1px solid var(--pos-border);
+    background: var(--pos-surface);
+    color: var(--pos-text-2);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: var(--pos-shadow);
+}
+
+.restaurant-pos .table-reserve-btn:hover {
+    color: var(--pos-navy);
+    border-color: #D2DAE5;
+}
+
+.restaurant-pos .table-cancel-reservation {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+}
+
+.restaurant-pos .table-cancel-reservation button {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 1px solid #F3D4D4;
+    background: #FFF7F7;
+    color: #C73E3E;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
 }
 
 .restaurant-pos .table-tile:hover {
@@ -111,6 +167,14 @@
 .restaurant-pos .table-tile.occupied {
     border-left-color: var(--pos-occupied);
     background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFF 100%);
+}
+
+.restaurant-pos .table-tile.occupied.bill-requested {
+    border-left-color: #E39A00;
+}
+
+.restaurant-pos .table-tile.reserved {
+    border-left-color: #7755D9;
 }
 
 .restaurant-pos .table-tile .table-name {

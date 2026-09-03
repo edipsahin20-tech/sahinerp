@@ -22,4 +22,14 @@ public sealed class RestaurantFloorTableViewModel
     public int? GuestCount { get; set; }
     public DateTime? OpenedAtUtc { get; set; }
     public decimal RunningTotal { get; set; }
+
+    // MASTER tasarımdaki HESAP İSTENDİ rozeti - dolu masa için.
+    public bool BillRequested { get; set; }
+
+    // MASTER tasarımdaki REZERVE rozeti - boş masa için.
+    public bool IsReserved { get; set; }
+    public int? ReservationId { get; set; }
+    public DateTime? ReservedForUtc { get; set; }
+    public int? ReservationGuestCount { get; set; }
+    public string? ReservationNote { get; set; }
 }

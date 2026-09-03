@@ -18,6 +18,10 @@ public sealed class RestaurantCheckViewModel
     public bool IsSelfSaleCheck { get; set; }
     public List<RestaurantTransferTableOptionViewModel> AvailableTables { get; set; } = [];
 
+    // MASTER tasarımdaki HESAP İSTENDİ rozeti - masa/self satış ekranlarının ikisinde de
+    // gösterilebilir olsun diye Self Satış'a da kısıtlanmadı.
+    public bool BillRequested { get; set; }
+
     // Yazar kasa entegrasyonu - Ayarlar > Stok Parametreleri'nde bir cihaz seçilip adres
     // girilmişse true, restaurant-close-payment.js ödemeyi önce buradaki adrese (yerel
     // SahinSoft.FiscalAgent) gönderir. Fatura kesilen satışlarda (CustomerId seçiliyse) bu
