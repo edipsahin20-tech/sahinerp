@@ -211,7 +211,7 @@
    uzat" - numpad eklendikten sonra dar kalıyordu). */
 .restaurant-pos .pos-layout {
     display: grid;
-    grid-template-columns: 1fr minmax(420px, 520px) 76px;
+    grid-template-columns: 1fr minmax(480px, 580px) 76px;
     gap: 1rem;
     align-items: stretch;
     flex: 1;
@@ -226,7 +226,7 @@
 
 @media (max-width: 1200px) {
     .restaurant-pos .pos-layout {
-        grid-template-columns: 1fr minmax(380px, 460px);
+        grid-template-columns: 1fr minmax(420px, 500px);
     }
 
     .restaurant-pos .pos-side-icons {
@@ -355,7 +355,7 @@
    kalır, grid'i bozmaz. */
 .restaurant-pos .cart-line {
     display: grid;
-    grid-template-columns: 1fr 44px 78px 78px 64px;
+    grid-template-columns: minmax(90px,1fr) 30px 42px 34px 60px 64px 48px;
     align-items: center;
     gap: 0.4rem;
     padding: 0.55rem 0.4rem;
@@ -369,11 +369,14 @@
 }
 
 .restaurant-pos .cart-line-col-qty,
+.restaurant-pos .cart-line-col-unit,
+.restaurant-pos .cart-line-col-kdv,
 .restaurant-pos .cart-line-col-price,
 .restaurant-pos .cart-line-col-total {
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: var(--pos-text-2);
+    font-size: 0.8rem;
 }
 
 .restaurant-pos .cart-line-col-total {
@@ -388,7 +391,7 @@
 
 .restaurant-pos .cart-lines-header {
     display: grid;
-    grid-template-columns: 1fr 44px 78px 78px 64px;
+    grid-template-columns: minmax(90px,1fr) 30px 42px 34px 60px 64px 48px;
     gap: 0.4rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
@@ -676,12 +679,12 @@
 }
 
 .restaurant-pos .product-search-row {
-    margin-bottom: 0.75rem;
+    margin-top: 0.6rem;
 }
 
 .restaurant-pos .product-search-input {
     width: 100%;
-    max-width: 340px;
+    max-width: 100%;
     padding: 0.65rem 0.9rem;
     border: 1px solid var(--pos-border);
     border-radius: var(--pos-radius-control);

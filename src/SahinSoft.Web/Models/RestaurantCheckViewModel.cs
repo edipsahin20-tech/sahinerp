@@ -71,6 +71,7 @@ public sealed class RestaurantSentOrderLineViewModel
     public string ProductName { get; set; } = string.Empty;
     public string? PortionName { get; set; }
     public decimal Quantity { get; set; }
+    public string Unit { get; set; } = "Adet";
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }
@@ -98,6 +99,7 @@ public sealed class RestaurantCatalogProductViewModel
     public decimal TaxRate { get; set; }
     public bool HasKitchenStation { get; set; }
     public string? ImagePath { get; set; }
+    public string Unit { get; set; } = "Adet";
 
     // Barkod okuyucu ile satış için - hem Stok Tanıtım Kartı'ndaki tekil Barcode alanı hem de
     // ProductBarcode'daki ek kodlar (farklı paket boyutları vb.) dahil (Edip, 2026-09-03: "tek

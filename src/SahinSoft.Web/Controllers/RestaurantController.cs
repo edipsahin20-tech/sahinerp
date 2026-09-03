@@ -263,6 +263,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .AsNoTracking()
             .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
             .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.KitchenTicketLines)
+            .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.Product)
             .SingleOrDefaultAsync(x => x.Id == id);
 
         if (check is null)
@@ -361,6 +362,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                     ProductName = line.ProductNameSnapshot,
                     PortionName = line.PortionNameSnapshot,
                     Quantity = line.Quantity,
+                    Unit = line.Product.Unit,
                     UnitPrice = line.UnitPriceSnapshot,
                     DiscountAmount = line.DiscountAmountSnapshot,
                     TaxRate = line.TaxRateSnapshot,
@@ -384,6 +386,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                         SalePrice = p.SalePrice,
                         TaxRate = p.TaxRate.Rate,
                         HasKitchenStation = p.DefaultKitchenStationId is not null,
+                        Unit = p.Unit,
                         ImagePath = p.ImagePath,
                         Barcodes = (p.Barcode != null ? new[] { p.Barcode } : Array.Empty<string>())
                             .Concat(p.Barcodes.Select(b => b.Barcode))

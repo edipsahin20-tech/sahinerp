@@ -239,6 +239,7 @@
             portionName: portionName,
             unitPrice: unitPrice,
             taxRate: product.taxRate,
+            unit: product.unit || 'Adet',
             quantity: pendingQuantity,
             discountAmount: 0,
             isComplimentary: false,
@@ -300,11 +301,13 @@
             else if (line.discountAmount > 0) badges += ' <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim ' + money(line.discountAmount) + '</span>';
             if (!line.hasKitchenStation) badges += ' <span class="badge text-bg-secondary-subtle" title="Mutfak istasyonu tanımlı değil">İstasyonsuz</span>';
 
-            // Sabit şablon: Ürün Adı | Miktar | Birim Fiyat | Tutar (Edip, 2026-09-03).
+            // Sabit şablon: Ürün Adı | Miktar | Birim | KDV | Fiyat | Tutar (Edip, 2026-09-03).
             div.innerHTML =
                 '<div class="cart-line-col-name">' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges +
                 (line.kitchenNote ? '<div class="small text-secondary">Not: ' + escapeHtml(line.kitchenNote) + '</div>' : '') + '</div>' +
                 '<div class="cart-line-col-qty">' + line.quantity + '</div>' +
+                '<div class="cart-line-col-unit">' + escapeHtml(line.unit || 'Adet') + '</div>' +
+                '<div class="cart-line-col-kdv">%' + line.taxRate + '</div>' +
                 '<div class="cart-line-col-price">' + money(line.unitPrice) + '</div>' +
                 '<div class="cart-line-col-total">' + money(lineTotal(line)) + '</div>' +
                 '<div></div>';
@@ -711,6 +714,47 @@
             pendingStr = pendingStr.slice(0, -1);
             var n = parseInt(pendingStr, 10);
             setPendingQuantity(!isNaN(n) && n > 0 ? n : 1);
+        });
+    })();
+
+    // --- Nakit satırının altındaki hızlı işlemler: Sipariş Sil / İndirim / Kapat
+    // (Edip, 2026-09-03: "sağ taraf nakit butonun altına sipariş sil indirim kapat butonlarına
+    // yanyana koy renkli olsun"). Sadece BEKLEYEN (henüz gönderilmemiş) sepeti etkiler - zaten
+    // gönderilmiş satırlar için ayrı İptal butonu var. ---
+    (function () {
+        var clearBtn = document.getElementById('clear-cart-btn');
+        var discountBtn = document.getElementById('ticket-discount-btn');
+        var closeBtn = document.getElementById('close-check-btn');
+        if (!clearBtn) return;
+
+        clearBtn.addEventListener('click', function () {
+            if (cart.length === 0) return;
+            if (!window.confirm('Bekleyen sepetteki ' + cart.length + ' kalem silinsin mi?')) return;
+            cart = [];
+            selectedCartId = null;
+            renderCart();
+        });
+
+        discountBtn.addEventListener('click', function () {
+            if (cart.length === 0) { window.alert('Sepette ürün yok.'); return; }
+            var grossTotal = cart.reduce(function (sum, l) { return sum + l.quantity * l.unitPrice; }, 0);
+            var input = window.prompt('Sepetin tamamına uygulanacak toplam indirim tutarı (₺):', '0');
+            if (input === null) return;
+            var amount = parseFloat(input.replace(',', '.'));
+            if (isNaN(amount) || amount < 0) return;
+            if (amount > grossTotal) amount = grossTotal;
+            // Her satıra kendi payına göre orantılı dağıtılır (Edip, 2026-09-03: "indirim").
+            cart.forEach(function (line) {
+                var lineGross = line.quantity * line.unitPrice;
+                var share = grossTotal > 0 ? lineGross / grossTotal : 0;
+                line.discountAmount = Math.round(amount * share * 100) / 100;
+                line.isComplimentary = false;
+            });
+            renderCart();
+        });
+
+        closeBtn.addEventListener('click', function () {
+            window.location.href = root.getAttribute('data-back-url');
         });
     })();
 

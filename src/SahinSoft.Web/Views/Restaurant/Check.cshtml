@@ -82,9 +82,6 @@
                     </form>
                 }
             </div>
-            <div class="product-search-row">
-                <input type="text" id="product-search" class="product-search-input" placeholder="Ürün ara veya barkod okut..." autocomplete="off" />
-            </div>
             <div class="category-tabs" id="category-tabs"></div>
             <div class="product-grid" id="product-grid"></div>
         </div>
@@ -128,6 +125,12 @@
             <div class="cart-main">
                 <div class="cart-header">
                     <strong>Yeni Sipariş</strong>
+                    <!-- Ürün arama/barkod okutma sağ tarafa, "Yeni Sipariş"in altına taşındı
+                         (Edip, 2026-09-03: "ürün arama ve barkod arama sağ tarafta ürün
+                         şablonunda yeni siparişin altında olsun"). -->
+                    <div class="product-search-row">
+                        <input type="text" id="product-search" class="product-search-input" placeholder="Ürün ara veya barkod okut..." autocomplete="off" />
+                    </div>
                 </div>
                 <!-- Satır işlem çubuğu SABİT - her satırın altında tekrarlanmaz, seçili satıra
                      uygulanır (Edip, 2026-09-03: "Not İndirim İptal Sil İkram bölümleri sabit
@@ -149,11 +152,10 @@
                      sipariş girdiğimde ödeme ekranında gözüksün mutfağın içinde değil"). Durum
                      rozeti sadece KDS takibi açıkken anlamlı, kapalıyken hepsi zaten doğrudan
                      Servis Edildi olduğundan gösterilmez. -->
-                <!-- Sabit şablon: Ürün Adı | Miktar | Birim Fiyat | Tutar - gönderilmiş ve
-                     bekleyen satırlarda AYNI (Edip, 2026-09-03: "şablon bu şekilde sabit kalsın
-                     ürün adı miktar birim fiyat tutar şeklinde olsun"). -->
+                <!-- Sabit şablon: Ürün Adı | Miktar | Birim | KDV | Fiyat | Tutar - gönderilmiş
+                     ve bekleyen satırlarda AYNI (Edip, 2026-09-03: "ürün şablonu böyle olsun"). -->
                 <div class="cart-lines-header">
-                    <span>Ürün Adı</span><span>Miktar</span><span>Birim Fiyat</span><span>Tutar</span><span></span>
+                    <span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span><span></span>
                 </div>
                 @{
                     // İptal edilen satırlar üzeri çizili göstermek yerine listeden TAMAMEN
@@ -178,6 +180,8 @@
                                     @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
                                 </div>
                                 <div class="cart-line-col-qty">@line.Quantity.ToString("N0")</div>
+                                <div class="cart-line-col-unit">@line.Unit</div>
+                                <div class="cart-line-col-kdv">%@line.TaxRate.ToString("N0")</div>
                                 <div class="cart-line-col-price">@line.UnitPrice.ToString("N2") ₺</div>
                                 <div class="cart-line-col-total">@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</div>
                                 <div>
@@ -209,6 +213,14 @@
                         <button type="button" class="pay-method-btn n" data-quick-method="1">₺ Nakit</button>
                         <button type="button" class="pay-method-btn c" data-quick-method="2">▣ Kredi Kartı</button>
                         <button type="button" class="pay-method-btn y" data-quick-method="3">◇ Yemek Çeki</button>
+                    </div>
+                    <!-- Nakit satırının altında hızlı işlem sırası (Edip, 2026-09-03: "sağ taraf
+                         nakit butonun altına sipariş sil indirim kapat butonlarına yanyana koy
+                         renkli olsun"). -->
+                    <div class="cart-quick-actions" id="cart-quick-actions">
+                        <button type="button" class="quick-action-btn danger" id="clear-cart-btn">🗑 Sipariş Sil</button>
+                        <button type="button" class="quick-action-btn discount" id="ticket-discount-btn">% İndirim</button>
+                        <button type="button" class="quick-action-btn close" id="close-check-btn">✕ Kapat</button>
                     </div>
                 </div>
             </div>
@@ -542,6 +554,15 @@
        Nakit/Kredi Kartı/Yemek Çeki satırı (bkz. restaurant-pos.js/restaurant-close-payment.js). */
     .self-quickpay { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 1rem; }
     .self-quickpay .pay-method-btn:disabled { opacity: .5; cursor: default; }
+
+    /* Nakit satırının altındaki hızlı işlem sırası - Sipariş Sil/İndirim/Kapat, renkli
+       (Edip, 2026-09-03: "sağ taraf nakit butonun altına ... yanyana koy renkli olsun"). */
+    .cart-quick-actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 8px; }
+    .quick-action-btn { min-height: 42px; border: 0; border-radius: 9px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: #fff; }
+    .quick-action-btn.danger { background: #D94A4A; }
+    .quick-action-btn.discount { background: #6C5CE7; }
+    .quick-action-btn.close { background: #4A5568; }
+    .quick-action-btn:disabled { opacity: .5; cursor: default; }
 
     /* Self Satış sepet altı - MASTER'ın order-foot/payrow'u birebir (Mutfağa Gönder + Ödemeyi Al
        yan yana, aynı renkler); toolbar'daki Kapat/Öde bu ekranda gizlenir (bkz. self-pay-btn'in
