@@ -253,7 +253,7 @@
 .rest-shell .pack-customer-card h4 { margin: 0 0 4px; }
 .rest-shell .pack-lines { line-height: 2.4; margin: 10px 0; }
 .rest-shell .pack-lines .pack-line-total { float: right; font-weight: 700; }
-.rest-shell .pack-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 14px; }
+.rest-shell .pack-actions { display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; margin-top: 14px; }
 
 /* Raporlar - master Premium tasarımdaki report-hero/report-kpis2/report-workspace yerleşimi,
    mevcut kpi-rich/rtabs/rcard bileşen diliyle uyarlandı. */
@@ -417,6 +417,7 @@
     }
     .rest-shell { display: block !important; height: auto !important; }
     .rest-shell .rest-main { padding: 0 !important; }
+    .rest-shell .pack-layout { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 1300px) {

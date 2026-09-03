@@ -20,15 +20,6 @@
         PackageOrderStatus.Delivered => "Teslim Edildi",
         _ => "İptal"
     };
-
-    static string NextActionLabel(PackageOrderStatus status, PackageOrderChannel channel) => status switch
-    {
-        PackageOrderStatus.Preparing => "Hazır →",
-        PackageOrderStatus.Ready => channel == PackageOrderChannel.PickupInStore ? "Teslim Edildi →" : "Kurye Bekliyor →",
-        PackageOrderStatus.CourierWaiting => "Yolda →",
-        PackageOrderStatus.OnTheWay => "Teslim Edildi →",
-        _ => "Tamamlandı"
-    };
 }
 
 <div class="toolbar">
@@ -37,18 +28,18 @@
         <div class="h1">Paket & Gel-Al</div>
         <div class="sub">Telefon, web ve şubeden teslim siparişlerini takip edin.</div>
     </div>
-    <button type="button" class="rbtn gold" data-bs-toggle="modal" data-bs-target="#newPackageModal">+ Yeni Paket Siparişi</button>
+    <button type="button" class="rbtn gold no-print" data-bs-toggle="modal" data-bs-target="#newPackageModal">+ Yeni Paket Siparişi</button>
 </div>
 
 
-<div class="rtabs">
+<div class="rtabs no-print">
     <a class="rtab @(Model.ActiveTab == "active" ? "active" : "")" asp-action="Index" asp-route-tab="active">Aktif <span>(@Model.ActiveCount)</span></a>
     <a class="rtab @(Model.ActiveTab == "ready" ? "active" : "")" asp-action="Index" asp-route-tab="ready">Hazır <span>(@Model.ReadyCount)</span></a>
     <a class="rtab @(Model.ActiveTab == "ontheway" ? "active" : "")" asp-action="Index" asp-route-tab="ontheway">Yolda <span>(@Model.OnTheWayCount)</span></a>
 </div>
 
 <div class="pack-layout">
-    <div class="rcard pack-list">
+    <div class="rcard pack-list no-print">
         @if (Model.Orders.Count == 0)
         {
             <div class="text-secondary small p-3">Bu sekmede sipariş yok.</div>
@@ -104,8 +95,8 @@
 
             <h2 style="text-align:right;">@s.Total.ToString("N2") ₺</h2>
 
-            <div class="pack-actions">
-                <a class="rbtn" asp-controller="Restaurant" asp-action="Check" asp-route-id="@s.CheckId">Adisyona Git</a>
+            <div class="pack-actions no-print">
+                <button type="button" class="rbtn" onclick="window.print()">Fiş Yazdır</button>
                 @if (s.Status != PackageOrderStatus.Delivered)
                 {
                     <form method="post" asp-action="Advance">
@@ -113,7 +104,7 @@
                         <input type="hidden" name="packageOrderId" value="@s.PackageOrderId" />
                         <input type="hidden" name="tab" value="@Model.ActiveTab" />
                         <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
-                        <button type="submit" class="rbtn gold" style="width:100%;">@NextActionLabel(s.Status, s.Channel)</button>
+                        <button type="submit" class="rbtn gold" style="width:100%;">Sonraki Duruma Geç →</button>
                     </form>
                 }
             </div>
