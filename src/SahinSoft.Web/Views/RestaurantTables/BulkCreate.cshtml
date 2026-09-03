@@ -1,0 +1,143 @@
+@model SahinSoft.Web.Models.RestaurantTableBulkCreateViewModel
+@{
+    ViewData["Title"] = "Yeni Masa";
+}
+
+<form id="evrak-form" method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Masa Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="BranchId"></label>
+                    <select asp-for="BranchId" asp-items="Model.Branches" id="branch-select" class="form-select">
+                        <option value="">Lokasyon seçin</option>
+                    </select>
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="NamePrefix"></label>
+                    <input asp-for="NamePrefix" class="form-control" placeholder="Örn: Salon-" autofocus />
+                    <span asp-validation-for="NamePrefix" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="RangeFrom">Aralık</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="RangeFrom" type="number" min="1" class="form-control" />
+                        <input asp-for="RangeTo" type="number" min="1" class="form-control" />
+                    </div>
+                    <span asp-validation-for="RangeFrom" class="text-danger small"></span>
+                    <span asp-validation-for="RangeTo" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Capacity"></label>
+                    <input asp-for="Capacity" class="form-control" type="number" />
+                    <span asp-validation-for="Capacity" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="RestaurantSectionId"></label>
+                    <div class="d-flex gap-2">
+                        <select asp-for="RestaurantSectionId" asp-items="Model.Sections" id="section-select" class="form-select">
+                            <option value="">Grup seçin</option>
+                        </select>
+                        <button type="button" class="btn btn-erp-outline" id="add-section-btn" title="Yeni grup ekle">+</button>
+                    </div>
+                    <span asp-validation-for="RestaurantSectionId" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="form-text mt-2">Örnek: Masa Adı "Salon-", Aralık 1-20 → Salon-1, Salon-2 ... Salon-20 toplu olarak açılır. Zaten var olan isimler atlanır.</div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+<!-- Yeni Grup modalı -->
+<div class="modal fade" id="newSectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Grup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Grup Adı</label>
+                <input type="text" id="new-section-name" class="form-control" placeholder="Örn: Ana Salon" />
+                <div id="new-section-error" class="text-danger small mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="confirm-new-section-btn">Ekle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var branchSelect = document.getElementById('branch-select');
+            var sectionSelect = document.getElementById('section-select');
+            var sectionsForBranchUrl = '@Url.Action("SectionsForBranch")';
+            var createSectionUrl = '@Url.Action("CreateSectionInline")';
+            var csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            function reloadSections(selectSectionId) {
+                if (!branchSelect.value) { return; }
+                fetch(sectionsForBranchUrl + '?branchId=' + branchSelect.value)
+                    .then(function (res) { return res.json(); })
+                    .then(function (sections) {
+                        sectionSelect.innerHTML = '<option value="">Grup seçin</option>';
+                        sections.forEach(function (s) {
+                            var opt = document.createElement('option');
+                            opt.value = s.id;
+                            opt.textContent = s.name;
+                            sectionSelect.appendChild(opt);
+                        });
+                        if (selectSectionId) { sectionSelect.value = selectSectionId; }
+                    });
+            }
+
+            branchSelect.addEventListener('change', function () { reloadSections(); });
+
+            document.getElementById('add-section-btn').addEventListener('click', function () {
+                if (!branchSelect.value) { alert('Önce lokasyon seçin.'); return; }
+                document.getElementById('new-section-name').value = '';
+                document.getElementById('new-section-error').style.display = 'none';
+                new bootstrap.Modal(document.getElementById('newSectionModal')).show();
+            });
+
+            document.getElementById('confirm-new-section-btn').addEventListener('click', function () {
+                var name = document.getElementById('new-section-name').value.trim();
+                if (!name) { return; }
+                fetch(createSectionUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrfToken },
+                    body: 'name=' + encodeURIComponent(name) + '&branchId=' + encodeURIComponent(branchSelect.value)
+                })
+                    .then(function (res) {
+                        if (!res.ok) { throw new Error('Grup eklenemedi.'); }
+                        return res.json();
+                    })
+                    .then(function (section) {
+                        reloadSections(section.id);
+                        bootstrap.Modal.getInstance(document.getElementById('newSectionModal')).hide();
+                    })
+                    .catch(function () {
+                        var err = document.getElementById('new-section-error');
+                        err.textContent = 'Grup eklenemedi.';
+                        err.style.display = 'block';
+                    });
+            });
+        })();
+    </script>
+}

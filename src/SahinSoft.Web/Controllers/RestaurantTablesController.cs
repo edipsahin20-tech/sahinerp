@@ -22,31 +22,107 @@ public sealed class RestaurantTablesController(ApplicationDbContext dbContext) :
         return View(tables);
     }
 
+    // Toplu masa açma - Edip'in örneği (2026-09-03): "Salon-" + Aralık 1-20 -> Salon-1..Salon-20,
+    // seçilen Lokasyon (Branch) altındaki bir Grup'a (RestaurantSection) bağlı olarak. Tekil masa
+    // düzenleme hâlâ Edit'te (Form.cshtml), bu ekran sadece YENİ masa açmak için.
     public async Task<IActionResult> Create()
     {
-        var model = new RestaurantTableFormViewModel();
-        await PopulateSelectionsAsync(model);
+        var model = new RestaurantTableBulkCreateViewModel();
+        await PopulateBulkSelectionsAsync(model);
         ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "RestaurantTables" };
-        return View("Form", model);
+        return View("BulkCreate", model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(RestaurantTableFormViewModel form)
+    public async Task<IActionResult> Create(RestaurantTableBulkCreateViewModel form)
     {
-        if (!ModelState.IsValid)
+        if (form.RangeFrom > form.RangeTo)
         {
-            await PopulateSelectionsAsync(form);
-            return View("Form", form);
+            ModelState.AddModelError(nameof(form.RangeTo), "Aralık bitişi başlangıçtan küçük olamaz.");
+        }
+        else if (form.RangeTo - form.RangeFrom + 1 > 200)
+        {
+            ModelState.AddModelError(nameof(form.RangeTo), "Tek seferde en fazla 200 masa açılabilir.");
         }
 
-        var table = new RestaurantTable();
-        Map(form, table);
-        dbContext.RestaurantTables.Add(table);
+        if (!ModelState.IsValid)
+        {
+            await PopulateBulkSelectionsAsync(form);
+            ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "RestaurantTables" };
+            return View("BulkCreate", form);
+        }
+
+        var prefix = form.NamePrefix.Trim();
+        var wantedNames = Enumerable.Range(form.RangeFrom, form.RangeTo - form.RangeFrom + 1)
+            .Select(i => $"{prefix}{i}")
+            .ToList();
+
+        var existingNames = await dbContext.RestaurantTables
+            .Where(x => x.RestaurantSectionId == form.RestaurantSectionId!.Value && wantedNames.Contains(x.Name))
+            .Select(x => x.Name)
+            .ToListAsync();
+
+        var newNames = wantedNames.Where(x => !existingNames.Contains(x)).ToList();
+        foreach (var name in newNames)
+        {
+            dbContext.RestaurantTables.Add(new RestaurantTable
+            {
+                Name = name,
+                Capacity = form.Capacity,
+                RestaurantSectionId = form.RestaurantSectionId!.Value,
+                IsActive = true
+            });
+        }
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = "Masa kaydedildi.";
+        TempData["Success"] = existingNames.Count == 0
+            ? $"{newNames.Count} masa açıldı."
+            : $"{newNames.Count} masa açıldı, {existingNames.Count} tanesi zaten vardı ({string.Join(", ", existingNames)}) ve atlandı.";
         return RedirectToAction(nameof(Create));
+    }
+
+    // Lokasyon (Branch) değişince Grup (RestaurantSection) listesini o şubeye göre yeniden
+    // doldurmak için - bkz. BulkCreate.cshtml'deki JS.
+    [HttpGet]
+    public async Task<IActionResult> SectionsForBranch(int branchId)
+    {
+        var sections = await dbContext.RestaurantSections
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.BranchId == branchId)
+            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name)
+            .Select(x => new { id = x.Id, name = x.Name })
+            .ToListAsync();
+        return Json(sections);
+    }
+
+    // "Grup" alanının yanındaki "+" kısayolu - sayfadan ayrılmadan yeni bir RestaurantSection
+    // açar (Edip'in mockup'ındaki inline ekleme, 2026-09-03).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateSectionInline(string name, int branchId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest("Grup adı girilmelidir.");
+        }
+
+        var maxOrder = await dbContext.RestaurantSections
+            .Where(x => x.BranchId == branchId)
+            .Select(x => (int?)x.DisplayOrder)
+            .MaxAsync() ?? 0;
+
+        var section = new RestaurantSection
+        {
+            Name = name.Trim(),
+            BranchId = branchId,
+            DisplayOrder = maxOrder + 1,
+            IsActive = true
+        };
+        dbContext.RestaurantSections.Add(section);
+        await dbContext.SaveChangesAsync();
+
+        return Json(new { id = section.Id, name = section.Name });
     }
 
     public async Task<IActionResult> Edit(int id)
@@ -126,6 +202,23 @@ public sealed class RestaurantTablesController(ApplicationDbContext dbContext) :
     {
         model.Sections = await dbContext.RestaurantSections
             .Where(x => x.IsActive)
+            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name)
+            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
+    }
+
+    private async Task PopulateBulkSelectionsAsync(RestaurantTableBulkCreateViewModel model)
+    {
+        model.Branches = await dbContext.Branches
+            .Where(x => x.IsActive)
+            .OrderByDescending(x => x.IsHeadOffice).ThenBy(x => x.Name)
+            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
+
+        var branchId = model.BranchId ?? int.Parse(model.Branches.FirstOrDefault()?.Value ?? "0");
+        model.BranchId ??= branchId;
+        model.Sections = await dbContext.RestaurantSections
+            .Where(x => x.IsActive && x.BranchId == branchId)
             .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name)
             .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
             .ToListAsync();
