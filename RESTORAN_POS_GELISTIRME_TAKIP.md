@@ -35,7 +35,7 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | 9 | Satır Kilidi TAMAMEN KALDIRILACAK | ✅ tamam + test edildi (2026-09-04) |
 | 10 | İndirim ortak motor | ✅ doğrulandı + test edildi (2026-09-04) - ana ekran ve ödeme ekranı AYNI #ticketDiscountModal'ı açıyor (pay-discount-btn → openTicketDiscountModal(true)), İndirimi Kaldır (discount-clear-btn) ApplyTicketDiscountAsync(0) çağırıp TÜM satırların DiscountAmountSnapshot'ını sıfırlayarak orijinal toplamı tam geri getiriyor, hızlı ödeme zaten net (indirimli) tutar üzerinden çalışıyor (ComputeCheckRunningTotal DiscountAmountSnapshot'ı düşüyor) |
 | 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ✅ tamam + test edildi (2026-09-04) - stok hareketi kısmı için not: bkz. aşağıdaki detay |
-| 12 | Ödenmez ödeme tipi | ⏳ yeni |
+| 12 | Ödenmez ödeme tipi | ✅ tamam + test edildi (2026-09-04) |
 | 13 | Açık Hesap + zorunlu cari | ⏳ |
 | 14 | Tahsilat Carileri / platform ödemeleri | ⏳ yeni |
 | 15-16 | Ürün Arama modal + Türkçe normalize | ⏳ |
@@ -382,3 +382,24 @@ loglarında `RestaurantPermissionAuditLogs` tablosuna gerçek bir INSERT çalı�
 yeni migration'ı içerecek şekilde yeniden üretildi** - bu adımlar tamamlandı.
 
 **Madde 21 artık TAM bitti** (temel altyapı + 2. yetkili onayı + audit log, hepsi test edildi).
+
+### Madde 12 — Ödenmez ödeme tipi (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar:**
+- `RestaurantPaymentMethod.Unpaid = 4` yeni enum değeri.
+- `InventorySettings.ShowUnpaidPaymentType` (Ayarlar > Stok Parametreleri, varsayılan KAPALI) -
+  açıkken ödeme ekranında 4. bir "✕ Ödenmez" butonu render edilir (Check.cshtml, sunucu
+  tarafında `@if` ile - kapalıyken DOM'da bile yok).
+- `CloseCheckAsync` - Ödenmez'e ayrılan tutar hem Sale (ciro) hem Collection (tahsilat)
+  `CurrentAccountTransaction` kayıtlarından NET OLARAK çıkarılıyor (`netAccountingTotal =
+  grandTotal - unpaidTotal`) - tamamı Ödenmez ise HİÇ CurrentAccountTransaction/
+  FinancialTransaction oluşmuyor. Yine de her Ödenmez satırı için bir `RestaurantPayment`
+  kaydı OLUŞUYOR (FinancialTransaction=null) - izlenebilirlik/raporlama için. RetailSale.
+  GrandTotal ve fiş satırları DEĞİŞMEDİ - ürün gerçekten "satılmış" sayılıyor (fişte tam
+  görünür), sadece tahsil edilmemiş oluyor. İkram'dan (satır fiyatı sıfırlanır) FARKI budur.
+
+**Nasıl test edildi:** Ayarlar'dan açıldı, Self Satış'ta ÇORBA (125₺) eklenip ödeme ekranında
+"Ödenmez" ile tam tutar işaretlendi, "Siparişi Tamamla" ile kapatıldı. Sunucu loglarında
+`RetailSales` VE `RestaurantPayments` INSERT'lerinin çalıştığı AMA `CurrentAccountTransactions`/
+`FinancialTransactions` için HİÇBİR INSERT olmadığı doğrulandı - tam olarak tasarlandığı gibi.
+Test sonrası ayar varsayılana (kapalı) döndürüldü.

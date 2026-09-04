@@ -398,7 +398,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay, x.ShowUnpaidPaymentType })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -437,6 +437,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             RequireSecondApprovalForEditKitchenSentLines = fiscalSettings?.RequireSecondApprovalForEditKitchenSentLines ?? false,
             RequireSecondApprovalForComplimentary = fiscalSettings?.RequireSecondApprovalForComplimentary ?? false,
             RequireReceiptPromptAfterQuickPay = fiscalSettings?.RequireReceiptPromptAfterQuickPay ?? false,
+            ShowUnpaidPaymentType = fiscalSettings?.ShowUnpaidPaymentType ?? false,
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

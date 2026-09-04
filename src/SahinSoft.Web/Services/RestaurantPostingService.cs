@@ -1524,6 +1524,15 @@ public sealed class RestaurantPostingService(
                     throw new InvalidOperationException($"Ödeme toplamı ({paymentsTotal:N2}) adisyon tutarına ({grandTotal:N2}) eşit değil.");
                 }
 
+                // Ödenmez (madde 12) - ürün/tutar satılmış SAYILIR (RetailSale.GrandTotal, satır
+                // toplamları değişmez - fiş üzerinde tam görünür), ama fiilen tahsil edilmediği
+                // için hem Sale (ciro) hem Collection (tahsilat) muhasebe kayıtlarından NET
+                // OLARAK dışarıda bırakılır - cari hesap dengede kalır (Debit==Credit), gerçek
+                // gelir/tahsilat asla oluşmaz. İkram'dan (satır fiyatının kendisi sıfırlanır)
+                // FARKI budur.
+                var unpaidTotal = Math.Round(payments.Where(p => p.Method == RestaurantPaymentMethod.Unpaid).Sum(p => p.Amount), 2, MidpointRounding.AwayFromZero);
+                var netAccountingTotal = grandTotal - unpaidTotal;
+
                 var effectiveCustomerId = customerId ?? await GetDefaultRetailCustomerIdAsync(cancellationToken);
                 const string tradeType = "Perakende yurtiçi ticaret";
                 var documentNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("RETAIL_SALE", cancellationToken);
@@ -1551,35 +1560,60 @@ public sealed class RestaurantPostingService(
                 };
                 dbContext.RetailSales.Add(retailSale);
 
-                dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                // netAccountingTotal > 0 ise normal Sale/Collection çifti (Ödenmez yoksa veya
+                // kısmen varsa) - tamamı Ödenmez ise (netAccountingTotal == 0) hiçbir muhasebe
+                // hareketi oluşmaz, sadece RestaurantPayment satırları (aşağıda) kalır.
+                CurrentAccountTransaction? collectionAccountTransaction = null;
+                if (netAccountingTotal > 0)
                 {
-                    TransactionDateUtc = DateTime.UtcNow,
-                    TransactionType = CurrentAccountTransactionType.Sale,
-                    DocumentNumber = documentNumber,
-                    CurrencyCode = "TRY",
-                    ExchangeRate = 1,
-                    Debit = grandTotal,
-                    Credit = 0,
-                    CustomerId = effectiveCustomerId,
-                    Description = $"Restoran satışı - {check.CheckNumber}"
-                });
+                    dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                    {
+                        TransactionDateUtc = DateTime.UtcNow,
+                        TransactionType = CurrentAccountTransactionType.Sale,
+                        DocumentNumber = documentNumber,
+                        CurrencyCode = "TRY",
+                        ExchangeRate = 1,
+                        Debit = netAccountingTotal,
+                        Credit = 0,
+                        CustomerId = effectiveCustomerId,
+                        Description = $"Restoran satışı - {check.CheckNumber}"
+                    });
 
-                var collectionAccountTransaction = new CurrentAccountTransaction
-                {
-                    TransactionDateUtc = DateTime.UtcNow,
-                    TransactionType = CurrentAccountTransactionType.Collection,
-                    DocumentNumber = documentNumber,
-                    CurrencyCode = "TRY",
-                    ExchangeRate = 1,
-                    Debit = 0,
-                    Credit = paymentsTotal,
-                    CustomerId = effectiveCustomerId,
-                    Description = $"Restoran tahsilatı - {check.CheckNumber}"
-                };
-                dbContext.CurrentAccountTransactions.Add(collectionAccountTransaction);
+                    collectionAccountTransaction = new CurrentAccountTransaction
+                    {
+                        TransactionDateUtc = DateTime.UtcNow,
+                        TransactionType = CurrentAccountTransactionType.Collection,
+                        DocumentNumber = documentNumber,
+                        CurrencyCode = "TRY",
+                        ExchangeRate = 1,
+                        Debit = 0,
+                        Credit = netAccountingTotal,
+                        CustomerId = effectiveCustomerId,
+                        Description = $"Restoran tahsilatı - {check.CheckNumber}"
+                    };
+                    dbContext.CurrentAccountTransactions.Add(collectionAccountTransaction);
+                }
 
                 foreach (var payment in payments)
                 {
+                    // Ödenmez satırı - RestaurantPayment kaydı (izlenebilirlik/raporlama)
+                    // OLUŞUR, ama gerçek bir tahsilat hareketi olmadığı için FinancialTransaction
+                    // HİÇ yazılmaz.
+                    if (payment.Method == RestaurantPaymentMethod.Unpaid)
+                    {
+                        dbContext.RestaurantPayments.Add(new RestaurantPayment
+                        {
+                            PaymentMethod = payment.Method,
+                            Amount = payment.Amount,
+                            PaidAtUtc = DateTime.UtcNow,
+                            RestaurantCheck = check,
+                            FinancialAccountId = payment.FinancialAccountId,
+                            SubmissionKey = submissionKey,
+                            FinancialTransaction = null
+                        });
+                        continue;
+                    }
+
                     var financialTransaction = new FinancialTransaction
                     {
                         TransactionDateUtc = DateTime.UtcNow,

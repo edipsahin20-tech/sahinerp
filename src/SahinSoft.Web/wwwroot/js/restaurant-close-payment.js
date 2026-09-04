@@ -25,7 +25,7 @@
     var payChangeWrap = document.getElementById('pay-change-wrap');
     var payChangeEl = document.getElementById('pay-change');
 
-    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki' };
+    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki', 4: 'Ödenmez' };
 
     // Self satış ve masa satışta AYNI tek tetikleyici - "Kapat/Öde" ayrı bir buton olarak
     // kaldırıldı (Edip, 2026-09-03: "kapat ve ödeme mantığı kalksın"), her ikisi de sepetin

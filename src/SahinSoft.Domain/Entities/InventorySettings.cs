@@ -87,6 +87,10 @@ public sealed class InventorySettings : EntityBase
     // ekranına döner.
     public bool RequireReceiptPromptAfterQuickPay { get; set; }
 
+    // Ödenmez ödeme tipi (madde 12) - kapalıyken (varsayılan) ödeme ekranında "Ödenmez" butonu
+    // hiç gösterilmez, bugünkü gibi sadece Nakit/Kredi Kartı/Yemek Çeki vardır.
+    public bool ShowUnpaidPaymentType { get; set; }
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }

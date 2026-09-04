@@ -718,10 +718,15 @@
                     <button type="button" class="pay-cash-quick" data-cash="200">200</button>
                 </div>
 
-                <div class="pay-method-row">
+                <div class="pay-method-row"@(Model.ShowUnpaidPaymentType ? " style=\"grid-template-columns:repeat(4,1fr);\"" : "")>
                     <button type="button" class="pay-method-btn n" data-method="1">₺ Nakit</button>
                     <button type="button" class="pay-method-btn c" data-method="2">▣ Kredi Kartı</button>
                     <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Çeki</button>
+                    @if (Model.ShowUnpaidPaymentType)
+                    {
+                        <!-- Ödenmez (madde 12) - parametrik, kapalıyken hiç render edilmez. -->
+                        <button type="button" class="pay-method-btn u" data-method="4">✕ Ödenmez</button>
+                    }
                 </div>
             </div>
             <div class="modal-footer pay-footer">
@@ -764,6 +769,7 @@
     .pay-method-btn.n { background: #b6dfc8; }
     .pay-method-btn.c { background: #c2afe9; }
     .pay-method-btn.y { background: #f3d09a; }
+    .pay-method-btn.u { background: #e8b4b4; }
     .pay-footer { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; }
 
     /* Self Satış hızlı ödeme kısayolları - MASTER tasarımdaki ürün panelinin altındaki

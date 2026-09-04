@@ -90,6 +90,9 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Hızlı Ödeme Sonrası Fiş Sorulsun mu?")]
     public bool RequireReceiptPromptAfterQuickPay { get; set; }
 
+    [Display(Name = "Ödenmez Ödeme Tipi Gösterilsin mi?")]
+    public bool ShowUnpaidPaymentType { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

@@ -121,6 +121,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireSecondApprovalForEditKitchenSentLines = model.RequireSecondApprovalForEditKitchenSentLines;
         settings.RequireSecondApprovalForAddNote = model.RequireSecondApprovalForAddNote;
         settings.RequireReceiptPromptAfterQuickPay = model.RequireReceiptPromptAfterQuickPay;
+        settings.ShowUnpaidPaymentType = model.ShowUnpaidPaymentType;
         settings.FiscalDeviceType = model.FiscalDeviceType;
         settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
@@ -168,6 +169,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         RequireSecondApprovalForEditKitchenSentLines = settings.RequireSecondApprovalForEditKitchenSentLines,
         RequireSecondApprovalForAddNote = settings.RequireSecondApprovalForAddNote,
         RequireReceiptPromptAfterQuickPay = settings.RequireReceiptPromptAfterQuickPay,
+        ShowUnpaidPaymentType = settings.ShowUnpaidPaymentType,
         FiscalDeviceType = settings.FiscalDeviceType,
         FiscalAgentUrl = settings.FiscalAgentUrl,
         OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,

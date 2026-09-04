@@ -139,6 +139,14 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Ödenmez Ödeme Tipi</div>
+        <div class="card-body">
+            <div class="form-check form-switch"><input asp-for="ShowUnpaidPaymentType" class="form-check-input" /><label asp-for="ShowUnpaidPaymentType" class="form-check-label"></label></div>
+            <div class="form-text">Kapalıyken (varsayılan) ödeme ekranında sadece Nakit/Kredi Kartı/Yemek Çeki vardır. Açıkken "Ödenmez" 4. bir ödeme yöntemi olarak eklenir - ürün satılmış sayılır (fiş üzerinde tam görünür) ama fiilen tahsil edilmemiştir; ciroya ve tahsilat kayıtlarına dahil edilmez, sadece izlenebilirlik için kaydedilir.</div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Yazar Kasa Entegrasyonu</div>
         <div class="card-body">
             <p class="text-secondary small">Bir yazar kasa seçilip adresi girilirse, restoran Kapat/Öde ekranındaki nakit/kredi kartı/yemek çeki ödemeleri doğrudan fiziksel yazar kasaya gönderilir (fatura kesilen satışlar hariç). "Yok" seçiliyken (varsayılan) hiçbir değişiklik olmaz, bugünkü gibi çalışır.</p>

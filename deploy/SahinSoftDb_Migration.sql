@@ -10033,3 +10033,34 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904195556_AddUnpaidPaymentType'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [ShowUnpaidPaymentType] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904195556_AddUnpaidPaymentType'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [ShowUnpaidPaymentType] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904195556_AddUnpaidPaymentType'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904195556_AddUnpaidPaymentType', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

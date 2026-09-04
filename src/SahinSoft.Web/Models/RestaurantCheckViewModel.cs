@@ -54,6 +54,10 @@ public sealed class RestaurantCheckViewModel
     // gösterilir, kapalıyken (varsayılan) hiç sorulmadan boş ekrana dönülür.
     public bool RequireReceiptPromptAfterQuickPay { get; set; }
 
+    // Ödenmez ödeme tipi (madde 12) - kapalıyken (varsayılan) ödeme ekranında "Ödenmez" butonu
+    // hiç gösterilmez.
+    public bool ShowUnpaidPaymentType { get; set; }
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
