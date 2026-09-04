@@ -564,7 +564,12 @@
 .restaurant-pos .pos-side-icons {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    /* 15.6"/18"/21" dokunmatik monitörlerin ortak çözünürlük aralığında (1366x768 - 1920x1080+)
+       8 ikon TEK sabit yükseklikle bazen sığmıyordu, taşan kısım kesiliyormuş gibi görünüyordu
+       (overflow-y:auto zaten vardı, erişilemez değildi ama gereksiz kaydırma gerektiriyordu).
+       vh'a bağlı clamp() ile kısa ekranda kendiliğinden küçülüp sığıyor, büyük ekranda rahat
+       görünüyor - tek bir sabit çözünürlüğe göre ayarlanmadı (Edip, 2026-09-04). */
+    gap: clamp(0.35rem, 1vh, 0.6rem);
     height: 100%;
     min-height: 0;
     overflow-y: auto;
@@ -576,7 +581,8 @@
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    min-height: 68px;
+    min-height: clamp(52px, 8.5vh, 68px);
+    flex-shrink: 0;
     padding: 0.4rem 0.2rem;
     border: 1px solid var(--pos-border);
     background: var(--pos-surface);
