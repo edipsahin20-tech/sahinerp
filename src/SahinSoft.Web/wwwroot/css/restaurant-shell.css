@@ -5,6 +5,21 @@
    kuralı). Var olan .restaurant-pos (Masa Satış/Adisyon içerik stilleri, restaurant-pos.css)
    bu kabuğun ".rest-main" alanı içinde aynen kullanılmaya devam eder, dokunulmadı. */
 
+/* erp.css'in body/html kuralları (padding-top/bottom: ana ERP'nin KENDİ sabit navbar/footer'ı
+   için ayrılmış boşluk) sınıf bazlı değil, bu yüzden .rest-shell scope'una rağmen buraya da
+   SIZIYOR - üstte boş bir şerit + altta görünmeyen (overflow:hidden yüzünden kaydırılamayan)
+   bir kesim oluşuyordu (Edip, 2026-09-04: "yukarıda boşluğu al ... bir masaüstü uygulaması gibi
+   olsun sabit olsun herşey"). Bu kabuğun kendi topbar'ı (.rest-topbar) var, ana ERP'ninkine
+   hiç ihtiyacı yok - o yüzden burada sıfırlanıyor. restaurant-shell.css SADECE bu kabuk
+   sayfalarında yükleniyor, bu yüzden unscoped body/html kuralı ana ERP'yi etkilemiyor. */
+html, body {
+    height: 100vh;
+    height: 100dvh;
+    padding: 0 !important;
+    margin: 0;
+    overflow: hidden;
+}
+
 .rest-shell {
     --rs-navy: #0B2239;
     --rs-navy2: #102B46;
