@@ -153,7 +153,7 @@ if ($isServerSku) {
         $iisFeature = Get-WindowsFeature -Name Web-Server -ErrorAction Stop
         if ($iisFeature.InstallState -ne "Installed") {
             Write-Warn "IIS kurulu değil, kuruluyor (bu birkaç dakika sürebilir)..."
-            Install-WindowsFeature -Name Web-Server, Web-Asp-Net45, Web-Net-Ext45, Web-WebSockets, Web-Http-Redirect, Web-Common-Http, Web-Static-Content, Web-Default-Doc, Web-Mgmt-Console -IncludeManagementTools | Out-Null
+            Install-WindowsFeature -Name Web-Server, Web-Asp-Net45, Web-Net-Ext45, Web-WebSockets, Web-Http-Redirect, Web-Common-Http, Web-Static-Content, Web-Default-Doc, Web-Mgmt-Console, Web-AppInit -IncludeManagementTools | Out-Null
             Write-Ok "IIS kuruldu (Windows Server)."
         }
         else {
@@ -172,7 +172,8 @@ else {
         "IIS-NetFxExtensibility45", "IIS-HealthAndDiagnostics", "IIS-HttpLogging",
         "IIS-Performance", "IIS-WebServerManagementTools", "IIS-ManagementConsole",
         "IIS-ManagementScriptingTools", "IIS-StaticContent", "IIS-DefaultDocument",
-        "IIS-ASPNET45", "IIS-ISAPIExtensions", "IIS-ISAPIFilter", "IIS-WebSockets"
+        "IIS-ASPNET45", "IIS-ISAPIExtensions", "IIS-ISAPIFilter", "IIS-WebSockets",
+        "IIS-ApplicationInit"
     )
     try {
         # Her özellik için AYRI DISM çağrısı yapmak (hem tespitte hem kurulumda) çok yavaştı -
@@ -499,6 +500,23 @@ try {
     Invoke-WithRetry -What "Uygulama havuzunu başlatma" -Action { Start-WebAppPool -Name $AppPoolName }
     Invoke-WithRetry -What "Siteyi başlatma" -Action { Start-Website -Name $SiteName }
     Write-Ok "Uygulama havuzu ve site başlatıldı."
+
+    # Havuz boşta kalınca (varsayılan 20 dk) IIS worker process'i (w3wp.exe) kapanıyor - kasiyer
+    # bir süre kullanmayınca program penceresini AÇTIĞI ANDA gelen ilk istek "soğuk başlangıç"
+    # (CLR/EF Core yükleme + açılış DB sorguları saniyeler sürebiliyor) sırasında yarım/zaman
+    # aşımına uğramış bir cevap alıyor - "ilk açıldığında bağlanamıyor, tekrar deneyince çalışıyor"
+    # (Edip, 2026-09-03) tam bunun belirtisi. AlwaysRunning + idleTimeout=0 + preloadEnabled
+    # havuzu hiç uyutmuyor, IIS/Windows açılışında baştan ısıtıyor - kasiyer programı her
+    # açtığında sunucu ZATEN hazır bekliyor olur.
+    try {
+        Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name startMode -Value "AlwaysRunning"
+        Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name processModel.idleTimeout -Value ([TimeSpan]::FromMinutes(0))
+        Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationDefaults.preloadEnabled -Value $true
+        Write-Ok "Uygulama havuzu 'AlwaysRunning' + preload olarak ayarlandı (soğuk başlangıç gecikmesi önlenir)."
+    }
+    catch {
+        Write-Warn "AlwaysRunning/preload ayarlanamadı: $($_.Exception.Message) - program yine çalışır, sadece ilk açılışta birkaç saniye gecikme olabilir."
+    }
 }
 catch {
     Write-Fail "IIS site/havuz ayarlanırken hata: $($_.Exception.Message)"

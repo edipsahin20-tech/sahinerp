@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,8 @@ namespace SahinSoft.Web.Controllers;
 public sealed class RestaurantAuthController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
-    IPasswordHasher<ApplicationUser> passwordHasher) : Controller
+    IPasswordHasher<ApplicationUser> passwordHasher,
+    IAntiforgery antiforgery) : Controller
 {
     public async Task<IActionResult> Login(string? returnUrl = null)
     {
@@ -32,11 +34,28 @@ public sealed class RestaurantAuthController(
     // doğrudan restoran Dashboard'una düşer (returnUrl belirtilmemişse).
     private string DefaultReturnUrl => Url.Action(nameof(RestaurantDashboardController.Index), "RestaurantDashboard") ?? "/";
 
+    // [ValidateAntiForgeryToken] KASITLI kullanılmıyor - o filtre doğrulama başarısız olunca
+    // hiçbir içerik taşımayan çıplak bir 400 döner (framework'ün kendi varsayılan davranışı,
+    // UseExceptionHandler'a hiç uğramaz), tarayıcı da bunu "Bu sayfa şu anda çalışmıyor" diye
+    // boş bir hata sayfası olarak gösterir (Edip, 2026-09-03: "şifre girdiğimde bu geliyor" -
+    // yerelde antiforgery token'ı bozup AYNI çıplak 400'ü üretip doğruladım). Doğrulama burada
+    // elle yapılıp başarısız olursa "PIN hatalı" ile AYNI, kullanıcının zaten bildiği akışa
+    // (Login ekranına dön) düşülüyor - kasiyer için tek fark görünmüyor, sadece tekrar dener.
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(string userId, string pin, string? returnUrl = null)
     {
         returnUrl ??= DefaultReturnUrl;
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            TempData["Error"] = "Oturum süresi doldu, lütfen tekrar deneyin.";
+            return RedirectToAction(nameof(Login), new { returnUrl });
+        }
+
         var user = await userManager.FindByIdAsync(userId);
 
         if (user is null || !user.IsActive || string.IsNullOrEmpty(user.RestaurantPinHash) || string.IsNullOrWhiteSpace(pin))

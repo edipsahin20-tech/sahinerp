@@ -162,8 +162,6 @@
             var pinValue = document.getElementById('pin-value');
             var pin = '';
             var maxLength = 6;
-            var autoSubmitLength = 4;
-            var autoSubmitTimer = null;
 
             function renderDots() {
                 var count = Math.max(pin.length, 4);
@@ -172,22 +170,14 @@
                 pinDots.textContent = parts.join(' ');
             }
 
+            // PIN yazılırken/bekletilirken KENDİLİĞİNDEN gönderilmez - yalnızca "Giriş Yap"a
+            // BASILINCA gönderilir (Edip, 2026-09-03: "şifre yazıp beklediğimde direk programı
+            // açıyor öyle olmasın, giriş butonuna basmadan girmesin" - önceki otomatik gönderim
+            // kaldırıldı, kasıtlı olarak geri alındı).
             function submitPin() {
                 if (pin.length === 0) { return; }
                 pinValue.value = pin;
                 document.getElementById('pin-submit-form').submit();
-            }
-
-            // PIN 1-6 hane arasında herhangi bir uzunlukta olabilir (Edip'in örneği: tek haneli
-            // "1" gibi) - bu yüzden sabit bir "N haneye gelince gönder" kuralı YOK. Bunun yerine:
-            // 4 haneye ulaşınca (master tasarımın öngördüğü tipik uzunluk) hemen, daha kısa
-            // PIN'lerde ise son tuşlamadan ~500ms sonra (Edip, 2026-09-03: "pini yazdığımda direk
-            // açılsın") otomatik gönderilir - "Giriş Yap" tuşu yine de manuel yedek olarak durur.
-            function scheduleAutoSubmit() {
-                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
-                if (pin.length === 0) { return; }
-                if (pin.length >= autoSubmitLength) { submitPin(); return; }
-                autoSubmitTimer = setTimeout(submitPin, 500);
             }
 
             function selectStaff(userId, userName, showCard) {
@@ -222,7 +212,6 @@
 
             document.getElementById('pin-change-user').addEventListener('click', function () {
                 pin = '';
-                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
                 staffStep.style.display = '';
                 pinStep.classList.remove('active');
             });
@@ -230,13 +219,11 @@
             document.getElementById('pin-back').addEventListener('click', function () {
                 pin = pin.slice(0, -1);
                 renderDots();
-                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
             });
 
             document.getElementById('pin-clear').addEventListener('click', function () {
                 pin = '';
                 renderDots();
-                if (autoSubmitTimer) { clearTimeout(autoSubmitTimer); autoSubmitTimer = null; }
             });
 
             document.getElementById('pin-pad').querySelectorAll('[data-digit]').forEach(function (btn) {
@@ -244,7 +231,6 @@
                     if (pin.length >= maxLength) { return; }
                     pin += btn.getAttribute('data-digit');
                     renderDots();
-                    scheduleAutoSubmit();
                 });
             });
 

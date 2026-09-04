@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -76,6 +77,24 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add<ConcurrencyExceptionFilter>());
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
+
+// Data Protection anahtarları KALICI bir konuma yazılır - varsayılan otomatik konum tahmini,
+// masaüstü kabuğun (SahinSoft.exe) her güncellemede farklı bir klasöre kopyalanabilmesi veya
+// kısıtlı kullanıcı profili gibi durumlarda kararsız olabiliyor; kararsız/bulunamayan anahtar
+// halkası her istek arasında farklı bir anahtar kullanılmasına, dolayısıyla antiforgery
+// doğrulamasının HER SEFERİNDE (Edip, 2026-09-03: "şifre girdiğimde her zaman bu geliyor")
+// çıplak, içeriksiz bir 400 ile başarısız olmasına yol açabiliyordu. %ProgramData% Windows'ta
+// güncellemeden etkilenmeyen, sabit ve yazılabilir bir konum - SADECE Windows'ta uygulanır,
+// yereldeki (macOS) geliştirme/test ortamında CommonApplicationData yazılabilir olmayabiliyor
+// (bkz. /usr/share), o yüzden orada .NET'in kendi varsayılanı kullanılmaya devam eder.
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "SahinSoft", "DataProtection-Keys")))
+        .SetApplicationName("SahinSoftWeb");
+}
 builder.Services.AddScoped<StockTransferService>();
 builder.Services.AddScoped<BarcodeGeneratorService>();
 builder.Services.AddScoped<StockCodeGeneratorService>();
