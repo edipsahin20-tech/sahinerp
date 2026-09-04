@@ -114,6 +114,12 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireCancellationReason = model.RequireCancellationReason;
         settings.CancellationReasonPresets = model.CancellationReasonPresets;
         settings.QuickNotePresets = model.QuickNotePresets;
+        settings.RequireSecondApprovalForCancelOrderLine = model.RequireSecondApprovalForCancelOrderLine;
+        settings.RequireSecondApprovalForCancelReceipt = model.RequireSecondApprovalForCancelReceipt;
+        settings.RequireSecondApprovalForDiscount = model.RequireSecondApprovalForDiscount;
+        settings.RequireSecondApprovalForComplimentary = model.RequireSecondApprovalForComplimentary;
+        settings.RequireSecondApprovalForEditKitchenSentLines = model.RequireSecondApprovalForEditKitchenSentLines;
+        settings.RequireSecondApprovalForAddNote = model.RequireSecondApprovalForAddNote;
         settings.FiscalDeviceType = model.FiscalDeviceType;
         settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
@@ -148,6 +154,18 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         RequireOpenShiftForSales = settings.RequireOpenShiftForSales,
         IsKitchenTrackingEnabled = settings.IsKitchenTrackingEnabled,
         KitchenAutoReadyMinutes = settings.KitchenAutoReadyMinutes,
+        // Bu üç alan daha önce burada HİÇ set edilmiyordu (gerçek bug, 2026-09-04 bulundu) -
+        // /Settings/Inventory formu her açıldığında bunlar boş/kapalı görünüyordu, formu
+        // farkında olmadan kaydeden bir admin DB'deki değeri sessizce sıfırlıyordu.
+        RequireCancellationReason = settings.RequireCancellationReason,
+        CancellationReasonPresets = settings.CancellationReasonPresets,
+        QuickNotePresets = settings.QuickNotePresets,
+        RequireSecondApprovalForCancelOrderLine = settings.RequireSecondApprovalForCancelOrderLine,
+        RequireSecondApprovalForCancelReceipt = settings.RequireSecondApprovalForCancelReceipt,
+        RequireSecondApprovalForDiscount = settings.RequireSecondApprovalForDiscount,
+        RequireSecondApprovalForComplimentary = settings.RequireSecondApprovalForComplimentary,
+        RequireSecondApprovalForEditKitchenSentLines = settings.RequireSecondApprovalForEditKitchenSentLines,
+        RequireSecondApprovalForAddNote = settings.RequireSecondApprovalForAddNote,
         FiscalDeviceType = settings.FiscalDeviceType,
         FiscalAgentUrl = settings.FiscalAgentUrl,
         OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,

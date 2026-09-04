@@ -66,6 +66,19 @@ public sealed class InventorySettings : EntityBase
     public FiscalDeviceType FiscalDeviceType { get; set; } = FiscalDeviceType.None;
     public string? FiscalAgentUrl { get; set; }
 
+    // "Şifre sorulsun mu?" (Edip, 2026-09-04, madde 21) - açık olan kritik işlem, YETKİLİ
+    // kullanıcı tarafından yapılsa BİLE ikinci bir yetkilinin PIN'ini ister; onaylayan kişi
+    // MEVCUT oturumdaki kişi olmak zorunda değil (uzaktan müdür onayı senaryosu). Onaylayan,
+    // ilgili yetkiye sahip olmalı (bkz. RestaurantPermissionService.VerifyApproverPinAsync).
+    // Her onay RestaurantPermissionAuditLog'a kaydedilir. Kapalıyken (varsayılan) davranış
+    // bugünküyle aynı - sadece RestaurantPermissionProfile'ın kendisi yeterli.
+    public bool RequireSecondApprovalForCancelOrderLine { get; set; }
+    public bool RequireSecondApprovalForCancelReceipt { get; set; }
+    public bool RequireSecondApprovalForDiscount { get; set; }
+    public bool RequireSecondApprovalForComplimentary { get; set; }
+    public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
+    public bool RequireSecondApprovalForAddNote { get; set; }
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }

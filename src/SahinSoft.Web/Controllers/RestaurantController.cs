@@ -380,7 +380,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -415,6 +415,9 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             FiscalAgentUrl = fiscalSettings?.FiscalAgentUrl,
             IsKitchenTrackingEnabled = fiscalSettings?.IsKitchenTrackingEnabled ?? false,
             RequireCancellationReason = fiscalSettings?.RequireCancellationReason ?? false,
+            RequireSecondApprovalForCancelOrderLine = fiscalSettings?.RequireSecondApprovalForCancelOrderLine ?? false,
+            RequireSecondApprovalForEditKitchenSentLines = fiscalSettings?.RequireSecondApprovalForEditKitchenSentLines ?? false,
+            RequireSecondApprovalForComplimentary = fiscalSettings?.RequireSecondApprovalForComplimentary ?? false,
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel
@@ -550,13 +553,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CancelOrderLine(int lineId, int checkId, string reason)
+    public async Task<IActionResult> CancelOrderLine(int lineId, int checkId, string reason, string? approverPin = null)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
         try
         {
-            await postingService.CancelOrderLineAsync(lineId, userId, reason);
+            await postingService.CancelOrderLineAsync(lineId, userId, reason, approverPin);
             TempData["Success"] = "Sipariş satırı iptal edildi.";
         }
         catch (InvalidOperationException ex)
@@ -569,11 +572,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdjustOrderLineQuantity(int lineId, int checkId, decimal quantity)
+    public async Task<IActionResult> AdjustOrderLineQuantity(int lineId, int checkId, decimal quantity, string? approverPin = null)
     {
         try
         {
-            await postingService.AdjustOrderLineQuantityAsync(lineId, quantity, CurrentUserId);
+            await postingService.AdjustOrderLineQuantityAsync(lineId, quantity, CurrentUserId, approverPin);
         }
         catch (InvalidOperationException ex)
         {
@@ -585,11 +588,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleLineComplimentary(int lineId, int checkId)
+    public async Task<IActionResult> ToggleLineComplimentary(int lineId, int checkId, string? approverPin = null)
     {
         try
         {
-            await postingService.ToggleLineComplimentaryAsync(lineId, CurrentUserId);
+            await postingService.ToggleLineComplimentaryAsync(lineId, CurrentUserId, approverPin);
         }
         catch (InvalidOperationException ex)
         {

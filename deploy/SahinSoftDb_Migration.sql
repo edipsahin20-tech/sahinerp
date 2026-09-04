@@ -9794,3 +9794,111 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForAddNote] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForCancelOrderLine] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForCancelReceipt] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForComplimentary] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForDiscount] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireSecondApprovalForEditKitchenSentLines] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    CREATE TABLE [RestaurantPermissionAuditLogs] (
+        [Id] int NOT NULL IDENTITY,
+        [Action] nvarchar(100) NOT NULL,
+        [PerformedByUserId] nvarchar(450) NOT NULL,
+        [ApproverUserId] nvarchar(450) NOT NULL,
+        [RestaurantCheckId] int NULL,
+        [RestaurantOrderLineId] int NULL,
+        [Details] nvarchar(max) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantPermissionAuditLogs] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [RequireSecondApprovalForAddNote] = CAST(0 AS bit), [RequireSecondApprovalForCancelOrderLine] = CAST(0 AS bit), [RequireSecondApprovalForCancelReceipt] = CAST(0 AS bit), [RequireSecondApprovalForComplimentary] = CAST(0 AS bit), [RequireSecondApprovalForDiscount] = CAST(0 AS bit), [RequireSecondApprovalForEditKitchenSentLines] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantPermissionAuditLogs_CreatedAtUtc] ON [RestaurantPermissionAuditLogs] ([CreatedAtUtc]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantPermissionAuditLogs_RecordId] ON [RestaurantPermissionAuditLogs] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904135927_AddSecondApprovalAndPermissionAuditLog'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904135927_AddSecondApprovalAndPermissionAuditLog', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

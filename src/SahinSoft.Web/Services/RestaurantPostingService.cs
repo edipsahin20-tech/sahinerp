@@ -891,6 +891,7 @@ public sealed class RestaurantPostingService(
         int restaurantOrderLineId,
         string cancelledByUserId,
         string reason,
+        string? approverPin = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(reason))
@@ -910,6 +911,15 @@ public sealed class RestaurantPostingService(
                 if (!await permissionService.CanCancelOrderLineAsync(cancelledByUserId, cancellationToken))
                 {
                     throw new InvalidOperationException("Sipariş satırı iptal etme yetkiniz yok.");
+                }
+
+                // "Şifre sorulsun mu?" (madde 21) - kullanıcı yetkili olsa BİLE parametre açıksa
+                // ikinci bir yetkilinin PIN onayı şart, onay MUTLAKA loglanır.
+                string? approverUserId = null;
+                if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
+                {
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
@@ -960,6 +970,12 @@ public sealed class RestaurantPostingService(
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
+                if (approverUserId is not null)
+                {
+                    await permissionService.LogApprovalAsync("CancelOrderLine", cancelledByUserId, approverUserId, line.RestaurantOrder.RestaurantCheckId, line.Id, reason, cancellationToken);
+                }
+
                 return true;
             });
         }, cancellationToken);
@@ -973,6 +989,7 @@ public sealed class RestaurantPostingService(
         int restaurantOrderLineId,
         decimal newQuantity,
         string performedByUserId,
+        string? approverPin = null,
         CancellationToken cancellationToken = default)
     {
         if (newQuantity <= 0)
@@ -990,6 +1007,13 @@ public sealed class RestaurantPostingService(
                 if (!await permissionService.CanEditKitchenSentLinesAsync(performedByUserId, cancellationToken))
                 {
                     throw new InvalidOperationException("Mutfağa gönderilmiş ürünü düzenleme yetkiniz yok.");
+                }
+
+                string? approverUserId = null;
+                if (await permissionService.RequiresSecondApprovalForEditKitchenSentLinesAsync(cancellationToken))
+                {
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
@@ -1015,6 +1039,12 @@ public sealed class RestaurantPostingService(
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
+                if (approverUserId is not null)
+                {
+                    await permissionService.LogApprovalAsync("AdjustOrderLineQuantity", performedByUserId, approverUserId, line.RestaurantOrder.RestaurantCheckId, line.Id, $"Yeni miktar: {newQuantity}", cancellationToken);
+                }
+
                 return true;
             });
         }, cancellationToken);
@@ -1027,6 +1057,7 @@ public sealed class RestaurantPostingService(
     public Task ToggleLineComplimentaryAsync(
         int restaurantOrderLineId,
         string performedByUserId,
+        string? approverPin = null,
         CancellationToken cancellationToken = default) =>
         DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
@@ -1038,6 +1069,13 @@ public sealed class RestaurantPostingService(
                 if (!await permissionService.CanApplyComplimentaryAsync(performedByUserId, cancellationToken))
                 {
                     throw new InvalidOperationException("İkram uygulama yetkiniz yok.");
+                }
+
+                string? approverUserId = null;
+                if (await permissionService.RequiresSecondApprovalForComplimentaryAsync(cancellationToken))
+                {
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyComplimentary, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
@@ -1066,6 +1104,12 @@ public sealed class RestaurantPostingService(
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
+                if (approverUserId is not null)
+                {
+                    await permissionService.LogApprovalAsync("ToggleLineComplimentary", performedByUserId, approverUserId, line.RestaurantOrder.RestaurantCheckId, line.Id, $"İkram: {line.IsComplimentary}", cancellationToken);
+                }
+
                 return true;
             });
         }, cancellationToken);

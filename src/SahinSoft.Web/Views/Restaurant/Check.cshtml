@@ -25,6 +25,9 @@
      data-apply-discount-url="@Url.Action("ApplyDiscount")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
      data-require-cancellation-reason="@Model.RequireCancellationReason.ToString().ToLowerInvariant()"
+     data-require-second-approval-cancel-line="@Model.RequireSecondApprovalForCancelOrderLine.ToString().ToLowerInvariant()"
+     data-require-second-approval-edit-kitchen-sent="@Model.RequireSecondApprovalForEditKitchenSentLines.ToString().ToLowerInvariant()"
+     data-require-second-approval-complimentary="@Model.RequireSecondApprovalForComplimentary.ToString().ToLowerInvariant()"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-sent-lines-gross-total="@Model.SentOrders.SelectMany(o => o.Lines).Where(l => l.Status != "Cancelled").Sum(l => l.Quantity * l.UnitPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
@@ -300,11 +303,13 @@
     <input type="hidden" name="checkId" value="@Model.CheckId" />
     <input type="hidden" name="lineId" id="adjustQtyLineId" />
     <input type="hidden" name="quantity" id="adjustQtyValue" />
+    <input type="hidden" name="approverPin" id="adjustQtyApproverPin" />
 </form>
 <form method="post" asp-action="ToggleLineComplimentary" id="toggle-line-comp-form" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="checkId" value="@Model.CheckId" />
     <input type="hidden" name="lineId" id="toggleCompLineId" />
+    <input type="hidden" name="approverPin" id="toggleCompApproverPin" />
 </form>
 
 <!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
@@ -431,6 +436,7 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="checkId" value="@Model.CheckId" />
                 <input type="hidden" name="lineId" id="cancelLineId" />
+                <input type="hidden" name="approverPin" id="cancelLineApproverPin" />
                 <div class="modal-header">
                     <h5 class="modal-title">Sipariş Satırını İptal Et</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -445,6 +451,29 @@
                     <button type="submit" class="btn btn-danger">İptal Et</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- İkinci yetkili onayı modalı (madde 21, "Şifre sorulsun mu?") - herhangi bir kritik işlem
+     için ortak/tek modal; kim onayladığı PIN eşleşmesinden anlaşılır, o an oturum açan kişi
+     olmak zorunda değildir. approverPinModal.confirm(callback) çağıran JS bunu tetikler. -->
+<div class="modal fade" id="approverPinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yetkili Onayı Gerekli</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary small mb-2">Bu işlem için ikinci bir yetkilinin PIN'ini girin. Onaylayan, şu an oturum açan kişi olmak zorunda değildir.</p>
+                <label class="form-label">Onaylayan PIN</label>
+                <input type="password" inputmode="numeric" class="form-control" id="approverPinInput" autocomplete="off" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="approverPinConfirmBtn">Onayla</button>
+            </div>
         </div>
     </div>
 </div>
@@ -705,6 +734,7 @@
             // mu diye parametre bağla, şimdilik default sorulmasın"). Kapalıyken modal hiç
             // açılmaz, otomatik bir gerekçeyle direkt iptal edilir.
             var requireReason = document.getElementById('pos-root').getAttribute('data-require-cancellation-reason') === 'true';
+            var requireApprovalCancelLine = document.getElementById('pos-root').getAttribute('data-require-second-approval-cancel-line') === 'true';
             var reasonPresets = JSON.parse(document.getElementById('pos-cancellation-reasons-data').textContent || '[]');
             var cancelForm = document.querySelector('#cancelLineModal form');
             var reasonInput = document.getElementById('cancelReasonInput');
@@ -719,14 +749,29 @@
                 presetsEl.appendChild(btn);
             });
 
+            // Form'un normal submit'i (modal'daki "İptal Et" tuşu) - onay gerekiyorsa önce
+            // approverPinModal'ı araya sokar, PIN alınınca gerçek submit'i tekrar tetikler.
+            var cancelPinReady = false;
+            cancelForm.addEventListener('submit', function (evt) {
+                if (requireApprovalCancelLine && !cancelPinReady) {
+                    evt.preventDefault();
+                    window.requestApproverPin(true, function (pin) {
+                        document.getElementById('cancelLineApproverPin').value = pin || '';
+                        cancelPinReady = true;
+                        cancelForm.requestSubmit ? cancelForm.requestSubmit() : cancelForm.submit();
+                    });
+                }
+            });
+
             document.querySelectorAll('.cancel-line-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     document.getElementById('cancelLineId').value = btn.getAttribute('data-line-id');
+                    cancelPinReady = false;
                     if (requireReason) {
                         new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
                     } else {
                         reasonInput.value = 'Kasiyer iptali';
-                        cancelForm.submit();
+                        cancelForm.requestSubmit ? cancelForm.requestSubmit() : cancelForm.submit();
                     }
                 });
             });

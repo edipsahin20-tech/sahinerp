@@ -4,6 +4,28 @@
     var root = document.getElementById('pos-root');
     if (!root) return;
 
+    // "Şifre sorulsun mu?" (madde 21) - ortak ikinci yetkili PIN onayı yardımcısı. requiresApproval
+    // false ise onReady(null) hemen çağrılır (modal hiç açılmaz). true ise approverPinModal
+    // açılır, Onayla'ya basınca onReady(pin) çağrılır. window'a bağlı - Check.cshtml'in kendi
+    // inline script'i de (bu IIFE dışında) kullanabiliyor.
+    window.requestApproverPin = function (requiresApproval, onReady) {
+        if (!requiresApproval) { onReady(null); return; }
+        var modalEl = document.getElementById('approverPinModal');
+        var input = document.getElementById('approverPinInput');
+        var confirmBtn = document.getElementById('approverPinConfirmBtn');
+        if (!modalEl || !input || !confirmBtn) { onReady(null); return; }
+        input.value = '';
+        var modal = new bootstrap.Modal(modalEl);
+        confirmBtn.onclick = function () {
+            var pin = input.value;
+            if (!pin) { window.alert('PIN girilmelidir.'); return; }
+            modal.hide();
+            onReady(pin);
+        };
+        modal.show();
+        setTimeout(function () { input.focus(); }, 300);
+    };
+
     var checkId = parseInt(root.getAttribute('data-check-id'), 10);
     var checkNumber = root.getAttribute('data-check-number');
     var tableLabel = root.getAttribute('data-table-label');
@@ -914,6 +936,9 @@
     // görünür/tıklanabilir - yetki kontrolü sunucu tarafında (RestaurantPermissionService), izin
     // yoksa TempData["Error"] ile normal hata akışı üzerinden bildirilir. ---
     (function () {
+        var requireApprovalEditKitchenSent = root.getAttribute('data-require-second-approval-edit-kitchen-sent') === 'true';
+        var requireApprovalComplimentary = root.getAttribute('data-require-second-approval-complimentary') === 'true';
+
         document.querySelectorAll('.sent-line-qty-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var current = btn.getAttribute('data-qty');
@@ -921,17 +946,23 @@
                 if (input === null) return;
                 var qty = parseFloat(input.replace(',', '.'));
                 if (isNaN(qty) || qty <= 0) { window.alert('Geçersiz miktar.'); return; }
-                document.getElementById('adjustQtyLineId').value = btn.getAttribute('data-line-id');
-                document.getElementById('adjustQtyValue').value = qty;
-                document.getElementById('adjust-line-qty-form').submit();
+                window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
+                    document.getElementById('adjustQtyLineId').value = btn.getAttribute('data-line-id');
+                    document.getElementById('adjustQtyValue').value = qty;
+                    document.getElementById('adjustQtyApproverPin').value = pin || '';
+                    document.getElementById('adjust-line-qty-form').submit();
+                });
             });
         });
 
         document.querySelectorAll('.sent-line-comp-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
-                document.getElementById('toggleCompLineId').value = btn.getAttribute('data-line-id');
-                document.getElementById('toggle-line-comp-form').submit();
+                window.requestApproverPin(requireApprovalComplimentary, function (pin) {
+                    document.getElementById('toggleCompLineId').value = btn.getAttribute('data-line-id');
+                    document.getElementById('toggleCompApproverPin').value = pin || '';
+                    document.getElementById('toggle-line-comp-form').submit();
+                });
             });
         });
     })();

@@ -43,7 +43,7 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | 18 | Bekleyen Fişler kart tasarımı | ⏳ |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
 | 20 | Boş Adisyon otomatik temizlik | 🔶 kısmen mevcut (VoidEmptyCheckAsync) |
-| 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem) | 🔶 temel altyapı tamam + test edildi; "Şifre sorulsun mu" 2. yetkili onayı + audit log HENÜZ YOK |
+| 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
 | 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ⏳ |
 | 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | 🔶 "kişi sayısı sorulsun mu" akışı ilk açılışta zaten çalışıyor (doğrulandı), tasarım karşılaştırması henüz yapılmadı |
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
@@ -131,8 +131,45 @@ Program.cs'te varsayılan validator `RemoveAll<IUserValidator<ApplicationUser>>(
 6. Pozitif kontrol: aynı kullanıcı İkram denedi → BAŞARILI oldu (ÇORBA İKRAM, 0,00 ₺) - profil
    bazlı bağımsız bayrak mantığının (bir yetki kapalı, diğerleri açık) doğru çalıştığı doğrulandı.
 
-**Henüz yapılmadı (madde 21'in geri kalanı):** "Şifre sorulsun mu?" - ikinci yetkili onayı
-(mevcut oturumdaki kişi olmak zorunda olmayan bir PIN/şifre istemi) + `RestaurantPermissionAuditLog`
-denetim kaydı. Bu, madde 21'i TAM bitirmek için gereken son parça, henüz başlanmadı.
+**Commit edildi, deploy/SahinSoft.exe + ~/Desktop/muhasebe/ paketine alındı** (bu bölümün ilk yarısı).
 
-**Commit edilmedi, deploy/muhasebe paketine alınmadı** - bu adımlar sıradaki iş.
+### Madde 21 (tamamlayıcı kısım: "Şifre sorulsun mu?" + audit log) — 2026-09-04, TEST EDİLDİ
+
+**Yapılanlar:**
+- `InventorySettings`e 6 yeni bool alan: `RequireSecondApprovalFor{CancelOrderLine,CancelReceipt,
+  Discount,Complimentary,EditKitchenSentLines,AddNote}` - RestaurantPermissionProfile'daki 6
+  bayrakla birebir eşleşiyor. Ayarlar > Stok Parametreleri'nde "Kritik İşlemlerde İkinci Yetkili
+  Onayı" kartı altında toggle'lar (madde 26'nın "aynı ayar kaynağı" kuralına uygun - POS'un kendi
+  ayrı bir ayar tablosu YOK, muhasebe'nin InventorySettings'i aynen kullanılıyor).
+- `RestaurantPermissionAuditLog` (yeni tablo): Action, PerformedByUserId, ApproverUserId,
+  RestaurantCheckId/RestaurantOrderLineId, Details, CreatedAtUtc.
+- `RestaurantPermissionService`: `RequiresSecondApprovalFor*Async` (InventorySettings okur),
+  `VerifyApproverPinAsync(pin, gerekliBayrak)` - girilen PIN'i AKTİF PIN'i olan TÜM personelin
+  hash'ine dener (onaylayan mevcut oturumdaki kişi olmak ZORUNDA DEĞİL, spec'in kendi kuralı),
+  eşleşen kullanıcı bulunsa bile o SPESİFİK işlem için yetkili değilse onay reddedilir.
+  `LogApprovalAsync` - audit tablosuna yazar.
+- `RestaurantPostingService`: `CancelOrderLineAsync`/`AdjustOrderLineQuantityAsync`/
+  `ToggleLineComplimentaryAsync` üçü de artık opsiyonel `approverPin` parametresi alıyor; ayar
+  açıksa PIN doğrulanmadan işlem YAPILMAZ, başarılıysa audit log'a yazılır.
+- İstemci: `Check.cshtml`'e ortak/tek `#approverPinModal` eklendi (üç işlem için de aynı modal
+  kullanılıyor - kim onayladığı PIN eşleşmesinden anlaşılıyor). `restaurant-pos.js`'e
+  `window.requestApproverPin(gerekliMi, callback)` ortak yardımcı fonksiyonu eklendi; ayar
+  kapalıyken modal HİÇ açılmıyor (davranış bugünküyle birebir aynı kalıyor).
+
+**Bulunan ve düzeltilen İKİNCİ gerçek bug:** `SettingsController.Map()` (GET /Settings/Inventory)
+`RequireCancellationReason`/`CancellationReasonPresets`/`QuickNotePresets` alanlarını HİÇ
+set etmiyordu - ekran her açıldığında bu üçü boş/kapalı görünüyordu, formu fark etmeden kaydeden
+bir admin DB'deki gerçek değeri sessizce SIFIRLIYORDU. Aynı satıra eklediğim 6 yeni alanla birlikte
+düzeltildi.
+
+**Nasıl test edildi:** Ayarlar'dan "Sipariş Satırı İptalinde İkinci Yetkili Onayı" açıldı, kaydedildi
+ve sayfa yeniden yüklendiğinde toggle'ın AÇIK kaldığı doğrulandı (Map bug'ının düzeldiğinin kanıtı).
+BAHÇE-1'deki açık adisyonda bir satır iptali denendi: (1) yetkisiz onaylayan PIN'i (Test Garson,
+CanCancelOrderLine=false) → doğru şekilde reddedildi, satır değişmedi; (2) yetkili onaylayan PIN'i
+(Kasiyer/Administrator, PIN 66) → başarılı oldu, "Sipariş satırı iptal edildi." mesajı geldi; sunucu
+loglarında `RestaurantPermissionAuditLogs` tablosuna gerçek bir INSERT çalıştığı doğrulandı.
+
+**Commit edildi, deploy/SahinSoft.exe + ~/Desktop/muhasebe/ paketine alındı, DbSetup SQL script'i
+yeni migration'ı içerecek şekilde yeniden üretildi** - bu adımlar tamamlandı.
+
+**Madde 21 artık TAM bitti** (temel altyapı + 2. yetkili onayı + audit log, hepsi test edildi).

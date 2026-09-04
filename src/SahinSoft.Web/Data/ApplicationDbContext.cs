@@ -90,6 +90,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantCashShift> RestaurantCashShifts => Set<RestaurantCashShift>();
     public DbSet<RestaurantPermissionProfile> RestaurantPermissionProfiles => Set<RestaurantPermissionProfile>();
     public DbSet<RestaurantPersonnelPermissionProfile> RestaurantPersonnelPermissionProfiles => Set<RestaurantPersonnelPermissionProfile>();
+    public DbSet<RestaurantPermissionAuditLog> RestaurantPermissionAuditLogs => Set<RestaurantPermissionAuditLog>();
     public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
@@ -1506,6 +1507,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(x => x.Assignments)
                 .HasForeignKey(x => x.PermissionProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RestaurantPermissionAuditLog>(entity =>
+        {
+            entity.Property(x => x.Action).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.PerformedByUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ApproverUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<PackageOrder>(entity =>

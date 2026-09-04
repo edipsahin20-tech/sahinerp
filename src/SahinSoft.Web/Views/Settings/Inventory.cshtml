@@ -106,6 +106,31 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Kritik İşlemlerde İkinci Yetkili Onayı (Şifre Sorulsun mu?)</div>
+        <div class="card-body">
+            <p class="text-secondary small mb-3">Açık olan işlem, kullanıcının kendi yetkisi izin verse BİLE ikinci bir yetkilinin PIN'ini ister. Onaylayan, o an oturum açan kişi olmak zorunda değildir (ör. uzaktan müdür onayı). Her onay denetim kaydına (audit log) yazılır.</p>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForCancelOrderLine" class="form-check-input" /><label asp-for="RequireSecondApprovalForCancelOrderLine" class="form-check-label"></label></div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForCancelReceipt" class="form-check-input" /><label asp-for="RequireSecondApprovalForCancelReceipt" class="form-check-label"></label></div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForDiscount" class="form-check-input" /><label asp-for="RequireSecondApprovalForDiscount" class="form-check-label"></label></div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForComplimentary" class="form-check-input" /><label asp-for="RequireSecondApprovalForComplimentary" class="form-check-label"></label></div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForEditKitchenSentLines" class="form-check-input" /><label asp-for="RequireSecondApprovalForEditKitchenSentLines" class="form-check-label"></label></div>
+            </div>
+            <div class="mt-2">
+                <div class="form-check form-switch"><input asp-for="RequireSecondApprovalForAddNote" class="form-check-input" /><label asp-for="RequireSecondApprovalForAddNote" class="form-check-label"></label></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Yazar Kasa Entegrasyonu</div>
         <div class="card-body">
             <p class="text-secondary small">Bir yazar kasa seçilip adresi girilirse, restoran Kapat/Öde ekranındaki nakit/kredi kartı/yemek çeki ödemeleri doğrudan fiziksel yazar kasaya gönderilir (fatura kesilen satışlar hariç). "Yok" seçiliyken (varsayılan) hiçbir değişiklik olmaz, bugünkü gibi çalışır.</p>

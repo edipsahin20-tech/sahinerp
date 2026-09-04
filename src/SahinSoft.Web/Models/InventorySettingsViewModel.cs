@@ -67,6 +67,26 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Hazır Ürün Notları (her satıra bir tane)")]
     public string? QuickNotePresets { get; set; }
 
+    // "Şifre sorulsun mu?" (madde 21) - açık olan kritik işlem, yetkili kullanıcı tarafından
+    // yapılsa BİLE ikinci bir yetkilinin PIN onayını ister (bkz. RestaurantPermissionService).
+    [Display(Name = "Sipariş Satırı İptalinde İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForCancelOrderLine { get; set; }
+
+    [Display(Name = "Fiş İptalinde İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForCancelReceipt { get; set; }
+
+    [Display(Name = "İndirimde İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForDiscount { get; set; }
+
+    [Display(Name = "İkramda İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForComplimentary { get; set; }
+
+    [Display(Name = "Mutfağa Gönderilmiş Ürün Düzenlemede İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
+
+    [Display(Name = "Not Eklemede İkinci Yetkili Onayı")]
+    public bool RequireSecondApprovalForAddNote { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

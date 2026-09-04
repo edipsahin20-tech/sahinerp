@@ -44,6 +44,12 @@ public sealed class RestaurantCheckViewModel
     public List<string> CancellationReasonPresets { get; set; } = [];
     public List<string> QuickNotePresets { get; set; } = [];
 
+    // "Şifre sorulsun mu?" (madde 21) - açıksa JS ilgili işlemden önce ikinci bir yetkilinin
+    // PIN'ini ister (bkz. approverPinModal, RestaurantPermissionService.RequiresSecondApproval*).
+    public bool RequireSecondApprovalForCancelOrderLine { get; set; }
+    public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
+    public bool RequireSecondApprovalForComplimentary { get; set; }
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
