@@ -224,7 +224,13 @@
    uzat" - numpad eklendikten sonra dar kalıyordu). */
 .restaurant-pos .pos-layout {
     display: grid;
-    grid-template-columns: 1fr minmax(580px, 680px) 76px;
+    /* vw'ye bağlı akışkan (clamp) - sabit bir çözünürlüğe göre ayarlanmadı, viewport genişliğine
+       göre kendiliğinden ölçekleniyor (Edip, 2026-09-04: "otomatik ekran boyutunu kendi
+       ayarlasın" / "sadece tek bir çözünürlüğe göre ayarlama yapma"). Alt sınır (500px), en sıkışık
+       hedef durumda (1366x768 ekranda %150 Windows ölçeklendirme ≈ 911x512 mantıksal piksel) dış
+       grid'in taşmasını önler - adisyon satırları zaten kendi içinde yatay kayabiliyor (bkz.
+       .cart-lines-header-scroll), o yüzden bu daralma okunabilirliği bozmuyor. */
+    grid-template-columns: minmax(160px, 1fr) clamp(380px, 42vw, 680px) 76px;
     gap: 1rem;
     align-items: stretch;
     flex: 1;
@@ -235,21 +241,16 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-}
-
-@media (max-width: 1200px) {
-    .restaurant-pos .pos-layout {
-        grid-template-columns: 1fr minmax(510px, 590px);
-    }
-
-    .restaurant-pos .pos-side-icons {
-        grid-column: 1 / -1;
-        flex-direction: row;
-    }
+    /* .pos-layout grid item'ı olarak varsayılan min-width:auto içeriğin (kategori sekmeleri,
+       Masa Durumu/Masayı Boşalt butonları) doğal min-content genişliğine göre büzülmeyi
+       engelleyip TÜM grid'i taşırıyordu (Edip, 2026-09-04: aşırı sıkışık DPI ölçeklendirme
+       testinde bulundu) - .cart-main'deki AYNI çözüm burada da uygulandı. */
+    min-width: 0;
 }
 
 .restaurant-pos .product-panel-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
 }
@@ -369,6 +370,7 @@
 .restaurant-pos .cart-line {
     display: grid;
     grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 150px;
+    min-width: 556px;
     align-items: center;
     gap: 0.6rem;
     padding: 0.55rem 0.4rem;
@@ -435,9 +437,23 @@
     color: #A9631A;
 }
 
+/* Aşırı sıkışık viewport'larda (ör. 1366x768 ekranda %150 Windows ölçeklendirme - ~911x512
+   mantıksal piksel) 7 sütun (Ürün Adı + 6 sabit sütun) kendi doğal genişliğine sığmayabiliyor.
+   Sütunları okunamayacak kadar küçültmek yerine (Edip, 2026-09-04: "okunamayacak kadar
+   küçülme... kontrol et") satır alanı KENDİ İÇİNDE yatay kaydırılabilir hale getirildi - sadece
+   bu iç bölüm kayar, sayfanın geri kalanı sabit kalır. Başlık ve satırlar AYNI min-width'i
+   paylaştığı ve restaurant-pos.js'te kaydırma konumu senkronize edildiği için sütunlar her
+   zaman hizalı kalır. */
+.restaurant-pos .cart-lines-header-scroll,
+.restaurant-pos .cart-sent-lines,
+.restaurant-pos .cart-lines {
+    overflow-x: auto;
+}
+
 .restaurant-pos .cart-lines-header {
     display: grid;
     grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 150px;
+    min-width: 556px;
     gap: 0.6rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
@@ -515,8 +531,11 @@
 }
 
 .restaurant-pos .cart-qty-stepper button {
-    width: 1.7rem;
-    height: 1.7rem;
+    /* 27px'ti - dokunmatik için önerilen ~36-40px'in altında (Edip, 2026-09-04: "dokunmatik
+       buton boyutlarını kontrol et"). Diğer sabit çubuk butonlarıyla (Not/İndirim/İkram/Sil,
+       ~32px) tutarlı kalacak şekilde büyütüldü. */
+    width: 2.1rem;
+    height: 2.1rem;
     border-radius: 6px;
     border: 1px solid var(--pos-border);
     background: var(--pos-surface);
@@ -770,6 +789,11 @@
     border-radius: 10px;
     padding: 0.85rem 1.1rem;
     min-width: 96px;
+    max-width: 100%;
+    /* Uzun/tek parça kategori adları (ör. "Başlangıçlar") aşırı sıkışık viewport'ta sekmeyi
+       taşırabiliyordu - kelime gerekirse kırılabilsin diye (Edip, 2026-09-04: DPI ölçeklendirme
+       testinde bulundu). Normal genişliklerde görünüme dokunmuyor, sadece son çare. */
+    overflow-wrap: break-word;
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;

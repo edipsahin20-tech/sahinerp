@@ -960,6 +960,29 @@
         });
     })();
 
+    // --- Ürün şablonu satır başlığı/satırları yatay kaydırma senkronu - çok sıkışık viewport'
+    // larda (ör. %150 Windows ölçeklendirme) sütunlar sığmayıp bu üç ayrı kapsayıcı (başlık,
+    // gönderilmiş satırlar, bekleyen satırlar) kendi içinde yatay kayabiliyor (bkz. CSS); AYRI
+    // scroll konumları olduğu için biri kaydırılınca sütunlar hizasız kalırdı - burada üçü
+    // birbirine senkronize edilir (Edip, 2026-09-04: "üst üste binmemeli"). ---
+    (function () {
+        var syncTargets = [
+            document.getElementById('cart-lines'),
+            document.getElementById('cart-sent-lines'),
+            document.querySelector('.cart-lines-header-scroll')
+        ].filter(Boolean);
+        if (syncTargets.length < 2) return;
+        var syncing = false;
+        syncTargets.forEach(function (el) {
+            el.addEventListener('scroll', function () {
+                if (syncing) return;
+                syncing = true;
+                syncTargets.forEach(function (other) { if (other !== el) other.scrollLeft = el.scrollLeft; });
+                syncing = false;
+            });
+        });
+    })();
+
     // --- Fişi Beklet ---
     (function () {
         var holdBtn = document.getElementById('side-hold-btn');
