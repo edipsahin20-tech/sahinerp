@@ -762,7 +762,9 @@
             });
         });
 
-        keyboardEl.querySelector('[data-action="backspace"]').addEventListener('click', backspace);
+        keyboardEl.querySelectorAll('[data-action="backspace"]').forEach(function (btn) {
+            btn.addEventListener('click', backspace);
+        });
         keyboardEl.querySelector('[data-action="shift"]').addEventListener('click', function () {
             shiftOn = !shiftOn;
             applyShift();
@@ -773,6 +775,25 @@
 
         toggleBtn.addEventListener('click', function () {
             keyboardEl.style.display = keyboardEl.style.display === 'none' ? '' : 'none';
+        });
+
+        // Dock (sol/sağ) + boyut kontrolü (madde 17: "taşınabilir - sol veya sağ", "kontrol
+        // edilebilir şekilde yeniden boyutlandırılabilir"). Free-drag DEĞİL - bilinçli olarak
+        // her zaman bir köşeye sabitlenir ki EKRAN DIŞINA HİÇ TAŞMASIN.
+        var SIZES = ['sm', 'md', 'lg'];
+        keyboardEl.querySelector('[data-vk-action="dock-left"]').addEventListener('click', function () {
+            keyboardEl.setAttribute('data-dock', 'left');
+        });
+        keyboardEl.querySelector('[data-vk-action="dock-right"]').addEventListener('click', function () {
+            keyboardEl.setAttribute('data-dock', 'right');
+        });
+        keyboardEl.querySelector('[data-vk-action="size-down"]').addEventListener('click', function () {
+            var idx = Math.max(0, SIZES.indexOf(keyboardEl.getAttribute('data-size')) - 1);
+            keyboardEl.setAttribute('data-size', SIZES[idx]);
+        });
+        keyboardEl.querySelector('[data-vk-action="size-up"]').addEventListener('click', function () {
+            var idx = Math.min(SIZES.length - 1, SIZES.indexOf(keyboardEl.getAttribute('data-size')) + 1);
+            keyboardEl.setAttribute('data-size', SIZES[idx]);
         });
     })();
 

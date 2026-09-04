@@ -55,7 +55,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 13 | Açık Hesap + zorunlu cari | ✅ tamam + test edildi (2026-09-04) |
 | 14 | Tahsilat Carileri / platform ödemeleri | ✅ tamam + test edildi (2026-09-04) |
 | 15-16 | Ürün Arama modal + Türkçe normalize | ✅ tamam + test edildi (2026-09-04) - "klavye altta" kısmı için şimdilik MEVCUT basit klavye kullanılıyor, madde 17'nin YENİ özel klavyesi ayrı iş olarak duruyor |
-| 17 | Özel sanal klavye | ⏳ yeni |
+| 17 | Özel sanal klavye | ✅ tamam + test edildi (2026-09-04) |
 | 18 | Bekleyen Fişler kart tasarımı | ⏳ |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
 | 20 | Boş Adisyon otomatik temizlik | 🔶 kısmen mevcut (VoidEmptyCheckAsync) |
@@ -497,3 +497,25 @@ boyutlandırılabilir) AYRI bir iş - henüz yapılmadı, sıradaki adım.
 KÖFTE 1 PORSİYON | 225,00 ₺" doğru sütunlarla listelendi, tıklanınca sepete eklendi VE kategori
 sekmeleri (Başlangıçlar/Izgaralar/Salatalar) DEĞİŞMEDİ. Barkod moduna geçilip tam barkod
 ("1989000001424") yazıldığında AYNI ürün doğru bulundu.
+
+### Madde 17 — Özel sanal klavye (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar (klavye baştan tasarlandı):**
+- Yeni düzen: harfler SOLDA (qwerty + Türkçe ğ/ü/ş/ı/ö/ç), numpad SAĞDA (7-8-9/4-5-6/1-2-3/0-,-⌫)
+  - iki panel yan yana `.pos-vk-body { display:flex }`.
+  - Büyük dokunma tuşları (varsayılan 2.6rem, `data-size="lg"` iken 3.4rem).
+- Taşınabilir: sol/sağ DOCK (◀/▶ araç çubuğu tuşları, `data-dock` attribute) - free-drag
+  KASITLI OLARAK tercih edilmedi, "EKRAN DIŞINA HİÇ TAŞMASIN" şartını dock+`max-width:calc(100vw
+  - 24px)`/`max-height:calc(100vh - 24px)` kombinasyonu KESİN olarak garantiliyor (free-drag
+  ekstra sınır-kontrolü kodu gerektirirdi, dock'lama daha sağlam).
+- Boyut kontrolü: － / ＋ tuşları `data-size` (sm/md/lg) arasında geçiş yapıyor.
+- Otomatik açılma YOK (zaten mevcut davranıştı, madde 17'nin "ana barkod alanında asla otomatik
+  açılmama" şartı baştan sağlanıyordu - sadece "⌨ Klavye" ile elle açılıyor).
+- Bug: `[data-action="backspace"]` artık HEM harfler HEM numpad panelinde var - eski kod
+  `querySelector` (TEK eleman) kullanıyordu, `querySelectorAll` + forEach'e çevrildi ki numpad'in
+  kendi ⌫'i de çalışsın.
+
+**Nasıl test edildi:** Fiş Notu alanına odaklanılıp gerçek tıklamalarla "q", boşluk, "ç" art
+arda yazıldı - metin alanında doğru sırayla ve doğru Türkçe karakterle ("q ç") biriktiği
+doğrulandı. "Sağa yasla" tıklanınca klavye sağa geçti (ekran dışına taşmadı). "Büyüt" tıklanınca
+tuşlar büyüdü, panel yine ekran içinde kaldı.

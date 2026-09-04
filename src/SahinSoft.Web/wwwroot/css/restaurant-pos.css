@@ -654,17 +654,53 @@
     font-size: 0.9rem;
 }
 
-/* Sanal klavye - dokunmatik ekranlar için (Edip, 2026-09-03). Ekranın altına sabitlenir, en üst
-   katmanda durur. */
+/* Sanal klavye (madde 17, 2026-09-04 baştan tasarlandı) - harfler solda/numpad sağda, sol/sağ
+   dock + boyut kontrolü. EKRAN DIŞINA TAŞMAZ: her zaman fixed + bir köşeye sabit (free-drag
+   DEĞİL), max-width/max-height viewport'a göre sınırlı, taşarsa kendi içinde kayar. */
 .pos-virtual-keyboard {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    bottom: 12px;
     z-index: 1080;
     background: var(--pos-navy, #0B2239);
-    padding: 0.6rem 0.75rem 0.8rem;
-    box-shadow: 0 -8px 24px rgba(0,0,0,.25);
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+}
+.pos-virtual-keyboard[data-dock="left"] { left: 12px; right: auto; }
+.pos-virtual-keyboard[data-dock="right"] { right: 12px; left: auto; }
+
+.pos-vk-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+.pos-vk-tool {
+    min-width: 2rem;
+    min-height: 2rem;
+    border: none;
+    border-radius: 6px;
+    background: #16324E;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.pos-vk-tool-close { background: #7a2b2b; margin-left: 0.5rem; }
+
+.pos-vk-body {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+}
+.pos-vk-letters { display: flex; flex-direction: column; }
+.pos-vk-numpad {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255,255,255,.12);
+    padding-left: 0.6rem;
 }
 
 .pos-vk-row {
@@ -674,16 +710,19 @@
     margin-bottom: 0.35rem;
 }
 
-.pos-virtual-keyboard button {
-    min-width: 2.4rem;
-    min-height: 2.4rem;
+.pos-virtual-keyboard button[data-key], .pos-virtual-keyboard button[data-action] {
+    min-width: 2.6rem;
+    min-height: 2.6rem;
     border: none;
     border-radius: 7px;
     background: #16324E;
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 1rem;
     cursor: pointer;
 }
+/* Boyut kontrolü (data-size) - "kontrol edilebilir şekilde yeniden boyutlandırılabilir". */
+.pos-virtual-keyboard[data-size="sm"] button[data-key], .pos-virtual-keyboard[data-size="sm"] button[data-action] { min-width: 2rem; min-height: 2rem; font-size: 0.82rem; }
+.pos-virtual-keyboard[data-size="lg"] button[data-key], .pos-virtual-keyboard[data-size="lg"] button[data-action] { min-width: 3.4rem; min-height: 3.4rem; font-size: 1.25rem; }
 
 .pos-virtual-keyboard button:active {
     background: var(--pos-gold);
@@ -691,16 +730,19 @@
 }
 
 .pos-virtual-keyboard button.pos-vk-wide {
-    min-width: 4.5rem;
+    min-width: 4.2rem;
     font-size: 0.82rem;
 }
 
-.pos-virtual-keyboard button[data-action="close"] {
+.pos-virtual-keyboard button[data-action="backspace"] {
     background: #7a2b2b;
 }
 
 .pos-virtual-keyboard button.pos-vk-space {
-    min-width: 16rem;
+    min-width: 10rem;
+}
+.pos-virtual-keyboard button.pos-vk-numpad-bs {
+    background: #7a2b2b;
 }
 
 .restaurant-pos .cart-total {

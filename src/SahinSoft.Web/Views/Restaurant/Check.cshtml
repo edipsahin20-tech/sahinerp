@@ -478,27 +478,43 @@
     </div>
 </div>
 
-<!-- Klavye - dokunmatik ekranlarda fiziksel klavye olmadığı için sayfa üzerinde açılıp kapanan
-     sanal klavye (Edip, 2026-09-03: "ekranlar dokunmatik olduğu için klavye gibi kullansın").
-     Odaklanılan son metin alanına yazar - bkz. restaurant-pos.js. -->
-<div class="pos-virtual-keyboard" id="pos-virtual-keyboard" style="display:none;">
-    <div class="pos-vk-row">
-        <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button><button type="button" data-key="0">0</button>
-        <button type="button" class="pos-vk-wide" data-action="backspace">⌫</button>
+<!-- Klavye (madde 17, Edip 2026-09-04 - baştan tasarlandı) - harfler solda/numpad sağda,
+     büyük dokunma tuşları, sol/sağ dock + boyut kontrolü, EKRAN DIŞINA HİÇ TAŞMAZ (fixed +
+     dock pozisyonlarıyla sınırlı, free-drag değil). Hiçbir alanda OTOMATİK açılmaz - sadece
+     "⌨ Klavye" ile elle açılır (ana barkod alanını fiziksel tarayıcıdan hiç ayırmaz).
+     Odaklanılan son metin alanına, imleç konumuna yazar - bkz. restaurant-pos.js. -->
+<div class="pos-virtual-keyboard" id="pos-virtual-keyboard" data-dock="left" data-size="md" style="display:none;">
+    <div class="pos-vk-toolbar">
+        <button type="button" class="pos-vk-tool" data-vk-action="dock-left" title="Sola yasla">◀</button>
+        <button type="button" class="pos-vk-tool" data-vk-action="dock-right" title="Sağa yasla">▶</button>
+        <button type="button" class="pos-vk-tool" data-vk-action="size-down" title="Küçült">－</button>
+        <button type="button" class="pos-vk-tool" data-vk-action="size-up" title="Büyüt">＋</button>
+        <button type="button" class="pos-vk-tool pos-vk-tool-close" data-action="close" title="Kapat">✕</button>
     </div>
-    <div class="pos-vk-row">
-        <button type="button" data-key="q">q</button><button type="button" data-key="w">w</button><button type="button" data-key="e">e</button><button type="button" data-key="r">r</button><button type="button" data-key="t">t</button><button type="button" data-key="y">y</button><button type="button" data-key="u">u</button><button type="button" data-key="ı">ı</button><button type="button" data-key="o">o</button><button type="button" data-key="p">p</button><button type="button" data-key="ğ">ğ</button><button type="button" data-key="ü">ü</button>
-    </div>
-    <div class="pos-vk-row">
-        <button type="button" data-key="a">a</button><button type="button" data-key="s">s</button><button type="button" data-key="d">d</button><button type="button" data-key="f">f</button><button type="button" data-key="g">g</button><button type="button" data-key="h">h</button><button type="button" data-key="j">j</button><button type="button" data-key="k">k</button><button type="button" data-key="l">l</button><button type="button" data-key="ş">ş</button><button type="button" data-key="i">i</button>
-    </div>
-    <div class="pos-vk-row">
-        <button type="button" class="pos-vk-wide" data-action="shift">⇧</button>
-        <button type="button" data-key="z">z</button><button type="button" data-key="x">x</button><button type="button" data-key="c">c</button><button type="button" data-key="v">v</button><button type="button" data-key="b">b</button><button type="button" data-key="n">n</button><button type="button" data-key="m">m</button><button type="button" data-key="ö">ö</button><button type="button" data-key="ç">ç</button>
-        <button type="button" class="pos-vk-wide" data-action="close">✕ Kapat</button>
-    </div>
-    <div class="pos-vk-row">
-        <button type="button" class="pos-vk-space" data-key=" ">boşluk</button>
+    <div class="pos-vk-body">
+        <div class="pos-vk-letters">
+            <div class="pos-vk-row">
+                <button type="button" data-key="q">q</button><button type="button" data-key="w">w</button><button type="button" data-key="e">e</button><button type="button" data-key="r">r</button><button type="button" data-key="t">t</button><button type="button" data-key="y">y</button><button type="button" data-key="u">u</button><button type="button" data-key="ı">ı</button><button type="button" data-key="o">o</button><button type="button" data-key="p">p</button>
+            </div>
+            <div class="pos-vk-row">
+                <button type="button" data-key="a">a</button><button type="button" data-key="s">s</button><button type="button" data-key="d">d</button><button type="button" data-key="f">f</button><button type="button" data-key="g">g</button><button type="button" data-key="h">h</button><button type="button" data-key="j">j</button><button type="button" data-key="k">k</button><button type="button" data-key="l">l</button>
+            </div>
+            <div class="pos-vk-row">
+                <button type="button" class="pos-vk-wide" data-action="shift">⇧</button>
+                <button type="button" data-key="z">z</button><button type="button" data-key="x">x</button><button type="button" data-key="c">c</button><button type="button" data-key="v">v</button><button type="button" data-key="b">b</button><button type="button" data-key="n">n</button><button type="button" data-key="m">m</button>
+                <button type="button" class="pos-vk-wide" data-action="backspace">⌫</button>
+            </div>
+            <div class="pos-vk-row">
+                <button type="button" data-key="ğ">ğ</button><button type="button" data-key="ü">ü</button><button type="button" data-key="ş">ş</button><button type="button" data-key="i">i</button><button type="button" data-key="ö">ö</button><button type="button" data-key="ç">ç</button>
+                <button type="button" class="pos-vk-space" data-key=" ">boşluk</button>
+            </div>
+        </div>
+        <div class="pos-vk-numpad">
+            <div class="pos-vk-row"><button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button></div>
+            <div class="pos-vk-row"><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button></div>
+            <div class="pos-vk-row"><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button></div>
+            <div class="pos-vk-row"><button type="button" data-key="0">0</button><button type="button" data-key=",">,</button><button type="button" class="pos-vk-numpad-bs" data-action="backspace">⌫</button></div>
+        </div>
     </div>
 </div>
 
