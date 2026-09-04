@@ -52,7 +52,7 @@
 .rest-shell .rest-topbar > * { flex-shrink: 0; }
 
 .rest-shell .rest-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; min-width: 200px; }
-.rest-shell .rest-brand .rest-logo { font-size: 26px; color: var(--rs-gold); font-weight: 900; }
+.rest-shell .rest-brand .rest-logo { height: 28px; width: auto; }
 .rest-shell .rest-brand b { color: #C88E00; }
 
 .rest-shell .rest-pill {
