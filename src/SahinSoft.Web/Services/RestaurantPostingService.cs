@@ -952,7 +952,7 @@ public sealed class RestaurantPostingService(
         return new SendOrderToKitchenResult(order, unroutedProductNames);
     }
 
-    public Task CancelOrderLineAsync(
+    public async Task CancelOrderLineAsync(
         int restaurantOrderLineId,
         string cancelledByUserId,
         string reason,
@@ -964,7 +964,7 @@ public sealed class RestaurantPostingService(
             throw new InvalidOperationException("İptal gerekçesi zorunludur.");
         }
 
-        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        var affectedCheckId = await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
@@ -1041,9 +1041,31 @@ public sealed class RestaurantPostingService(
                     await permissionService.LogApprovalAsync("CancelOrderLine", cancelledByUserId, approverUserId, line.RestaurantOrder.RestaurantCheckId, line.Id, reason, cancellationToken);
                 }
 
-                return true;
+                return line.RestaurantOrder.RestaurantCheckId;
             });
         }, cancellationToken);
+
+        // Boş Adisyon (madde 20, Edip 2026-09-04) - "Self Satış'ta son ürün de iptal edilince
+        // adisyon KENDİLİĞİNDEN temizlenir, kullanıcı Kapat'a basmak ZORUNDA değildir." SADECE
+        // Self Satış'ta - Masa Satış'ta müşteri hâlâ masada oturuyor olabilir, adisyonu
+        // kendiliğinden iptal etmek YANLIŞ olurdu (spec bunu bilerek Self Satış'a sınırlıyor).
+        var isSelfSaleCheck = await dbContext.RestaurantChecks
+            .AsNoTracking()
+            .Where(x => x.Id == affectedCheckId && x.Status == RestaurantCheckStatus.Open)
+            .Select(x => x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (isSelfSaleCheck)
+        {
+            try
+            {
+                await VoidEmptyCheckAsync(affectedCheckId, cancelledByUserId, cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                // Adisyonda hâlâ aktif ürün var (bu iptal SONUNCUSU değildi) - normal durum,
+                // sessizce yok say.
+            }
+        }
     }
 
     // Mutfağa gönderilmiş bir satırın miktarını sonradan düzeltme - Edip, 2026-09-03: "mutfağa

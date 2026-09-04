@@ -58,7 +58,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 17 | Özel sanal klavye | ✅ tamam + test edildi (2026-09-04) |
 | 18 | Bekleyen Fişler kart tasarımı | ✅ tamam + test edildi (2026-09-04) |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ✅ tamam + test edildi (2026-09-04) |
-| 20 | Boş Adisyon otomatik temizlik | 🔶 kısmen mevcut (VoidEmptyCheckAsync) |
+| 20 | Boş Adisyon otomatik temizlik | ✅ tamam + test edildi (2026-09-04/05) - gerçek eksik bulundu ve düzeltildi |
 | 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
 | 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ⏳ |
 | 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | 🔶 "kişi sayısı sorulsun mu" akışı ilk açılışta zaten çalışıyor (doğrulandı), tasarım karşılaştırması henüz yapılmadı |
@@ -563,3 +563,27 @@ görünmüyor) ve mini özette bu 4 türün doğru tutarlarla (Nakit 3.600/Kredi
 125/Açık Hesap 250) göründüğü doğrulandı. `payment=openaccount` filtresi uygulanınca SADECE 2
 fiş (250₺ toplam) kaldı, alt toplam SADECE "AÇIK HESAP 250₺" oldu. Arama kutusuna "PSF.00037"
 yazılınca SADECE o tek fiş (Masa, Nakit, 1.625₺) listelendi.
+
+### Madde 20 — Boş Adisyon otomatik temizlik (TAMAMLANDI, 2026-09-05, TEST EDİLDİ)
+
+**Gerçek eksik bulundu:** `VoidEmptyCheckAsync` zaten vardı ama SADECE "Masayı Boşalt" butonuna
+elle basınca çalışıyordu - spec'in "son ürün İPTAL EDİLİNCE adisyon KENDİLİĞİNDEN temizlenir,
+kullanıcı Kapat'a basmak ZORUNDA değildir" şartı sağlanmıyordu. "Sipariş Sil" (Sipariş Sil) zaten
+tamamen client-side (sadece henüz gönderilmemiş sepeti temizliyor, sunucuya hiç dokunmuyor) -
+buna dokunulmadı.
+
+**Yapılanlar:**
+- `CancelOrderLineAsync` artık satır iptalinden SONRA otomatik kontrol ediyor: bu check bir
+  Self Satış check'i mi VE artık hiç aktif satırı kalmadı mı? İkisi de doğruysa `VoidEmptyCheckAsync`'i
+  KENDİSİ çağırıyor (aktif satır kalmışsa fırlatılan istisna sessizce yutuluyor - normal durum).
+- **BİLİNÇLİ OLARAK SADECE Self Satış'ta** - spec'in kendi metni bunu Self Satış'a sınırlıyor
+  (Masa Satış'ta müşteri hâlâ masada oturuyor olabilir, adisyonu kendiliğinden iptal etmek YANLIŞ
+  olurdu).
+- Metod imzası `Task` → `async Task`'a çevrildi (post-commit adımı eklemek için).
+
+**Nasıl test edildi:** Self Satış'ta ÇORBA eklenip mutfağa gönderildi (gerçek satır oluştu),
+sonra o TEK satıra İptal denendi (gerekçe + 2. yetkili PIN onayı ile, ayarlar açık kaldığından).
+Sunucu "Sipariş satırı iptal edildi." VE hemen ardından "Bu adisyon artık açık değil." mesajlarını
+verdi, Masa Satış ekranında "Açık Adisyon 0.00 ₺" göründü - adisyon gerçekten otomatik kapandı.
+Self Satış'a tekrar girildiğinde BAŞKA bir (önceden açık kalmış, gerçekten boş) adisyon doğru
+şekilde yeniden kullanıldı - fantom açık fiş kalmadı.
