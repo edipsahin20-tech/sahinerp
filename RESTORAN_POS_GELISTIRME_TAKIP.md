@@ -54,7 +54,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 12 | Ödenmez ödeme tipi | ✅ tamam + test edildi (2026-09-04) |
 | 13 | Açık Hesap + zorunlu cari | ✅ tamam + test edildi (2026-09-04) |
 | 14 | Tahsilat Carileri / platform ödemeleri | ✅ tamam + test edildi (2026-09-04) |
-| 15-16 | Ürün Arama modal + Türkçe normalize | ⏳ |
+| 15-16 | Ürün Arama modal + Türkçe normalize | 🔶 Türkçe I/İ/ı/i normalizasyonu DOĞRULANDI (DB'nin Turkish collation'ı zaten hallediyor, kod değişikliği gerekmedi - "porsiyon" araması "PORSİYON"u buluyor) - "Ürün Listesi" modalının kendisi (arama üstte/sonuç ortada/klavye altta, Stok Kodu|Barkod|Ürün Adı, ad/barkod modu) HENÜZ YAPILMADI |
 | 17 | Özel sanal klavye | ⏳ yeni |
 | 18 | Bekleyen Fişler kart tasarımı | ⏳ |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
