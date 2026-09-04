@@ -9980,3 +9980,56 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [ComplimentaryAtUtc] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [ComplimentaryByUserId] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [ComplimentaryNote] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [ComplimentaryReasonFor] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [ComplimentaryReasonWhy] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904194505_AddReceiptComplimentary'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904194505_AddReceiptComplimentary', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

@@ -197,6 +197,23 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         }
     }
 
+    // Fiş İkram (madde 11) - adisyondaki TÜM aktif satırları ikram eder. JSON döner -
+    // restaurant-pos.js sayfayı kendi yeniler (ApplyDiscount ile AYNI desen).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyReceiptComplimentary(int checkId, string? reasonFor, string? reasonWhy, string? note)
+    {
+        try
+        {
+            await postingService.ApplyReceiptComplimentaryAsync(checkId, CurrentUserId, reasonFor, reasonWhy, note);
+            return Json(new { success = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateCheckNote(int checkId, string? note)

@@ -225,6 +225,60 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Fiş İkram (madde 11) - adisyondaki TÜM aktif satırları ikram eder (satır bazlı İkram'ın
+    // toplu hali, ApplyTicketDiscountAsync ile AYNI desen). Ciroya dahil DEĞİLDİR - satırların
+    // DiscountAmountSnapshot'ı kendi brüt tutarına eşitlenir, tıpkı tekil satır İkram'ı gibi.
+    // Yetkili kullanıcı (Administrator) reasonFor/reasonWhy boş bırakabilir, diğerleri (profilinde
+    // CanApplyComplimentary açık ama Administrator değil) doldurmak ZORUNDADIR.
+    public async Task ApplyReceiptComplimentaryAsync(
+        int checkId,
+        string performedByUserId,
+        string? reasonFor,
+        string? reasonWhy,
+        string? note,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await permissionService.CanApplyComplimentaryAsync(performedByUserId, cancellationToken))
+        {
+            throw new InvalidOperationException("İkram uygulama yetkiniz yok.");
+        }
+
+        var canSkipReason = await permissionService.IsAdministratorAsync(performedByUserId, cancellationToken);
+        if (!canSkipReason && (string.IsNullOrWhiteSpace(reasonFor) || string.IsNullOrWhiteSpace(reasonWhy)))
+        {
+            throw new InvalidOperationException("Kime ve Neden alanları zorunludur.");
+        }
+
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        if (check.Status != RestaurantCheckStatus.Open)
+        {
+            throw new InvalidOperationException("Yalnızca açık adisyonlar ikram edilebilir.");
+        }
+
+        var lines = await dbContext.RestaurantOrderLines
+            .Where(x => x.RestaurantOrder.RestaurantCheckId == checkId && x.Status != RestaurantOrderLineStatus.Cancelled)
+            .ToListAsync(cancellationToken);
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Adisyonda ürün yok.");
+        }
+
+        foreach (var line in lines)
+        {
+            line.IsComplimentary = true;
+            line.DiscountAmountSnapshot = line.Quantity * line.UnitPriceSnapshot;
+        }
+
+        check.ComplimentaryAtUtc = DateTime.UtcNow;
+        check.ComplimentaryByUserId = performedByUserId;
+        check.ComplimentaryReasonFor = reasonFor;
+        check.ComplimentaryReasonWhy = reasonWhy;
+        check.ComplimentaryNote = note;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // "Masayı Boşalt" - müşteri hiçbir şey almadan gitti ya da sipariş edilen her şey iptal
     // edildi; CloseCheckAsync bu durumda "Boş adisyon kapatılamaz" diye reddeder, adisyon açık
     // kalır ve masa DOLU görünmeye devam eder. Bu, ödemesiz bir çıkış yolu: adisyon İPTAL

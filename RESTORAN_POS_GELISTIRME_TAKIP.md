@@ -25,7 +25,7 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | # | Madde | Durum |
 |---|---|---|
 | 0 | Bu takip dosyası + mimari karar notu | ✅ |
-| 2 | Ortak Satış Mimarisi | ⏳ değerlendiriliyor |
+| 2 | Ortak Satış Mimarisi | ✅ doğrulandı (2026-09-04) - RestaurantSelfSaleController.Index, RestaurantPackageController.Create ve Masa Satış'ın kendisi ÜÇÜ DE RestaurantController/Check'e (aynı Check.cshtml + RestaurantPostingService) yönleniyor, sadece kayıt hedefi (masa/self/paket) farklı |
 | 3 | Self Satış Hızlı Ödeme + fiş sorulsun mu parametresi | ✅ tamam + test edildi (2026-09-04) |
 | 4 | Ödeme Al ekranı (Toplam/Ödenen/Kalan/Para Üstü) | ✅ tamam + test edildi (2026-09-04) |
 | 5 | Parçalı Ödeme | ✅ tamam + test edildi (2026-09-04, sunucu kalıcılığıyla birlikte) |
@@ -33,8 +33,8 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | 7 | Ödeme İptal | ✅ tamam + test edildi (2026-09-04) |
 | 8 | Adisyona Dön (kilitlenmeden, kısmi ödeme korunur) | ✅ tamam + test edildi (2026-09-04, tam sayfa yenilemede bile korunduğu doğrulandı) |
 | 9 | Satır Kilidi TAMAMEN KALDIRILACAK | ✅ tamam + test edildi (2026-09-04) |
-| 10 | İndirim ortak motor | 🔶 kısmen mevcut (ApplyTicketDiscountAsync) |
-| 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ⏳ |
+| 10 | İndirim ortak motor | ✅ doğrulandı + test edildi (2026-09-04) - ana ekran ve ödeme ekranı AYNI #ticketDiscountModal'ı açıyor (pay-discount-btn → openTicketDiscountModal(true)), İndirimi Kaldır (discount-clear-btn) ApplyTicketDiscountAsync(0) çağırıp TÜM satırların DiscountAmountSnapshot'ını sıfırlayarak orijinal toplamı tam geri getiriyor, hızlı ödeme zaten net (indirimli) tutar üzerinden çalışıyor (ComputeCheckRunningTotal DiscountAmountSnapshot'ı düşüyor) |
+| 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ✅ tamam + test edildi (2026-09-04) - stok hareketi kısmı için not: bkz. aşağıdaki detay |
 | 12 | Ödenmez ödeme tipi | ⏳ yeni |
 | 13 | Açık Hesap + zorunlu cari | ⏳ |
 | 14 | Tahsilat Carileri / platform ödemeleri | ⏳ yeni |
@@ -203,7 +203,97 @@ SCROLL SAFETY NET (911x512 DPI testinde bulunan taşma çözümü) KORUNACAK, o 
 
 ---
 
-## Detaylı madde notları (ilerledikçe güncellenecek)
+## SIRADAKİ AYRI İŞ PAKETİ (Edip, 2026-09-04 22:5x civarı) — YAZDIRMA/RAPOR TASARIM ALTYAPISI
+
+**36 maddenin İÇİNDE DEĞİL, ONLARIN ÖNCELİĞİ VAR** ("önceliğin diğer konular" - Edip'in kendi
+sözü). Bu bölüm sadece unutulmasın diye kaydedildi - 36 madde bitmeden buna GEÇİLMEYECEK, ama
+36 madde tamamen bitince veya Edip özellikle isteyince sırada bu var.
+
+**Kapsam (Edip'in kendi maddeleri, aynen):**
+1. Merkezi rapor/yazdırma tasarım sistemi - adisyon fişi, tahsilat fişi, mutfak fişi, X raporu,
+   Z raporu, Z Listesi detay çıktısı TASARLANABİLİR ŞABLON üzerinden çalışsın. FRX/FRX3 benzeri
+   yönetilebilir şablon mantığı (alan ekleme, metin, çizgi, logo, tablo, font, hizalama,
+   görünürlük, koşullu alanlar, kağıt genişliği) - stack'te birebir FRX yoksa AYNI mantıkta
+   kendi Rapor Tasarımcısı'mızı kur. Şablonlar DB'de veya yönetilebilir dosyada saklanabilsin.
+   Tasarım değişince KOD DEĞİŞMEMELİ.
+2. 80mm termal yazıcı (XPrinter/ESC-POS) ANA HEDEF - A4/PDF boşluğu OLMAMALI, satır uzunluğu/
+   font/hizalama/kesme komutu termal yazıcıya uygun. 58mm parametre olarak eklenebilir ama
+   varsayılan 80mm.
+3. Ayarlar > merkezi Yazıcı Ayarları - şube/kasa başına ayrı yazıcı tanımı (Adisyon/Tahsilat-
+   Fiş/Mutfak/X-Z Rapor/Paket yazıcıları): ad, OS yazıcı adı, bağlantı tipi (USB/Network/IP),
+   IP/Port, kağıt genişliği, otomatik kesici, TR karakter kodlaması, kopya sayısı, test çıktısı,
+   aktif/pasif.
+4. Belge-yazıcı eşleştirmesi parametrik, şube/kasa bazlı (ör. Adisyon fişi → Kasa XPrinter 80mm).
+5. Tarayıcı print preview'a BAĞIMLI OLMA - mümkünse doğrudan tanımlı yazıcıya çıktı gönder,
+   preview isteğe bağlı olsun. Termal çıktıda otomatik kesme desteklensin.
+6. Adisyon fişi minimum alanlar: işletme adı/logo, Fiş/Adisyon No, tarih/saat, satış türü,
+   masa no/kişi sayısı, kasiyer/garson, ürün/miktar/birim fiyat/tutar, ara toplam, indirim, KDV,
+   genel toplam, ödeme türleri, Para Üstü, açıklama/not.
+7. X/Z raporları da AYNI rapor motorundan üretilip 80mm termalden düzgün çıkmalı, kullanıcı
+   tarafından tasarlanabilir olmalı.
+8. Amaç: rapor görünümü koddan bağımsız yönetilebilsin - yeni logo/alan/font/başlık/düzen için
+   DERLEME GEREKMEMELİ.
+
+**ÖNEMLİ - şu ana kadar yapılmış olanla ilişkisi:** Madde 3 (Self Satış Hızlı Ödeme) çalışması
+sırasında bugün eklenen `/Restaurant/Receipt/{id}` (Views/Restaurant/Receipt.cshtml, basit HTML +
+`window.print()`) ve mevcut RestaurantReports'taki "Fişi Gör" modalının Yazdır butonu - Edip'in
+kendi sözüyle: **"Mevcut basit HTML/PDF fiş çıktısını nihai çözüm olarak kabul etme... mevcut
+basit fiş çıktısını bu altyapıya geçiş için GEÇİCİ kabul et."** Yani bu ekranlar ŞİMDİLİK
+olduğu gibi kalacak (fonksiyonel, test edilmiş), ama bu iş paketine sıra gelince tasarlanabilir
+şablon motoruna taşınacak, kod DEĞİŞMEDEN yönetilebilir hale getirilecek. Nihai teslimde gerçek
+80mm termal yazıcıda test edilecek.
+
+---
+
+### Madde 2 — Ortak Satış Mimarisi (doğrulama, 2026-09-04)
+
+Kod okunarak doğrulandı: `RestaurantSelfSaleController.Index()` (satır ~55) ve
+`RestaurantPackageController.Create()` (satır ~107) İKİSİ DE `RedirectToAction("Check",
+"Restaurant", ...)` yapıyor - yani Masa Satış, Self Satış ve Paket'in ÜÇÜ DE ürün seçimi/
+miktar/barkod/indirim/ikram/satır silme/ödeme için AYNI `Check.cshtml` + `RestaurantPostingService`
+motorunu kullanıyor, sadece hangi masa/oturuma bağlandığı farklı. Yeni kod GEREKMEDİ, sadece
+doğrulandı.
+
+### Madde 10 — İndirim ortak motor (doğrulama, 2026-09-04)
+
+Kod + canlı test ile doğrulandı: ana ekrandaki "İndirim" butonu ve ödeme ekranındaki
+"% İndirim" butonu (`pay-discount-btn`) İKİSİ DE `window.openTicketDiscountModal()` - yani AYNI
+modal/motor. "İndirimi Kaldır" (`discount-clear-btn`) `ApplyTicketDiscountAsync(checkId, 0)`
+çağırıyor - bu, TÜM satırların `DiscountAmountSnapshot`'ını sıfırlayıp orijinal toplamı TAM
+olarak geri getiriyor (idempotent/mutlak tutar mantığı, kümülatif değil). Canlı testte %20
+indirim uygulandı (125→100₺), sonra kaldırıldı (100→125₺ tam geri döndü). Yeni kod GEREKMEDİ.
+
+### Madde 11 — Fiş İkram (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar:**
+- `RestaurantCheck`e ComplimentaryAtUtc/ComplimentaryByUserId/ComplimentaryReasonFor/
+  ComplimentaryReasonWhy/ComplimentaryNote eklendi (migration `AddReceiptComplimentary`).
+- `RestaurantPostingService.ApplyReceiptComplimentaryAsync`: CanApplyComplimentary yetki
+  kontrolü (yoksa reddedilir) + Administrator gerekçesiz atlayabilir/diğerleri Kime+Neden
+  zorunlu + adisyondaki TÜM aktif satırların IsComplimentary=true + DiscountAmountSnapshot=
+  brüt tutar (satır bazlı İkram ile AYNI desen, ciroya dahil değil).
+- `RestaurantPermissionService.IsAdministratorAsync` eklendi (gerekçe atlama kontrolü için).
+- Sağ menüdeki "Fiş İkram" artık SADECE bekleyen sepeti (client-only) işaretlemiyor - önce
+  `flushCartToKitchen` ile tüm bekleyen ürünleri kalıcı satıra çeviriyor, SONRA yeni
+  `#receiptComplimentaryModal` (Kime/Neden/Açıklama) açılıyor, sunucuya gönderiliyor.
+
+**NOT (kapsam dışı bırakılan kısım, madde metninde vardı ama şu an mimari olarak mümkün değil):**
+"Stok hareketi oluşturur" gereksinimi - incelendi, restoran satışlarının HİÇBİRİ (ikramlı ya da
+ücretli) şu an stok düşümü YAPMIYOR (RestaurantPostingService'te hiçbir StockMovement/Ledger
+çağrısı yok, `RestaurantCheckClosed` outbox mesajı sadece hibrit senkron için, stok tüketimine
+bağlı değil). Bu, restoran modülünün GENEL bir eksiği - ücretli satışlar da dahil - İkram'a özgü
+değil. İkram'ı normal satışla SİMETRİK tutmak (ciro hariç her şeyde aynı davranış) için doğru
+yaklaşım buydu; stok düşümü altyapısı restoran modülüne eklenirse İkram da OTOMATİK olarak aynı
+yoldan geçecek (DiscountAmountSnapshot=brüt olsa da satır miktarı/ürünü değişmiyor).
+
+**Nasıl test edildi:** Administrator olarak ÇORBA eklenip Fiş İkram'a basıldı → onay diyaloğu
+geçildi, Kime/Neden BOŞ bırakılıp "İkram Uygula" ile başarıyla uygulandı (sunucu loglarında
+`RestaurantChecks.ComplimentaryAtUtc/ComplimentaryByUserId` + `RestaurantOrderLines.
+IsComplimentary/DiscountAmountSnapshot` UPDATE'leri doğrulandı). Sonra Test Garson (PIN 9911,
+Administrator DEĞİL) ile aynı akış denendi: boş gönderim REDDEDİLDİ ("Kime ve Neden alanları
+zorunludur"), Kime/Neden doldurulunca BAŞARILI oldu.
+
+
 
 (Her madde tamamlandığında buraya: ne yapıldı, hangi dosyalar, nasıl test edildi, hangi commit.)
 

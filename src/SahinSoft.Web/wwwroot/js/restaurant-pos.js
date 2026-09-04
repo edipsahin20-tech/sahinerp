@@ -1045,16 +1045,71 @@
         });
     })();
 
-    // --- Fiş İkram - sepetteki TÜM (henüz gönderilmemiş) satırları tek tuşla ikram yapar,
-    // satır bazlı İkram butonu zaten var (sabit çubuk), bu onun toplu hali. ---
+    // --- Fiş İkram (madde 11, Edip 2026-09-04) - adisyondaki TÜM ürünleri (gönderilmiş VE
+    // bekleyen) sunucuda kalıcı olarak ikram eder, ciroya dahil edilmez. Administrator gerekçe
+    // girmeden uygulayabilir, diğer yetkili kullanıcılar Kime/Neden doldurmak zorundadır -
+    // bkz. ApplyReceiptComplimentaryAsync. Önce bekleyen sepet mutfağa/kalıcı satıra gönderilir
+    // (flushCartToKitchen) ki hiçbir ürün ikramın dışında kalmasın. ---
     (function () {
         var btn = document.getElementById('side-ticket-comp-btn');
-        if (!btn) return;
+        var modalEl = document.getElementById('receiptComplimentaryModal');
+        if (!btn || !modalEl) return;
+        var applyUrl = root.getAttribute('data-apply-receipt-comp-url');
+        var isAdmin = root.getAttribute('data-is-admin') === 'true';
+        var errorEl = document.getElementById('comp-reason-error');
+        var forInput = document.getElementById('comp-reason-for');
+        var whyInput = document.getElementById('comp-reason-why');
+        var noteInput = document.getElementById('comp-reason-note');
+
+        function submitComplimentary() {
+            var reasonFor = forInput.value.trim();
+            var reasonWhy = whyInput.value.trim();
+            if (!isAdmin && (!reasonFor || !reasonWhy)) {
+                errorEl.textContent = 'Kime ve Neden alanları zorunludur.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            var applyBtn = document.getElementById('comp-reason-apply-btn');
+            applyBtn.disabled = true;
+            errorEl.style.display = 'none';
+            fetch(applyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: 'checkId=' + encodeURIComponent(checkId) +
+                    '&reasonFor=' + encodeURIComponent(reasonFor) +
+                    '&reasonWhy=' + encodeURIComponent(reasonWhy) +
+                    '&note=' + encodeURIComponent(noteInput.value.trim())
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    applyBtn.disabled = false;
+                    if (!data.success) {
+                        errorEl.textContent = data.message || 'İkram uygulanamadı.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    window.location.reload();
+                })
+                .catch(function () {
+                    applyBtn.disabled = false;
+                    errorEl.textContent = 'Bağlantı hatası oluştu.';
+                    errorEl.style.display = 'block';
+                });
+        }
+
+        document.getElementById('comp-reason-apply-btn').addEventListener('click', submitComplimentary);
+
         btn.addEventListener('click', function () {
-            if (cart.length === 0) return;
-            if (!window.confirm('Sepetteki ' + cart.length + ' kalemin tamamı ikram olarak işaretlensin mi?')) return;
-            cart.forEach(function (line) { line.isComplimentary = true; });
-            renderCart();
+            flushCartToKitchen(function () {
+                forInput.value = '';
+                whyInput.value = '';
+                noteInput.value = '';
+                errorEl.style.display = 'none';
+                if (isAdmin && !window.confirm('Adisyondaki TÜM ürünler ikram edilecek - ciroya dahil edilmeyecek. Devam edilsin mi?')) {
+                    return;
+                }
+                new bootstrap.Modal(modalEl).show();
+            }, function () { window.alert('Sepet gönderilirken hata oluştu.'); });
         });
     })();
 

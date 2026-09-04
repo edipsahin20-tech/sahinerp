@@ -23,6 +23,7 @@
      data-search-products-url="@Url.Action("SearchProducts")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
      data-apply-discount-url="@Url.Action("ApplyDiscount")"
+     data-apply-receipt-comp-url="@Url.Action("ApplyReceiptComplimentary")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
      data-require-cancellation-reason="@Model.RequireCancellationReason.ToString().ToLowerInvariant()"
      data-require-second-approval-cancel-line="@Model.RequireSecondApprovalForCancelOrderLine.ToString().ToLowerInvariant()"
@@ -496,6 +497,40 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
                 <button type="button" class="btn btn-erp-primary" id="approverPinConfirmBtn">Onayla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fiş İkram (madde 11) - TÜM adisyonu ikram eder. Administrator gerekçesiz uygulayabilir
+     (aşağıdaki alanlar JS'te required değil), diğer yetkili kullanıcılar Kime/Neden doldurmak
+     zorundadır - bkz. restaurant-pos.js, ApplyReceiptComplimentaryAsync. -->
+<div class="modal fade" id="receiptComplimentaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Fiş İkram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary small">Adisyondaki TÜM ürünler ikram edilecek - ciroya dahil edilmez.</p>
+                <div class="mb-2">
+                    <label class="form-label">Kime</label>
+                    <input type="text" id="comp-reason-for" class="form-control" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Neden</label>
+                    <input type="text" id="comp-reason-why" class="form-control" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Açıklama</label>
+                    <textarea id="comp-reason-note" class="form-control" rows="2"></textarea>
+                </div>
+                <div id="comp-reason-error" class="alert alert-danger py-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-erp" id="comp-reason-apply-btn">İkram Uygula</button>
             </div>
         </div>
     </div>

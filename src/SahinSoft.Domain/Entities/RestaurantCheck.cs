@@ -33,6 +33,16 @@ public sealed class RestaurantCheck : EntityBase
     // (Edip, 2026-09-03: eski POS ekranındaki "Fiş Notu" ikonu referansı).
     public string? Note { get; set; }
 
+    // Fiş İkram (Edip, 2026-09-04, madde 11) - TÜM adisyonu ikram eder. Doldurulmuşsa (Complimentary
+    // AtUtc not null) bu adisyonun TÜM aktif satırları IsComplimentary=true'dur - ciroya dahil
+    // DEĞİLDİR (bkz. RestaurantPostingService.ApplyReceiptComplimentaryAsync). Yetkili kullanıcı
+    // (Administrator) gerekçeyi atlayabilir, diğerleri Kime/Neden alanlarını doldurmak zorundadır.
+    public DateTime? ComplimentaryAtUtc { get; set; }
+    public string? ComplimentaryByUserId { get; set; }
+    public string? ComplimentaryReasonFor { get; set; }
+    public string? ComplimentaryReasonWhy { get; set; }
+    public string? ComplimentaryNote { get; set; }
+
     public int RestaurantTableSessionId { get; set; }
     public RestaurantTableSession RestaurantTableSession { get; set; } = null!;
 

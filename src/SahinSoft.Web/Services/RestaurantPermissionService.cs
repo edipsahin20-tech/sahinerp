@@ -65,6 +65,20 @@ public sealed class RestaurantPermissionService(ApplicationDbContext dbContext, 
     public Task<bool> CanAddNoteAsync(string? userId, CancellationToken cancellationToken = default) =>
         HasPermissionAsync(userId, p => p.CanAddNote, cancellationToken);
 
+    // Fiş İkram (madde 11) - Administrator gerekçe girmeden ikram uygulayabilir, diğer yetkili
+    // kullanıcılar (CanApplyComplimentary açık ama Administrator değil) Kime/Neden doldurmak
+    // zorundadır.
+    public async Task<bool> IsAdministratorAsync(string? userId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return false;
+        }
+
+        var user = await userManager.FindByIdAsync(userId);
+        return user is not null && await userManager.IsInRoleAsync(user, AppRoles.Administrator);
+    }
+
     // "Şifre sorulsun mu?" (madde 21) - InventorySettings'teki ilgili bayrak açıksa, bu işlem
     // yetkili kullanıcı tarafından yapılsa BİLE ikinci bir yetkilinin PIN onayı şart.
     public async Task<bool> RequiresSecondApprovalAsync(Func<Domain.Entities.InventorySettings, bool> settingFlag, CancellationToken cancellationToken = default)
