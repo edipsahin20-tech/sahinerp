@@ -30,8 +30,8 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | 4 | Ödeme Al ekranı (Toplam/Ödenen/Kalan/Para Üstü) | ⏳ |
 | 5 | Parçalı Ödeme | 🔶 kısmen mevcut, doğrulanacak |
 | 6 | Tutarı Bölme (1/2,1/3..) | 🔶 kısmen mevcut, doğrulanacak |
-| 7 | Ödeme İptal | ⏳ |
-| 8 | Adisyona Dön (kilitlenmeden, kısmi ödeme korunur) | ⏳ |
+| 7 | Ödeme İptal | ⏳ GERÇEK EKSİK bulundu - şu an "Adisyona Dön" ile BİREBİR AYNI (sadece modal kapatıyor, sunucuya hiçbir şey göndermiyor), kısmi ödemeleri sıfırlamıyor. Mimari kısıt için aşağıya bak |
+| 8 | Adisyona Dön (kilitlenmeden, kısmi ödeme korunur) | 🔶 KISMEN - "ekran kilitlenmiyor" kısmı ✅ (madde 9 sayesinde), ama "kısmi ödeme korunur" kısmı ❌ - mimari kısıt için aşağıya bak |
 | 9 | Satır Kilidi TAMAMEN KALDIRILACAK | ✅ tamam + test edildi (2026-09-04) |
 | 10 | İndirim ortak motor | 🔶 kısmen mevcut (ApplyTicketDiscountAsync) |
 | 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ⏳ |
@@ -74,6 +74,56 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
   loglanır (kim yaptı, kim onayladı, ne zaman, hangi işlem, hangi kayıt).
 - Servis: `RestaurantPermissionService.HasPermissionAsync(userId, RestaurantPermission flag)` ve
   `RequiresSecondApprovalAsync(flag)` + `VerifyApproverAsync(userId, pin)`.
+
+### Madde 4-8 (Ödeme Al ekranı / Parçalı Ödeme / Tutarı Bölme / Ödeme İptal / Adisyona Dön) — MİMARİ BULGU, 2026-09-04
+
+Bu 5 madde birbirine sıkı bağlı, TEK bir mimari kısıttan dolayı hiçbiri spec'in istediği gibi
+çalışmıyor: **kısmi ödemeler şu an SADECE tarayıcı JS belleğinde tutuluyor, sunucuya HİÇ
+yazılmıyor.** Bulgular (`restaurant-close-payment.js`, `Check.cshtml` #closePaymentModal
+incelendi):
+
+- `paymentLines` JS dizisi `openPaymentModal()` her çağrıldığında SIFIRLANIYOR (satır 110) -
+  yani "Adisyona Dön" (sadece `data-bs-dismiss="modal"`, sunucuya dokunmuyor) ile modalı kapatıp
+  tekrar "Ödemeyi Al"a basınca önceki kısmi ödemeler KAYBOLUYOR. Spec'in "kısmi ödemeler
+  korunur, ana ekranda da Ödenen/Kalan görünür" şartı sağlanmıyor.
+- "Ödeme İptal" ve "Adisyona Dön" butonları BİREBİR AYNI kodu çalıştırıyor
+  (`data-bs-dismiss="modal"`) - aralarında hiçbir davranış farkı yok. Spec'in istediği "İptal
+  kısmi ödemeleri sıfırlar + ekranda kalır, Dön ise korur + ekrandan çıkar" ayrımı hiç yok.
+  `RestaurantOrderLine` gibi tekil bir onay/işlem geçmişi yok - hiçbir sunucu tarafı state yok.
+- `RestaurantPayment` (Domain) HAZIR ve uygun bir entity - PaymentMethod/Amount/RestaurantCheckId/
+  FinancialAccountId/FinancialTransactionId(nullable, "kapanışta doldurulur" yorumu VAR). AMA şu an
+  SADECE `RestaurantPostingService.CloseCheckAsync` içinde, adisyon KAPANIRKEN tek seferde
+  topluca yazılıyor (satır ~1543, ~1699) - kısmi/ara kayıt akışı yok.
+
+**Doğru çözüm (henüz uygulanmadı) - bir sonraki oturumun/adımın planı:**
+1. Yeni bir sunucu endpoint'i: "bu check'e kısmi ödeme kaydet" - `RestaurantPayment` satırı
+   yazar, `FinancialTransactionId = null` bırakır (muhasebeye henüz işlenmemiş, sadece "alındı"
+   olarak kayıtlı), check AÇIK kalır.
+2. `RestaurantCheckViewModel`/Check.cshtml ana ekranına Ödenen/Kalan özet alanı eklenmeli (spec:
+   "ana ekranda da görünür").
+3. "Ödeme İptal" → bu check'in henüz kapanışa işlenmemiş (`FinancialTransactionId == null`)
+   `RestaurantPayment` satırlarını SİLER (hard-delete, henüz muhasebeye hiç girmediler), Ödenen=0
+   olur, kullanıcı ÖDEME EKRANINDA kalır.
+4. "Adisyona Dön" → hiçbir şeye dokunmadan sadece modalı kapatır (zaten öyle) - `openPaymentModal()`
+   artık `paymentLines`'ı SIFIRLAMAYIP mevcut check'in DB'deki kayıtlı kısmi ödemelerinden
+   YENİDEN YÜKLEMELİ.
+5. "Siparişi Tamamla" (`CloseCheckAsync`) - ÖNCEDEN YAZILMIŞ `RestaurantPayment` satırlarını
+   yeniden oluşturmak yerine bunları BULUP `FinancialTransactionId`'lerini doldurarak
+   finalize etmeli (mevcut kod muhtemelen sıfırdan `new RestaurantPayment` yaratıyor - CloseCheckAsync
+   satır ~1543/1699 dikkatle incelenip bu akışa uyarlanmalı, ÇİFT KAYIT riski var).
+6. Para Üstü (madde 4): `Kalan < 0` olduğunda (fazla ödeme) hesaplanabilir - Ödenen - Toplam.
+7. Tutarı Bölme (madde 6): KALAN bakiye üzerinden 1/2 1/3 1/4 mantığı, 2 ondalık, YUVARLAMA YOK,
+   küsurat son ödemeye eklenir - şu an `pay-split-btn` UI'ı var ama sunucu tarafı ile bağlantısı
+   yeniden gözden geçirilmeli (kalan hep client-side hesaplanıyor, DB'deki gerçek kalanla senkron
+   olmalı).
+
+**NEDEN BU TURDA YAPILMADI:** Bu, gerçek para/muhasebe akışına dokunan (FinancialTransaction,
+CurrentAccountTransaction) hassas bir mimari değişiklik. `CloseCheckAsync`'in mevcut muhasebe
+kayıt mantığını (satır ~1500-1750) tam anlamadan aceleyle değiştirmek ÇİFT KAYIT veya eksik
+muhasebe hareketine yol açabilir - bu, kullanıcının "kurulum/muhasebe hataları müşteride değil
+burada yakalanmalı" prensibine ([[feedback_sahinsoft_packaged_product_philosophy]]) doğrudan
+aykırı olur. Bir sonraki oturumda önce `CloseCheckAsync`'in TAMAMI (satır 1395-1750 civarı)
+okunup muhasebe akışı tam çözülmeli, SONRA bu değişiklik yapılmalı.
 
 ### Madde 9/25 — Satır kilidi kaldırma
 Bu oturumun ERKEN bir bölümünde ".rest-shell" kilit özelliği (🔒 Satırlar Kilitli/Açık butonu,
