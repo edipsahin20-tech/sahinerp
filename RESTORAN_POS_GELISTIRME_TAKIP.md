@@ -53,7 +53,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ✅ tamam + test edildi (2026-09-04) - stok hareketi kısmı için not: bkz. aşağıdaki detay |
 | 12 | Ödenmez ödeme tipi | ✅ tamam + test edildi (2026-09-04) |
 | 13 | Açık Hesap + zorunlu cari | ✅ tamam + test edildi (2026-09-04) |
-| 14 | Tahsilat Carileri / platform ödemeleri | ⏳ yeni |
+| 14 | Tahsilat Carileri / platform ödemeleri | ✅ tamam + test edildi (2026-09-04) |
 | 15-16 | Ürün Arama modal + Türkçe normalize | ⏳ |
 | 17 | Özel sanal klavye | ⏳ yeni |
 | 18 | Bekleyen Fişler kart tasarımı | ⏳ |
@@ -451,3 +451,22 @@ kaydı (izlenebilirlik) oluştu - tam tasarlandığı gibi.
 tarayıcı bölmesi bir noktada 303px genişliğe düştü (muhtemelen önceki bir `resize_window` çağrısının
 kalıntısı) - kod hatası SANILDI ama `resize_window` ile 1400x900'e sabitlenince düzeldi, gerçek bir
 CSS regresyonu değildi.
+
+### Madde 14 — Tahsilat Carileri / Platform Ödemeleri (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar:**
+- `Customer.IsCollectionCari` (yeni) - "Tahsilat Carisi" toggle'ı (Cari Tanıtım Kartı formu).
+- Restoran ödeme ekranı, `IsActive && IsCollectionCari` olan HER cari için sunucudan gelen
+  listeden dinamik bir buton üretir (`@@foreach` - HARD-CODE YOK, Trendyol/Getir/Yemeksepeti/
+  gelecekteki platformlar hepsi bu tek mekanizmadan gelir).
+- Bu butonlar Madde 13'ün Açık Hesap mekanizmasını AYNEN kullanır (Method=OpenAccount) - tek
+  fark, cari seçimini "Cari Ekle" yerine butonun kendisi yapar (tıklanınca önce o carinin
+  AttachCustomer'ını çağırır, sonra ödeme satırını ekler). Muhasebe: Sale normal oluşur (o
+  carinin hesabında gerçek borç), Collection oluşmaz - platform gerçek ödemeyi yaptığında
+  normal Tahsilat ekranından kapatılır.
+
+**Nasıl test edildi:** Yeni bir cari ("Trendyol") oluşturulup Tahsilat Carisi işaretlendi.
+Self Satış ödeme ekranında "🏷 Trendyol" butonunun DİNAMİK olarak belirdiği doğrulandı. Tıklanıp
+125₺ ile kapatıldı. Cari Listesi ekranında Trendyol'un Borç bakiyesinin 125,00 ₺'ye çıktığı
+doğrulandı - gerçek muhasebe entegrasyonu, restoran ekranından ana ERP cari hesabına uçtan uca
+izlenebilir.

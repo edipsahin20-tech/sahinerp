@@ -181,7 +181,8 @@ public sealed class CustomersController(
             Notes = customer.Notes,
             IsCustomer = customer.IsCustomer,
             IsSupplier = customer.IsSupplier,
-            IsActive = customer.IsActive
+            IsActive = customer.IsActive,
+            IsCollectionCari = customer.IsCollectionCari
         };
 
         await SetToolbarAsync(id);
@@ -527,6 +528,7 @@ public sealed class CustomersController(
         target.IsCustomer = source.IsCustomer;
         target.IsSupplier = source.IsSupplier;
         target.IsActive = source.IsActive;
+        target.IsCollectionCari = source.IsCollectionCari;
     }
 
     private async Task<bool> TrySaveAsync()

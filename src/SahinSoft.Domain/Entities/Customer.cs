@@ -24,6 +24,13 @@ public sealed class Customer : EntityBase
     public bool IsCustomer { get; set; } = true;
     public bool IsSupplier { get; set; }
     public bool IsActive { get; set; } = true;
+
+    // Tahsilat Carisi (madde 14, Edip 2026-09-04) - açıkken bu cari restoran ödeme ekranında
+    // KENDİ ADIYLA bir ödeme yöntemi butonu olarak belirir (Trendyol/Getir/Yemeksepeti/yemek
+    // kartı vb. platform ödemeleri - "ödeme tipleri asla hard-code edilmeyecek"). Seçilince
+    // Açık Hesap ile AYNI muhasebe mekaniğini kullanır (Sale normal oluşur, Collection oluşmaz -
+    // bu cariden gerçek para geldiğinde normal Tahsilat ekranından kapatılır).
+    public bool IsCollectionCari { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
 
     // Çift tıklama/mükerrer POST koruması — bkz. DispatchNote.SubmissionKey.

@@ -87,6 +87,9 @@ public sealed class CustomerFormViewModel
     [Display(Name = "Aktif")]
     public bool IsActive { get; set; } = true;
 
+    [Display(Name = "Tahsilat Carisi (Restoran ödeme ekranında buton olarak görünür)")]
+    public bool IsCollectionCari { get; set; }
+
     // Çift tıklama/mükerrer POST koruması — bkz. Customer.SubmissionKey.
     public Guid SubmissionKey { get; set; } = Guid.NewGuid();
 }

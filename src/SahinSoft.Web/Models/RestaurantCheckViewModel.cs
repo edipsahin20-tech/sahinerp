@@ -63,6 +63,11 @@ public sealed class RestaurantCheckViewModel
     public int? AttachedCustomerId { get; set; }
     public string? AttachedCustomerDisplay { get; set; }
 
+    // Tahsilat Carileri (madde 14) - "Tahsilat Carisi" işaretli aktif müşteriler; ödeme
+    // ekranında HER BİRİ kendi adıyla bir buton olarak belirir (hard-code yok, Trendyol/Getir/
+    // Yemeksepeti/gelecekteki platformlar bu listeden gelir).
+    public List<RestaurantCollectionCariViewModel> CollectionCaris { get; set; } = [];
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
@@ -194,6 +199,12 @@ public sealed class RestaurantPendingPaymentRequest
     public int Method { get; set; }
     public int? FinancialAccountId { get; set; }
     public decimal Amount { get; set; }
+}
+
+public sealed class RestaurantCollectionCariViewModel
+{
+    public int CustomerId { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 public sealed class RestaurantPendingPaymentViewModel

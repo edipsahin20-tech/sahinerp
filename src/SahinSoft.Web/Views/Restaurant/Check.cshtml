@@ -728,10 +728,9 @@
                     <button type="button" class="pay-cash-quick" data-cash="200">200</button>
                 </div>
 
-                @{
-                    var payMethodCount = 4 + (Model.ShowUnpaidPaymentType ? 1 : 0);
-                }
-                <div class="pay-method-row" style="grid-template-columns:repeat(@payMethodCount,1fr);">
+                <!-- Sabit sütun sayısı yerine auto-fit: Tahsilat Carileri (madde 14) sayısı
+                     müşteriye göre değişir, hard-code bir sütun sayısı bunu bozar. -->
+                <div class="pay-method-row" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr));">
                     <button type="button" class="pay-method-btn n" data-method="1">₺ Nakit</button>
                     <button type="button" class="pay-method-btn c" data-method="2">▣ Kredi Kartı</button>
                     <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Çeki</button>
@@ -743,6 +742,15 @@
                     <!-- Açık Hesap (madde 13) - Cari Ekle ile bağlanmış müşteri şart, yoksa
                          "Cari seçmelisiniz." ile reddedilir (bkz. restaurant-close-payment.js). -->
                     <button type="button" class="pay-method-btn o" data-method="5">👤 Açık Hesap</button>
+                    @foreach (var cari in Model.CollectionCaris)
+                    {
+                        <!-- Tahsilat Carileri (madde 14) - hard-code YOK, Customer.IsCollectionCari
+                             işaretli her aktif cari burada KENDİ ADIYLA belirir (Trendyol/Getir/
+                             Yemeksepeti/gelecekteki platformlar). Açık Hesap ile AYNI muhasebe
+                             mekaniğini kullanır, sadece cari seçimini "Cari Ekle" yerine bu buton
+                             kendisi yapar (bkz. restaurant-close-payment.js). -->
+                        <button type="button" class="pay-method-btn o collection-cari-btn" data-method="5" data-collection-cari-id="@cari.CustomerId">🏷 @cari.Name</button>
+                    }
                 </div>
             </div>
             <div class="modal-footer pay-footer">

@@ -457,6 +457,12 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             ShowUnpaidPaymentType = fiscalSettings?.ShowUnpaidPaymentType ?? false,
             AttachedCustomerId = check.AttachedCustomerId,
             AttachedCustomerDisplay = check.AttachedCustomer is null ? null : $"{check.AttachedCustomer.Code} - {check.AttachedCustomer.Name}",
+            CollectionCaris = await dbContext.Customers
+                .AsNoTracking()
+                .Where(x => x.IsActive && x.IsCollectionCari)
+                .OrderBy(x => x.Name)
+                .Select(x => new RestaurantCollectionCariViewModel { CustomerId = x.Id, Name = x.Name })
+                .ToListAsync(),
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

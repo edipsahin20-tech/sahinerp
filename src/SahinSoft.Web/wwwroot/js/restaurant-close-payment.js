@@ -301,6 +301,73 @@
             if (amount <= 0) { return; }
             var method = parseInt(btn.getAttribute('data-method'), 10);
             var financialAccountId = financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null;
+            var collectionCariId = btn.getAttribute('data-collection-cari-id');
+
+            function addPending() {
+                btn.disabled = true;
+                fetch(addPendingPaymentUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                    body: JSON.stringify({ checkId: checkId, method: method, financialAccountId: financialAccountId, amount: amount })
+                })
+                    .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                    .then(function (result) {
+                        btn.disabled = false;
+                        if (!result.ok) {
+                            errorEl.textContent = result.data.error || 'Ödeme kaydedilemedi.';
+                            errorEl.style.display = 'block';
+                            return;
+                        }
+                        paymentLines.push({
+                            lineId: ++lineSeq,
+                            pendingPaymentId: result.data.pendingPaymentId,
+                            method: method,
+                            financialAccountId: financialAccountId,
+                            amount: amount
+                        });
+                        entryDigits = '';
+                        refresh();
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        errorEl.textContent = 'Bağlantı hatası oluştu.';
+                        errorEl.style.display = 'block';
+                    });
+            }
+
+            // Tahsilat Carisi butonu (madde 14) - Açık Hesap ile AYNI mekanizma, sadece cari
+            // seçimini "Cari Ekle" yerine bu buton kendisi yapar (henüz bağlı değilse/farklıysa).
+            if (collectionCariId) {
+                if (String(attachedCustomerId()) === collectionCariId) {
+                    addPending();
+                    return;
+                }
+                btn.disabled = true;
+                fetch('/Restaurant/AttachCustomer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
+                    body: 'checkId=' + encodeURIComponent(checkId) + '&customerId=' + encodeURIComponent(collectionCariId)
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        btn.disabled = false;
+                        if (!data.success) {
+                            errorEl.textContent = data.message || 'Cari eklenemedi.';
+                            errorEl.style.display = 'block';
+                            return;
+                        }
+                        document.getElementById('AttachedCustomerId').value = collectionCariId;
+                        var label = document.getElementById('attach-customer-label');
+                        if (label) label.textContent = btn.textContent.trim();
+                        addPending();
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        errorEl.textContent = 'Bağlantı hatası oluştu.';
+                        errorEl.style.display = 'block';
+                    });
+                return;
+            }
 
             if (method === OPEN_ACCOUNT_METHOD && attachedCustomerId() === null) {
                 errorEl.textContent = 'Cari seçmelisiniz.';
@@ -308,35 +375,7 @@
                 return;
             }
 
-            btn.disabled = true;
-            fetch(addPendingPaymentUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ checkId: checkId, method: method, financialAccountId: financialAccountId, amount: amount })
-            })
-                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-                .then(function (result) {
-                    btn.disabled = false;
-                    if (!result.ok) {
-                        errorEl.textContent = result.data.error || 'Ödeme kaydedilemedi.';
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-                    paymentLines.push({
-                        lineId: ++lineSeq,
-                        pendingPaymentId: result.data.pendingPaymentId,
-                        method: method,
-                        financialAccountId: financialAccountId,
-                        amount: amount
-                    });
-                    entryDigits = '';
-                    refresh();
-                })
-                .catch(function () {
-                    btn.disabled = false;
-                    errorEl.textContent = 'Bağlantı hatası oluştu.';
-                    errorEl.style.display = 'block';
-                });
+            addPending();
         });
     });
 
