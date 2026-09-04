@@ -1113,6 +1113,7 @@
                     cart: cart
                 });
                 writeHeldCarts(list);
+                if (window.updateHeldReceiptsBadge) window.updateHeldReceiptsBadge();
             }
             if (isSelfSale) {
                 document.getElementById('hold-self-sale-form').submit();
@@ -1122,9 +1123,11 @@
         });
     })();
 
-    // --- Bekleyen Fişler ---
+    // --- Bekleyen Fişler (madde 18, Edip 2026-09-04 - profesyonel kart tasarımına çevrildi) ---
     (function () {
         var modalEl = document.getElementById('heldReceiptsModal');
+        var badgeEl = document.getElementById('held-receipts-badge');
+        var titleEl = document.getElementById('held-receipts-title');
         if (!modalEl) return;
         var listEl = document.getElementById('held-receipts-list');
 
@@ -1132,23 +1135,61 @@
         function lineTotalSum(entry) {
             return entry.cart.reduce(function (sum, l) { return sum + lineTotal(l); }, 0);
         }
+        function waitLabel(savedAtIso) {
+            var mins = Math.max(0, Math.floor((Date.now() - new Date(savedAtIso).getTime()) / 60000));
+            if (mins < 1) return '<1 dk';
+            if (mins < 60) return mins + ' dk';
+            return Math.floor(mins / 60) + 's ' + (mins % 60) + 'dk';
+        }
+        function timeLabel(savedAtIso) {
+            var d = new Date(savedAtIso);
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        // Canlı sayaç (madde 18: "Bekleyen Fişler (8)" gibi) - sidebar rozeti sayfa yüklenişinde
+        // ve her Fişi Beklet/açılış sonrası güncellenir.
+        function updateBadge() {
+            var count = readHeldCarts().length;
+            if (badgeEl) {
+                badgeEl.textContent = String(count);
+                badgeEl.style.display = count > 0 ? '' : 'none';
+            }
+        }
+        updateBadge();
+        window.addEventListener('storage', updateBadge);
+        // Fişi Beklet AYNI sekmede yazdığı için 'storage' olayı tetiklenmez (o sadece BAŞKA
+        // sekmeler için ateşlenir) - o handler bu fonksiyonu doğrudan çağırabilsin diye dışa açık.
+        window.updateHeldReceiptsBadge = updateBadge;
 
         modalEl.addEventListener('show.bs.modal', function () {
             var list = readHeldCarts();
+            updateBadge();
+            if (titleEl) titleEl.textContent = 'Bekleyen Fişler (' + list.length + ')';
             if (list.length === 0) {
                 listEl.innerHTML = '<p class="text-secondary small p-2">Bekleyen fiş yok.</p>';
                 return;
             }
+            // En eski EN ÜSTTE + ayrı vurgulu - "tek bakışta ayırt edilebilsin" şartı.
+            var sorted = list.slice().sort(function (a, b) { return new Date(a.savedAtIso) - new Date(b.savedAtIso); });
             listEl.innerHTML = '';
-            list.slice().reverse().forEach(function (entry) {
-                var row = document.createElement('a');
-                row.href = '/Restaurant/Check/' + entry.checkId;
-                row.className = 'price-check-result-row';
-                row.style.display = 'flex';
-                row.style.textDecoration = 'none';
-                row.style.color = 'inherit';
-                row.innerHTML = '<span>' + escapeHtml(entry.checkNumber) + ' · ' + escapeHtml(entry.tableLabel) + ' <span class="text-secondary small">(' + lineCount(entry) + ' kalem)</span></span><strong>' + money(lineTotalSum(entry)) + '</strong>';
-                listEl.appendChild(row);
+            sorted.forEach(function (entry, idx) {
+                var card = document.createElement('a');
+                card.href = '/Restaurant/Check/' + entry.checkId;
+                card.className = 'held-receipt-card' + (idx === 0 ? ' oldest' : '');
+                card.innerHTML =
+                    '<div class="held-receipt-card-top">' +
+                        '<span class="held-receipt-card-number">' + escapeHtml(entry.checkNumber) + '</span>' +
+                        '<span class="held-receipt-card-type">' + (isSelfSale ? 'Self Satış' : 'Masa Satış') + '</span>' +
+                    '</div>' +
+                    '<div class="held-receipt-card-meta">' +
+                        '<span>' + escapeHtml(entry.tableLabel) + ' · ' + timeLabel(entry.savedAtIso) + '</span>' +
+                        '<span>' + (idx === 0 ? '<span class="held-receipt-card-oldest-tag">EN ESKİ · </span>' : '') + waitLabel(entry.savedAtIso) + '</span>' +
+                    '</div>' +
+                    '<div class="held-receipt-card-bottom">' +
+                        '<span class="held-receipt-card-count">' + lineCount(entry) + ' kalem</span>' +
+                        '<span class="held-receipt-card-total">' + money(lineTotalSum(entry)) + '</span>' +
+                    '</div>';
+                listEl.appendChild(card);
             });
         });
     })();

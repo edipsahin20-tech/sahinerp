@@ -56,7 +56,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 14 | Tahsilat Carileri / platform ödemeleri | ✅ tamam + test edildi (2026-09-04) |
 | 15-16 | Ürün Arama modal + Türkçe normalize | ✅ tamam + test edildi (2026-09-04) - "klavye altta" kısmı için şimdilik MEVCUT basit klavye kullanılıyor, madde 17'nin YENİ özel klavyesi ayrı iş olarak duruyor |
 | 17 | Özel sanal klavye | ✅ tamam + test edildi (2026-09-04) |
-| 18 | Bekleyen Fişler kart tasarımı | ⏳ |
+| 18 | Bekleyen Fişler kart tasarımı | ✅ tamam + test edildi (2026-09-04) |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
 | 20 | Boş Adisyon otomatik temizlik | 🔶 kısmen mevcut (VoidEmptyCheckAsync) |
 | 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
@@ -519,3 +519,21 @@ sekmeleri (Başlangıçlar/Izgaralar/Salatalar) DEĞİŞMEDİ. Barkod moduna ge�
 arda yazıldı - metin alanında doğru sırayla ve doğru Türkçe karakterle ("q ç") biriktiği
 doğrulandı. "Sağa yasla" tıklanınca klavye sağa geçti (ekran dışına taşmadı). "Büyüt" tıklanınca
 tuşlar büyüdü, panel yine ekran içinde kaldı.
+
+### Madde 18 — Bekleyen Fişler kart tasarımı (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar:**
+- Sağ menü "Bekleyen Fişler" butonuna canlı sayaç rozeti eklendi (kırmızı, sağ üst köşe).
+- Modal başlığı artık dinamik "Bekleyen Fişler (N)".
+- Basit satır listesi yerine profesyonel kart grid'i: her kart Fiş/Adisyon No, satış türü rozeti
+  (Self Satış/Masa Satış), masa/kaynak etiketi + saat, bekleme süresi (dk/saat), ürün adedi,
+  toplam gösteriyor.
+- En eski fiş EN ÜSTE sıralanıyor ve "EN ESKİ" etiketiyle + kırmızı çerçeve/arkaplanla AYRICA
+  vurgulanıyor - "tek bakışta ayırt edilebilsin" şartı.
+- Kart tıklanınca ilgili adisyona gidiyor (mevcut davranış korundu, sadece görünüm değişti).
+
+**Nasıl test edildi:** Self Satış'ta ÇORBA eklenip "Fişi Beklet" ile bekletildi - sidebar
+rozetinin "1" gösterdiği doğrulandı. Modal açılınca başlık "Bekleyen Fişler (1)" oldu, kart
+doğru bilgilerle (AD.00085, Self Satış, 1 kalem, 125,00 ₺, "EN ESKİ · <1 dk") ve kırmızı
+vurguyla göründü. Karta tıklanınca AD.00085 doğru şekilde açıldı, bekletilen ÇORBA sepette
+geri geldi.

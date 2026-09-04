@@ -611,6 +611,54 @@
     font-size: 1.15rem;
 }
 
+/* Bekleyen Fişler (madde 18, 2026-09-04) - sidebar rozeti + profesyonel kart tasarımı. */
+.held-receipts-count-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: #D94A4A;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.held-receipts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+.held-receipt-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--pos-border);
+    border-radius: var(--pos-radius-panel);
+    padding: 0.7rem 0.8rem;
+    background: var(--pos-surface);
+    cursor: pointer;
+}
+.held-receipt-card:hover { border-color: var(--pos-gold); }
+/* En eski bekleyen fiş - tek bakışta ayırt edilsin (madde 18 şartı). */
+.held-receipt-card.oldest {
+    border-color: #D94A4A;
+    border-width: 2px;
+    background: #FFF4F2;
+}
+.held-receipt-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+.held-receipt-card-number { font-weight: 800; font-size: 0.95rem; }
+.held-receipt-card-type { font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; background: #EEF2F7; color: var(--pos-navy); }
+.held-receipt-card-oldest-tag { font-size: 0.65rem; font-weight: 800; color: #D94A4A; }
+.held-receipt-card-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--pos-muted, #6b7280); margin-bottom: 0.35rem; }
+.held-receipt-card-bottom { display: flex; justify-content: space-between; align-items: baseline; }
+.held-receipt-card-count { font-size: 0.75rem; color: var(--pos-muted, #6b7280); }
+.held-receipt-card-total { font-weight: 800; font-size: 1rem; }
+
 /* Fiyat Gör modalı */
 .price-check-results {
     max-height: 220px;

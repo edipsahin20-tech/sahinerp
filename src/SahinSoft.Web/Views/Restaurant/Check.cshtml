@@ -301,8 +301,10 @@
             <button type="button" class="pos-side-icon" id="side-hold-btn">
                 <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
             </button>
-            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal">
+            <button type="button" class="pos-side-icon" id="held-receipts-btn" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal" style="position:relative;">
                 <span class="pos-side-icon-glyph">📋</span>Bekleyen<br />Fişler
+                <!-- Madde 18 - canlı sayaç rozeti, boşken gizli. -->
+                <span id="held-receipts-badge" class="held-receipts-count-badge" style="display:none;">0</span>
             </button>
             <button type="button" class="pos-side-icon" id="side-ticket-comp-btn">
                 <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
@@ -356,14 +358,18 @@
      gönderilmemiş sepetlerin listesi (Edip, 2026-09-03). Sunucuya bağlı DEĞİL, sadece bu
      cihazda/tarayıcıda görünür - bkz. restaurant-pos.js. -->
 <div class="modal fade" id="heldReceiptsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Bekleyen Fişler</h5>
+                <!-- Madde 18 (Edip 2026-09-04) - başlıkta canlı sayaç, "Bekleyen Fişler (8)" gibi. -->
+                <h5 class="modal-title" id="held-receipts-title">Bekleyen Fişler</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="held-receipts-list"></div>
+                <!-- Kart tasarımı (madde 18) - Fiş/Adisyon No, satış türü, saat, bekleme süresi,
+                     ürün adedi, toplam. En eski fiş tek bakışta ayırt edilebilsin diye ayrı
+                     vurgulanır (bkz. restaurant-pos.js .held-receipt-card.oldest). -->
+                <div id="held-receipts-list" class="held-receipts-grid"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
