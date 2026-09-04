@@ -1,8 +1,4 @@
-SET ANSI_NULLS ON;
-GO
-SET QUOTED_IDENTIFIER ON;
-GO
-IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,
@@ -9699,6 +9695,100 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20260903151910_AddCancellationReasonAndQuickNoteSettings', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE TABLE [RestaurantPermissionProfiles] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(100) NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CanCancelOrderLine] bit NOT NULL,
+        [CanCancelReceipt] bit NOT NULL,
+        [CanApplyDiscount] bit NOT NULL,
+        [CanApplyComplimentary] bit NOT NULL,
+        [CanEditKitchenSentLines] bit NOT NULL,
+        [CanAddNote] bit NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantPermissionProfiles] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE TABLE [RestaurantPersonnelPermissionProfiles] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [PermissionProfileId] int NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantPersonnelPermissionProfiles] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RestaurantPersonnelPermissionProfiles_RestaurantPermissionProfiles_PermissionProfileId] FOREIGN KEY ([PermissionProfileId]) REFERENCES [RestaurantPermissionProfiles] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantPermissionProfiles_Name] ON [RestaurantPermissionProfiles] ([Name]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantPermissionProfiles_RecordId] ON [RestaurantPermissionProfiles] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantPersonnelPermissionProfiles_PermissionProfileId] ON [RestaurantPersonnelPermissionProfiles] ([PermissionProfileId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantPersonnelPermissionProfiles_RecordId] ON [RestaurantPersonnelPermissionProfiles] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantPersonnelPermissionProfiles_UserId_PermissionProfileId] ON [RestaurantPersonnelPermissionProfiles] ([UserId], [PermissionProfileId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904130833_AddRestaurantPermissionProfiles'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904130833_AddRestaurantPermissionProfiles', N'10.0.10');
 END;
 
 COMMIT;
