@@ -619,6 +619,93 @@
         modalEl.addEventListener('show.bs.modal', reset);
     })();
 
+    // --- Ürün Listesi (madde 15-16, Edip 2026-09-04) - TAM stoktan arar (Fiyat Gör'ün aksine
+    // sadece kısayol/kataloğa bağlı değil, sunucudaki SearchProducts full stok sorgusu). Ad/Barkod
+    // modu arasında geçiş yapılabilir. Kategori alanına/sepete HİÇ dokunmaz - sadece seçilen ürünü
+    // addToCart ile ekler (AYNI Fiyat Gör'ün kullandığı fonksiyon). ---
+    (function () {
+        var modalEl = document.getElementById('productListModal');
+        if (!modalEl) return;
+        var searchEl = document.getElementById('product-list-search');
+        var resultsEl = document.getElementById('product-list-results');
+        var emptyEl = document.getElementById('product-list-empty');
+        var nameBtn = document.getElementById('product-list-mode-name');
+        var barcodeBtn = document.getElementById('product-list-mode-barcode');
+        var searchUrl = root.getAttribute('data-search-products-url');
+        var mode = 'name';
+        var debounceTimer = null;
+        var currentResults = [];
+
+        function renderResults(products) {
+            currentResults = products;
+            resultsEl.innerHTML = '';
+            emptyEl.style.display = products.length === 0 ? '' : 'none';
+            products.forEach(function (p) {
+                var row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.innerHTML = '<td>' + escapeHtml(p.stockCode || '') + '</td>' +
+                    '<td>' + escapeHtml((p.barcodes && p.barcodes[0]) || '') + '</td>' +
+                    '<td>' + escapeHtml(p.name) + '</td>' +
+                    '<td class="text-end">' + money(p.salePrice) + '</td>';
+                row.addEventListener('click', function () { selectProduct(p); });
+                resultsEl.appendChild(row);
+            });
+        }
+
+        function selectProduct(p) {
+            addToCart(p);
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) instance.hide();
+        }
+
+        function runSearch() {
+            var term = searchEl.value.trim();
+            if (!term) { renderResults([]); return; }
+            fetch(searchUrl + '?term=' + encodeURIComponent(term) + '&mode=' + mode)
+                .then(function (res) { return res.json(); })
+                .then(function (data) { renderResults(data || []); })
+                .catch(function () { renderResults([]); });
+        }
+
+        searchEl.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(runSearch, 250);
+        });
+
+        searchEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                if (currentResults.length === 1) {
+                    selectProduct(currentResults[0]);
+                } else {
+                    runSearch();
+                }
+            }
+        });
+
+        function setMode(newMode) {
+            mode = newMode;
+            nameBtn.classList.toggle('active', mode === 'name');
+            barcodeBtn.classList.toggle('active', mode === 'barcode');
+            searchEl.placeholder = mode === 'barcode' ? 'Barkod okutun veya yazın...' : 'Ürün adı ara...';
+            searchEl.value = '';
+            renderResults([]);
+            searchEl.focus();
+        }
+        nameBtn.addEventListener('click', function () { setMode('name'); });
+        barcodeBtn.addEventListener('click', function () { setMode('barcode'); });
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            setMode('name');
+        });
+        modalEl.addEventListener('shown.bs.modal', function () {
+            // Ana barkod alanının aksine burada arama kutusuna odaklanmak GÜVENLİ - bu ayrı,
+            // izole bir modal, fiziksel tarayıcıyı ana ekrandan hiç ayırmıyor.
+            searchEl.focus();
+        });
+    })();
+
     // --- Klavye - dokunmatik ekranlarda fiziksel klavye olmadığı için (Edip, 2026-09-03:
     // "ekranlar dokunmatik olduğu için ona tıkladığım klavye açsın"). Son odaklanılan metin
     // alanına, imleç konumuna yazar. ---

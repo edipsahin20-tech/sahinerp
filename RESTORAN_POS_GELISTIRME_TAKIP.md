@@ -54,7 +54,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 12 | Ödenmez ödeme tipi | ✅ tamam + test edildi (2026-09-04) |
 | 13 | Açık Hesap + zorunlu cari | ✅ tamam + test edildi (2026-09-04) |
 | 14 | Tahsilat Carileri / platform ödemeleri | ✅ tamam + test edildi (2026-09-04) |
-| 15-16 | Ürün Arama modal + Türkçe normalize | 🔶 Türkçe I/İ/ı/i normalizasyonu DOĞRULANDI (DB'nin Turkish collation'ı zaten hallediyor, kod değişikliği gerekmedi - "porsiyon" araması "PORSİYON"u buluyor) - "Ürün Listesi" modalının kendisi (arama üstte/sonuç ortada/klavye altta, Stok Kodu|Barkod|Ürün Adı, ad/barkod modu) HENÜZ YAPILMADI |
+| 15-16 | Ürün Arama modal + Türkçe normalize | ✅ tamam + test edildi (2026-09-04) - "klavye altta" kısmı için şimdilik MEVCUT basit klavye kullanılıyor, madde 17'nin YENİ özel klavyesi ayrı iş olarak duruyor |
 | 17 | Özel sanal klavye | ⏳ yeni |
 | 18 | Bekleyen Fişler kart tasarımı | ⏳ |
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
@@ -470,3 +470,30 @@ Self Satış ödeme ekranında "🏷 Trendyol" butonunun DİNAMİK olarak belird
 125₺ ile kapatıldı. Cari Listesi ekranında Trendyol'un Borç bakiyesinin 125,00 ₺'ye çıktığı
 doğrulandı - gerçek muhasebe entegrasyonu, restoran ekranından ana ERP cari hesabına uçtan uca
 izlenebilir.
+
+### Madde 15-16 — Ürün Arama modalı + Türkçe normalizasyon (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Türkçe I/İ/ı/i normalizasyonu - kod değişikliği GEREKMEDİ:** DB'nin Turkish collation'ı bunu
+zaten hallediyor - `SearchProducts?term=porsiyon` (ASCII noktasız i) "PORSİYON"u (noktalı büyük
+İ) doğru buluyor, doğrulandı. (Genel aksan/diyakritik temizleme - ç→c, ş→s gibi - spec'in
+İSTEDİĞİNDEN DAHA GENİŞ bir kapsam olurdu, spec özellikle SADECE I/İ/ı/i varyantlarını
+belirtiyor - bilinçli olarak yapılmadı.)
+
+**Yapılanlar:**
+- Yeni "📦 Ürün Listesi" sağ menü butonu + `#productListModal` - arama üstte (Ad/Barkod modu
+  toggle'ı ile), sonuç tablosu ortada (Stok Kodu | Barkod | Ürün Adı | Fiyat sütunları).
+- `SearchProducts` endpoint'i genişletildi: `stockCode` alanı eklendi, yeni `mode` parametresi
+  ("barcode" iken SADECE barkod alanlarında Contains arar - okutma sırasında kısmi eşleşme
+  için; varsayılan "name" mevcut ad+tam-barkod davranışını korur).
+- Seçim (tıklama veya tek sonuçtayken Enter) mevcut `addToCart` fonksiyonunu AYNEN kullanıyor -
+  kategori/sepet alanına HİÇ dokunmuyor, izolasyon şartı sağlandı.
+
+**Madde 17 ile ilişkisi:** Spec'in "klavye altta" gereksinimi için şimdilik MEVCUT basit
+`#pos-virtual-keyboard` kullanılıyor (zaten input focus'a otomatik bağlanıyor). Madde 17'nin
+istediği TAMAMEN YENİ özel klavye (harfler solda/numpad sağda, taşınabilir, yeniden
+boyutlandırılabilir) AYRI bir iş - henüz yapılmadı, sıradaki adım.
+
+**Nasıl test edildi:** "Ürün Listesi" açıldı, "köfte" yazıldı → "SHN.146 | 1989000001424 |
+KÖFTE 1 PORSİYON | 225,00 ₺" doğru sütunlarla listelendi, tıklanınca sepete eklendi VE kategori
+sekmeleri (Başlangıçlar/Izgaralar/Salatalar) DEĞİŞMEDİ. Barkod moduna geçilip tam barkod
+("1989000001424") yazıldığında AYNI ürün doğru bulundu.

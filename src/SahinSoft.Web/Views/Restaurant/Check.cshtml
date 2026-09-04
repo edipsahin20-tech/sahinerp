@@ -292,6 +292,12 @@
             <button type="button" class="pos-side-icon" id="side-keyboard-btn">
                 <span class="pos-side-icon-glyph">⌨</span>Klavye
             </button>
+            <!-- Ürün Listesi (madde 15-16) - tam stoktan arama (kategori kısayollarıyla SINIRLI
+                 değil), ad/barkod modu seçilebilir, sonuç seçilince/Enter'a basılınca sepete
+                 eklenir. Kategori alanına HİÇ dokunmaz - tamamen izole bir modal. -->
+            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#productListModal">
+                <span class="pos-side-icon-glyph">📦</span>Ürün<br />Listesi
+            </button>
             <button type="button" class="pos-side-icon" id="side-hold-btn">
                 <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
             </button>
@@ -414,6 +420,40 @@
      (Edip, 2026-09-03: "müşteri rafta fiyatı göremedi, kasaya geldi, fiyat göre tıkla, ürün adı
      fiyatı KDV'si gelsin, ister iptal ister ekrana alsın"). Sunucudan zaten yüklü kataloğu
      kullanır - bkz. restaurant-pos.js. -->
+<!-- Ürün Listesi (madde 15-16) - arama üstte, sonuçlar ortada, Stok Kodu|Barkod|Ürün Adı
+     sütunları. Ad/Barkod modu arasında geçiş, arama sonuçları kategori alanını ETKİLEMEZ. -->
+<div class="modal fade" id="productListModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ürün Listesi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="product-list-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Ürün adı ara..." autocomplete="off" />
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-erp-outline active" id="product-list-mode-name" data-mode="name">Ad</button>
+                        <button type="button" class="btn btn-erp-outline" id="product-list-mode-barcode" data-mode="barcode">Barkod</button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th class="text-end">Fiyat</th></tr>
+                        </thead>
+                        <tbody id="product-list-results"></tbody>
+                    </table>
+                </div>
+                <p id="product-list-empty" class="text-secondary small p-2" style="display:none;">Sonuç bulunamadı.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="priceCheckModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

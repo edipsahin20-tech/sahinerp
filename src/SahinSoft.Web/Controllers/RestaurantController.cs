@@ -278,15 +278,20 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     // değil stok listesinde arasın veritabanında stok" / "stoklarda arama yapsın"). Aynı JSON
     // şekli (RestaurantCatalogProductViewModel ile aynı alanlar) - istemci addToCart'ı hiç
     // değiştirmeden kullanabilsin diye.
+    // Ürün Listesi modalı (madde 15-16) - "mode" parametresi ile ad/barkod arama ayrılabilir.
+    // "barcode" iken sadece barkod alanlarında (Contains - okutma sırasında kısmi eşleşme için)
+    // arar, kategori/sepet alanına HİÇ dokunmaz - o alan tamamen istemci tarafında ayrı yönetilir.
     [HttpGet]
-    public async Task<IActionResult> SearchProducts(string term)
+    public async Task<IActionResult> SearchProducts(string term, string? mode = null)
     {
         term = (term ?? string.Empty).Trim();
         if (term.Length == 0) return Json(Array.Empty<object>());
 
         var products = await dbContext.Products
             .AsNoTracking()
-            .Where(x => x.IsActive && (x.Name.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term)))
+            .Where(x => x.IsActive && (mode == "barcode"
+                ? (x.Barcode != null && x.Barcode.Contains(term)) || x.Barcodes.Any(b => b.IsActive && b.Barcode.Contains(term))
+                : (x.Name.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term))))
             .Include(x => x.TaxRate)
             .Include(x => x.Portions.Where(p => p.IsActive))
             .Include(x => x.Barcodes.Where(b => b.IsActive))
@@ -296,6 +301,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             {
                 productId = p.Id,
                 name = p.Name,
+                stockCode = p.StockCode,
                 salePrice = p.SalePrice,
                 taxRate = p.TaxRate.Rate,
                 hasKitchenStation = p.DefaultKitchenStationId != null,
