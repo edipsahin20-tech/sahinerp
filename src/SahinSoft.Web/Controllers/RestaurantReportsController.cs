@@ -25,16 +25,30 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
     private static string PaymentSummary(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
     {
         0 => "-",
-        1 => methods[0] switch
-        {
-            RestaurantPaymentMethod.Cash => "Nakit",
-            RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
-            _ => "Yemek Kartı"
-        },
+        1 => PaymentMethodLabel(methods[0]),
         _ => "Karma Ödeme"
     };
 
-    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null)
+    private static string PaymentMethodLabel(RestaurantPaymentMethod method) => method switch
+    {
+        RestaurantPaymentMethod.Cash => "Nakit",
+        RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
+        RestaurantPaymentMethod.MealCard => "Yemek Kartı",
+        RestaurantPaymentMethod.Unpaid => "Ödenmez",
+        RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
+        _ => method.ToString()
+    };
+
+    // Madde 19 (Edip 2026-09-04) - filtreleme için ödeme türü anahtarı. "mixed"/"none" hard-code
+    // ödeme türü DEĞİL, birden fazla/hiç ödeme satırı olan durumlar için özel iki kova.
+    private static string PaymentFilterKeyOf(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
+    {
+        0 => "none",
+        1 => methods[0].ToString().ToLowerInvariant(),
+        _ => "mixed"
+    };
+
+    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null, string? payment = null, string? status = null, string? q = null)
     {
         ActivePage = "reports";
 
@@ -132,7 +146,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             _ => daySales.AsEnumerable()
         };
 
-        vm.Receipts = filtered
+        var sourceFilteredRows = filtered
             .OrderByDescending(x => x.IssuedAtUtc)
             .Select(x =>
             {
@@ -147,15 +161,75 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     isPackage ? pkg?.CustomerName ?? "" : openerNames.GetValueOrDefault(x.OpenerName, ""),
                     sourceType,
                     PaymentSummary(x.Payments),
+                    PaymentFilterKeyOf(x.Payments),
                     x.Status == RetailSaleStatus.Cancelled,
                     x.GrandTotal);
             })
             .ToList();
 
+        // Madde 19: ödeme filtresi seçenekleri SADECE bu gün/kaynak filtresinde GERÇEKTEN var
+        // olan türlerden oluşur - hard-code bir liste değil.
+        vm.AvailablePaymentFilters = sourceFilteredRows
+            .Select(x => x.PaymentFilterKey)
+            .Distinct()
+            .OrderBy(x => x)
+            .Select(k => new RestaurantPaymentFilterOptionViewModel(k, k switch
+            {
+                "mixed" => "Karma Ödeme",
+                "none" => "Ödemesiz",
+                _ => Enum.TryParse<RestaurantPaymentMethod>(k, true, out var m) ? PaymentMethodLabel(m) : k
+            }))
+            .ToList();
+
+        vm.PaymentFilter = string.IsNullOrWhiteSpace(payment) ? null : payment;
+        vm.StatusFilter = string.IsNullOrWhiteSpace(status) ? null : status;
+        vm.SearchTerm = string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+
+        var finalRows = sourceFilteredRows.AsEnumerable();
+        if (vm.PaymentFilter is not null)
+        {
+            finalRows = finalRows.Where(x => x.PaymentFilterKey == vm.PaymentFilter);
+        }
+        if (vm.StatusFilter == "completed")
+        {
+            finalRows = finalRows.Where(x => !x.IsCancelled);
+        }
+        else if (vm.StatusFilter == "cancelled")
+        {
+            finalRows = finalRows.Where(x => x.IsCancelled);
+        }
+        if (vm.SearchTerm is not null)
+        {
+            finalRows = finalRows.Where(x =>
+                x.DocumentNumber.Contains(vm.SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                x.SourceLabel.Contains(vm.SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                x.SourceSubtitle.Contains(vm.SearchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+        vm.Receipts = finalRows.ToList();
+
         vm.ListedCount = vm.Receipts.Count;
         vm.ListedTotal = vm.Receipts.Where(x => !x.IsCancelled).Sum(x => x.GrandTotal);
-        vm.ListedDiscount = filtered.Sum(x => x.DiscountAmount);
+        var listedIds = vm.Receipts.Select(x => x.RetailSaleId).ToHashSet();
+        vm.ListedDiscount = filtered.Where(x => listedIds.Contains(x.Id)).Sum(x => x.DiscountAmount);
         vm.ListedCancelledCount = vm.Receipts.Count(x => x.IsCancelled);
+
+        // Madde 19: filtrelenmiş sonuçların ödeme türü bazında alt toplamları (Nakit toplamı,
+        // Kredi Kartı toplamı, İkram/Ödenmez toplamı vb.) - sadece filtredeki fişlerin check'lerine
+        // ait GERÇEK RestaurantPayment satırlarından, iptal edilmemiş fişler için.
+        var listedCheckIds = daySales.Where(x => listedIds.Contains(x.Id) && x.Status != RetailSaleStatus.Cancelled).Select(x => x.RestaurantCheckId).ToList();
+        if (listedCheckIds.Count > 0)
+        {
+            var subtotals = await dbContext.RestaurantPayments
+                .AsNoTracking()
+                .Where(x => listedCheckIds.Contains(x.RestaurantCheckId) && !x.IsReversal)
+                .GroupBy(x => x.PaymentMethod)
+                .Select(g => new { Method = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+            vm.PaymentSubtotals = subtotals
+                .OrderBy(x => x.Method)
+                .Select(x => new RestaurantPaymentSubtotalViewModel(PaymentMethodLabel(x.Method), x.Total))
+                .ToList();
+        }
 
         // Vardiya/Z durumu - RestaurantShiftController ile AYNI kaynak (RestaurantCashShift),
         // burada tek bir "en son / şu an açık" özet olarak gösterilir.
@@ -278,6 +352,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                             isPackage ? pkg?.CustomerName ?? "" : zOpenerNames.GetValueOrDefault(x.OpenerName, ""),
                             sourceType,
                             PaymentSummary(x.Payments),
+                            PaymentFilterKeyOf(x.Payments),
                             x.Status == RetailSaleStatus.Cancelled,
                             x.GrandTotal);
                     })

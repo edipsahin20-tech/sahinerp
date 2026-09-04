@@ -122,17 +122,44 @@
 @if (Model.ActiveTab == "daily")
 {
     <div class="report-filter-row">
-        <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Tümü</a>
-        <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Masa</a>
-        <a class="rtab @(Model.SourceFilter == "package" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="package" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Paket</a>
-        <a class="rtab @(Model.SourceFilter == "self" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="self" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Self</a>
+        <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Tümü</a>
+        <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Masa</a>
+        <a class="rtab @(Model.SourceFilter == "package" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="package" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Paket</a>
+        <a class="rtab @(Model.SourceFilter == "self" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="self" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Self</a>
     </div>
+
+    <!-- Madde 19 (Edip 2026-09-04) - Excel-vari filtreler: arama + ödeme türü (SADECE gerçekten
+         var olan türler listelenir) + durum. Sunucu tarafı GET formu, JS gerekmez. -->
+    <form method="get" asp-action="Index" class="report-search-row no-print">
+        <input type="hidden" name="tab" value="daily" />
+        <input type="hidden" name="source" value="@Model.SourceFilter" />
+        <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+        <input type="text" name="q" value="@Model.SearchTerm" class="rsearch-input" placeholder="Fiş no, masa veya kasiyer ara..." />
+        <select name="payment" class="rsearch-select" onchange="this.form.submit()">
+            <option value="">Tüm Ödemeler</option>
+            @foreach (var opt in Model.AvailablePaymentFilters)
+            {
+                <option value="@opt.Value" selected="@(Model.PaymentFilter == opt.Value)">@opt.Label</option>
+            }
+        </select>
+        <select name="status" class="rsearch-select" onchange="this.form.submit()">
+            <option value="">Tüm Durumlar</option>
+            <option value="completed" selected="@(Model.StatusFilter == "completed")">Tamamlandı</option>
+            <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">İptal</option>
+        </select>
+        <button type="submit" class="rbtn">Ara</button>
+        <a class="rbtn" asp-action="Index" asp-route-tab="daily" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">Filtreleri Temizle</a>
+    </form>
 
     <div class="report-mini-summary">
         <div><small>LİSTELENEN</small><strong>@Model.ListedCount fiş</strong></div>
         <div><small>TOPLAM TUTAR</small><strong>@Model.ListedTotal.ToString("N2") ₺</strong></div>
         <div><small>İNDİRİM</small><strong>@Model.ListedDiscount.ToString("N2") ₺</strong></div>
         <div><small>İPTAL</small><strong>@Model.ListedCancelledCount</strong></div>
+        @foreach (var sub in Model.PaymentSubtotals)
+        {
+            <div><small>@sub.Label.ToUpperInvariant()</small><strong>@sub.Total.ToString("N2") ₺</strong></div>
+        }
     </div>
     <div class="report-table-wrap">
         <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>

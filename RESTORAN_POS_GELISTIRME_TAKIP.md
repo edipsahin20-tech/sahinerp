@@ -57,7 +57,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 15-16 | Ürün Arama modal + Türkçe normalize | ✅ tamam + test edildi (2026-09-04) - "klavye altta" kısmı için şimdilik MEVCUT basit klavye kullanılıyor, madde 17'nin YENİ özel klavyesi ayrı iş olarak duruyor |
 | 17 | Özel sanal klavye | ✅ tamam + test edildi (2026-09-04) |
 | 18 | Bekleyen Fişler kart tasarımı | ✅ tamam + test edildi (2026-09-04) |
-| 19 | Fiş Listesi Excel-vari filtrelenebilir | ⏳ |
+| 19 | Fiş Listesi Excel-vari filtrelenebilir | ✅ tamam + test edildi (2026-09-04) |
 | 20 | Boş Adisyon otomatik temizlik | 🔶 kısmen mevcut (VoidEmptyCheckAsync) |
 | 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
 | 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ⏳ |
@@ -537,3 +537,29 @@ rozetinin "1" gösterdiği doğrulandı. Modal açılınca başlık "Bekleyen Fi
 doğru bilgilerle (AD.00085, Self Satış, 1 kalem, 125,00 ₺, "EN ESKİ · <1 dk") ve kırmızı
 vurguyla göründü. Karta tıklanınca AD.00085 doğru şekilde açıldı, bekletilen ÇORBA sepette
 geri geldi.
+
+### Madde 19 — Fiş Listesi (Günlük Fişler) Excel-vari filtreleme (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Not:** Bu madde "Restoran Raporları"nın "Günlük Fişler" sekmesine karşılık geliyor (o ekranın
+temel yapısı ÖNCEKİ oturumda kurulmuştu - tarih gezinme, kaynak sekmeleri, mini özet). Bu
+oturumda EKSİK olan kısımlar tamamlandı:
+
+**Yapılanlar:**
+- Dinamik ödeme türü filtresi ("Tüm Ödemeler" dropdown) - SADECE o gün/kaynak filtresinde
+  GERÇEKTEN var olan ödeme türlerini listeler (`AvailablePaymentFilters`, hard-code liste
+  DEĞİL) - `RestaurantPaymentMethod` genişleyince (Ödenmez/Açık Hesap gibi) otomatik uyum
+  sağlıyor, ayrı bir "karma ödeme"/"ödemesiz" kovası da var.
+- Durum filtresi (Tamamlandı/İptal) + arama kutusu (Fiş No/Masa-Kaynak üzerinde).
+- Filtrelenmiş sonuçlara göre ödeme türü bazında alt toplamlar (mini özet çubuğunda dinamik
+  olarak eklenen NAKİT/KREDİ KARTI/ÖDENMEZ/AÇIK HESAP gibi kartlar) - gerçek `RestaurantPayments`
+  tablosundan, filtrelenen fişlerin check'lerine göre hesaplanıyor.
+- "Filtreleri Temizle" butonu.
+- Sipariş Türü (KANAL sütunu) zaten dinamikti (SourceTypeOf gerçek salon adından türetiliyor) -
+  değişiklik gerekmedi, sadece doğrulandı.
+
+**Nasıl test edildi:** Filtresiz haldeyken "Tüm Ödemeler" dropdown'ının SADECE Nakit/Kredi
+Kartı/Açık Hesap/Ödenmez'i listelediği (o gün hiç Yemek Çeki kullanılmadığı için o seçenek HİÇ
+görünmüyor) ve mini özette bu 4 türün doğru tutarlarla (Nakit 3.600/Kredi Kartı 1.375/Ödenmez
+125/Açık Hesap 250) göründüğü doğrulandı. `payment=openaccount` filtresi uygulanınca SADECE 2
+fiş (250₺ toplam) kaldı, alt toplam SADECE "AÇIK HESAP 250₺" oldu. Arama kutusuna "PSF.00037"
+yazılınca SADECE o tek fiş (Masa, Nakit, 1.625₺) listelendi.

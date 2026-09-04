@@ -347,7 +347,13 @@ html, body {
 
 .rest-shell .report-filter-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .rest-shell .report-filter-row .spacer { flex: 1; }
-.rest-shell .report-mini-summary { display: grid; grid-template-columns: repeat(4,1fr); border: 1px solid var(--rs-border); border-radius: 10px 10px 0 0; overflow: hidden; }
+/* Madde 19 (2026-09-04) - arama + dinamik ödeme/durum filtreleri. */
+.rest-shell .report-search-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+.rest-shell .rsearch-input { flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid var(--rs-border); border-radius: 9px; font-size: 13px; }
+.rest-shell .rsearch-select { padding: 9px 12px; border: 1px solid var(--rs-border); border-radius: 9px; font-size: 13px; background: #fff; }
+/* repeat(4,1fr) -> auto-fit: madde 19'un dinamik ödeme türü alt toplamları (Nakit/Kredi Kartı/
+   Ödenmez/Açık Hesap vb.) sabit 4 sütuna sığmayabilir, sayı değişkendir. */
+.rest-shell .report-mini-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); border: 1px solid var(--rs-border); border-radius: 10px 10px 0 0; overflow: hidden; }
 .rest-shell .report-mini-summary > div { padding: 10px 14px; background: #fff; border-right: 1px solid var(--rs-border); }
 .rest-shell .report-mini-summary > div:last-child { border-right: 0; }
 .rest-shell .report-mini-summary small { display: block; color: var(--rs-muted); font-size: 10px; }

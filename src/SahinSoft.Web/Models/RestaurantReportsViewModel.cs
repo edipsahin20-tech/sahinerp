@@ -30,12 +30,20 @@ public sealed class RestaurantReportsViewModel
     public string? LastZNumber { get; set; }
     public DateTime? LastZClosedAtUtc { get; set; }
 
-    // Günlük Fişler
+    // Günlük Fişler (madde 19, Edip 2026-09-04: Excel-vari filtrelenebilir liste)
     public List<RestaurantReceiptRowViewModel> Receipts { get; set; } = [];
     public int ListedCount { get; set; }
     public decimal ListedTotal { get; set; }
     public decimal ListedDiscount { get; set; }
     public int ListedCancelledCount { get; set; }
+    public string? PaymentFilter { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? SearchTerm { get; set; }
+    // Sadece o gün/filtrede GERÇEKTEN var olan ödeme türleri - hard-code liste DEĞİL.
+    public List<RestaurantPaymentFilterOptionViewModel> AvailablePaymentFilters { get; set; } = [];
+    // Filtrelenmiş sonuçların ödeme türü bazında alt toplamları (Nakit/Kredi Kartı/Yemek Kartı/
+    // Ödenmez/diğer tahsilat carileri) - sadece gerçekten mevcut olanlar listelenir.
+    public List<RestaurantPaymentSubtotalViewModel> PaymentSubtotals { get; set; } = [];
 
     // X Raporu - yalnızca açık vardiyada dolu, vardiyayı KAPATMAZ.
     public RestaurantXReportViewModel? XReport { get; set; }
@@ -64,8 +72,13 @@ public sealed record RestaurantReceiptRowViewModel(
     string SourceSubtitle,
     string SourceType,
     string PaymentSummary,
+    // "cash"/"creditcard"/"mealcard"/"unpaid"/"openaccount"/"mixed"/"none" - filtreleme için.
+    string PaymentFilterKey,
     bool IsCancelled,
     decimal GrandTotal);
+
+public sealed record RestaurantPaymentFilterOptionViewModel(string Value, string Label);
+public sealed record RestaurantPaymentSubtotalViewModel(string Label, decimal Total);
 
 public sealed class RestaurantXReportViewModel
 {
