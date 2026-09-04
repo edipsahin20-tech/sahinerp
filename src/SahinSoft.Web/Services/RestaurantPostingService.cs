@@ -39,7 +39,8 @@ public sealed record SendOrderToKitchenResult(RestaurantOrder Order, IReadOnlyLi
 
 public sealed class RestaurantPostingService(
     ApplicationDbContext dbContext,
-    DocumentNumberGeneratorService documentNumberGenerator)
+    DocumentNumberGeneratorService documentNumberGenerator,
+    RestaurantPermissionService permissionService)
 {
     // Masa/Self Satış/Paket - üç "yeni satış başlat" giriş noktasının hepsi bunu çağırır.
     // InventorySettings.RequireOpenShiftForSales kapalıyken (varsayılan) hiçbir şey yapmaz.
@@ -902,6 +903,15 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                // Yetki Mimarisi (Edip, 2026-09-04, madde 9/21/25) - eski "satır kilidi" mantığı
+                // TAMAMEN KALDIRILDI, yerine yetki kontrolü geçti. Mutfağa gönderilmiş/gönderilmemiş
+                // ayrımı YOK - kullanıcının profilinde CanCancelOrderLine kapalıysa iptal edemez,
+                // açıksa (veya hiç profili yoksa) her koşulda edebilir.
+                if (!await permissionService.CanCancelOrderLineAsync(cancelledByUserId, cancellationToken))
+                {
+                    throw new InvalidOperationException("Sipariş satırı iptal etme yetkiniz yok.");
+                }
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -962,6 +972,7 @@ public sealed class RestaurantPostingService(
     public Task AdjustOrderLineQuantityAsync(
         int restaurantOrderLineId,
         decimal newQuantity,
+        string performedByUserId,
         CancellationToken cancellationToken = default)
     {
         if (newQuantity <= 0)
@@ -974,6 +985,13 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                // Madde 9/21/25 - satır kilidi kaldırıldı, yetki kontrolü geçti (bkz.
+                // CancelOrderLineAsync'teki AYNI not).
+                if (!await permissionService.CanEditKitchenSentLinesAsync(performedByUserId, cancellationToken))
+                {
+                    throw new InvalidOperationException("Mutfağa gönderilmiş ürünü düzenleme yetkiniz yok.");
+                }
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -1008,12 +1026,20 @@ public sealed class RestaurantPostingService(
     // KAPATILIRKEN indirim sıfırlanır.
     public Task ToggleLineComplimentaryAsync(
         int restaurantOrderLineId,
+        string performedByUserId,
         CancellationToken cancellationToken = default) =>
         DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                // Madde 9/21/25 - satır kilidi kaldırıldı, yetki kontrolü geçti. İkram kendi
+                // başına ayrı bir kritik işlem (CanApplyComplimentary).
+                if (!await permissionService.CanApplyComplimentaryAsync(performedByUserId, cancellationToken))
+                {
+                    throw new InvalidOperationException("İkram uygulama yetkiniz yok.");
+                }
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);

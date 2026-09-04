@@ -96,6 +96,30 @@
                         <input asp-for="IsActive" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label"></label>
                     </div>
+
+                    <!-- Yetki Listesi (Edip, 2026-09-04, madde 21) - birden fazla profil
+                         seçilebilir, herhangi biri izin veriyorsa işlem serbest. Hiç seçilmezse
+                         bu personel için TÜM işlemler serbesttir. -->
+                    <div class="mt-3">
+                        <label class="form-label">Yetki Listesi</label>
+                        @if (Model.AvailablePermissionProfiles.Count == 0)
+                        {
+                            <div class="text-secondary small">Henüz yetki profili tanımlanmadı - bu personel için tüm işlemler serbest. <a asp-controller="RestaurantPermissionProfiles" asp-action="Create" target="_blank">Profil oluştur</a></div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var profile in Model.AvailablePermissionProfiles)
+                                {
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="PermissionProfileIds" value="@profile.Id" id="perm-@profile.Id"
+                                               checked="@(Model.PermissionProfileIds.Contains(profile.Id) ? "checked" : null)" />
+                                        <label class="form-check-label" for="perm-@profile.Id">@profile.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
 
                 <div class="col-12 col-lg-6">

@@ -573,7 +573,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     {
         try
         {
-            await postingService.AdjustOrderLineQuantityAsync(lineId, quantity);
+            await postingService.AdjustOrderLineQuantityAsync(lineId, quantity, CurrentUserId);
         }
         catch (InvalidOperationException ex)
         {
@@ -589,7 +589,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     {
         try
         {
-            await postingService.ToggleLineComplimentaryAsync(lineId);
+            await postingService.ToggleLineComplimentaryAsync(lineId, CurrentUserId);
         }
         catch (InvalidOperationException ex)
         {

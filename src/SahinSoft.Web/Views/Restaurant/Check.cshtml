@@ -150,11 +150,6 @@
                     <button type="button" id="line-act-discount">İndirim</button>
                     <button type="button" id="line-act-comp">İkram</button>
                     <button type="button" id="line-act-remove" class="danger">Sil</button>
-                    <!-- Kilit tuşu SİL'in yanına - gönderilmiş satırlarda İptal/İkram/Miktar
-                         düzeltmeyi açar/kapatır (Edip, 2026-09-03: "kilit butonunu sil yanına
-                         koy"). Sayfa yeniden yüklense de (her aksiyon reload'a sebep oluyor)
-                         kilit tekrar KAPANMASIN diye açık durumu sessionStorage'da tutulur. -->
-                    <button type="button" id="sent-lines-lock-btn" class="sent-lines-lock-btn">🔒 Satırlar Kilitli</button>
                 </div>
                 <!-- Gönderilmiş (kalıcı) satırlar - "sepet"le AYNI yerde, ödeme ekranında
                      görünür, ayrı bir "mutfak" paneline hapsedilmez (Edip, 2026-09-03: "masa
@@ -296,8 +291,10 @@
     <input type="hidden" name="checkId" value="@Model.CheckId" />
 </form>
 
-<!-- Gönderilmiş satırda miktar düzeltme / ikram aç-kapa - kilit açıkken satır butonlarından
-     tetiklenir, bkz. restaurant-pos.js (Edip, 2026-09-03). -->
+<!-- Gönderilmiş satırda miktar düzeltme / ikram aç-kapa - satır kilidi TAMAMEN KALDIRILDI
+     (Edip, 2026-09-04, madde 9), yerine sunucu tarafı yetki kontrolü geçti (bkz.
+     RestaurantPermissionService, RestaurantPostingService). Butonlar her zaman görünür/
+     tıklanabilir - yetkisiz kullanıcı tıkladığında sunucu hatayı TempData["Error"] ile döner. -->
 <form method="post" asp-action="AdjustOrderLineQuantity" id="adjust-line-qty-form" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="checkId" value="@Model.CheckId" />

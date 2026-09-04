@@ -11,9 +11,13 @@ public sealed class PersonnelFormViewModel
     [Display(Name = "Adı Soyadı")]
     public string FullName { get; set; } = string.Empty;
 
+    // Restoran personeli (garson/kasiyer) PIN ile giriş yapar, e-posta ZORUNLU DEĞİL (bkz.
+    // PersonnelController.Create yorumu) - string? OLMALI, aksi halde ASP.NET Core'un implicit
+    // non-nullable required kuralı bu alanı zorunlu kılıp PIN-only personel oluşturmayı
+    // engelliyordu (2026-09-04'te Test Garson oluştururken bulunan gerçek bug).
     [EmailAddress]
     [Display(Name = "E-posta")]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [DataType(DataType.Password)]
     [Display(Name = "Şifre")]
@@ -99,4 +103,16 @@ public sealed class PersonnelFormViewModel
     public string? BranchDisplay { get; set; }
     public string? FinancialAccountDisplay { get; set; }
     public string? PriceListDisplay { get; set; }
+
+    // Yetki Listesi (Edip, 2026-09-04, madde 21) - bir personele birden fazla yetki profili
+    // atanabilir, seçilenlerin ID'leri burada tutulur.
+    [Display(Name = "Yetki Listesi")]
+    public List<int> PermissionProfileIds { get; set; } = [];
+    public List<RestaurantPermissionProfileOption> AvailablePermissionProfiles { get; set; } = [];
+}
+
+public sealed class RestaurantPermissionProfileOption
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }

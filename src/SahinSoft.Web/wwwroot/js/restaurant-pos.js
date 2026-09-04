@@ -908,36 +908,12 @@
         });
     })();
 
-    // --- Gönderilmiş satırlarda kilit / miktar düzeltme / ikram / iptal - Edip, 2026-09-03:
-    // "mutfağa gönderildi diye herşeyi pasif hale getirme, silme ikram düzeltme miktar düzeltme
-    // herşey aktif olsun" / "yada kilit tuşu koy ona tıkladığımda aktif etsin herşeyi" / "ikram
-    // sil kilit olsun" - TEK toplu kilit düğmesi İptal/İkram/Miktar düzeltmenin ÜÇÜNÜ birden
-    // açar/kapatır (CSS: .cart-sent-lines.unlocked). Kilit butonu SABİT üst çubukta Sil'in yanında
-    // (Edip: "kilit butonunu sil yanına koy"). Miktar/İkram aksiyonları sayfayı yeniden
-    // yüklüyor - kilit her aksiyonda tekrar KAPANMASIN diye açık durumu sessionStorage'da
-    // adisyon bazında tutulur (Edip: "tekrar kilitlemesin"). ---
+    // --- Gönderilmiş satırlarda miktar düzeltme / ikram - Edip, 2026-09-04, madde 9/21/25:
+    // "satır kilidi TAMAMEN KALDIRILACAK ... kullanıcının düzenleme/miktar değiştirme/silme/
+    // ikram/indirim/not/iptal yapabilmesini yetkiler belirleyecektir". Butonlar artık HER ZAMAN
+    // görünür/tıklanabilir - yetki kontrolü sunucu tarafında (RestaurantPermissionService), izin
+    // yoksa TempData["Error"] ile normal hata akışı üzerinden bildirilir. ---
     (function () {
-        var lockBtn = document.getElementById('sent-lines-lock-btn');
-        var sentLinesEl = document.getElementById('cart-sent-lines');
-        if (!lockBtn) return;
-
-        var storageKey = 'pos-sent-lines-unlocked-' + checkId;
-        var unlocked = false;
-        try { unlocked = sessionStorage.getItem(storageKey) === '1'; } catch (e) { unlocked = false; }
-
-        function applyLockState() {
-            if (sentLinesEl) sentLinesEl.classList.toggle('unlocked', unlocked);
-            lockBtn.classList.toggle('unlocked', unlocked);
-            lockBtn.textContent = unlocked ? '🔓 Satırlar Açık' : '🔒 Satırlar Kilitli';
-        }
-        applyLockState();
-
-        lockBtn.addEventListener('click', function () {
-            unlocked = !unlocked;
-            try { sessionStorage.setItem(storageKey, unlocked ? '1' : '0'); } catch (e) { /* yok say */ }
-            applyLockState();
-        });
-
         document.querySelectorAll('.sent-line-qty-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var current = btn.getAttribute('data-qty');

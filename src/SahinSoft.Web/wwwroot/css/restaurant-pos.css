@@ -404,10 +404,10 @@
     font-size: 0.68rem;
 }
 
-/* Gönderilmiş satır işlem hücresi - İptal, İkram ve Miktar düzeltme ÜÇÜ DE tek "kilit"
-   düğmesiyle birlikte açılıp kapanır (Edip, 2026-09-03: "kilit tuşu koy ona tıkladığımda aktif
-   etsin herşeyi" / "ikram sil kilit olsun" - başlangıçta İptal'i istisna bırakmıştım, sonradan
-   İptal de kilide dahil edilmesi istendi, TEK toplu kilit tüm satırları birden açar/kapatır). */
+/* Gönderilmiş satır işlem hücresi - satır kilidi TAMAMEN KALDIRILDI (Edip, 2026-09-04, madde 9:
+   "mevcut projedeki satır kilidini aç mantığını tamamen kaldır ... kullanıcının düzenleme/miktar
+   değiştirme/silme/ikram/indirim/not/iptal yapabilmesini yetkiler belirleyecektir"). İptal/İkram/
+   Miktar düzeltme butonları artık HER ZAMAN görünür - yetki kontrolü sunucu tarafında. */
 .restaurant-pos .sent-line-actions {
     display: flex;
     justify-content: flex-end;
@@ -419,22 +419,10 @@
 .restaurant-pos .sent-line-actions .sent-line-comp-btn,
 .restaurant-pos .sent-line-actions .sent-line-qty-btn,
 .restaurant-pos .sent-line-actions .cancel-line-btn {
-    display: none;
+    display: inline-block;
     padding: 0.1rem 0.3rem;
     font-size: 0.64rem;
     white-space: nowrap;
-}
-
-.restaurant-pos .cart-sent-lines.unlocked .sent-line-comp-btn,
-.restaurant-pos .cart-sent-lines.unlocked .sent-line-qty-btn,
-.restaurant-pos .cart-sent-lines.unlocked .cancel-line-btn {
-    display: inline-block;
-}
-
-.restaurant-pos .sent-lines-lock-btn.unlocked {
-    background: #FFF4E5;
-    border-color: #F0C27B;
-    color: #A9631A;
 }
 
 /* Aşırı sıkışık viewport'larda (ör. 1366x768 ekranda %150 Windows ölçeklendirme - ~911x512

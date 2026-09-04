@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Constants;
+using SahinSoft.Domain.Entities;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
 using SahinSoft.Web.Services;
@@ -58,6 +59,11 @@ public sealed class PersonnelController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(PersonnelFormViewModel form)
     {
+        if (string.IsNullOrWhiteSpace(form.Email))
+        {
+            form.Email = null;
+            ModelState.Remove(nameof(form.Email));
+        }
         if (string.IsNullOrWhiteSpace(form.Password) && string.IsNullOrWhiteSpace(form.Pin))
         {
             ModelState.AddModelError(nameof(form.Password), "Şifre veya PIN'den en az biri girilmelidir.");
@@ -75,8 +81,8 @@ public sealed class PersonnelController(
 
         var user = new ApplicationUser
         {
-            UserName = hasEmail ? form.Email.Trim() : personnelCode,
-            Email = hasEmail ? form.Email.Trim() : null,
+            UserName = hasEmail ? form.Email!.Trim() : personnelCode,
+            Email = hasEmail ? form.Email!.Trim() : null,
             EmailConfirmed = hasEmail,
             FullName = form.FullName.Trim(),
             IsActive = form.IsActive,
@@ -107,6 +113,7 @@ public sealed class PersonnelController(
         }
 
         await userManager.AddToRoleAsync(user, form.RoleName);
+        await SyncPermissionProfilesAsync(user.Id, form.PermissionProfileIds);
 
         TempData["Success"] = "Personel kaydedildi.";
         return RedirectToAction(nameof(Create));
@@ -157,9 +164,13 @@ public sealed class PersonnelController(
             DefaultFinancialAccountId = user.DefaultFinancialAccountId,
             DefaultPriceListId = user.DefaultPriceListId,
             DiscountLowerLimitPercent = user.DiscountLowerLimitPercent,
-            DiscountUpperLimitPercent = user.DiscountUpperLimitPercent
+            DiscountUpperLimitPercent = user.DiscountUpperLimitPercent,
             // Pin bilerek doldurulmuyor - Password gibi, mevcut PIN'i göstermeden korumak için
             // boş bırakılır; değiştirmek isteyen yeniden girer.
+            PermissionProfileIds = await dbContext.RestaurantPersonnelPermissionProfiles
+                .Where(x => x.UserId == id)
+                .Select(x => x.PermissionProfileId)
+                .ToListAsync()
         };
         await PopulateSelectionsAsync(model);
         return View("Form", model);
@@ -172,6 +183,12 @@ public sealed class PersonnelController(
         if (id != form.Id)
         {
             return BadRequest();
+        }
+
+        if (string.IsNullOrWhiteSpace(form.Email))
+        {
+            form.Email = null;
+            ModelState.Remove(nameof(form.Email));
         }
 
         if (!ModelState.IsValid)
@@ -191,7 +208,7 @@ public sealed class PersonnelController(
         MapOptionalFields(form, user);
 
         var hasEmail = !string.IsNullOrWhiteSpace(form.Email);
-        if (hasEmail && !string.Equals(user.Email, form.Email.Trim(), StringComparison.OrdinalIgnoreCase))
+        if (hasEmail && !string.Equals(user.Email, form.Email!.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             user.Email = form.Email.Trim();
             user.UserName = form.Email.Trim();
@@ -245,6 +262,8 @@ public sealed class PersonnelController(
             }
             await userManager.AddToRoleAsync(user, form.RoleName);
         }
+
+        await SyncPermissionProfilesAsync(user.Id, form.PermissionProfileIds);
 
         TempData["Success"] = "Personel güncellendi.";
         return RedirectToAction(nameof(Create));
@@ -305,5 +324,38 @@ public sealed class PersonnelController(
         model.JobTitleOptions = JobTitles
             .Select(x => new SelectListItem(x, x))
             .ToList();
+
+        model.AvailablePermissionProfiles = await dbContext.RestaurantPermissionProfiles
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new RestaurantPermissionProfileOption { Id = x.Id, Name = x.Name })
+            .ToListAsync();
+    }
+
+    // Yetki Listesi ataması - seçilmeyenler silinir, yeni seçilenler eklenir (basit senkron,
+    // her seferinde tam liste gönderiliyor - checkbox listesi).
+    private async Task SyncPermissionProfilesAsync(string userId, List<int> selectedProfileIds)
+    {
+        var existing = await dbContext.RestaurantPersonnelPermissionProfiles
+            .Where(x => x.UserId == userId)
+            .ToListAsync();
+
+        var toRemove = existing.Where(x => !selectedProfileIds.Contains(x.PermissionProfileId)).ToList();
+        if (toRemove.Count > 0)
+        {
+            dbContext.RestaurantPersonnelPermissionProfiles.RemoveRange(toRemove);
+        }
+
+        var existingProfileIds = existing.Select(x => x.PermissionProfileId).ToHashSet();
+        foreach (var profileId in selectedProfileIds.Where(id => !existingProfileIds.Contains(id)))
+        {
+            dbContext.RestaurantPersonnelPermissionProfiles.Add(new RestaurantPersonnelPermissionProfile
+            {
+                UserId = userId,
+                PermissionProfileId = profileId
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 }

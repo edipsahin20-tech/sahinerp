@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Filters;
+using SahinSoft.Web.Identity;
 using SahinSoft.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +35,11 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Varsayılan UserValidator<ApplicationUser> kaydını kaldırıp PIN-only personeli e-posta
+// zorunluluğundan muaf tutan PinOnlyUserValidator ile değiştiriyoruz (yukarıdaki not).
+builder.Services.RemoveAll<IUserValidator<ApplicationUser>>();
+builder.Services.AddScoped<IUserValidator<ApplicationUser>, PinOnlyUserValidator>();
 
 // Restoran modülü açıkken giriş yapılmamış istekler normal e-posta/şifre ekranı (/Identity/Account/Login)
 // yerine PIN ekranına (RestaurantAuthController) yönlendirilir - restoran personelinin e-posta/karmaşık
@@ -106,6 +113,7 @@ builder.Services.AddScoped<InventoryBalanceService>();
 builder.Services.AddScoped<PaymentReceiptPostingService>();
 builder.Services.AddScoped<NegotiableInstrumentPostingService>();
 builder.Services.AddScoped<RestaurantPostingService>();
+builder.Services.AddScoped<RestaurantPermissionService>();
 builder.Services.AddScoped<OverdueScheduleService>();
 builder.Services.AddScoped<InvoiceCancellationOrchestrationService>();
 builder.Services.AddScoped<DispatchNotePostingService>();

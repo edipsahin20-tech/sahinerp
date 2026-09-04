@@ -1,0 +1,73 @@
+@model SahinSoft.Web.Models.RestaurantPermissionProfileFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Yetki Profilini Düzenle" : "Yeni Yetki Profili";
+}
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+        <div class="erp-toolbar-actions">
+            <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Listeye Dön</a>
+            <button type="submit" class="btn btn-erp-primary btn-sm">Kaydet</button>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Profil Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus placeholder="Örn: Kasiyer, Şef Garson" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="form-check form-switch mt-2">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel mt-3">
+        <div class="erp-panel-header">Kritik İşlem Yetkileri</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small">Bu profile atanan personel, işaretli işlemleri yapabilir. İşaretsiz bırakılan bir işlem bu profil üzerinden İZİN VERMEZ (kullanıcının başka bir profili varsa o profil izin verebilir; hiç profili yoksa zaten hepsi serbesttir).</p>
+            <div class="d-flex flex-column gap-2">
+                <div class="form-check form-switch">
+                    <input asp-for="CanCancelOrderLine" class="form-check-input" />
+                    <label asp-for="CanCancelOrderLine" class="form-check-label">Sipariş/satır iptali (İptal, Sipariş Sil)</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanCancelReceipt" class="form-check-input" />
+                    <label asp-for="CanCancelReceipt" class="form-check-label">Fiş iptali</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanApplyDiscount" class="form-check-input" />
+                    <label asp-for="CanApplyDiscount" class="form-check-label">İndirim uygulama</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanApplyComplimentary" class="form-check-input" />
+                    <label asp-for="CanApplyComplimentary" class="form-check-label">İkram</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanEditKitchenSentLines" class="form-check-input" />
+                    <label asp-for="CanEditKitchenSentLines" class="form-check-label">Mutfağa gönderilmiş ürünü düzenleme (miktar/ikram/iptal)</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanAddNote" class="form-check-input" />
+                    <label asp-for="CanAddNote" class="form-check-label">Not ekleme</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

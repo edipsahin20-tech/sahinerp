@@ -1,0 +1,75 @@
+@model IReadOnlyList<SahinSoft.Domain.Entities.RestaurantPermissionProfile>
+@{
+    ViewData["Title"] = "Yetki Profilleri";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Yetki Profilleri</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-action="Index" asp-controller="RestaurantSettings" class="btn btn-erp-outline btn-sm">← Ayarlar</a>
+        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Profil</a>
+    </div>
+</div>
+
+<div class="alert alert-info py-2">
+    Bir personele birden fazla profil atanabilir - herhangi biri izin veriyorsa işlem serbesttir.
+    Hiç profili olmayan personel için TÜM işlemler serbesttir. Profil ataması Personel formundaki
+    "Yetki Listesi" alanından yapılır.
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Profil Adı</th>
+                    <th>Atanan Personel</th>
+                    <th>Sipariş/Satır İptali</th>
+                    <th>Fiş İptali</th>
+                    <th>İndirim</th>
+                    <th>İkram</th>
+                    <th>Mutfağa Gönderilmiş Düzenleme</th>
+                    <th>Not</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="@(item.IsActive ? "" : "text-secondary")">
+                    <td class="fw-semibold">@item.Name</td>
+                    <td>@item.Assignments.Count</td>
+                    <td>@(item.CanCancelOrderLine ? "✓" : "✕")</td>
+                    <td>@(item.CanCancelReceipt ? "✓" : "✕")</td>
+                    <td>@(item.CanApplyDiscount ? "✓" : "✕")</td>
+                    <td>@(item.CanApplyComplimentary ? "✓" : "✕")</td>
+                    <td>@(item.CanEditKitchenSentLines ? "✓" : "✕")</td>
+                    <td>@(item.CanAddNote ? "✓" : "✕")</td>
+                    <td>
+                        @if (item.IsActive) { <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span> }
+                        else { <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span> }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="10" class="text-center text-secondary py-4">Kayıt bulunamadı. Henüz profil oluşturulmadıysa TÜM personel için tüm işlemler serbesttir.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

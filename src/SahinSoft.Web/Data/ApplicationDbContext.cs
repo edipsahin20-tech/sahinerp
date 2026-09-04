@@ -88,6 +88,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<KitchenTicketLine> KitchenTicketLines => Set<KitchenTicketLine>();
     public DbSet<RestaurantPayment> RestaurantPayments => Set<RestaurantPayment>();
     public DbSet<RestaurantCashShift> RestaurantCashShifts => Set<RestaurantCashShift>();
+    public DbSet<RestaurantPermissionProfile> RestaurantPermissionProfiles => Set<RestaurantPermissionProfile>();
+    public DbSet<RestaurantPersonnelPermissionProfile> RestaurantPersonnelPermissionProfiles => Set<RestaurantPersonnelPermissionProfile>();
     public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
@@ -1487,6 +1489,23 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RestaurantPermissionProfile>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Name).IsUnique();
+        });
+
+        builder.Entity<RestaurantPersonnelPermissionProfile>(entity =>
+        {
+            entity.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            // Aynı kullanıcıya aynı profil iki kez atanamaz.
+            entity.HasIndex(x => new { x.UserId, x.PermissionProfileId }).IsUnique();
+            entity.HasOne(x => x.PermissionProfile)
+                .WithMany(x => x.Assignments)
+                .HasForeignKey(x => x.PermissionProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PackageOrder>(entity =>

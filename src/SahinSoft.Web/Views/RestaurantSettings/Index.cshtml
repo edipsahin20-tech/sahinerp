@@ -1,0 +1,37 @@
+@{
+    ViewData["Title"] = "Restoran Ayarları";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Restoran Ayarları</h1>
+        <span class="erp-toolbar-meta">Restoran/POS için gerekli tanımlar tek merkezden yönetilir</span>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <a asp-controller="RestaurantPermissionProfiles" asp-action="Index" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Yetki Profilleri</div>
+                <div class="text-secondary small">Personele atanan kritik işlem yetkileri (sipariş iptali, indirim, ikram, mutfağa gönderilmiş ürün düzenleme vb.)</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-controller="Settings" asp-action="Inventory" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Modül / Stok Parametreleri</div>
+                <div class="text-secondary small">Restoran modülü açık/kapalı, mutfak takibi, iptal gerekçesi, hazır not/gerekçe listeleri</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-controller="RestaurantSections" asp-action="Index" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Salonlar &amp; Masalar</div>
+                <div class="text-secondary small">Salon/bölge tanımları ve masa kapasiteleri</div>
+            </div>
+        </a>
+    </div>
+</div>

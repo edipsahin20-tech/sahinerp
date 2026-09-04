@@ -53,6 +53,12 @@
                 <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>
             </div>
             <div class="rest-sidebar-bottom">
+                @if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator) || User.IsInRole(SahinSoft.Domain.Constants.AppRoles.RestaurantManager))
+                {
+                    <!-- Ayarlar, Mutfak'ın ÜSTÜNDE (Edip, 2026-09-04, madde 26). Sadece yönetici
+                         yetkisi olanlara görünür - kasiyer/garson için gereksiz kalabalık. -->
+                    <a href="@Url.Action("Index", "RestaurantSettings")">⚙<br>Ayarlar</a>
+                }
                 <a href="@Url.Action("Index", "RestaurantKitchen")">♨<br>Mutfak</a>
                 <a href="@Url.Action("Index", "RestaurantShift")">▤<br>Vardiya</a>
             </div>
