@@ -121,6 +121,25 @@ html, body {
 
 .rest-shell .rest-main { grid-column: 2; grid-row: 2; overflow: auto; padding: 18px 22px; }
 
+/* Opsiyonel "sabit üst / kayan alt" düzeni (Edip, 2026-09-04: "raporlar kısmı tam otursun
+   sadece alt taraf ... kaysın") - Layout'taki ViewData["MainFixed"] ile sayfa bazında açılır,
+   varsayılan .rest-main davranışını (tek parça kayan) DEĞİŞTİRMEZ. .rest-main kendisi artık
+   kaymıyor, dikey flex olup ALTINDAKİ .report-scroll-area (özet/KPI/grafik/sekme başlıkları
+   dışındaki her şey) kalan boşluğu alıp kendi içinde kayıyor - yalnızca ince başlık şeridi
+   (sayfa adı, tarih oku, Yazdır) hep görünür kalır. */
+.rest-shell .rest-main.rest-main-fixed {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.rest-shell .rest-main.rest-main-fixed .report-scroll-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 .rest-shell .rest-statusbar {
     grid-column: 1 / 3; background: #fff; border-top: 1px solid var(--rs-border); font-size: 12px;
     display: flex; align-items: center; padding: 0 16px; color: #5E6F84; gap: 22px;
@@ -441,6 +460,10 @@ html, body {
     }
     .rest-shell { display: block !important; height: auto !important; }
     .rest-shell .rest-main { padding: 0 !important; }
+    /* Yazdırırken sabit üst/kayan alt düzeni kapatılır - kağıtta "scroll" olmaz, her şey normal
+       akışta art arda basılmalı (Edip, 2026-09-04). */
+    .rest-shell .rest-main.rest-main-fixed { display: block !important; overflow: visible !important; }
+    .rest-shell .rest-main.rest-main-fixed .report-scroll-area { overflow: visible !important; }
     .rest-shell .pack-layout { grid-template-columns: 1fr !important; }
 }
 

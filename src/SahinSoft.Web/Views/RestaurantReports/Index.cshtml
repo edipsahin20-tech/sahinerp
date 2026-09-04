@@ -2,6 +2,10 @@
 @{
     Layout = "_RestaurantShellLayout";
     ViewData["Title"] = "Raporlar";
+    // Üst kısım (özet/KPI/grafikler/sekme başlıkları) sabit kalır, yalnızca aktif sekmenin
+    // içeriği (Günlük Fişler/X/Z/Z Listesi) kendi içinde kayar (Edip, 2026-09-04: "raporlar
+    // kısmı tam otursun sadece alt taraf ... kaysın").
+    ViewData["MainFixed"] = true;
 
     static string SourceTypeLabel(string type) => type switch
     {
@@ -24,6 +28,8 @@
         <button type="button" class="rbtn gold" onclick="window.print()">▣ Yazdır</button>
     </div>
 </div>
+
+<div class="report-scroll-area">
 
 <div class="report-hero">
     <div class="rcard report-hero-main">
@@ -254,6 +260,7 @@ else if (Model.ActiveTab == "zlist")
 }
 
 <div class="znote sub" style="margin-top:12px;">X Raporu vardiyayı kapatmaz. Z Raporu gün sonu kapanışıdır. Z Listesi geçmiş Z kapanışlarını gösterir.</div>
+</div>
 
 @if (Model.SelectedReceipt is not null)
 {
