@@ -607,6 +607,17 @@
     border-color: var(--pos-gold);
 }
 
+/* Sipariş Sil (madde 23-24, 2026-09-05) - onaylı mockup'ta sağ sütunda diğerlerinden ayrışan
+   kırmızı bir buton. */
+.restaurant-pos .pos-side-icon.danger {
+    background: #D94A4A;
+    border-color: #D94A4A;
+    color: #fff;
+}
+.restaurant-pos .pos-side-icon.danger:hover {
+    border-color: #b23a3a;
+}
+
 .restaurant-pos .pos-side-icon-glyph {
     font-size: 1.15rem;
 }

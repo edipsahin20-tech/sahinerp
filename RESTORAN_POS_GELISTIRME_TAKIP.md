@@ -23,16 +23,17 @@ tasarımlarımız... butun butonlar çalışsın... sen ne zaman istersen iş pl
 tasarım değil, YUKARIDAKİ 4 görselin AYNISI, sadece hatırlatma/vurgu. Bu vesileyle Self Satış
 mockup'ının alt buton düzeni ("Adisyon | Nakit | Kredi Kartı" + "Cari Ekle | %İndirim | Kapat",
 "Sipariş Sil"in sağ sütunda AYRI kırmızı bir buton olarak durduğu) ile mevcut kodun TAM
-piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik ENGELLENMEDİ:**
-- Şu an "Sipariş Sil" alt hızlı-işlem sırasında duruyor (Cari Ekle eklenerek 4 sütuna çıkarıldı,
-  fonksiyon bozulmadı) - mockup'ta bu buton sağ ikon sütununa (Fiş İkram'ın altına) taşınmış
-  görünüyor.
-- "Adisyon" adında bir hızlı buton mockup'ta var, mevcut kodda YOK (muhtemelen mevcut açık
-  adisyonu görüntüleme/geçiş kısayolu - tam işlevi belirsiz, netleştirilmeli).
-- Bu SADECE düzen/pozisyon farkı - Madde 13 (Cari Ekle/Açık Hesap) TAM FONKSİYONEL olarak
-  eklendi ve test edildi, sadece buton mockup'taki TAM konumunda değil. İlerleyen bir oturumda
-  (örn. Madde 23-24 Masa Satış tasarım karşılaştırmasıyla birlikte) piksel-doğruluk için
-  gözden geçirilmeli.
+piksel eşleşmediği fark edildi:
+- **Düzeltildi (madde 23-24, 2026-09-05):** "Sipariş Sil" alt hızlı-işlem sırasından ÇIKARILIP sağ
+  ikon sütununa, Fiş İkram'ın altına, kırmızı (`.pos-side-icon.danger`) bir buton olarak taşındı;
+  alt sıra artık mockup'taki gibi "Cari Ekle | %İndirim | Kapat" (3 sütun). Fonksiyon
+  (`clear-cart-btn` id'si, bekleyen sepeti temizleme) aynı kaldı, taşıma sadece DOM konumu/CSS -
+  tarayıcıda doğrulandı (Self Satış'ta ürün eklenip Sipariş Sil'e basıldığında sepet
+  temizleniyor).
+- **Hâlâ açık:** "Adisyon" adında bir hızlı buton mockup'ta var, mevcut kodda YOK (muhtemelen
+  mevcut açık adisyonu görüntüleme/geçiş kısayolu - tam işlevi belirsiz). Görseli tekrar incelemeden
+  tahminle eklenmedi ("tasarım uydurma" kuralı) - Edip'ten netleştirme istenene kadar veya
+  görsel tekrar paylaşılana kadar bekliyor.
 
 ---
 
@@ -61,7 +62,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 20 | Boş Adisyon otomatik temizlik | ✅ tamam + test edildi (2026-09-04/05) - gerçek eksik bulundu ve düzeltildi |
 | 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
 | 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ✅ tamam + test edildi (2026-09-05) |
-| 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | 🔶 "kişi sayısı sorulsun mu" akışı ilk açılışta zaten çalışıyor (doğrulandı), tasarım karşılaştırması henüz yapılmadı |
+| 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | ✅ tamam + test edildi (2026-09-05) - "kişi sayısı sorulsun mu" zaten çalışıyordu (önceki oturumda doğrulandı); Masa Satış'ın kendisi (5'li özet kart satırı, renkli üst çizgili masa kartları, salon sekmeleri) mockup ile zaten eşleşiyor, tarayıcıda tekrar karşılaştırılıp doğrulandı; aynı görsel setinden Self Satış buton düzeni fidelity gap'i de bu oturumda düzeltildi (bkz. yukarıdaki Referans görseller notu) |
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
 | 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ⏳ |
 | 28-34 | Raporlar (ortak dönem filtresi, Kasiyer/X/Z/Z Listesi) | ⏳ |
