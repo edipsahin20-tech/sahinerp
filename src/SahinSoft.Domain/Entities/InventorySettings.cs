@@ -79,6 +79,14 @@ public sealed class InventorySettings : EntityBase
     public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
     public bool RequireSecondApprovalForAddNote { get; set; }
 
+    // Self Satış Hızlı Ödeme (madde 3, Edip 2026-09-04) - Nakit/Kredi Kartı/Yemek Çeki tuşu TAM
+    // tutarı anında alır ve satışı hiçbir onay istemeden kapatır. Bu parametre kapalıyken
+    // (varsayılan) kapanışın ardından hiçbir şey sorulmadan doğrudan yeni/boş Self Satış ekranına
+    // dönülür. Açıkken küçük bir "Fiş Yazdır | Kapat" diyaloğu gösterilir - Fiş Yazdır ödeme
+    // yöntemi dahil fişi yazdırır, Kapat yazdırmadan kapatır; İKİSİ DE sonunda boş Self Satış
+    // ekranına döner.
+    public bool RequireReceiptPromptAfterQuickPay { get; set; }
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }

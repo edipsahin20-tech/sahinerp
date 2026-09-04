@@ -50,9 +50,17 @@ public sealed class RestaurantCheckViewModel
     public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
     public bool RequireSecondApprovalForComplimentary { get; set; }
 
+    // Self Satış Hızlı Ödeme (madde 3) - açıkken kapanış sonrası "Fiş Yazdır | Kapat" diyaloğu
+    // gösterilir, kapalıyken (varsayılan) hiç sorulmadan boş ekrana dönülür.
+    public bool RequireReceiptPromptAfterQuickPay { get; set; }
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
+
+    // Kısmi ödeme (madde 4-8) - sunucuda kalıcı olarak kayıtlı, henüz kapanmamış ödemeler. Ana
+    // ekranda Ödenen/Kalan özetini ve "Ödemeyi Al" modalının ilk açılışını doldurur.
+    public List<RestaurantPendingPaymentViewModel> PendingPayments { get; set; } = [];
 }
 
 public sealed record RestaurantTransferTableOptionViewModel(int TableId, string SectionName, string TableName, bool IsOccupied);
@@ -168,5 +176,21 @@ public sealed class RestaurantClosePaymentLineRequest
 {
     public int Method { get; set; }
     public int FinancialAccountId { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public sealed class RestaurantPendingPaymentRequest
+{
+    public int CheckId { get; set; }
+    public int Method { get; set; }
+    public int? FinancialAccountId { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public sealed class RestaurantPendingPaymentViewModel
+{
+    public int PendingPaymentId { get; set; }
+    public int Method { get; set; }
+    public int? FinancialAccountId { get; set; }
     public decimal Amount { get; set; }
 }

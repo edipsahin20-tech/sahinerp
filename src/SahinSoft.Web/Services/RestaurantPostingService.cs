@@ -1591,11 +1591,78 @@ public sealed class RestaurantPostingService(
                     })
                 });
 
+                // Kısmi ödeme kayıtları (madde 4-8) - kapanışla birlikte artık ANLAMSIZ (gerçek
+                // RestaurantPayment satırları az önce yukarıda yazıldı), muhasebeye HİÇ İŞLENMEMİŞ
+                // oldukları için silinmeleri güvenli - bkz. RestaurantCheckPendingPayment yorumu.
+                var pendingPayments = await dbContext.RestaurantCheckPendingPayments
+                    .Where(x => x.RestaurantCheckId == checkId)
+                    .ToListAsync(cancellationToken);
+                dbContext.RestaurantCheckPendingPayments.RemoveRange(pendingPayments);
+
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return retailSale;
             });
         }, cancellationToken);
+
+    // Kısmi ödeme (madde 4-8) - "Ödemeyi Al" modalında bir yöntem tuşuna basılınca sunucuya
+    // KALICI olarak kaydedilir (RestaurantPayment/FinancialTransaction DEĞİL - muhasebeye henüz
+    // hiç dokunmaz). Bu sayede "Adisyona Dön" ile modal kapatılıp tekrar açıldığında, hatta sayfa
+    // yenilense/başka bir kullanıcı aynı adisyonu açsa bile alınan tutarlar KAYBOLMAZ (spec:
+    // "kısmi ödemeler korunur, ana ekranda da Ödenen/Kalan görünür").
+    public async Task<RestaurantCheckPendingPayment> AddPendingPaymentAsync(
+        int checkId,
+        RestaurantPaymentMethod method,
+        decimal amount,
+        int? financialAccountId,
+        string recordedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+        {
+            throw new InvalidOperationException("Tutar sıfırdan büyük olmalıdır.");
+        }
+
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        if (check.Status != RestaurantCheckStatus.Open)
+        {
+            throw new InvalidOperationException("Yalnızca açık adisyonlara ödeme kaydedilebilir.");
+        }
+
+        var pending = new RestaurantCheckPendingPayment
+        {
+            RestaurantCheckId = checkId,
+            PaymentMethod = method,
+            Amount = Math.Round(amount, 2, MidpointRounding.AwayFromZero),
+            FinancialAccountId = financialAccountId,
+            RecordedByUserId = recordedByUserId,
+            RecordedAtUtc = DateTime.UtcNow
+        };
+        dbContext.RestaurantCheckPendingPayments.Add(pending);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return pending;
+    }
+
+    public async Task RemovePendingPaymentAsync(int pendingPaymentId, CancellationToken cancellationToken = default)
+    {
+        var pending = await dbContext.RestaurantCheckPendingPayments.SingleOrDefaultAsync(x => x.Id == pendingPaymentId, cancellationToken)
+            ?? throw new InvalidOperationException("Ödeme satırı bulunamadı.");
+        dbContext.RestaurantCheckPendingPayments.Remove(pending);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // "Ödeme İptal" (madde 7) - bu adisyondaki TÜM kısmi ödemeleri sıfırlar. "Adisyona Dön"den
+    // (madde 8) FARKI: kullanıcı ödeme ekranında KALIR, hiçbir şey korunmaz - buradaki tek
+    // sorumluluk sunucudaki kısmi ödeme kayıtlarını silmek, ekran akışı JS tarafında yönetilir.
+    public async Task CancelPendingPaymentsAsync(int checkId, CancellationToken cancellationToken = default)
+    {
+        var pendingPayments = await dbContext.RestaurantCheckPendingPayments
+            .Where(x => x.RestaurantCheckId == checkId)
+            .ToListAsync(cancellationToken);
+        dbContext.RestaurantCheckPendingPayments.RemoveRange(pendingPayments);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     private async Task<int> GetDefaultRetailCustomerIdAsync(CancellationToken cancellationToken)
     {

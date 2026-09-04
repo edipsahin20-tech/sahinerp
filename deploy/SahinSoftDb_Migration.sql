@@ -9902,3 +9902,81 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [RequireReceiptPromptAfterQuickPay] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    CREATE TABLE [RestaurantCheckPendingPayments] (
+        [Id] int NOT NULL IDENTITY,
+        [RestaurantCheckId] int NOT NULL,
+        [PaymentMethod] int NOT NULL,
+        [Amount] decimal(18,2) NOT NULL,
+        [FinancialAccountId] int NULL,
+        [RecordedByUserId] nvarchar(450) NOT NULL,
+        [RecordedAtUtc] datetime2 NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantCheckPendingPayments] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RestaurantCheckPendingPayments_FinancialAccounts_FinancialAccountId] FOREIGN KEY ([FinancialAccountId]) REFERENCES [FinancialAccounts] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_RestaurantCheckPendingPayments_RestaurantChecks_RestaurantCheckId] FOREIGN KEY ([RestaurantCheckId]) REFERENCES [RestaurantChecks] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [RequireReceiptPromptAfterQuickPay] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCheckPendingPayments_FinancialAccountId] ON [RestaurantCheckPendingPayments] ([FinancialAccountId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantCheckPendingPayments_RecordId] ON [RestaurantCheckPendingPayments] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCheckPendingPayments_RestaurantCheckId] ON [RestaurantCheckPendingPayments] ([RestaurantCheckId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904192325_AddPendingPaymentsAndQuickPaySetting'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904192325_AddPendingPaymentsAndQuickPaySetting', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

@@ -1,0 +1,54 @@
+@model SahinSoft.Web.Models.RestaurantReceiptDetailViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Fiş — @Model.DocumentNumber</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 380px; margin: 0 auto; padding: 16px; color: #1c2430; }
+        .sub { color: #8793a3; font-size: 12.5px; }
+        .receipt-line-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #F0F3F7; font-size: 13.5px; }
+        .receipt-total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #8793a3; }
+        .receipt-total-row.grand { font-size: 18px; font-weight: 800; color: #1c2430; border-top: 1px solid #dfe4ea; margin-top: 6px; padding-top: 8px; }
+        .no-print { margin-top: 16px; text-align: center; }
+        .no-print button { padding: 10px 20px; border: 0; border-radius: 8px; background: #1c2430; color: #fff; font-weight: 700; cursor: pointer; }
+        h5 { margin: 0 0 4px; }
+        @@media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <h5>Fiş — @Model.DocumentNumber</h5>
+    <div class="sub">@Model.SourceLabel · @Model.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+    @if (Model.IsCancelled)
+    {
+        <div style="color:#c0392b; margin-top:8px;">İptal edilmiş fiş</div>
+    }
+    <div style="margin-top:12px;">
+        @foreach (var line in Model.Lines)
+        {
+            <div class="receipt-line-row"><span>@line.Quantity.ToString("0.##") × @line.ProductName</span><b>@line.LineTotal.ToString("N2") ₺</b></div>
+        }
+    </div>
+    <div style="margin-top:10px;">
+        <div class="receipt-total-row"><span>Ara Toplam</span><span>@Model.SubtotalAmount.ToString("N2") ₺</span></div>
+        <div class="receipt-total-row"><span>İndirim</span><span>@Model.DiscountAmount.ToString("N2") ₺</span></div>
+        <div class="receipt-total-row"><span>KDV</span><span>@Model.TaxAmount.ToString("N2") ₺</span></div>
+        <div class="receipt-total-row grand"><span>Genel Toplam</span><span>@Model.GrandTotal.ToString("N2") ₺</span></div>
+    </div>
+    <div style="margin-top:10px;">
+        @foreach (var p in Model.Payments)
+        {
+            <div class="receipt-line-row"><span>@p.Method</span><b>@p.Amount.ToString("N2") ₺</b></div>
+        }
+    </div>
+    <div class="no-print">
+        <button type="button" onclick="window.print()">Yazdır</button>
+    </div>
+    <script>
+        window.addEventListener('load', function () { window.print(); });
+    </script>
+</body>
+</html>

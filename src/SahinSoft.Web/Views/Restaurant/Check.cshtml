@@ -28,6 +28,11 @@
      data-require-second-approval-cancel-line="@Model.RequireSecondApprovalForCancelOrderLine.ToString().ToLowerInvariant()"
      data-require-second-approval-edit-kitchen-sent="@Model.RequireSecondApprovalForEditKitchenSentLines.ToString().ToLowerInvariant()"
      data-require-second-approval-complimentary="@Model.RequireSecondApprovalForComplimentary.ToString().ToLowerInvariant()"
+     data-require-receipt-prompt-after-quickpay="@Model.RequireReceiptPromptAfterQuickPay.ToString().ToLowerInvariant()"
+     data-add-pending-payment-url="@Url.Action("AddPendingPayment")"
+     data-remove-pending-payment-url="@Url.Action("RemovePendingPayment")"
+     data-cancel-pending-payments-url="@Url.Action("CancelPendingPayments")"
+     data-receipt-url-template="@Url.Action("Receipt", new { id = -1 })"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-sent-lines-gross-total="@Model.SentOrders.SelectMany(o => o.Lines).Where(l => l.Status != "Cancelled").Sum(l => l.Quantity * l.UnitPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
@@ -212,6 +217,24 @@
                     <div class="d-flex justify-content-between">
                         <span>Toplam</span>
                         <span class="cart-total" id="cart-total">0,00 ₺</span>
+                    </div>
+                    <!-- Ana ekranda Ödenen/Kalan (madde 8: "kısmi ödemeler ana ekranda da görünür")
+                         - kısmi ödeme yokken gizli, sunucudan gelen PendingPayments ile JS
+                         (restaurant-close-payment.js) dolduruyor. Bootstrap'ın .d-flex sınıfı
+                         !important olduğu için görünürlük TOGGLE'ı doğrudan bu satırda
+                         (inline style="display:none") DEĞİL, sarmalayıcı bir dış div'te
+                         yapılıyor - aksi halde JS'in style.display='none'ı asla kazanamaz. -->
+                    <div id="main-paid-row" style="display:none;">
+                        <div class="d-flex justify-content-between">
+                            <span>Ödenen</span>
+                            <span class="text-success fw-bold" id="main-paid-total">0,00 ₺</span>
+                        </div>
+                    </div>
+                    <div id="main-remaining-row" style="display:none;">
+                        <div class="d-flex justify-content-between">
+                            <span>Kalan</span>
+                            <span class="text-danger fw-bold" id="main-remaining-total">0,00 ₺</span>
+                        </div>
                     </div>
                     <!-- Self satış ve masa satışta AYNI ödeme mantığı - "Kapat/Öde" ayrı bir buton
                          olarak kaldırıldı, tek "Ödemeyi Al" akışı ikisinde de burada
@@ -478,6 +501,25 @@
     </div>
 </div>
 
+<!-- Self Satış Hızlı Ödeme sonrası (madde 3) - "Satış sonrası tahsilat fişi sorulsun mu?" AÇIKSA
+     gösterilir; ikisi de sonunda boş Self Satış ekranına döner. -->
+<div class="modal fade" id="quickPayReceiptModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ödeme Alındı</h5>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary small mb-0">Fiş yazdırılsın mı?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" id="quickpay-close-btn">Kapat</button>
+                <button type="button" class="btn btn-erp" id="quickpay-print-btn">Fiş Yazdır</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @if (Model.IsSelfSaleCheck)
 {
     <!-- Masaya Aktar modalı - yalnızca Self Satış adisyonlarında render edilir -->
@@ -592,6 +634,7 @@
                     <div><small>Toplam</small><strong id="pay-total"></strong></div>
                     <div><small>Ödenen</small><strong id="pay-paid">0,00 ₺</strong></div>
                     <div><small>Kalan</small><strong id="pay-remaining" class="text-danger"></strong></div>
+                    <div id="pay-change-wrap" style="display:none;"><small>Para Üstü</small><strong id="pay-change" class="text-success"></strong></div>
                 </div>
 
                 <div id="close-payment-error" class="alert alert-danger py-2" style="display:none;"></div>
@@ -647,7 +690,10 @@
                 </div>
             </div>
             <div class="modal-footer pay-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">× Ödeme İptal</button>
+                <!-- Ödeme İptal: kısmi ödemeleri SIFIRLAR, kullanıcı ekranda KALIR (data-bs-dismiss
+                     YOK - kasıtlı, madde 7). Adisyona Dön: hiçbir şeye dokunmadan sadece kapatır
+                     (madde 8) - JS tarafı bu ikisini artık FARKLI davranışlarla yönetiyor. -->
+                <button type="button" class="btn btn-danger" id="cancel-pending-payments-btn">× Ödeme İptal</button>
                 <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">‹ Adisyona Dön</button>
                 <button type="button" class="btn btn-erp" id="confirm-close-payment-btn" disabled>Siparişi Tamamla</button>
             </div>
@@ -727,6 +773,7 @@
     <script id="pos-fiscal-lines-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(fiscalLines, catalogJsonOptions))</script>
     <script id="pos-cancellation-reasons-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CancellationReasonPresets, catalogJsonOptions))</script>
     <script id="pos-quick-notes-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickNotePresets, catalogJsonOptions))</script>
+    <script id="pos-pending-payments-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PendingPayments, catalogJsonOptions))</script>
     <script src="~/js/restaurant-pos.js" asp-append-version="true"></script>
     <script>
         (function () {

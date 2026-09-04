@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Constants;
+using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
@@ -380,7 +381,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -418,6 +419,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             RequireSecondApprovalForCancelOrderLine = fiscalSettings?.RequireSecondApprovalForCancelOrderLine ?? false,
             RequireSecondApprovalForEditKitchenSentLines = fiscalSettings?.RequireSecondApprovalForEditKitchenSentLines ?? false,
             RequireSecondApprovalForComplimentary = fiscalSettings?.RequireSecondApprovalForComplimentary ?? false,
+            RequireReceiptPromptAfterQuickPay = fiscalSettings?.RequireReceiptPromptAfterQuickPay ?? false,
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel
@@ -472,7 +474,19 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 })
                 .ToList(),
             FinancialAccounts = financialAccounts,
-            PayableTotal = ComputeCheckRunningTotal(check.Id)
+            PayableTotal = ComputeCheckRunningTotal(check.Id),
+            PendingPayments = await dbContext.RestaurantCheckPendingPayments
+                .AsNoTracking()
+                .Where(x => x.RestaurantCheckId == check.Id)
+                .OrderBy(x => x.RecordedAtUtc)
+                .Select(x => new RestaurantPendingPaymentViewModel
+                {
+                    PendingPaymentId = x.Id,
+                    Method = (int)x.PaymentMethod,
+                    FinancialAccountId = x.FinancialAccountId,
+                    Amount = x.Amount
+                })
+                .ToListAsync()
         };
 
         return View(model);
@@ -506,12 +520,99 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 request.SubmissionKey,
                 fiscalInfo);
 
-            return Ok(new { retailSale.DocumentNumber, retailSale.GrandTotal });
+            return Ok(new { RetailSaleId = retailSale.Id, retailSale.DocumentNumber, retailSale.GrandTotal });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    // Kısmi ödeme (madde 4-8) - "Ödemeyi Al" modalında bir yöntem tuşuna basılınca çağrılır,
+    // sunucuya KALICI kaydeder (bkz. RestaurantCheckPendingPayment/AddPendingPaymentAsync).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddPendingPayment([FromBody] RestaurantPendingPaymentRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        try
+        {
+            var pending = await postingService.AddPendingPaymentAsync(
+                request.CheckId,
+                (RestaurantPaymentMethod)request.Method,
+                request.Amount,
+                request.FinancialAccountId,
+                userId);
+
+            return Ok(new { pendingPaymentId = pending.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemovePendingPayment(int pendingPaymentId)
+    {
+        try
+        {
+            await postingService.RemovePendingPaymentAsync(pendingPaymentId);
+            return Ok(new { success = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // "Ödeme İptal" (madde 7) - Adisyona Dön'den farklı olarak kısmi ödemeleri sıfırlar, kullanıcı
+    // ödeme ekranında kalır (bkz. Check.cshtml #closePaymentModal, restaurant-close-payment.js).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelPendingPayments(int checkId)
+    {
+        await postingService.CancelPendingPaymentsAsync(checkId);
+        return Ok(new { success = true });
+    }
+
+    // Self Satış Hızlı Ödeme (madde 3) - "Fiş Yazdır" için yalın, yazdırmaya hazır fiş görünümü.
+    // RestaurantReportsController'daki "Fişi Gör" modalıyla AYNI veri şeklini kullanır ama o
+    // controller Waiter rolüne kapalı (Administrator/RestaurantManager/Cashier) - burası bu
+    // controller'ın kendi rol kapsamında (Administrator/RestaurantManager/Waiter) kalması için
+    // ayrı, küçük bir aksiyon.
+    [HttpGet]
+    public async Task<IActionResult> Receipt(int id)
+    {
+        var sale = await dbContext.RetailSales
+            .AsNoTracking()
+            .Include(x => x.Lines)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (sale is null)
+        {
+            return NotFound();
+        }
+
+        var model = new RestaurantReceiptDetailViewModel
+        {
+            DocumentNumber = sale.DocumentNumber,
+            IssuedAtUtc = sale.IssuedAtUtc,
+            SourceLabel = "Self Satış",
+            SourceType = "self",
+            IsCancelled = sale.Status == RetailSaleStatus.Cancelled,
+            Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.LineTotal)).ToList(),
+            SubtotalAmount = sale.SubtotalAmount,
+            DiscountAmount = sale.DiscountAmount,
+            TaxAmount = sale.TaxAmount,
+            GrandTotal = sale.GrandTotal,
+            Payments = sale.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => new RestaurantReceiptDetailPayment(
+                p.PaymentMethod switch { RestaurantPaymentMethod.Cash => "Nakit", RestaurantPaymentMethod.CreditCard => "Kredi Kartı", _ => "Yemek Kartı" },
+                p.Amount)).ToList()
+        };
+
+        return View(model);
     }
 
     [HttpPost]

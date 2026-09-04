@@ -131,6 +131,14 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Self Satış Hızlı Ödeme</div>
+        <div class="card-body">
+            <div class="form-check form-switch"><input asp-for="RequireReceiptPromptAfterQuickPay" class="form-check-input" /><label asp-for="RequireReceiptPromptAfterQuickPay" class="form-check-label"></label></div>
+            <div class="form-text">Kapalıyken (varsayılan) Self Satış'ta Nakit/Kredi Kartı/Yemek Çeki tuşuna basınca tam tutar anında alınır, satış hiçbir onay istemeden kapanır ve doğrudan boş bir Self Satış ekranına dönülür. Açıkken kapanışın ardından küçük bir "Fiş Yazdır | Kapat" seçimi gösterilir - ikisi de sonunda boş ekrana döner.</div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Yazar Kasa Entegrasyonu</div>
         <div class="card-body">
             <p class="text-secondary small">Bir yazar kasa seçilip adresi girilirse, restoran Kapat/Öde ekranındaki nakit/kredi kartı/yemek çeki ödemeleri doğrudan fiziksel yazar kasaya gönderilir (fatura kesilen satışlar hariç). "Yok" seçiliyken (varsayılan) hiçbir değişiklik olmaz, bugünkü gibi çalışır.</p>

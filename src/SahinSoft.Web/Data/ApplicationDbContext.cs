@@ -91,6 +91,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantPermissionProfile> RestaurantPermissionProfiles => Set<RestaurantPermissionProfile>();
     public DbSet<RestaurantPersonnelPermissionProfile> RestaurantPersonnelPermissionProfiles => Set<RestaurantPersonnelPermissionProfile>();
     public DbSet<RestaurantPermissionAuditLog> RestaurantPermissionAuditLogs => Set<RestaurantPermissionAuditLog>();
+    public DbSet<RestaurantCheckPendingPayment> RestaurantCheckPendingPayments => Set<RestaurantCheckPendingPayment>();
     public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
@@ -1515,6 +1516,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.PerformedByUserId).HasMaxLength(450).IsRequired();
             entity.Property(x => x.ApproverUserId).HasMaxLength(450).IsRequired();
             entity.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        builder.Entity<RestaurantCheckPendingPayment>(entity =>
+        {
+            entity.Property(x => x.RecordedByUserId).HasMaxLength(450).IsRequired();
+            entity.HasIndex(x => x.RestaurantCheckId);
+            entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<PackageOrder>(entity =>

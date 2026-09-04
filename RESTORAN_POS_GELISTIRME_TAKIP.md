@@ -26,12 +26,12 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 |---|---|---|
 | 0 | Bu takip dosyası + mimari karar notu | ✅ |
 | 2 | Ortak Satış Mimarisi | ⏳ değerlendiriliyor |
-| 3 | Self Satış Hızlı Ödeme + fiş sorulsun mu parametresi | ⏳ |
-| 4 | Ödeme Al ekranı (Toplam/Ödenen/Kalan/Para Üstü) | ⏳ |
-| 5 | Parçalı Ödeme | 🔶 kısmen mevcut, doğrulanacak |
-| 6 | Tutarı Bölme (1/2,1/3..) | 🔶 kısmen mevcut, doğrulanacak |
-| 7 | Ödeme İptal | ⏳ GERÇEK EKSİK bulundu - şu an "Adisyona Dön" ile BİREBİR AYNI (sadece modal kapatıyor, sunucuya hiçbir şey göndermiyor), kısmi ödemeleri sıfırlamıyor. Mimari kısıt için aşağıya bak |
-| 8 | Adisyona Dön (kilitlenmeden, kısmi ödeme korunur) | 🔶 KISMEN - "ekran kilitlenmiyor" kısmı ✅ (madde 9 sayesinde), ama "kısmi ödeme korunur" kısmı ❌ - mimari kısıt için aşağıya bak |
+| 3 | Self Satış Hızlı Ödeme + fiş sorulsun mu parametresi | ✅ tamam + test edildi (2026-09-04) |
+| 4 | Ödeme Al ekranı (Toplam/Ödenen/Kalan/Para Üstü) | ✅ tamam + test edildi (2026-09-04) |
+| 5 | Parçalı Ödeme | ✅ tamam + test edildi (2026-09-04, sunucu kalıcılığıyla birlikte) |
+| 6 | Tutarı Bölme (1/2,1/3..) | ✅ tamam + test edildi (2026-09-04, 1/2 bölünmesi doğrulandı) |
+| 7 | Ödeme İptal | ✅ tamam + test edildi (2026-09-04) |
+| 8 | Adisyona Dön (kilitlenmeden, kısmi ödeme korunur) | ✅ tamam + test edildi (2026-09-04, tam sayfa yenilemede bile korunduğu doğrulandı) |
 | 9 | Satır Kilidi TAMAMEN KALDIRILACAK | ✅ tamam + test edildi (2026-09-04) |
 | 10 | İndirim ortak motor | 🔶 kısmen mevcut (ApplyTicketDiscountAsync) |
 | 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ⏳ |
@@ -117,13 +117,82 @@ incelendi):
    yeniden gözden geçirilmeli (kalan hep client-side hesaplanıyor, DB'deki gerçek kalanla senkron
    olmalı).
 
-**NEDEN BU TURDA YAPILMADI:** Bu, gerçek para/muhasebe akışına dokunan (FinancialTransaction,
-CurrentAccountTransaction) hassas bir mimari değişiklik. `CloseCheckAsync`'in mevcut muhasebe
-kayıt mantığını (satır ~1500-1750) tam anlamadan aceleyle değiştirmek ÇİFT KAYIT veya eksik
-muhasebe hareketine yol açabilir - bu, kullanıcının "kurulum/muhasebe hataları müşteride değil
-burada yakalanmalı" prensibine ([[feedback_sahinsoft_packaged_product_philosophy]]) doğrudan
-aykırı olur. Bir sonraki oturumda önce `CloseCheckAsync`'in TAMAMI (satır 1395-1750 civarı)
-okunup muhasebe akışı tam çözülmeli, SONRA bu değişiklik yapılmalı.
+**NEDEN BU TURDA YAPILMADI (o anki durum, artık ÇÖZÜLDÜ - bkz. aşağıdaki 2026-09-04 bölümü):** Bu,
+gerçek para/muhasebe akışına dokunan (FinancialTransaction, CurrentAccountTransaction) hassas bir
+mimari değişiklikti. `CloseCheckAsync`'in mevcut muhasebe kayıt mantığını (satır ~1500-1750) tam
+anlamadan aceleyle değiştirmek ÇİFT KAYIT veya eksik muhasebe hareketine yol açabilirdi.
+
+### Madde 3-8 (Self Satış Hızlı Ödeme, Ödeme Al, Parçalı Ödeme, Tutarı Bölme, Ödeme İptal,
+Adisyona Dön) — TAMAMLANDI, 2026-09-04, TEST EDİLDİ
+
+**Mimari çözüm (Edip'in kendi doğrulattığı kural birebir uygulandı):** Kısmi ödemeler
+`RestaurantCheckPendingPayment` (yeni tablo) olarak saklanıyor - bu, `CloseCheckAsync`'in
+yazdığı gerçek `RestaurantPayment`/`FinancialTransaction`/`CurrentAccountTransaction`
+kayıtlarından TAMAMEN AYRI. Adisyon kapanana kadar HİÇBİR kesin muhasebe/cari hareketi
+oluşmuyor - `CloseCheckAsync`'in kendisi TEK SATIR bile değişmedi (sadece kapanış sonunda
+artık anlamsız kalan pending satırları temizleyen küçük bir `RemoveRange` eklendi).
+
+**Yapılanlar:**
+- `RestaurantCheckPendingPayment` (Domain, yeni): RestaurantCheckId, PaymentMethod, Amount,
+  FinancialAccountId, RecordedByUserId, RecordedAtUtc. Migration `AddPendingPaymentsAndQuickPaySetting`.
+- `RestaurantPostingService`: `AddPendingPaymentAsync`/`RemovePendingPaymentAsync`/
+  `CancelPendingPaymentsAsync` - üçü de SADECE bu tabloya dokunuyor. `CloseCheckAsync` sonunda
+  artık bu check'in pending satırlarını siliyor (muhasebeye hiç girmedikleri için silinmeleri
+  güvenli).
+- `RestaurantController`: `AddPendingPayment`/`RemovePendingPayment`/`CancelPendingPayments`
+  (JSON endpoint'ler) + `Receipt(int id)` (yazdırmaya hazır, `Layout=null`, `window.print()`
+  otomatik tetiklenen yalın fiş görünümü - RestaurantReportsController'daki "Fişi Gör"den FARKLI
+  bir aksiyon, çünkü o controller Waiter rolüne kapalı, bu ise Administrator/RestaurantManager/
+  Waiter kapsamında kalıyor).
+- `Check.cshtml`/`restaurant-close-payment.js`: modal artık `paymentLines`'ı sayfa yüklenişinde
+  sunucudan gelen kayıtlarla dolduruyor ve "Adisyona Dön"de SIFIRLAMIYOR. Ana ekranda (modal
+  kapalıyken de) Ödenen/Kalan satırı eklendi. "Ödeme İptal" artık AYRI bir handler - kısmi
+  ödemeleri sunucudan siler, ekranda KALIR (Adisyona Dön'den farkı budur). Para Üstü: kasiyer
+  kalanın üzerinde bir tutar girerse CANLI olarak fark gösterilir, ama bir ödeme yöntemi
+  tuşuna basıldığında kayda giren tutar KALANLA SINIRLANIR - `CloseCheckAsync`'in "ödeme
+  toplamı == adisyon tutarı" katı eşitliği bu sayede HİÇ BOZULMADI, fazla tahsilat asla
+  muhasebeye girmiyor.
+- Self Satış Hızlı Ödeme (madde 3) - `window.RestaurantQuickPay` artık modalı açıp bekletmek
+  yerine tam tutarı TEK yöntemle ANINDA kapatıyor (`submitClosePayment` ortak fonksiyonu -
+  hem bu hem normal "Siparişi Tamamla" aynı kodu kullanıyor). Yeni `InventorySettings.
+  RequireReceiptPromptAfterQuickPay` parametresi (Ayarlar > Stok Parametreleri, varsayılan
+  KAPALI) açıkken kapanışın ardından küçük bir "Fiş Yazdır | Kapat" diyaloğu gösteriliyor -
+  ikisi de sonunda boş Self Satış ekranına dönüyor.
+
+**Bulunan ve düzeltilen ÜÇÜNCÜ gerçek bug:** Ana ekrandaki Ödenen/Kalan satırlarını gizlemek
+için `style="display:none"` + Bootstrap'ın `.d-flex` sınıfını AYNI elemente koymuştum -
+Bootstrap'ın `d-flex` sınıfı `!important` olduğu için JS'in `style.display='none'` ataması
+HİÇBİR ZAMAN kazanamıyordu, satırlar her zaman (yanlış "0,00 ₺" değerleriyle) görünür
+kalıyordu. Düzeltme: `d-flex` sınıfı iç bir sarmalayıcıya taşındı, görünürlük dış (sınıfsız)
+div'te yönetiliyor.
+
+**Nasıl test edildi (canlı tarayıcı, dev sunucu, sunucu logları ile INSERT/DELETE doğrulandı):**
+1. Self Satış'ta ÇORBA eklenip 1/2 bölündü (1.125 TL → 562,50 TL) → Nakit ile onaylandı;
+   sunucu logunda `RestaurantCheckPendingPayments` INSERT'i doğrulandı (FinancialTransaction/
+   CurrentAccountTransaction YOK).
+2. Modal "Adisyona Dön" ile kapatıldı → ana ekranda "Ödenen 562,50 / Kalan 562,50" göründü.
+3. **TAM SAYFA YENİLENDİ** (yeni GET isteği) → kısmi ödeme AYNEN geri geldi (`pos-pending-
+   payments-data` sunucudan doğru döndü) - sunucu kalıcılığı kanıtlandı, sadece JS bellek
+   durumu değil.
+4. "Ödeme İptal" tıklandı (onay diyaloğu geçildi) → Ödenen 0,00'a döndü, kullanıcı ödeme
+   ekranında KALDI (modal kapanmadı); sunucu logunda gerçek bir `DELETE FROM
+   RestaurantCheckPendingPayments` doğrulandı.
+5. Self Satış hızlı ödeme kısayolu (Kredi Kartı) tıklandı → satış ANINDA kapandı, hiç onay
+   istemedi, boş yeni bir adisyona (AD.00025) döndü; sunucu logunda gerçek `RetailSales`/
+   `CurrentAccountTransactions` INSERT'i doğrulandı (tam muhasebe akışı çalıştı).
+6. "Hızlı Ödeme Sonrası Fiş Sorulsun mu?" AÇILDI, tekrar hızlı ödeme denendi → satış yine
+   ANINDA kapandı (RetailSale sunucu logunda doğrulandı) AMA bu sefer "Fiş Yazdır | Kapat"
+   diyaloğu gösterildi; "Fiş Yazdır" tıklanınca `/Restaurant/Receipt/{id}` sayfası açıldı,
+   içerik (ürün, tutarlar, KDV, "Kredi Kartı 125,00 ₺") DOĞRU şekilde göründü ve otomatik
+   yazdırma tetiklendi.
+7. Numpad'e kalanın (125) üzerinde bir tutar (200) girildi → Para Üstü CANLI "75,00 ₺" olarak
+   göründü; Nakit'e basılınca kayda SADECE 125,00 ₺ girdiği doğrulandı (200 değil) - fazla
+   tahsilat asla oluşmadı.
+8. Ayarlar sıfırlandı (RequireReceiptPromptAfterQuickPay tekrar kapatıldı, test öncesi
+   varsayılan duruma dönüldü).
+
+**Commit edildi, deploy/SahinSoft.exe + ~/Desktop/muhasebe/ paketine alındı, DbSetup SQL
+script'i yeni migration'ı içerecek şekilde yeniden üretildi.**
 
 ### Madde 9/25 — Satır kilidi kaldırma
 Bu oturumun ERKEN bir bölümünde ".rest-shell" kilit özelliği (🔒 Satırlar Kilitli/Açık butonu,

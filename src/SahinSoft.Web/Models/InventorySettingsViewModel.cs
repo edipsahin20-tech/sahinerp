@@ -87,6 +87,9 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Not Eklemede İkinci Yetkili Onayı")]
     public bool RequireSecondApprovalForAddNote { get; set; }
 
+    [Display(Name = "Hızlı Ödeme Sonrası Fiş Sorulsun mu?")]
+    public bool RequireReceiptPromptAfterQuickPay { get; set; }
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 
