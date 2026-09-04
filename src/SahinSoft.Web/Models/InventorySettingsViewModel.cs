@@ -93,6 +93,30 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Ödenmez Ödeme Tipi Gösterilsin mi?")]
     public bool ShowUnpaidPaymentType { get; set; }
 
+    // Sağ İşlem Menüsü (madde 22) - sistem geneli açık/kapalı katmanı.
+    [Display(Name = "Fiş Notu")]
+    public bool EnableTicketNoteButton { get; set; } = true;
+    [Display(Name = "Masa Transfer")]
+    public bool EnableTableTransferButton { get; set; } = true;
+    [Display(Name = "Mutfağa Gönder")]
+    public bool EnableSendToKitchenButton { get; set; } = true;
+    [Display(Name = "Fiyat Gör")]
+    public bool EnablePriceCheckButton { get; set; } = true;
+    [Display(Name = "Klavye")]
+    public bool EnableKeyboardButton { get; set; } = true;
+    [Display(Name = "Fişi Beklet")]
+    public bool EnableHoldReceiptButton { get; set; } = true;
+    [Display(Name = "Bekleyen Fişler")]
+    public bool EnableHeldReceiptsButton { get; set; } = true;
+    [Display(Name = "Ürün Listesi")]
+    public bool EnableProductListButton { get; set; } = true;
+    [Display(Name = "Fiş İkram")]
+    public bool EnableComplimentaryReceiptButton { get; set; } = true;
+    [Display(Name = "Fiş Listesi")]
+    public bool EnableReceiptListButton { get; set; } = true;
+    [Display(Name = "Sipariş Sil")]
+    public bool EnableClearOrderButton { get; set; } = true;
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

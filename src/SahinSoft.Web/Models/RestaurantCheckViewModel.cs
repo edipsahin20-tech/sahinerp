@@ -68,6 +68,20 @@ public sealed class RestaurantCheckViewModel
     // Yemeksepeti/gelecekteki platformlar bu listeden gelir).
     public List<RestaurantCollectionCariViewModel> CollectionCaris { get; set; } = [];
 
+    // Sağ İşlem Menüsü (madde 22) - İKİ katmanın (sistem geneli + kullanıcı yetkisi) BİRLEŞİMİ,
+    // sunucuda hesaplanıp buraya konur - view sadece bu tek bool'a bakar.
+    public bool ShowTicketNoteButton { get; set; } = true;
+    public bool ShowTableTransferButton { get; set; } = true;
+    public bool ShowSendToKitchenButton { get; set; } = true;
+    public bool ShowPriceCheckButton { get; set; } = true;
+    public bool ShowKeyboardButton { get; set; } = true;
+    public bool ShowHoldReceiptButton { get; set; } = true;
+    public bool ShowHeldReceiptsButton { get; set; } = true;
+    public bool ShowProductListButton { get; set; } = true;
+    public bool ShowComplimentaryReceiptButton { get; set; } = true;
+    public bool ShowReceiptListButton { get; set; } = true;
+    public bool ShowClearOrderButton { get; set; } = true;
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];

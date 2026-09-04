@@ -241,7 +241,10 @@
                          olarak kaldırıldı, tek "Ödemeyi Al" akışı ikisinde de burada
                          (Edip, 2026-09-03). -->
                     <div class="self-payrow">
-                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled>♨ Mutfağa Gönder</button>
+                        <!-- Madde 22 - bu buton renderCart() içinde SIK SIK doğrudan (null
+                             kontrolsüz) referans alınıyor, DOM'dan @@if ile kaldırmak yerine
+                             görünürlüğü display:none ile kapatılıyor (JS güvenliği için). -->
+                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled@(Model.ShowSendToKitchenButton ? "" : " style=\"display:none;\"")>♨ Mutfağa Gönder</button>
                         <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
                     </div>
                     <div class="self-quickpay" id="self-quickpay">
@@ -253,7 +256,10 @@
                          nakit butonun altına sipariş sil indirim kapat butonlarına yanyana koy
                          renkli olsun"). -->
                     <div class="cart-quick-actions" id="cart-quick-actions">
-                        <button type="button" class="quick-action-btn danger" id="clear-cart-btn">🗑 Sipariş Sil</button>
+                        @if (Model.ShowClearOrderButton)
+                        {
+                            <button type="button" class="quick-action-btn danger" id="clear-cart-btn">🗑 Sipariş Sil</button>
+                        }
                         <!-- Cari Ekle (madde 13, onaylı Self Satış tasarımı) - adisyona bir müşteri
                              bağlar; "Açık Hesap" ödeme yöntemi bu olmadan kullanılamaz. Seçim
                              sonrası buton etiketi cari adını gösterir (bkz. restaurant-pos.js). -->
@@ -272,12 +278,18 @@
         </div>
 
         <!-- Sağdaki sabit ikon şeridi - Edip'in eski POS ekranındaki hep aynı yerde duran
-             yan panel (Edip, 2026-09-03: "sağ taraftaki sabit alanlar bizde de olsun"). -->
+             yan panel (Edip, 2026-09-03: "sağ taraftaki sabit alanlar bizde de olsun").
+             Madde 22 (2026-09-05): her buton İKİ katmanlı parametrik/yetki kontrollü - sunucu
+             Model.ShowXButton'ı (sistem geneli AND kullanıcı yetkisi) hesaplayıp buraya koyuyor,
+             kapalıysa buton DOM'dan tamamen kaldırılıyor (JS tarafında hepsi zaten null-güvenli). -->
         <div class="pos-side-icons">
-            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#ticketNoteModal">
-                <span class="pos-side-icon-glyph">🗒</span>Fiş<br />Notu
-            </button>
-            @if (Model.IsSelfSaleCheck)
+            @if (Model.ShowTicketNoteButton)
+            {
+                <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#ticketNoteModal">
+                    <span class="pos-side-icon-glyph">🗒</span>Fiş<br />Notu
+                </button>
+            }
+            @if (Model.IsSelfSaleCheck && Model.ShowTableTransferButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#transferToTableModal">
                     <span class="pos-side-icon-glyph">⇄</span>Masa<br />Transfer
@@ -286,32 +298,53 @@
             <button type="button" class="pos-side-icon" id="side-kitchen-btn">
                 <span class="pos-side-icon-glyph">♨</span>Mutfak
             </button>
-            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#priceCheckModal">
-                <span class="pos-side-icon-glyph">🔍</span>Fiyat<br />Gör
-            </button>
-            <button type="button" class="pos-side-icon" id="side-keyboard-btn">
-                <span class="pos-side-icon-glyph">⌨</span>Klavye
-            </button>
-            <!-- Ürün Listesi (madde 15-16) - tam stoktan arama (kategori kısayollarıyla SINIRLI
-                 değil), ad/barkod modu seçilebilir, sonuç seçilince/Enter'a basılınca sepete
-                 eklenir. Kategori alanına HİÇ dokunmaz - tamamen izole bir modal. -->
-            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#productListModal">
-                <span class="pos-side-icon-glyph">📦</span>Ürün<br />Listesi
-            </button>
-            <button type="button" class="pos-side-icon" id="side-hold-btn">
-                <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
-            </button>
-            <button type="button" class="pos-side-icon" id="held-receipts-btn" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal" style="position:relative;">
-                <span class="pos-side-icon-glyph">📋</span>Bekleyen<br />Fişler
-                <!-- Madde 18 - canlı sayaç rozeti, boşken gizli. -->
-                <span id="held-receipts-badge" class="held-receipts-count-badge" style="display:none;">0</span>
-            </button>
-            <button type="button" class="pos-side-icon" id="side-ticket-comp-btn">
-                <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
-            </button>
-            <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#receiptListModal">
-                <span class="pos-side-icon-glyph">🧾</span>Fiş<br />Listesi
-            </button>
+            @if (Model.ShowPriceCheckButton)
+            {
+                <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#priceCheckModal">
+                    <span class="pos-side-icon-glyph">🔍</span>Fiyat<br />Gör
+                </button>
+            }
+            @if (Model.ShowKeyboardButton)
+            {
+                <button type="button" class="pos-side-icon" id="side-keyboard-btn">
+                    <span class="pos-side-icon-glyph">⌨</span>Klavye
+                </button>
+            }
+            @if (Model.ShowProductListButton)
+            {
+                <!-- Ürün Listesi (madde 15-16) - tam stoktan arama (kategori kısayollarıyla SINIRLI
+                     değil), ad/barkod modu seçilebilir, sonuç seçilince/Enter'a basılınca sepete
+                     eklenir. Kategori alanına HİÇ dokunmaz - tamamen izole bir modal. -->
+                <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#productListModal">
+                    <span class="pos-side-icon-glyph">📦</span>Ürün<br />Listesi
+                </button>
+            }
+            @if (Model.ShowHoldReceiptButton)
+            {
+                <button type="button" class="pos-side-icon" id="side-hold-btn">
+                    <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
+                </button>
+            }
+            @if (Model.ShowHeldReceiptsButton)
+            {
+                <button type="button" class="pos-side-icon" id="held-receipts-btn" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal" style="position:relative;">
+                    <span class="pos-side-icon-glyph">📋</span>Bekleyen<br />Fişler
+                    <!-- Madde 18 - canlı sayaç rozeti, boşken gizli. -->
+                    <span id="held-receipts-badge" class="held-receipts-count-badge" style="display:none;">0</span>
+                </button>
+            }
+            @if (Model.ShowComplimentaryReceiptButton)
+            {
+                <button type="button" class="pos-side-icon" id="side-ticket-comp-btn">
+                    <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
+                </button>
+            }
+            @if (Model.ShowReceiptListButton)
+            {
+                <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#receiptListModal">
+                    <span class="pos-side-icon-glyph">🧾</span>Fiş<br />Listesi
+                </button>
+            }
         </div>
     </div>
 </div>

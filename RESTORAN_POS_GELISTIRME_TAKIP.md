@@ -60,7 +60,7 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
 | 19 | Fiş Listesi Excel-vari filtrelenebilir | ✅ tamam + test edildi (2026-09-04) |
 | 20 | Boş Adisyon otomatik temizlik | ✅ tamam + test edildi (2026-09-04/05) - gerçek eksik bulundu ve düzeltildi |
 | 21 | Yetki Mimarisi (profil, çoklu atama, kritik işlem + 2. yetkili şifresi + audit log) | ✅ tamam + test edildi (2026-09-04) |
-| 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ⏳ |
+| 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ✅ tamam + test edildi (2026-09-05) |
 | 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | 🔶 "kişi sayısı sorulsun mu" akışı ilk açılışta zaten çalışıyor (doğrulandı), tasarım karşılaştırması henüz yapılmadı |
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
 | 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ⏳ |
@@ -90,6 +90,57 @@ piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik EN
   loglanır (kim yaptı, kim onayladı, ne zaman, hangi işlem, hangi kayıt).
 - Servis: `RestaurantPermissionService.HasPermissionAsync(userId, RestaurantPermission flag)` ve
   `RequiresSecondApprovalAsync(flag)` + `VerifyApproverAsync(userId, pin)`.
+
+### Madde 22 — Sağ İşlem Menüsü (parametrik/yetki kontrollü görünürlük), 2026-09-05
+
+İki katmanlı görünürlük: **Katman 1** sistem geneli (Ayarlar > Stok > "Sağ İşlem Menüsü (Sistem
+Geneli)" - `InventorySettings`'e 11 yeni `EnableXButton` bool, hepsi varsayılan açık), **Katman 2**
+personel/profil bazlı (`RestaurantPermissionProfiles` formuna yeni "Sağ İşlem Menüsü Görünürlüğü"
+paneli - `RestaurantPermissionProfile`'a 9 yeni `CanSeeX`/`CanClearOrder` bool, hepsi varsayılan
+açık; Fiş Notu ve Fiş İkram için YENİ bayrak eklenmedi, mevcut `CanAddNote`/`CanApplyComplimentary`
+tekrar kullanıldı çünkü zaten aynı işlevi kontrol ediyorlar). Efektif görünürlük sunucu tarafında
+`(SistemGeneliAçık) && (ProfilİzinVeriyor)` olarak hesaplanıp `RestaurantCheckViewModel`'deki 11
+`ShowXButton` alanına yazılıyor, `Check.cshtml`'de `@if` ile DOM'dan tamamen çıkarılıyor (Mutfak
+butonu bilerek kapsam dışı bırakıldı - spec'te yok). Tek istisna `send-kitchen-btn` (Mutfağa
+Gönder): `renderCart()` içinde bu butona her sepet değişiminde null-guard'sız erişen bir JS satırı
+bulunduğu için `@if` ile DOM'dan silmek yerine koşullu `style="display:none"` kullanıldı (DOM'da
+kalıyor, JS erişimi hâlâ güvenli).
+
+**Yan bulgu ve düzeltmeler (bu maddeyi yaparken bulundu):**
+- `restaurant-pos.js`'te `send-kitchen-btn`'e event listener eklenen satır tamamen guard'sızdı
+  (`document.getElementById('send-kitchen-btn').addEventListener(...)`) - buton hiç render
+  edilmeseydi throw ederdi. `if (sendKitchenBtn) {...}` ile sarmalandı.
+- `ApplicationDbContextFactory.cs` (EF Core design-time factory, `dotnet ef migrations/database
+  update` komutlarının kullandığı) yerel `Server=.\SQLEXPRESS` bağlantısına HARD-CODE'luydu -
+  gerçek uygulama artık uzak SQL Server'a (141.98.114.2) bağlanıyor, bu yüzden `dotnet ef database
+  update` sürekli "sunucu bulunamadı" hatası veriyordu. appsettings.json'dan okuyacak şekilde
+  düzeltildi (`Program.cs`'teki gerçek bağlantı çözümlemesiyle aynı desen). Muhtemelen ilk yerel
+  SQLEXPRESS geliştirme döneminden kalma bir kalıntıydı, hiç fark edilmemiş.
+- Migration'ın `AddColumn` varsayılan değeri (`defaultValue: false`) SADECE C# tarafındaki
+  `= true` varsayılanını YENİ oluşturulan profiller için geçerli kılıyor - var olan
+  `RestaurantPermissionProfiles` satırları (ör. Test-Kısıtlı) migration sonrası TÜM yeni
+  `CanSeeX`/`CanClearOrder` alanlarında `false` ile kalıyordu, yani geçişten hemen sonra sağ menü
+  butonları var olan her profilde sessizce kaybolurdu. Migration'a elle bir `UPDATE
+  RestaurantPermissionProfiles SET ... = 1` SQL bloğu eklenip düzeltildi (InventorySettings zaten
+  `UpdateData` ile Id=1 satırı için doğru yapılmıştı, ama Profiller tablosunda hiç yoktu).
+
+**Test (tarayıcıda, 2026-09-05):**
+1. **Katman 2 (profil bazlı):** Test-Kısıtlı profilinde `CanSeeHoldReceipt` (Fişi Beklet) ve
+   `CanClearOrder` (Sipariş Sil) kapatıldı, kaydedildi. Test Garson (PIN 9911, bu profile atanmış)
+   ile giriş yapılıp bir adisyon açıldı - `side-hold-btn` ve `clear-cart-btn` DOM'da hiç YOK,
+   diğer tüm butonlar (Fiş Notu, Mutfak, Fiyat Gör, Klavye, Ürün Listesi, Bekleyen Fişler, Fiş
+   İkram, Fiş Listesi, Mutfağa Gönder) normal görünür - pozitif kontrol de doğrulandı.
+2. **Katman 1 (sistem geneli):** Ayarlar > Stok'ta "Klavye" (EnableKeyboardButton) kapatılıp
+   kaydedildi. Administrator (EdipŞahin) ile aynı adisyon açıldı - `side-keyboard-btn` DOM'da hiç
+   YOK (Administrator normalde TÜM Katman-2 kısıtlamalarını bypass eder, ama Katman-1 sistem
+   geneli kapatınca O DA etkileniyor - beklenen davranış), `side-hold-btn`/`clear-cart-btn` ise
+   Administrator için normal görünür (Katman 2 ona uygulanmıyor).
+3. Her iki test toggle'ı da testten sonra tekrar açık (varsayılan) hale geri alındı - canlı
+   sistemde test kalıntısı bırakılmadı.
+
+Migration: `AddRightMenuVisibilityFlags` (20260904211751) - üretildi, elle düzeltildi (yukarıdaki
+UPDATE bloğu), `dotnet ef database update` ile uzak DB'ye uygulandı, `SahinSoftDb_Migration.sql`
+idempotent script'i hem `SahinSoft.DbSetup/` hem `deploy/` altına kopyalandı.
 
 ### Madde 4-8 (Ödeme Al ekranı / Parçalı Ödeme / Tutarı Bölme / Ödeme İptal / Adisyona Dön) — MİMARİ BULGU, 2026-09-04
 

@@ -66,6 +66,51 @@
             </div>
         </div>
     </div>
+
+    <div class="erp-panel mt-3">
+        <div class="erp-panel-header">Sağ İşlem Menüsü Görünürlüğü</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small">Bu profile atanan personelin adisyon ekranında sağdaki işlem butonlarından hangilerini göreceğini belirler. Sistem geneli anahtar (Ayarlar &gt; Stok/Restoran) kapalıysa buradaki ayardan bağımsız olarak buton zaten görünmez.</p>
+            <div class="d-flex flex-column gap-2">
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeTableTransfer" class="form-check-input" />
+                    <label asp-for="CanSeeTableTransfer" class="form-check-label">Masa Transfer</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeSendToKitchen" class="form-check-input" />
+                    <label asp-for="CanSeeSendToKitchen" class="form-check-label">Mutfağa Gönder</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeePriceCheck" class="form-check-input" />
+                    <label asp-for="CanSeePriceCheck" class="form-check-label">Fiyat Gör</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeKeyboard" class="form-check-input" />
+                    <label asp-for="CanSeeKeyboard" class="form-check-label">Klavye</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeHoldReceipt" class="form-check-input" />
+                    <label asp-for="CanSeeHoldReceipt" class="form-check-label">Fişi Beklet</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeHeldReceipts" class="form-check-input" />
+                    <label asp-for="CanSeeHeldReceipts" class="form-check-label">Bekleyen Fişler</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeProductList" class="form-check-input" />
+                    <label asp-for="CanSeeProductList" class="form-check-label">Ürün Listesi</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanSeeReceiptList" class="form-check-input" />
+                    <label asp-for="CanSeeReceiptList" class="form-check-label">Fiş Listesi</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="CanClearOrder" class="form-check-input" />
+                    <label asp-for="CanClearOrder" class="form-check-label">Sipariş Sil</label>
+                </div>
+            </div>
+        </div>
+    </div>
 </form>
 
 @section Scripts {

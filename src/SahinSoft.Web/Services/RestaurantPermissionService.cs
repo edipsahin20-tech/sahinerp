@@ -65,6 +65,28 @@ public sealed class RestaurantPermissionService(ApplicationDbContext dbContext, 
     public Task<bool> CanAddNoteAsync(string? userId, CancellationToken cancellationToken = default) =>
         HasPermissionAsync(userId, p => p.CanAddNote, cancellationToken);
 
+    // Sağ İşlem Menüsü görünürlüğü (madde 22) - profil bazlı katman. Sistem geneli katmanı
+    // (InventorySettings.Enable*) ayrı, ikisi de kontrol edilmeli - bkz. Check.cshtml/
+    // RestaurantController.
+    public Task<bool> CanSeeTableTransferAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeTableTransfer, cancellationToken);
+    public Task<bool> CanSeeSendToKitchenAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeSendToKitchen, cancellationToken);
+    public Task<bool> CanSeePriceCheckAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeePriceCheck, cancellationToken);
+    public Task<bool> CanSeeKeyboardAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeKeyboard, cancellationToken);
+    public Task<bool> CanSeeHoldReceiptAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeHoldReceipt, cancellationToken);
+    public Task<bool> CanSeeHeldReceiptsAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeHeldReceipts, cancellationToken);
+    public Task<bool> CanSeeProductListAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeProductList, cancellationToken);
+    public Task<bool> CanSeeReceiptListAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanSeeReceiptList, cancellationToken);
+    public Task<bool> CanClearOrderAsync(string? userId, CancellationToken cancellationToken = default) =>
+        HasPermissionAsync(userId, p => p.CanClearOrder, cancellationToken);
+
     // Fiş İkram (madde 11) - Administrator gerekçe girmeden ikram uygulayabilir, diğer yetkili
     // kullanıcılar (CanApplyComplimentary açık ama Administrator değil) Kime/Neden doldurmak
     // zorundadır.

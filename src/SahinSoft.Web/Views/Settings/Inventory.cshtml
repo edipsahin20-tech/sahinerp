@@ -147,6 +147,26 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Sağ İşlem Menüsü (Sistem Geneli)</div>
+        <div class="card-body">
+            <p class="text-secondary small mb-3">Kapatılan buton restoran ekranında HERKESTEN gizlenir - bu "1. katman" (sistem geneli). Kullanıcı/profil bazlı "2. katman" için Ayarlar > Yetki Profilleri'ne bakın. İkisi de açık olmalı ki buton görünsün.</p>
+            <div class="row row-cols-2 row-cols-md-3 g-2">
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableTicketNoteButton" class="form-check-input" /><label asp-for="EnableTicketNoteButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableTableTransferButton" class="form-check-input" /><label asp-for="EnableTableTransferButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableSendToKitchenButton" class="form-check-input" /><label asp-for="EnableSendToKitchenButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnablePriceCheckButton" class="form-check-input" /><label asp-for="EnablePriceCheckButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableKeyboardButton" class="form-check-input" /><label asp-for="EnableKeyboardButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableHoldReceiptButton" class="form-check-input" /><label asp-for="EnableHoldReceiptButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableHeldReceiptsButton" class="form-check-input" /><label asp-for="EnableHeldReceiptsButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableProductListButton" class="form-check-input" /><label asp-for="EnableProductListButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableComplimentaryReceiptButton" class="form-check-input" /><label asp-for="EnableComplimentaryReceiptButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableReceiptListButton" class="form-check-input" /><label asp-for="EnableReceiptListButton" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="EnableClearOrderButton" class="form-check-input" /><label asp-for="EnableClearOrderButton" class="form-check-label"></label></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Yazar Kasa Entegrasyonu</div>
         <div class="card-body">
             <p class="text-secondary small">Bir yazar kasa seçilip adresi girilirse, restoran Kapat/Öde ekranındaki nakit/kredi kartı/yemek çeki ödemeleri doğrudan fiziksel yazar kasaya gönderilir (fatura kesilen satışlar hariç). "Yok" seçiliyken (varsayılan) hiçbir değişiklik olmaz, bugünkü gibi çalışır.</p>

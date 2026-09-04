@@ -478,15 +478,22 @@
             });
     }
 
-    document.getElementById('send-kitchen-btn').addEventListener('click', function () {
-        if (cart.length === 0) return;
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = 'Gönderiliyor...';
-        flushCartToKitchen(
-            function () { window.location.href = root.getAttribute('data-back-url'); },
-            function () { btn.disabled = false; btn.textContent = 'Mutfağa Gönder'; });
-    });
+    // Madde 22 (2026-09-05) - sistem geneli/yetki kapalıysa Check.cshtml bu butonu display:none
+    // yapıyor (DOM'dan KALDIRMIYOR - aşağıdaki gibi başka JS'lerin de bu ID'ye güvenli erişebilmesi
+    // için); bu yüzden burada bulunamama ihtimaline karşı GÜVENLİ null kontrolü eklendi (bu satır
+    // daha önce korumasızdı - gerçek bir potansiyel hataydı, bulunup düzeltildi).
+    var sendKitchenBtn = document.getElementById('send-kitchen-btn');
+    if (sendKitchenBtn) {
+        sendKitchenBtn.addEventListener('click', function () {
+            if (cart.length === 0) return;
+            var btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Gönderiliyor...';
+            flushCartToKitchen(
+                function () { window.location.href = root.getAttribute('data-back-url'); },
+                function () { btn.disabled = false; btn.textContent = 'Mutfağa Gönder'; });
+        });
+    }
 
     // Self Satış'a özgü "Masaya Aktar" - bkz. Check.cshtml (yalnızca Self Satış adisyonlarında
     // render edilir). Aktarımdan önce sepette bekleyen (henüz mutfağa gönderilmemiş) satır varsa

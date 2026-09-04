@@ -15,7 +15,7 @@ namespace SahinSoft.Web.Controllers;
 // CLEAN_ROOM_DEVELOPMENT.md. RestaurantManager/Waiter/Kitchen rolleri yalnızca menüde gizlenmekle
 // kalmaz, her aksiyon burada [Authorize(Roles=...)] ile de zorunlu kılınır.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Waiter}")]
-public sealed class RestaurantController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantPermissionService permissionService) : RestaurantControllerBase(dbContext)
 {
     public async Task<IActionResult> Index()
     {
@@ -421,7 +421,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay, x.ShowUnpaidPaymentType })
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay, x.ShowUnpaidPaymentType,
+                x.EnableTicketNoteButton, x.EnableTableTransferButton, x.EnableSendToKitchenButton, x.EnablePriceCheckButton, x.EnableKeyboardButton, x.EnableHoldReceiptButton, x.EnableHeldReceiptsButton, x.EnableProductListButton, x.EnableComplimentaryReceiptButton, x.EnableReceiptListButton, x.EnableClearOrderButton })
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
@@ -469,6 +470,20 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 .OrderBy(x => x.Name)
                 .Select(x => new RestaurantCollectionCariViewModel { CustomerId = x.Id, Name = x.Name })
                 .ToListAsync(),
+            // Sağ İşlem Menüsü (madde 22) - sistem geneli (Ayarlar) VE kullanıcı yetkisi (profil)
+            // İKİSİ DE açık olmalı. Fiş Notu/Fiş İkram zaten CanAddNote/CanApplyComplimentary'yi
+            // kullanıyor (ayrı bir görünürlük bayrağı YOK, aynı işlemle birebir örtüşüyor).
+            ShowTicketNoteButton = (fiscalSettings?.EnableTicketNoteButton ?? true) && await permissionService.CanAddNoteAsync(CurrentUserId),
+            ShowTableTransferButton = (fiscalSettings?.EnableTableTransferButton ?? true) && await permissionService.CanSeeTableTransferAsync(CurrentUserId),
+            ShowSendToKitchenButton = (fiscalSettings?.EnableSendToKitchenButton ?? true) && await permissionService.CanSeeSendToKitchenAsync(CurrentUserId),
+            ShowPriceCheckButton = (fiscalSettings?.EnablePriceCheckButton ?? true) && await permissionService.CanSeePriceCheckAsync(CurrentUserId),
+            ShowKeyboardButton = (fiscalSettings?.EnableKeyboardButton ?? true) && await permissionService.CanSeeKeyboardAsync(CurrentUserId),
+            ShowHoldReceiptButton = (fiscalSettings?.EnableHoldReceiptButton ?? true) && await permissionService.CanSeeHoldReceiptAsync(CurrentUserId),
+            ShowHeldReceiptsButton = (fiscalSettings?.EnableHeldReceiptsButton ?? true) && await permissionService.CanSeeHeldReceiptsAsync(CurrentUserId),
+            ShowProductListButton = (fiscalSettings?.EnableProductListButton ?? true) && await permissionService.CanSeeProductListAsync(CurrentUserId),
+            ShowComplimentaryReceiptButton = (fiscalSettings?.EnableComplimentaryReceiptButton ?? true) && await permissionService.CanApplyComplimentaryAsync(CurrentUserId),
+            ShowReceiptListButton = (fiscalSettings?.EnableReceiptListButton ?? true) && await permissionService.CanSeeReceiptListAsync(CurrentUserId),
+            ShowClearOrderButton = (fiscalSettings?.EnableClearOrderButton ?? true) && await permissionService.CanClearOrderAsync(CurrentUserId),
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

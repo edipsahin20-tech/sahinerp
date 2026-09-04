@@ -10122,3 +10122,203 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanClearOrder] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeHeldReceipts] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeHoldReceipt] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeKeyboard] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeePriceCheck] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeProductList] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeReceiptList] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeSendToKitchen] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [RestaurantPermissionProfiles] ADD [CanSeeTableTransfer] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableClearOrderButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableComplimentaryReceiptButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableHeldReceiptsButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableHoldReceiptButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableKeyboardButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnablePriceCheckButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableProductListButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableReceiptListButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableSendToKitchenButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableTableTransferButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [EnableTicketNoteButton] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [EnableClearOrderButton] = CAST(1 AS bit), [EnableComplimentaryReceiptButton] = CAST(1 AS bit), [EnableHeldReceiptsButton] = CAST(1 AS bit), [EnableHoldReceiptButton] = CAST(1 AS bit), [EnableKeyboardButton] = CAST(1 AS bit), [EnablePriceCheckButton] = CAST(1 AS bit), [EnableProductListButton] = CAST(1 AS bit), [EnableReceiptListButton] = CAST(1 AS bit), [EnableSendToKitchenButton] = CAST(1 AS bit), [EnableTableTransferButton] = CAST(1 AS bit), [EnableTicketNoteButton] = CAST(1 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    UPDATE RestaurantPermissionProfiles SET
+                    CanSeeTableTransfer = 1,
+                    CanSeeSendToKitchen = 1,
+                    CanSeePriceCheck = 1,
+                    CanSeeKeyboard = 1,
+                    CanSeeHoldReceipt = 1,
+                    CanSeeHeldReceipts = 1,
+                    CanSeeProductList = 1,
+                    CanSeeReceiptList = 1,
+                    CanClearOrder = 1
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904211751_AddRightMenuVisibilityFlags'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904211751_AddRightMenuVisibilityFlags', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

@@ -21,5 +21,20 @@ public sealed class RestaurantPermissionProfile : EntityBase
     public bool CanEditKitchenSentLines { get; set; } = true;
     public bool CanAddNote { get; set; } = true;
 
+    // Sağ İşlem Menüsü GÖRÜNÜRLÜĞÜ (madde 22, Edip 2026-09-05) - kritik işlem yetkilerinden AYRI:
+    // "Fiş Notu"/"Fiş İkram" zaten CanAddNote/CanApplyComplimentary'yi kullanıyor (aynı işlem),
+    // aşağıdakilerin karşılığı olan bir kritik işlem yetkisi YOK, bu yüzden kendi bayrakları var.
+    // "Sipariş Sil" burada BİLEREK CanCancelOrderLine'dan AYRI - o tek satır iptali, bu bekleyen
+    // TÜM sepeti temizleme (farklı bir işlem, farklı bir risk).
+    public bool CanSeeTableTransfer { get; set; } = true;
+    public bool CanSeeSendToKitchen { get; set; } = true;
+    public bool CanSeePriceCheck { get; set; } = true;
+    public bool CanSeeKeyboard { get; set; } = true;
+    public bool CanSeeHoldReceipt { get; set; } = true;
+    public bool CanSeeHeldReceipts { get; set; } = true;
+    public bool CanSeeProductList { get; set; } = true;
+    public bool CanSeeReceiptList { get; set; } = true;
+    public bool CanClearOrder { get; set; } = true;
+
     public ICollection<RestaurantPersonnelPermissionProfile> Assignments { get; set; } = new List<RestaurantPersonnelPermissionProfile>();
 }

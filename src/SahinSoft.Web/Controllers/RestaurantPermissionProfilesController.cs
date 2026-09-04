@@ -68,7 +68,16 @@ public sealed class RestaurantPermissionProfilesController(ApplicationDbContext 
             CanApplyDiscount = profile.CanApplyDiscount,
             CanApplyComplimentary = profile.CanApplyComplimentary,
             CanEditKitchenSentLines = profile.CanEditKitchenSentLines,
-            CanAddNote = profile.CanAddNote
+            CanAddNote = profile.CanAddNote,
+            CanSeeTableTransfer = profile.CanSeeTableTransfer,
+            CanSeeSendToKitchen = profile.CanSeeSendToKitchen,
+            CanSeePriceCheck = profile.CanSeePriceCheck,
+            CanSeeKeyboard = profile.CanSeeKeyboard,
+            CanSeeHoldReceipt = profile.CanSeeHoldReceipt,
+            CanSeeHeldReceipts = profile.CanSeeHeldReceipts,
+            CanSeeProductList = profile.CanSeeProductList,
+            CanSeeReceiptList = profile.CanSeeReceiptList,
+            CanClearOrder = profile.CanClearOrder
         };
         return View("Form", model);
     }
@@ -131,5 +140,14 @@ public sealed class RestaurantPermissionProfilesController(ApplicationDbContext 
         target.CanApplyComplimentary = source.CanApplyComplimentary;
         target.CanEditKitchenSentLines = source.CanEditKitchenSentLines;
         target.CanAddNote = source.CanAddNote;
+        target.CanSeeTableTransfer = source.CanSeeTableTransfer;
+        target.CanSeeSendToKitchen = source.CanSeeSendToKitchen;
+        target.CanSeePriceCheck = source.CanSeePriceCheck;
+        target.CanSeeKeyboard = source.CanSeeKeyboard;
+        target.CanSeeHoldReceipt = source.CanSeeHoldReceipt;
+        target.CanSeeHeldReceipts = source.CanSeeHeldReceipts;
+        target.CanSeeProductList = source.CanSeeProductList;
+        target.CanSeeReceiptList = source.CanSeeReceiptList;
+        target.CanClearOrder = source.CanClearOrder;
     }
 }

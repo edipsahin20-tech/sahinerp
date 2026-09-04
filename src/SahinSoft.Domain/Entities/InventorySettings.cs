@@ -91,6 +91,22 @@ public sealed class InventorySettings : EntityBase
     // hiç gösterilmez, bugünkü gibi sadece Nakit/Kredi Kartı/Yemek Çeki vardır.
     public bool ShowUnpaidPaymentType { get; set; }
 
+    // Sağ İşlem Menüsü (madde 22, Edip 2026-09-05) - İKİ KATMANLI kontrol: (1) burada sistem
+    // genelinde açık/kapalı mı (varsayılan HEPSİ AÇIK - mevcut davranışı bozmamak için), (2)
+    // RestaurantPermissionProfile'da hangi kullanıcı/profil görebilir. İkisi de açık olmalı ki
+    // buton görünsün - bkz. RestaurantPermissionService.CanSeeMenuItemAsync.
+    public bool EnableTicketNoteButton { get; set; } = true;
+    public bool EnableTableTransferButton { get; set; } = true;
+    public bool EnableSendToKitchenButton { get; set; } = true;
+    public bool EnablePriceCheckButton { get; set; } = true;
+    public bool EnableKeyboardButton { get; set; } = true;
+    public bool EnableHoldReceiptButton { get; set; } = true;
+    public bool EnableHeldReceiptsButton { get; set; } = true;
+    public bool EnableProductListButton { get; set; } = true;
+    public bool EnableComplimentaryReceiptButton { get; set; } = true;
+    public bool EnableReceiptListButton { get; set; } = true;
+    public bool EnableClearOrderButton { get; set; } = true;
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }
