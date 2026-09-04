@@ -25,7 +25,15 @@
     var payChangeWrap = document.getElementById('pay-change-wrap');
     var payChangeEl = document.getElementById('pay-change');
 
-    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki', 4: 'Ödenmez' };
+    var METHOD_LABELS = { 1: 'Nakit', 2: 'Kredi Kartı', 3: 'Yemek Çeki', 4: 'Ödenmez', 5: 'Açık Hesap' };
+    var OPEN_ACCOUNT_METHOD = 5;
+
+    // Açık Hesap (madde 13) - Cari Ekle (restaurant-pos.js) ile bağlanmış müşteri ZORUNLUDUR.
+    function attachedCustomerId() {
+        var input = document.getElementById('AttachedCustomerId');
+        var v = input && input.value ? parseInt(input.value, 10) : NaN;
+        return isNaN(v) ? null : v;
+    }
 
     // Self satış ve masa satışta AYNI tek tetikleyici - "Kapat/Öde" ayrı bir buton olarak
     // kaldırıldı (Edip, 2026-09-03: "kapat ve ödeme mantığı kalksın"), her ikisi de sepetin
@@ -293,6 +301,12 @@
             if (amount <= 0) { return; }
             var method = parseInt(btn.getAttribute('data-method'), 10);
             var financialAccountId = financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null;
+
+            if (method === OPEN_ACCOUNT_METHOD && attachedCustomerId() === null) {
+                errorEl.textContent = 'Cari seçmelisiniz.';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             btn.disabled = true;
             fetch(addPendingPaymentUrl, {

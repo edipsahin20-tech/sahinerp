@@ -10064,3 +10064,40 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904200954_AddOpenAccountAndAttachedCustomer'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [AttachedCustomerId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904200954_AddOpenAccountAndAttachedCustomer'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantChecks_AttachedCustomerId] ON [RestaurantChecks] ([AttachedCustomerId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904200954_AddOpenAccountAndAttachedCustomer'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD CONSTRAINT [FK_RestaurantChecks_Customers_AttachedCustomerId] FOREIGN KEY ([AttachedCustomerId]) REFERENCES [Customers] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260904200954_AddOpenAccountAndAttachedCustomer'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260904200954_AddOpenAccountAndAttachedCustomer', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

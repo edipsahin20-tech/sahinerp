@@ -18,5 +18,13 @@ public enum RestaurantPaymentMethod
     // asla oluşmaz. Yine de bir RestaurantPayment satırı olarak KAYDEDİLİR (izlenebilirlik/
     // raporlama için) - bkz. CloseCheckAsync.
     [Display(Name = "Ödenmez")]
-    Unpaid = 4
+    Unpaid = 4,
+
+    // Açık Hesap (madde 13, Edip 2026-09-04) - Ödenmez'den FARKI: bu tutar bir CARIYE (gerçek
+    // müşteri) borç yazılır, genel "Perakende Satışlar Carisi" değil - Sale (ciro) hareketi
+    // NORMAL şekilde oluşur, sadece Collection (tahsilat) hareketi oluşmaz; bu, seçilen
+    // carinin hesabında GERÇEK bir açık alacak bırakır (daha sonra normal Tahsilat ekranından
+    // kapatılabilir). Cari seçimi ZORUNLUDUR - bkz. CloseCheckAsync.
+    [Display(Name = "Açık Hesap")]
+    OpenAccount = 5
 }

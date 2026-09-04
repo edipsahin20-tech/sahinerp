@@ -1329,6 +1329,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.LinkedInvoice).WithMany().HasForeignKey(x => x.LinkedInvoiceId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.LinkedRetailSale).WithMany().HasForeignKey(x => x.LinkedRetailSaleId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.AttachedCustomer).WithMany().HasForeignKey(x => x.AttachedCustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_RestaurantChecks_Amounts",
                 "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0"));

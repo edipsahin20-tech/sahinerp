@@ -1045,6 +1045,35 @@
         });
     })();
 
+    // --- Cari Ekle (madde 13, Edip 2026-09-04, onaylı Self Satış tasarımı) - adisyona bir
+    // müşteri bağlar; seçilince buton etiketi cari adını gösterir. "Açık Hesap" ödeme yöntemi
+    // (restaurant-close-payment.js) bu değer dolu olmadan kullanılamaz. lookup-picker.js zaten
+    // #AttachedCustomerId (hidden) + #attach-customer-btn (.lookup-trigger) ikilisini kendi
+    // event delegation'ıyla yönetiyor - burada sadece seçim sonrası sunucuya kalıcı yazıyoruz. ---
+    (function () {
+        var hiddenInput = document.getElementById('AttachedCustomerId');
+        var label = document.getElementById('attach-customer-label');
+        if (!hiddenInput || !label) return;
+        hiddenInput.addEventListener('lookup:selected', function (evt) {
+            var item = evt.detail.item;
+            fetch('/Restaurant/AttachCustomer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: 'checkId=' + encodeURIComponent(checkId) + '&customerId=' + encodeURIComponent(hiddenInput.value)
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        label.textContent = item.name || 'Cari Ekle';
+                        if (window.RestaurantOpenAccountReady) window.RestaurantOpenAccountReady(true);
+                    } else {
+                        window.alert(data.message || 'Cari eklenemedi.');
+                    }
+                })
+                .catch(function () { window.alert('Bağlantı hatası oluştu.'); });
+        });
+    })();
+
     // --- Fiş İkram (madde 11, Edip 2026-09-04) - adisyondaki TÜM ürünleri (gönderilmiş VE
     // bekleyen) sunucuda kalıcı olarak ikram eder, ciroya dahil edilmez. Administrator gerekçe
     // girmeden uygulayabilir, diğer yetkili kullanıcılar Kime/Neden doldurmak zorundadır -

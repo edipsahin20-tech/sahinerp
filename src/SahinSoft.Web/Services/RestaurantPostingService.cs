@@ -185,6 +185,17 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Cari Ekle (madde 13, onaylı Self Satış tasarımı) - adisyona bir müşteri bağlar/kaldırır.
+    // "Açık Hesap" ödeme yöntemi CloseCheckAsync'te bu alanın dolu olmasını ZORUNLU kılar.
+    public async Task AttachCustomerAsync(int checkId, int? customerId, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        check.AttachedCustomerId = customerId;
+        check.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // "İndirim" (alttaki hızlı işlem / Tahsilat'taki İndirim) - satır bazlı İndirim'den (sabit
     // çubuktaki, tek seçili satıra uygulanan) FARKLI: bu bir TUTAR/YÜZDE indirimini adisyonun
     // TOPLAMINA uygular (Edip, 2026-09-03: "üstte ürünü seçip indirim tuşuna bastığında satır
@@ -1480,6 +1491,11 @@ public sealed class RestaurantPostingService(
                     throw new InvalidOperationException("Bu adisyon zaten kapalı veya iptal edilmiş.");
                 }
 
+                // "Cari Ekle" (madde 13) ile önceden bağlanmış bir müşteri varsa ve istemci ayrıca
+                // bir customerId göndermediyse (fatura kesme senaryosu değilse) onu kullan - Açık
+                // Hesap ödeme yöntemi için bu ZORUNLU kaynaktır.
+                customerId ??= check.AttachedCustomerId;
+
                 var lines = check.Orders
                     .SelectMany(o => o.Lines)
                     .Where(l => l.Status != RestaurantOrderLineStatus.Cancelled)
@@ -1531,7 +1547,18 @@ public sealed class RestaurantPostingService(
                 // gelir/tahsilat asla oluşmaz. İkram'dan (satır fiyatının kendisi sıfırlanır)
                 // FARKI budur.
                 var unpaidTotal = Math.Round(payments.Where(p => p.Method == RestaurantPaymentMethod.Unpaid).Sum(p => p.Amount), 2, MidpointRounding.AwayFromZero);
-                var netAccountingTotal = grandTotal - unpaidTotal;
+
+                // Açık Hesap (madde 13) - Ödenmez'den FARKI: Sale (ciro) NORMAL oluşur, sadece
+                // Collection (tahsilat) oluşmaz - seçilen CARİNİN hesabında gerçek bir açık
+                // alacak bırakır. Cari seçimi ZORUNLUDUR (spec: "Cari seçmelisiniz." uyarısı).
+                var openAccountTotal = Math.Round(payments.Where(p => p.Method == RestaurantPaymentMethod.OpenAccount).Sum(p => p.Amount), 2, MidpointRounding.AwayFromZero);
+                if (openAccountTotal > 0 && customerId is null)
+                {
+                    throw new InvalidOperationException("Cari seçmelisiniz.");
+                }
+
+                var netSaleTotal = grandTotal - unpaidTotal;
+                var netCollectionTotal = grandTotal - unpaidTotal - openAccountTotal;
 
                 var effectiveCustomerId = customerId ?? await GetDefaultRetailCustomerIdAsync(cancellationToken);
                 const string tradeType = "Perakende yurtiçi ticaret";
@@ -1560,11 +1587,13 @@ public sealed class RestaurantPostingService(
                 };
                 dbContext.RetailSales.Add(retailSale);
 
-                // netAccountingTotal > 0 ise normal Sale/Collection çifti (Ödenmez yoksa veya
-                // kısmen varsa) - tamamı Ödenmez ise (netAccountingTotal == 0) hiçbir muhasebe
-                // hareketi oluşmaz, sadece RestaurantPayment satırları (aşağıda) kalır.
+                // netSaleTotal (Ödenmez hariç, Açık Hesap DAHİL - revenue Açık Hesap'ta da
+                // gerçekleşir) > 0 ise Sale hareketi oluşur. netCollectionTotal (Ödenmez VE Açık
+                // Hesap hariç) > 0 ise Collection hareketi oluşur - tamamı Açık Hesap ise Sale
+                // oluşur ama Collection oluşmaz (gerçek açık alacak), tamamı Ödenmez ise İKİSİ DE
+                // oluşmaz.
                 CurrentAccountTransaction? collectionAccountTransaction = null;
-                if (netAccountingTotal > 0)
+                if (netSaleTotal > 0)
                 {
                     dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
                     {
@@ -1573,12 +1602,15 @@ public sealed class RestaurantPostingService(
                         DocumentNumber = documentNumber,
                         CurrencyCode = "TRY",
                         ExchangeRate = 1,
-                        Debit = netAccountingTotal,
+                        Debit = netSaleTotal,
                         Credit = 0,
                         CustomerId = effectiveCustomerId,
                         Description = $"Restoran satışı - {check.CheckNumber}"
                     });
+                }
 
+                if (netCollectionTotal > 0)
+                {
                     collectionAccountTransaction = new CurrentAccountTransaction
                     {
                         TransactionDateUtc = DateTime.UtcNow,
@@ -1587,7 +1619,7 @@ public sealed class RestaurantPostingService(
                         CurrencyCode = "TRY",
                         ExchangeRate = 1,
                         Debit = 0,
-                        Credit = netAccountingTotal,
+                        Credit = netCollectionTotal,
                         CustomerId = effectiveCustomerId,
                         Description = $"Restoran tahsilatı - {check.CheckNumber}"
                     };
@@ -1596,10 +1628,11 @@ public sealed class RestaurantPostingService(
 
                 foreach (var payment in payments)
                 {
-                    // Ödenmez satırı - RestaurantPayment kaydı (izlenebilirlik/raporlama)
+                    // Ödenmez/Açık Hesap satırı - RestaurantPayment kaydı (izlenebilirlik/raporlama)
                     // OLUŞUR, ama gerçek bir tahsilat hareketi olmadığı için FinancialTransaction
-                    // HİÇ yazılmaz.
-                    if (payment.Method == RestaurantPaymentMethod.Unpaid)
+                    // HİÇ yazılmaz (Açık Hesap'ta tutar carinin AÇIK ALACAĞI olarak kalır - Sale
+                    // hareketi zaten yukarıda oluştu, burada sadece kasa/banka hareketi engellenir).
+                    if (payment.Method is RestaurantPaymentMethod.Unpaid or RestaurantPaymentMethod.OpenAccount)
                     {
                         dbContext.RestaurantPayments.Add(new RestaurantPayment
                         {

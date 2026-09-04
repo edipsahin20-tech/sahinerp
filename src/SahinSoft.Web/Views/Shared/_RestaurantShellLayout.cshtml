@@ -101,6 +101,10 @@
         updateRestClock();
         setInterval(updateRestClock, 15000);
     </script>
+    <!-- Cari Ekle (madde 13) gibi cari/ürün arama ihtiyaçları için ana ERP'nin lookup-picker
+         altyapısı - restoran kabuğunda daha önce hiç kullanılmıyordu, ilk kez burada ekleniyor. -->
+    <partial name="_LookupModal" />
+    <script src="~/js/lookup-picker.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

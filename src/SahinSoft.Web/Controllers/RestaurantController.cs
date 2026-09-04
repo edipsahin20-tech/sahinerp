@@ -214,6 +214,22 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         }
     }
 
+    // Cari Ekle (madde 13, onaylı Self Satış tasarımı) - adisyona bir müşteri bağlar/kaldırır.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AttachCustomer(int checkId, int? customerId)
+    {
+        try
+        {
+            await postingService.AttachCustomerAsync(checkId, customerId);
+            return Json(new { success = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateCheckNote(int checkId, string? note)
@@ -348,6 +364,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
             .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.KitchenTicketLines)
             .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.Product)
+            .Include(x => x.AttachedCustomer)
             .SingleOrDefaultAsync(x => x.Id == id);
 
         if (check is null)
@@ -438,6 +455,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             RequireSecondApprovalForComplimentary = fiscalSettings?.RequireSecondApprovalForComplimentary ?? false,
             RequireReceiptPromptAfterQuickPay = fiscalSettings?.RequireReceiptPromptAfterQuickPay ?? false,
             ShowUnpaidPaymentType = fiscalSettings?.ShowUnpaidPaymentType ?? false,
+            AttachedCustomerId = check.AttachedCustomerId,
+            AttachedCustomerDisplay = check.AttachedCustomer is null ? null : $"{check.AttachedCustomer.Code} - {check.AttachedCustomer.Name}",
             CancellationReasonPresets = SplitPresetLines(fiscalSettings?.CancellationReasonPresets),
             QuickNotePresets = SplitPresetLines(fiscalSettings?.QuickNotePresets),
             SentOrders = check.Orders.OrderBy(x => x.OrderedAtUtc).Select(order => new RestaurantSentOrderViewModel

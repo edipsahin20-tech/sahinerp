@@ -18,6 +18,22 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 3. Restoran Raporları — tarih ARALIĞI seçici, Excel/PDF export, 2 satır rapor türü sekmesi (Günlük/Aylık, Ödeme Dağılımı, En Çok Satanlar, Kategori Satışları, KDV Dökümü, İndirim&İkram / Kasiyer Raporu, Günlük Fişler, X, Z, Z Listesi)
 4. Paket Operasyon Merkezi — kanal sekmeleri (Telefon/Web/Yemeksepeti/Trendyol/GetirYemek), durum kuyruğu, 3 sütun (kuyruk/detay/kurye takip haritası) — **mimariyi bozma, derin geliştirme SONRAKİ pakette**
 
+**Edip 2026-09-04 ~23:00'te aynı 4 görseli TEKRAR gönderdi** ("bu görselleri artık yeni
+tasarımlarımız... butun butonlar çalışsın... sen ne zaman istersen iş planına al") - bu YENİ bir
+tasarım değil, YUKARIDAKİ 4 görselin AYNISI, sadece hatırlatma/vurgu. Bu vesileyle Self Satış
+mockup'ının alt buton düzeni ("Adisyon | Nakit | Kredi Kartı" + "Cari Ekle | %İndirim | Kapat",
+"Sipariş Sil"in sağ sütunda AYRI kırmızı bir buton olarak durduğu) ile mevcut kodun TAM
+piksel eşleşmediği fark edildi - **görsel-doğruluk TODO'su, işlevsellik ENGELLENMEDİ:**
+- Şu an "Sipariş Sil" alt hızlı-işlem sırasında duruyor (Cari Ekle eklenerek 4 sütuna çıkarıldı,
+  fonksiyon bozulmadı) - mockup'ta bu buton sağ ikon sütununa (Fiş İkram'ın altına) taşınmış
+  görünüyor.
+- "Adisyon" adında bir hızlı buton mockup'ta var, mevcut kodda YOK (muhtemelen mevcut açık
+  adisyonu görüntüleme/geçiş kısayolu - tam işlevi belirsiz, netleştirilmeli).
+- Bu SADECE düzen/pozisyon farkı - Madde 13 (Cari Ekle/Açık Hesap) TAM FONKSİYONEL olarak
+  eklendi ve test edildi, sadece buton mockup'taki TAM konumunda değil. İlerleyen bir oturumda
+  (örn. Madde 23-24 Masa Satış tasarım karşılaştırmasıyla birlikte) piksel-doğruluk için
+  gözden geçirilmeli.
+
 ---
 
 ## İlerleme Durumu (özet - en güncel hali için madde detaylarına bak)
@@ -36,7 +52,7 @@ Bitince yalnızca: **"Bitti, devam edebiliriz."**
 | 10 | İndirim ortak motor | ✅ doğrulandı + test edildi (2026-09-04) - ana ekran ve ödeme ekranı AYNI #ticketDiscountModal'ı açıyor (pay-discount-btn → openTicketDiscountModal(true)), İndirimi Kaldır (discount-clear-btn) ApplyTicketDiscountAsync(0) çağırıp TÜM satırların DiscountAmountSnapshot'ını sıfırlayarak orijinal toplamı tam geri getiriyor, hızlı ödeme zaten net (indirimli) tutar üzerinden çalışıyor (ComputeCheckRunningTotal DiscountAmountSnapshot'ı düşüyor) |
 | 11 | Fiş İkram (parametrik sebep, ciroya dahil değil) | ✅ tamam + test edildi (2026-09-04) - stok hareketi kısmı için not: bkz. aşağıdaki detay |
 | 12 | Ödenmez ödeme tipi | ✅ tamam + test edildi (2026-09-04) |
-| 13 | Açık Hesap + zorunlu cari | ⏳ |
+| 13 | Açık Hesap + zorunlu cari | ✅ tamam + test edildi (2026-09-04) |
 | 14 | Tahsilat Carileri / platform ödemeleri | ⏳ yeni |
 | 15-16 | Ürün Arama modal + Türkçe normalize | ⏳ |
 | 17 | Özel sanal klavye | ⏳ yeni |
@@ -403,3 +419,35 @@ yeni migration'ı içerecek şekilde yeniden üretildi** - bu adımlar tamamland
 `RetailSales` VE `RestaurantPayments` INSERT'lerinin çalıştığı AMA `CurrentAccountTransactions`/
 `FinancialTransactions` için HİÇBİR INSERT olmadığı doğrulandı - tam olarak tasarlandığı gibi.
 Test sonrası ayar varsayılana (kapalı) döndürüldü.
+
+### Madde 13 — Açık Hesap + zorunlu cari (TAMAMLANDI, 2026-09-04, TEST EDİLDİ)
+
+**Yapılanlar:**
+- `RestaurantPaymentMethod.OpenAccount = 5` - Ödenmez'den FARKI: Sale (ciro) hareketi NORMAL
+  oluşur (revenue gerçekleşir), sadece Collection (tahsilat) hareketi oluşmaz - seçilen CARİNİN
+  hesabında GERÇEK bir açık alacak bırakır (Debit var, karşılığı Credit yok).
+- `RestaurantCheck.AttachedCustomerId` (yeni) - "Cari Ekle" (onaylı Self Satış tasarımındaki
+  buton) ile adisyona bağlanan müşteri, `UpdateCheckNoteAsync` ile AYNI basit desende
+  `AttachCustomerAsync` metoduyla yazılıyor.
+- `CloseCheckAsync`: `customerId ??= check.AttachedCustomerId` (istemci ayrıca bir customerId
+  göndermediyse Cari Ekle'den geleni kullanır) + `openAccountTotal > 0 && customerId is null` ise
+  **"Cari seçmelisiniz."** ile reddeder (spec'in istediği TAM metin). `netSaleTotal = grandTotal -
+  unpaidTotal` (Açık Hesap dahildir, revenue oluşur) vs `netCollectionTotal = grandTotal -
+  unpaidTotal - openAccountTotal` (Açık Hesap hariçtir, tahsilat oluşmaz) - iki ayrı guard ile
+  Sale ve Collection BAĞIMSIZ olarak oluşur/oluşmaz.
+- İlk kez: ana ERP'nin `lookup-picker.js` + `_LookupModal` altyapısı restoran kabuğuna
+  (`_RestaurantShellLayout.cshtml`) eklendi - restoran modülü bunu önceden hiç kullanmıyordu.
+  "Cari Ekle" butonu `_LookupField` deseniyle AYNI `data-lookup-*`/`lookup-trigger` mekanizmasını
+  kullanıyor, sadece görsel olarak tek bir buton gibi (mockup'taki gibi) paketlendi.
+
+**Nasıl test edildi:** Açık Hesap'a cari seçmeden basıldı → "Cari seçmelisiniz." ile doğru
+reddedildi. "Cari Ekle" ile gerçek bir cari (lookup modal üzerinden) seçildi - sunucu loglarında
+`UPDATE RestaurantChecks SET AttachedCustomerId` doğrulandı. Sonra Açık Hesap ile 125₺ tam tutar
+işaretlenip "Siparişi Tamamla" ile kapatıldı - sunucu loglarında TEK BİR `CurrentAccountTransactions`
+INSERT'i (Sale, Debit=125, seçilen cariye) görüldü, Collection hareketi OLUŞMADI, `RestaurantPayments`
+kaydı (izlenebilirlik) oluştu - tam tasarlandığı gibi.
+
+**Bulunan ve düzeltilen dördüncü/beşinci bulgu (bug değil, ortam garipliği):** Test sırasında
+tarayıcı bölmesi bir noktada 303px genişliğe düştü (muhtemelen önceki bir `resize_window` çağrısının
+kalıntısı) - kod hatası SANILDI ama `resize_window` ile 1400x900'e sabitlenince düzeldi, gerçek bir
+CSS regresyonu değildi.

@@ -43,6 +43,12 @@ public sealed class RestaurantCheck : EntityBase
     public string? ComplimentaryReasonWhy { get; set; }
     public string? ComplimentaryNote { get; set; }
 
+    // Cari Ekle (madde 13, Edip 2026-09-04, onaylı Self Satış tasarımındaki "Cari Ekle" butonu) -
+    // adisyona bir müşteri bağlar. "Açık Hesap" ödeme yöntemi bu alan dolu olmadan KULLANILAMAZ
+    // (CloseCheckAsync "Cari seçmelisiniz." ile reddeder) - bkz. RestaurantPostingService.
+    public int? AttachedCustomerId { get; set; }
+    public Customer? AttachedCustomer { get; set; }
+
     public int RestaurantTableSessionId { get; set; }
     public RestaurantTableSession RestaurantTableSession { get; set; } = null!;
 

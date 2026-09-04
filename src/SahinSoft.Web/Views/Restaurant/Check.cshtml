@@ -254,6 +254,16 @@
                          renkli olsun"). -->
                     <div class="cart-quick-actions" id="cart-quick-actions">
                         <button type="button" class="quick-action-btn danger" id="clear-cart-btn">🗑 Sipariş Sil</button>
+                        <!-- Cari Ekle (madde 13, onaylı Self Satış tasarımı) - adisyona bir müşteri
+                             bağlar; "Açık Hesap" ödeme yöntemi bu olmadan kullanılamaz. Seçim
+                             sonrası buton etiketi cari adını gösterir (bkz. restaurant-pos.js). -->
+                        <button type="button" class="quick-action-btn attach-customer lookup-trigger" id="attach-customer-btn"
+                                data-lookup-endpoint="@Url.Action("Customers", "Lookup", new { type = "Customer" })"
+                                data-lookup-title="Cari Seç" data-target-hidden="AttachedCustomerId" data-target-display="AttachedCustomerDisplayInput">
+                            👤 <span id="attach-customer-label">@(string.IsNullOrWhiteSpace(Model.AttachedCustomerDisplay) ? "Cari Ekle" : Model.AttachedCustomerDisplay)</span>
+                        </button>
+                        <input type="hidden" id="AttachedCustomerId" value="@Model.AttachedCustomerId" />
+                        <input type="hidden" id="AttachedCustomerDisplayInput" style="display:none;" />
                         <button type="button" class="quick-action-btn discount" id="ticket-discount-btn">% İndirim</button>
                         <button type="button" class="quick-action-btn close" id="close-check-btn">✕ Kapat</button>
                     </div>
@@ -718,7 +728,10 @@
                     <button type="button" class="pay-cash-quick" data-cash="200">200</button>
                 </div>
 
-                <div class="pay-method-row"@(Model.ShowUnpaidPaymentType ? " style=\"grid-template-columns:repeat(4,1fr);\"" : "")>
+                @{
+                    var payMethodCount = 4 + (Model.ShowUnpaidPaymentType ? 1 : 0);
+                }
+                <div class="pay-method-row" style="grid-template-columns:repeat(@payMethodCount,1fr);">
                     <button type="button" class="pay-method-btn n" data-method="1">₺ Nakit</button>
                     <button type="button" class="pay-method-btn c" data-method="2">▣ Kredi Kartı</button>
                     <button type="button" class="pay-method-btn y" data-method="3">◇ Yemek Çeki</button>
@@ -727,6 +740,9 @@
                         <!-- Ödenmez (madde 12) - parametrik, kapalıyken hiç render edilmez. -->
                         <button type="button" class="pay-method-btn u" data-method="4">✕ Ödenmez</button>
                     }
+                    <!-- Açık Hesap (madde 13) - Cari Ekle ile bağlanmış müşteri şart, yoksa
+                         "Cari seçmelisiniz." ile reddedilir (bkz. restaurant-close-payment.js). -->
+                    <button type="button" class="pay-method-btn o" data-method="5">👤 Açık Hesap</button>
                 </div>
             </div>
             <div class="modal-footer pay-footer">
@@ -770,6 +786,7 @@
     .pay-method-btn.c { background: #c2afe9; }
     .pay-method-btn.y { background: #f3d09a; }
     .pay-method-btn.u { background: #e8b4b4; }
+    .pay-method-btn.o { background: #a9c9e8; }
     .pay-footer { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; }
 
     /* Self Satış hızlı ödeme kısayolları - MASTER tasarımdaki ürün panelinin altındaki
@@ -779,9 +796,10 @@
 
     /* Nakit satırının altındaki hızlı işlem sırası - Sipariş Sil/İndirim/Kapat, renkli
        (Edip, 2026-09-03: "sağ taraf nakit butonun altına ... yanyana koy renkli olsun"). */
-    .cart-quick-actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 8px; }
-    .quick-action-btn { min-height: 42px; border: 0; border-radius: 9px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: #fff; }
+    .cart-quick-actions { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 8px; }
+    .quick-action-btn { min-height: 42px; border: 0; border-radius: 9px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
     .quick-action-btn.danger { background: #D94A4A; }
+    .quick-action-btn.attach-customer { background: #2E6DA4; }
     .quick-action-btn.discount { background: #6C5CE7; }
     .quick-action-btn.close { background: #4A5568; }
     .quick-action-btn:disabled { opacity: .5; cursor: default; }

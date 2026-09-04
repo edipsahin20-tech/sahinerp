@@ -58,6 +58,11 @@ public sealed class RestaurantCheckViewModel
     // hiç gösterilmez.
     public bool ShowUnpaidPaymentType { get; set; }
 
+    // Cari Ekle (madde 13) - adisyona bağlanmış müşteri, varsa. "Açık Hesap" ödeme yöntemi
+    // bu olmadan kullanılamaz.
+    public int? AttachedCustomerId { get; set; }
+    public string? AttachedCustomerDisplay { get; set; }
+
     public List<RestaurantSentOrderViewModel> SentOrders { get; set; } = [];
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
