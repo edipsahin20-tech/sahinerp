@@ -200,13 +200,12 @@ public sealed class RestaurantPostingService(
     // çubuktaki, tek seçili satıra uygulanan) FARKLI: bu bir TUTAR/YÜZDE indirimini adisyonun
     // TOPLAMINA uygular (Edip, 2026-09-03: "üstte ürünü seçip indirim tuşuna bastığında satır
     // indirimi, altta bastığında indirim tuşuna tutar indirimi toplam tutara, bide tahsilatta
-    // indirim o da tutar indirimi sayılsın"). RestaurantCheck.GrandTotal vb. alanlar sadece
-    // kapanışta (CloseCheckAsync) yazılır - burada dokunmaya gerek yok, PayableTotal her zaman
-    // canlı RestaurantOrderLine'lardan hesaplanır (bkz. ComputeCheckRunningTotal), bu yüzden her
-    // satırın DiscountAmountSnapshot'ını kendi payına göre orantılı güncellemek yeterli. Hem
-    // henüz mutfağa gönderilmemiş (client'ta bekleyen, zaten flushCartToKitchen ile önce
-    // gönderilir) hem gönderilmiş satırlarda AYNI şekilde çalışır - Tahsilat anında genelde her
-    // şey zaten gönderilmiş olur.
+    // indirim o da tutar indirimi sayılsın"). Teknik doküman (2026-09-05, madde 4) BU İKİ İNDİRİM
+    // MOTORUNU AYIRDI: adisyon indirimi ARTIK satırlara dağıtılmaz, satırların
+    // DiscountAmountSnapshot/UnitPriceSnapshot'ına HİÇ dokunmaz, satırlara "İndirim" etiketi
+    // basmaz - sadece RestaurantCheck.TicketDiscountAmount'a yazılır. Toplam hesaplaması
+    // (RestaurantController.ComputeCheckRunningTotal, CloseCheckAsync) bu alanı satırların net
+    // toplamından ayrıca düşer.
     public async Task ApplyTicketDiscountAsync(int checkId, decimal totalDiscountAmount, CancellationToken cancellationToken = default)
     {
         if (totalDiscountAmount < 0)
@@ -214,25 +213,19 @@ public sealed class RestaurantPostingService(
             throw new InvalidOperationException("İndirim tutarı negatif olamaz.");
         }
 
-        var lines = await dbContext.RestaurantOrderLines
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+
+        var netLinesTotal = await dbContext.RestaurantOrderLines
             .Where(x => x.RestaurantOrder.RestaurantCheckId == checkId && x.Status != RestaurantOrderLineStatus.Cancelled)
-            .ToListAsync(cancellationToken);
-        if (lines.Count == 0)
+            .Select(x => x.Quantity * x.UnitPriceSnapshot - x.DiscountAmountSnapshot)
+            .SumAsync(cancellationToken);
+        if (netLinesTotal <= 0)
         {
             throw new InvalidOperationException("Adisyonda ürün yok.");
         }
 
-        var grossTotal = lines.Sum(x => x.Quantity * x.UnitPriceSnapshot);
-        var clampedAmount = Math.Min(totalDiscountAmount, grossTotal);
-
-        foreach (var line in lines)
-        {
-            var lineGross = line.Quantity * line.UnitPriceSnapshot;
-            var share = grossTotal > 0 ? lineGross / grossTotal : 0;
-            line.DiscountAmountSnapshot = Math.Round(clampedAmount * share, 2, MidpointRounding.AwayFromZero);
-            line.IsComplimentary = false;
-        }
-
+        check.TicketDiscountAmount = Math.Min(totalDiscountAmount, netLinesTotal);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -1690,16 +1683,15 @@ public sealed class RestaurantPostingService(
                     throw new InvalidOperationException("En az bir ödeme satırı girilmelidir.");
                 }
 
-                decimal subtotal = 0, tax = 0, discount = 0, grandTotal = 0;
+                decimal subtotal = 0, tax = 0, discount = 0, grossLinesTotal = 0;
                 var retailSaleLines = new List<RetailSaleLine>();
+                var lineTotals = new List<(RestaurantOrderLine Line, decimal LineTotal)>();
                 foreach (var line in lines)
                 {
                     var lineTotal = Math.Round(line.Quantity * line.UnitPriceSnapshot - line.DiscountAmountSnapshot, 2, MidpointRounding.AwayFromZero);
-                    var (matrah, kdvTutari) = RestaurantPricingCalculator.ExtractTax(lineTotal, line.TaxRateSnapshot);
-                    subtotal += matrah;
-                    tax += kdvTutari;
+                    grossLinesTotal += lineTotal;
                     discount += line.DiscountAmountSnapshot;
-                    grandTotal += lineTotal;
+                    lineTotals.Add((line, lineTotal));
 
                     retailSaleLines.Add(new RetailSaleLine
                     {
@@ -1713,7 +1705,21 @@ public sealed class RestaurantPostingService(
                     });
                 }
 
-                grandTotal = Math.Round(grandTotal, 2, MidpointRounding.AwayFromZero);
+                // Adisyon indirimi (TicketDiscountAmount) BASILAN satırlara/RetailSaleLine'lara
+                // YAZILMAZ (2026-09-05 teknik doküman madde 4) - ama KDV matrahı doğru çıksın diye
+                // yalnızca bu döngüde, her satırın payına göre orantılı olarak GEÇİCİ düşülür.
+                var ticketDiscount = check.TicketDiscountAmount;
+                foreach (var (line, lineTotal) in lineTotals)
+                {
+                    var share = grossLinesTotal > 0 ? lineTotal / grossLinesTotal : 0;
+                    var taxableLineTotal = lineTotal - Math.Round(ticketDiscount * share, 2, MidpointRounding.AwayFromZero);
+                    var (matrah, kdvTutari) = RestaurantPricingCalculator.ExtractTax(taxableLineTotal, line.TaxRateSnapshot);
+                    subtotal += matrah;
+                    tax += kdvTutari;
+                }
+
+                var grandTotal = Math.Round(grossLinesTotal, 2, MidpointRounding.AwayFromZero) - ticketDiscount;
+                discount += ticketDiscount;
                 var paymentsTotal = Math.Round(payments.Sum(p => p.Amount), 2, MidpointRounding.AwayFromZero);
                 if (paymentsTotal != grandTotal)
                 {

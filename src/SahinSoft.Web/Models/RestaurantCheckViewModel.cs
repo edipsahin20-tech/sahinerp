@@ -13,6 +13,14 @@ public sealed class RestaurantCheckViewModel
     public Guid ClosePaymentSubmissionKey { get; set; } = Guid.NewGuid();
     public decimal PayableTotal { get; set; }
 
+    // Alt özet çubuğu (2026-09-05 teknik doküman madde 2) - Ara Toplam | İndirim | Ödenen | Kalan
+    // HER ZAMAN görünür. AraToplam satırların net toplamı (kendi indirim/ikramları düşülmüş,
+    // TicketDiscountAmount düşülmeMİŞ); TicketDiscountAmount SADECE adisyon/tutar indirimi (satır
+    // indiriminden AYRI motor, madde 4) - PayableTotal = AraToplam - TicketDiscountAmount.
+    public decimal AraToplam { get; set; }
+    public decimal TicketDiscountAmount { get; set; }
+    public decimal PaidTotal { get; set; }
+
     // Self Satış adisyonlarında "Masaya Aktar" butonu/modalı için doldurulur - bkz.
     // RestaurantController.Check ve RestaurantSelfSaleController.TransferToTable.
     public bool IsSelfSaleCheck { get; set; }

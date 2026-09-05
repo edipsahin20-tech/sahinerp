@@ -466,9 +466,18 @@
     text-align: right;
 }
 
+/* Gönderilmiş satır soluk/pasif GÖRÜNMEZ (Edip, 2026-09-05: "pasif görünüm = işlem yapılamaz
+   mantığı oluşmasın, ürün satırı her zaman normal/net görünümde kalsın") - mutfağa gönderildiği
+   ayrı bir küçük etiketle (.cart-line-sent-badge) belirtilir, opacity ile DEĞİL. */
 .restaurant-pos .cart-line.sent {
-    opacity: 0.65;
     align-items: center;
+}
+
+.restaurant-pos .cart-line-sent-badge {
+    display: block;
+    font-size: 10.5px;
+    color: var(--rs-muted, #7A8699);
+    margin-top: 2px;
 }
 
 /* Sadece iptal yetkisi olan (madde 9/21/25) gönderilmiş satırlar tıklanıp sabit araç çubuğuna

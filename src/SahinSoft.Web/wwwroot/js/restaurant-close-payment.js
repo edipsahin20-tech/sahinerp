@@ -32,8 +32,6 @@
     var receiptUrlTemplate = root.getAttribute('data-receipt-url-template');
     var requireReceiptPromptAfterQuickPay = root.getAttribute('data-require-receipt-prompt-after-quickpay') === 'true';
     var selfSaleUrl = root.getAttribute('data-self-sale-url');
-    var mainPaidRow = document.getElementById('main-paid-row');
-    var mainRemainingRow = document.getElementById('main-remaining-row');
     var mainPaidTotalEl = document.getElementById('main-paid-total');
     var mainRemainingTotalEl = document.getElementById('main-remaining-total');
     var payChangeWrap = document.getElementById('pay-change-wrap');
@@ -120,17 +118,12 @@
         renderEntry();
     }
 
+    // Ödenen/Kalan (madde 2, 2026-09-05 teknik doküman) - alan HER ZAMAN görünür, ödeme
+    // yapılmamışsa bile Ödenen 0,00/Kalan Toplam kadar gösterilir.
     function updateMainScreenSummary() {
         var paid = paidTotal();
-        if (paid > 0) {
-            mainPaidRow.style.display = '';
-            mainRemainingRow.style.display = '';
-            mainPaidTotalEl.textContent = money(paid);
-            mainRemainingTotalEl.textContent = money(Math.max(remaining(), 0));
-        } else {
-            mainPaidRow.style.display = 'none';
-            mainRemainingRow.style.display = 'none';
-        }
+        if (mainPaidTotalEl) mainPaidTotalEl.textContent = money(paid);
+        if (mainRemainingTotalEl) mainRemainingTotalEl.textContent = money(Math.max(remaining(), 0));
     }
 
     function removePendingPaymentLine(line) {
@@ -177,14 +170,18 @@
         partialBadge.style.display = paymentLines.length > 0 ? '' : 'none';
     }
 
-    function refresh() {
+    // skipAutoFill: pencere YENİ açıldığında (openPaymentModal) Alınacak Tutar bilinçli olarak
+    // 0'da bırakılır (2026-09-05 teknik doküman madde 3) - bu fonksiyonun normalde boş/sıfır
+    // girişi kalanla YENİDEN doldurma davranışı (ör. bir ödeme satırı silindiğinde) o durumda
+    // devre dışı bırakılır.
+    function refresh(skipAutoFill) {
         renderLines();
         paidEl.textContent = money(paidTotal());
         var rem = remaining();
         remainingEl.textContent = money(Math.max(rem, 0));
         remainingEl.className = rem <= 0 ? 'text-success' : 'text-danger';
         confirmBtn.disabled = rem !== 0 || paymentLines.length === 0;
-        if (entryDigits.length === 0 || entryValue() === 0) {
+        if (!skipAutoFill && (entryDigits.length === 0 || entryValue() === 0)) {
             setEntryFromNumber(Math.max(rem, 0));
         } else {
             renderEntry();
@@ -201,10 +198,12 @@
         totalEl.textContent = money(payableTotal);
         // paymentLines KASITLI OLARAK sıfırlanmıyor (madde 8: "Adisyona Dön kısmi ödemeleri
         // korur") - sayfa ilk yüklendiğinde sunucudan gelen haliyle veya bu oturumda eklenmiş
-        // haliyle aynen devam eder.
+        // haliyle aynen devam eder. Alınacak Tutar ise (2026-09-05 teknik doküman madde 3)
+        // pencere ilk açıldığında HER ZAMAN 0,00 ₺'den başlar - toplam/kalanı otomatik doldurmaz,
+        // kullanıcı tuşlar ya da bölme butonlarını kullanır.
         entryDigits = '';
-        setEntryFromNumber(Math.max(remaining(), 0));
-        refresh();
+        setEntryFromNumber(0);
+        refresh(true);
         new bootstrap.Modal(document.getElementById('closePaymentModal')).show();
     }
 
@@ -398,20 +397,21 @@
     // ödeme ekranında KALIR (modal kapanmaz).
     document.getElementById('cancel-pending-payments-btn').addEventListener('click', function () {
         if (paymentLines.length === 0) { return; }
-        if (!window.confirm('Alınan tüm kısmi ödemeler iptal edilecek. Devam edilsin mi?')) { return; }
-        fetch(cancelPendingPaymentsUrl + '?checkId=' + checkId, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': getCsrfToken() }
-        })
-            .then(function () {
-                paymentLines = [];
-                entryDigits = '';
-                refresh();
+        window.posConfirm('Alınan tüm kısmi ödemeler iptal edilecek. Devam edilsin mi?', function () {
+            fetch(cancelPendingPaymentsUrl + '?checkId=' + checkId, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': getCsrfToken() }
             })
-            .catch(function () {
-                errorEl.textContent = 'Ödemeler iptal edilirken bağlantı hatası oluştu.';
-                errorEl.style.display = 'block';
-            });
+                .then(function () {
+                    paymentLines = [];
+                    entryDigits = '';
+                    refresh();
+                })
+                .catch(function () {
+                    errorEl.textContent = 'Ödemeler iptal edilirken bağlantı hatası oluştu.';
+                    errorEl.style.display = 'block';
+                });
+        }, null, { danger: true });
     });
 
     // Yazar kasa entegrasyonu (bkz. SettingsController Ayarlar > Stok Parametreleri) açıkken ve

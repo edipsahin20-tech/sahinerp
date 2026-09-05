@@ -1320,6 +1320,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.ServiceChargeAmount).HasPrecision(18, 2);
             entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
             entity.Property(x => x.GrandTotal).HasPrecision(18, 2);
+            entity.Property(x => x.TicketDiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.CheckNumber).IsUnique();
@@ -1335,7 +1336,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.AttachedCustomer).WithMany().HasForeignKey(x => x.AttachedCustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_RestaurantChecks_Amounts",
-                "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0"));
+                "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0 AND [TicketDiscountAmount] >= 0"));
         });
 
         builder.Entity<RestaurantOrder>(entity =>

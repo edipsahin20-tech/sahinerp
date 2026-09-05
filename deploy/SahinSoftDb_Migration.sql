@@ -10571,3 +10571,40 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905090314_AddTicketDiscountAmount'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] DROP CONSTRAINT [CK_RestaurantChecks_Amounts];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905090314_AddTicketDiscountAmount'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [TicketDiscountAmount] decimal(18,2) NOT NULL DEFAULT 0.0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905090314_AddTicketDiscountAmount'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [RestaurantChecks] ADD CONSTRAINT [CK_RestaurantChecks_Amounts] CHECK ([SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0 AND [TicketDiscountAmount] >= 0)');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905090314_AddTicketDiscountAmount'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905090314_AddTicketDiscountAmount', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

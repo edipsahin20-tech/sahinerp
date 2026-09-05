@@ -84,11 +84,20 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             ? []
             : raw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-    private decimal ComputeCheckRunningTotal(int checkId) =>
-        dbContext.RestaurantOrderLines
+    // Adisyon/tutar indirimi (TicketDiscountAmount) satır toplamından AYRICA düşülür - satırlara
+    // dağıtılmaz (2026-09-05 teknik doküman madde 4). bkz. RestaurantPostingService.ApplyTicketDiscountAsync.
+    private decimal ComputeCheckRunningTotal(int checkId)
+    {
+        var netLinesTotal = dbContext.RestaurantOrderLines
             .Where(x => x.RestaurantOrder.RestaurantCheckId == checkId && x.Status != RestaurantOrderLineStatus.Cancelled)
             .Select(x => x.Quantity * x.UnitPriceSnapshot - x.DiscountAmountSnapshot)
             .Sum();
+        var ticketDiscount = dbContext.RestaurantChecks
+            .Where(x => x.Id == checkId)
+            .Select(x => x.TicketDiscountAmount)
+            .SingleOrDefault();
+        return Math.Max(netLinesTotal - ticketDiscount, 0);
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -564,6 +573,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             CashRegisterCreditCardAccountId = resolvedCashRegister?.CreditCardFinancialAccountId,
             CashRegisterMealCardAccountId = resolvedCashRegister?.MealCardFinancialAccountId,
             PayableTotal = ComputeCheckRunningTotal(check.Id),
+            AraToplam = await dbContext.RestaurantOrderLines
+                .Where(x => x.RestaurantOrder.RestaurantCheckId == check.Id && x.Status != RestaurantOrderLineStatus.Cancelled)
+                .Select(x => x.Quantity * x.UnitPriceSnapshot - x.DiscountAmountSnapshot)
+                .SumAsync(),
+            TicketDiscountAmount = check.TicketDiscountAmount,
             PendingPayments = await dbContext.RestaurantCheckPendingPayments
                 .AsNoTracking()
                 .Where(x => x.RestaurantCheckId == check.Id)
@@ -577,6 +591,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 })
                 .ToListAsync()
         };
+        model.PaidTotal = model.PendingPayments.Sum(x => x.Amount);
 
         return View(model);
     }

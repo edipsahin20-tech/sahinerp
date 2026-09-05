@@ -205,6 +205,10 @@
                                     @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
                                     @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span> }
                                     @if (Model.IsKitchenTrackingEnabled) { <span class="badge text-bg-secondary-subtle">@line.Status</span> }
+                                    <!-- Mutfağa gönderildi işareti - satırı SOLUKLAŞTIRMAK yerine
+                                         (Edip, 2026-09-05: "pasif görünüm oluşmasın") küçük bir
+                                         metin etiketiyle belirtilir. -->
+                                    <span class="cart-line-sent-badge">✓ Mutfağa gönderildi</span>
                                     @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
                                 </div>
                                 <div class="cart-line-col-qty">@line.Quantity.ToString("N0")</div>
@@ -221,27 +225,31 @@
                     <p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>
                 </div>
                 <div class="cart-footer">
+                    <!-- Alt özet HER ZAMAN 4 alan gösterir - Ara Toplam | İndirim | Ödenen | Kalan
+                         (2026-09-05 teknik doküman madde 2: "ödeme yapılıp yapılmamasına göre alan
+                         kaybolmayacak"). İndirim SADECE adisyon/tutar indirimidir (TicketDiscountAmount,
+                         madde 4) - satır indirimleri zaten her satırın kendi TUTAR'ına yansımıştır,
+                         burada AYRICA gösterilmez/toplanmaz. restaurant-close-payment.js
+                         updateMainScreenSummary() Ödenen/Kalan'ı canlı günceller. -->
+                    <div class="d-flex justify-content-between">
+                        <span>Ara Toplam</span>
+                        <span id="main-subtotal-total">@Model.AraToplam.ToString("N2") ₺</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>İndirim</span>
+                        <span class="text-danger" id="main-discount-total">@Model.TicketDiscountAmount.ToString("N2") ₺</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Ödenen</span>
+                        <span class="text-success fw-bold" id="main-paid-total">@Model.PaidTotal.ToString("N2") ₺</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Kalan</span>
+                        <span class="text-danger fw-bold" id="main-remaining-total">@((Model.PayableTotal - Model.PaidTotal).ToString("N2")) ₺</span>
+                    </div>
                     <div class="d-flex justify-content-between">
                         <span>Toplam</span>
-                        <span class="cart-total" id="cart-total">0,00 ₺</span>
-                    </div>
-                    <!-- Ana ekranda Ödenen/Kalan (madde 8: "kısmi ödemeler ana ekranda da görünür")
-                         - kısmi ödeme yokken gizli, sunucudan gelen PendingPayments ile JS
-                         (restaurant-close-payment.js) dolduruyor. Bootstrap'ın .d-flex sınıfı
-                         !important olduğu için görünürlük TOGGLE'ı doğrudan bu satırda
-                         (inline style="display:none") DEĞİL, sarmalayıcı bir dış div'te
-                         yapılıyor - aksi halde JS'in style.display='none'ı asla kazanamaz. -->
-                    <div id="main-paid-row" style="display:none;">
-                        <div class="d-flex justify-content-between">
-                            <span>Ödenen</span>
-                            <span class="text-success fw-bold" id="main-paid-total">0,00 ₺</span>
-                        </div>
-                    </div>
-                    <div id="main-remaining-row" style="display:none;">
-                        <div class="d-flex justify-content-between">
-                            <span>Kalan</span>
-                            <span class="text-danger fw-bold" id="main-remaining-total">0,00 ₺</span>
-                        </div>
+                        <span class="cart-total" id="cart-total">@Model.PayableTotal.ToString("N2") ₺</span>
                     </div>
                     <!-- Self satış ve masa satışta AYNI ödeme mantığı - "Kapat/Öde" ayrı bir buton
                          olarak kaldırıldı, tek "Ödemeyi Al" akışı ikisinde de burada
@@ -579,6 +587,27 @@
             <div class="pos-vk-row"><button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button></div>
             <div class="pos-vk-row"><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button></div>
             <div class="pos-vk-row"><button type="button" data-key="0">0</button><button type="button" data-key=",">,</button><button type="button" class="pos-vk-numpad-bs" data-action="backspace">⌫</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- ŞahinSoft masaüstü-hissi onay/uyarı/giriş penceresi (bkz. pos-dialog.js) - tarayıcının
+     native confirm/alert/prompt'u yerine bu KULLANILIR (Edip, 2026-09-05: "web tarayıcı gibi
+     onay istemesin, masaüstü program gibi küçük onay alanı açsın"). -->
+<div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ŞahinSoft Restoran</h5>
+            </div>
+            <div class="modal-body">
+                <div id="posDialogMessage" style="white-space:pre-line;"></div>
+                <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
+            </div>
         </div>
     </div>
 </div>
@@ -973,6 +1002,7 @@
     <script id="pos-cancellation-reasons-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CancellationReasonPresets, catalogJsonOptions))</script>
     <script id="pos-quick-notes-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickNotePresets, catalogJsonOptions))</script>
     <script id="pos-pending-payments-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PendingPayments, catalogJsonOptions))</script>
+    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
     <script src="~/js/restaurant-pos.js" asp-append-version="true"></script>
     <script>
         (function () {

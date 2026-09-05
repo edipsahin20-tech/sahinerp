@@ -17,6 +17,13 @@ public sealed class RestaurantCheck : EntityBase
     public decimal TaxAmount { get; set; }
     public decimal GrandTotal { get; set; }
 
+    // Adisyon/Tutar indirimi (Edip, 2026-09-05 teknik doküman, madde 4) - satır indiriminden
+    // AYRI bir motor. Bilinçli olarak satırlara DAĞITILMAZ, satırların UnitPriceSnapshot/
+    // DiscountAmountSnapshot'ına HİÇ dokunmaz, satırlara "İndirim" etiketi bastırmaz - sadece
+    // bu adisyonun toplamından düşülür (bkz. RestaurantController.ComputeCheckRunningTotal,
+    // RestaurantPostingService.ApplyTicketDiscountAsync/CloseCheckAsync).
+    public decimal TicketDiscountAmount { get; set; }
+
     public string? CancelledByUserId { get; set; }
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }

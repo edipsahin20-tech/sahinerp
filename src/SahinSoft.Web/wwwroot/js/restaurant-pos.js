@@ -18,7 +18,7 @@
         var modal = new bootstrap.Modal(modalEl);
         confirmBtn.onclick = function () {
             var pin = input.value;
-            if (!pin) { window.alert('PIN girilmelidir.'); return; }
+            if (!pin) { window.posAlert('PIN girilmelidir.'); return; }
             modal.hide();
             onReady(pin);
         };
@@ -255,27 +255,7 @@
         if (el) el.textContent = (v % 1 === 0 ? v.toString() : v.toString());
     }
 
-    function addToCart(product) {
-        var portionId = null;
-        var portionName = null;
-        var unitPrice = product.salePrice;
-
-        if (product.portions && product.portions.length > 0) {
-            var names = product.portions.map(function (x, i) { return (i + 1) + ') ' + x.name; }).join('\n');
-            var choice = window.prompt('Porsiyon seçin:\n' + names + '\n\n(Numara girin, boş bırakırsanız varsayılan porsiyon kullanılır)');
-            var selected = null;
-            if (choice && !isNaN(parseInt(choice, 10))) {
-                selected = product.portions[parseInt(choice, 10) - 1];
-            } else {
-                selected = product.portions.find(function (x) { return x.isDefault; }) || product.portions[0];
-            }
-            if (selected) {
-                portionId = selected.portionId;
-                portionName = selected.name;
-                unitPrice = selected.priceOverride != null ? selected.priceOverride : product.salePrice;
-            }
-        }
-
+    function finishAddToCart(product, portionId, portionName, unitPrice) {
         cart.push({
             cartId: ++cartSeq,
             productId: product.productId,
@@ -294,6 +274,35 @@
         selectedCartId = cartSeq;
         setPendingQuantity(1);
         renderCart();
+    }
+
+    function addToCart(product) {
+        if (!product.portions || product.portions.length === 0) {
+            finishAddToCart(product, null, null, product.salePrice);
+            return;
+        }
+        var names = product.portions.map(function (x, i) { return (i + 1) + ') ' + x.name; }).join('\n');
+        window.posPrompt('Porsiyon seçin:\n' + names + '\n\n(Numara girin, boş bırakırsanız varsayılan porsiyon kullanılır)', '', function (choice) {
+            var selected = null;
+            if (choice && !isNaN(parseInt(choice, 10))) {
+                selected = product.portions[parseInt(choice, 10) - 1];
+            } else {
+                selected = product.portions.find(function (x) { return x.isDefault; }) || product.portions[0];
+            }
+            var portionId = null, portionName = null, unitPrice = product.salePrice;
+            if (selected) {
+                portionId = selected.portionId;
+                portionName = selected.name;
+                unitPrice = selected.priceOverride != null ? selected.priceOverride : product.salePrice;
+            }
+            finishAddToCart(product, portionId, portionName, unitPrice);
+        }, function () {
+            // Vazgeç - varsayılan porsiyonla ekle (eski native prompt'ta "İptal" da boş string
+            // gibi davranıp varsayılanı kullanırdı, aynı davranış korunuyor).
+            var selected = product.portions.find(function (x) { return x.isDefault; }) || product.portions[0];
+            var unitPrice = selected && selected.priceOverride != null ? selected.priceOverride : product.salePrice;
+            finishAddToCart(product, selected ? selected.portionId : null, selected ? selected.name : null, unitPrice);
+        });
     }
 
     // Sunucudaki RestaurantController.ComputeCheckRunningTotal ile AYNI formül. Ürün fiyatı
@@ -403,7 +412,7 @@
     });
 
     function submitSentLineQtyChange(lineId, newQty) {
-        if (newQty <= 0) { window.alert('Geçersiz miktar.'); return; }
+        if (newQty <= 0) { window.posAlert('Geçersiz miktar.'); return; }
         window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
             document.getElementById('adjustQtyLineId').value = lineId;
             document.getElementById('adjustQtyValue').value = newQty;
@@ -426,11 +435,12 @@
     }
 
     function submitSentLineComp(lineId) {
-        if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
-        window.requestApproverPin(requireApprovalComplimentary, function (pin) {
-            document.getElementById('toggleCompLineId').value = lineId;
-            document.getElementById('toggleCompApproverPin').value = pin || '';
-            document.getElementById('toggle-line-comp-form').submit();
+        window.posConfirm('Bu satırın ikram durumu değiştirilsin mi?', function () {
+            window.requestApproverPin(requireApprovalComplimentary, function (pin) {
+                document.getElementById('toggleCompLineId').value = lineId;
+                document.getElementById('toggleCompApproverPin').value = pin || '';
+                document.getElementById('toggle-line-comp-form').submit();
+            });
         });
     }
 
@@ -466,21 +476,23 @@
         if (!line) {
             // Gönderilmiş satırın notu bu ekrandan değiştirilemez - ayrı bir sunucu ucu YOK,
             // uydurma bir "kaydedildi" mesajı gösterilmiyor.
-            if (selectedSentLineEl()) window.alert('Gönderilmiş satırın notu buradan değiştirilemez.');
+            if (selectedSentLineEl()) window.posAlert('Gönderilmiş satırın notu buradan değiştirilemez.');
             return;
         }
-        var note;
+        function applyNote(note) {
+            if (note !== null) line.kitchenNote = note.trim() || null;
+            renderCart();
+        }
         if (quickNotePresets.length > 0) {
             var options = quickNotePresets.map(function (n, i) { return (i + 1) + ') ' + n; }).join('\n');
-            var choice = window.prompt('Not (mutfağa iletilecek):\n' + options + '\n\n(Hazır not için numara girin, ya da kendi notunuzu yazın)', line.kitchenNote || '');
-            if (choice === null) { return; }
-            var idx = parseInt(choice, 10);
-            note = (!isNaN(idx) && idx >= 1 && idx <= quickNotePresets.length && String(idx) === choice.trim()) ? quickNotePresets[idx - 1] : choice;
+            window.posPrompt('Not (mutfağa iletilecek):\n' + options + '\n\n(Hazır not için numara girin, ya da kendi notunuzu yazın)', line.kitchenNote || '', function (choice) {
+                var idx = parseInt(choice, 10);
+                var note = (!isNaN(idx) && idx >= 1 && idx <= quickNotePresets.length && String(idx) === choice.trim()) ? quickNotePresets[idx - 1] : choice;
+                applyNote(note);
+            });
         } else {
-            note = window.prompt('Not (mutfağa iletilecek):', line.kitchenNote || '');
+            window.posPrompt('Not (mutfağa iletilecek):', line.kitchenNote || '', applyNote);
         }
-        if (note !== null) line.kitchenNote = note.trim() || null;
-        renderCart();
     });
     document.getElementById('line-act-discount').addEventListener('click', function () {
         var line = selectedLine();
@@ -488,21 +500,22 @@
             var sentEl = selectedSentLineEl();
             if (!sentEl) return;
             var currentDiscount = parseFloat(sentEl.getAttribute('data-discount')) || 0;
-            var sentAmountStr = window.prompt('İndirim tutarı (₺):', currentDiscount);
-            if (sentAmountStr === null) return;
-            var sentAmount = parseFloat(sentAmountStr);
-            if (!isNaN(sentAmount) && sentAmount >= 0) {
-                submitSentLineDiscount(selectedSentLineId, sentAmount);
-            }
+            window.posPrompt('İndirim tutarı (₺):', currentDiscount, function (sentAmountStr) {
+                var sentAmount = parseFloat(sentAmountStr);
+                if (!isNaN(sentAmount) && sentAmount >= 0) {
+                    submitSentLineDiscount(selectedSentLineId, sentAmount);
+                }
+            });
             return;
         }
-        var amountStr = window.prompt('İndirim tutarı (₺):', line.discountAmount || 0);
-        var amount = parseFloat(amountStr);
-        if (!isNaN(amount) && amount >= 0) {
-            line.discountAmount = amount;
-            line.isComplimentary = false;
-        }
-        renderCart();
+        window.posPrompt('İndirim tutarı (₺):', line.discountAmount || 0, function (amountStr) {
+            var amount = parseFloat(amountStr);
+            if (!isNaN(amount) && amount >= 0) {
+                line.discountAmount = amount;
+                line.isComplimentary = false;
+            }
+            renderCart();
+        });
     });
     document.getElementById('line-act-comp').addEventListener('click', function () {
         var line = selectedLine();
@@ -973,10 +986,11 @@
 
         clearBtn.addEventListener('click', function () {
             if (cart.length === 0) return;
-            if (!window.confirm('Bekleyen sepetteki ' + cart.length + ' kalem silinsin mi?')) return;
-            cart = [];
-            selectedCartId = null;
-            renderCart();
+            window.posConfirm('Bekleyen sepetteki ' + cart.length + ' kalem silinsin mi?', function () {
+                cart = [];
+                selectedCartId = null;
+                renderCart();
+            }, null, { danger: true });
         });
 
         discountBtn.addEventListener('click', function () {
@@ -1050,7 +1064,7 @@
         }
 
         window.openTicketDiscountModal = function (isFromPayment) {
-            if (grossTotal() <= 0) { window.alert('Adisyonda ürün yok.'); return; }
+            if (grossTotal() <= 0) { window.posAlert('Adisyonda ürün yok.'); return; }
             fromPayment = !!isFromPayment;
             mode = 'percent';
             digits = '';
@@ -1127,7 +1141,7 @@
                         .then(function (res) { return res.json(); })
                         .then(function (data) {
                             if (!data.success) {
-                                window.alert('Hata: ' + (data.message || 'İndirim uygulanamadı.'));
+                                window.posAlert('Hata: ' + (data.message || 'İndirim uygulanamadı.'));
                                 applyBtn.disabled = false;
                                 applyBtn.textContent = 'Uygula';
                                 return;
@@ -1137,7 +1151,7 @@
                             window.location.href = url.toString();
                         })
                         .catch(function () {
-                            window.alert('Bağlantı hatası oluştu.');
+                            window.posAlert('Bağlantı hatası oluştu.');
                             applyBtn.disabled = false;
                             applyBtn.textContent = 'Uygula';
                         });
@@ -1296,10 +1310,10 @@
                         label.textContent = item.name || 'Cari Ekle';
                         if (window.RestaurantOpenAccountReady) window.RestaurantOpenAccountReady(true);
                     } else {
-                        window.alert(data.message || 'Cari eklenemedi.');
+                        window.posAlert(data.message || 'Cari eklenemedi.');
                     }
                 })
-                .catch(function () { window.alert('Bağlantı hatası oluştu.'); });
+                .catch(function () { window.posAlert('Bağlantı hatası oluştu.'); });
         });
     })();
 
@@ -1363,11 +1377,14 @@
                 whyInput.value = '';
                 noteInput.value = '';
                 errorEl.style.display = 'none';
-                if (isAdmin && !window.confirm('Adisyondaki TÜM ürünler ikram edilecek - ciroya dahil edilmeyecek. Devam edilsin mi?')) {
-                    return;
+                if (isAdmin) {
+                    window.posConfirm('Adisyondaki TÜM ürünler ikram edilecek - ciroya dahil edilmeyecek. Devam edilsin mi?', function () {
+                        new bootstrap.Modal(modalEl).show();
+                    });
+                } else {
+                    new bootstrap.Modal(modalEl).show();
                 }
-                new bootstrap.Modal(modalEl).show();
-            }, function () { window.alert('Sepet gönderilirken hata oluştu.'); });
+            }, function () { window.posAlert('Sepet gönderilirken hata oluştu.'); });
         });
     })();
 
@@ -1409,7 +1426,7 @@
             renderCart();
             var instance = bootstrap.Modal.getInstance(modalEl);
             if (instance) instance.hide();
-            if (missing > 0) window.alert(missing + ' kalem artık kataloğa dahil değil, eklenemedi.');
+            if (missing > 0) window.posAlert(missing + ' kalem artık kataloğa dahil değil, eklenemedi.');
         }
 
         modalEl.addEventListener('show.bs.modal', function () {
@@ -1426,22 +1443,23 @@
                     row.innerHTML = '<span>' + escapeHtml(r.timeLabel) + ' · ' + escapeHtml(r.documentNumber) + ' <span class="text-secondary small">(' + escapeHtml(r.tableName) + ')</span></span><strong>' + money(r.grandTotal) + '</strong>';
                     row.addEventListener('click', function () {
                         if (!isAdmin) {
-                            window.alert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
+                            window.posAlert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
                             return;
                         }
-                        if (!window.confirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?')) return;
-                        var fd = new FormData();
-                        fd.append('__RequestVerificationToken', getCsrfToken());
-                        fd.append('retailSaleId', r.id);
-                        fetch(cancelReceiptUrl, { method: 'POST', body: fd })
-                            .then(function (resp) { return resp.json(); })
-                            .then(function (result) {
-                                if (!result.success) {
-                                    window.alert(result.message || 'Fiş iptal edilemedi.');
-                                    return;
-                                }
-                                fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
-                            });
+                        window.posConfirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?', function () {
+                            var fd = new FormData();
+                            fd.append('__RequestVerificationToken', getCsrfToken());
+                            fd.append('retailSaleId', r.id);
+                            fetch(cancelReceiptUrl, { method: 'POST', body: fd })
+                                .then(function (resp) { return resp.json(); })
+                                .then(function (result) {
+                                    if (!result.success) {
+                                        window.posAlert(result.message || 'Fiş iptal edilemedi.');
+                                        return;
+                                    }
+                                    fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
+                                });
+                        }, null, { danger: true });
                     });
                     listEl.appendChild(row);
                 });
