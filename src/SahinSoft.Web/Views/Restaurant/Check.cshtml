@@ -2,6 +2,11 @@
 @{
     Layout = "_RestaurantShellLayout";
     ViewData["Title"] = $"Adisyon {Model.CheckNumber}";
+    // Self Satış/Paket gizli sanal masaları bölüm adıyla AYNI masa adını taşır (bkz.
+    // RestaurantPostingService.CreateSelfSaleCheckAsync yorumu) - başlıkta "Self Satış — Self
+    // Satış" gibi anlamsız tekrar göstermemek için sadece görünümde birleştiriliyor, veri modeli
+    // dokunulmadı.
+    var tableLabel = Model.SectionName == Model.TableName ? Model.SectionName : $"{Model.SectionName} — {Model.TableName}";
 }
 
 @section Head {
@@ -11,7 +16,7 @@
 <div class="restaurant-pos pos-check-page" id="pos-root"
      data-check-id="@Model.CheckId"
      data-check-number="@Model.CheckNumber"
-     data-table-label="@Model.SectionName — @Model.TableName"
+     data-table-label="@tableLabel"
      data-is-self-sale="@Model.IsSelfSaleCheck.ToString().ToLowerInvariant()"
      data-hold-url="@Url.Action("Hold", "RestaurantSelfSale")"
      data-send-url="@Url.Action("SendToKitchen")"
@@ -45,7 +50,7 @@
 
     <div class="erp-toolbar">
         <div class="erp-toolbar-title">
-            <h1>@Model.SectionName — @Model.TableName</h1>
+            <h1>@tableLabel</h1>
             <span class="erp-toolbar-meta">Adisyon @Model.CheckNumber · @Model.GuestCount kişi · @Model.OpenedAtUtc.ToLocalTime().ToString("HH:mm")</span>
         </div>
         <!-- "Kapat/Öde" ayrı bir buton/mantık olarak kaldırıldı - ödeme artık masa satışta da
@@ -341,20 +346,22 @@
                     <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
                 </button>
             }
-            @if (Model.ShowClearOrderButton)
-            {
-                <!-- Sipariş Sil - onaylı Self Satış mockup'ında sağ ikon sütununda, Fiş İkram'ın
-                     altında AYRI kırmızı bir buton olarak duruyor (önceden alt hızlı-işlem
-                     sırasındaydı, madde 23-24 piksel-doğruluk düzeltmesiyle buraya taşındı,
-                     2026-09-05). Fonksiyon aynı - clear-cart-btn id'si korunuyor. -->
-                <button type="button" class="pos-side-icon danger" id="clear-cart-btn">
-                    <span class="pos-side-icon-glyph">🗑</span>Sipariş<br />Sil
-                </button>
-            }
             @if (Model.ShowReceiptListButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#receiptListModal">
                     <span class="pos-side-icon-glyph">🧾</span>Fiş<br />Listesi
+                </button>
+            }
+            @if (Model.ShowClearOrderButton)
+            {
+                <!-- Sipariş Sil - onaylı Self Satış mockup'ında sağ ikon şeridinin EN ALTINDA,
+                     Fiş Listesi'nin altında, AYRI kırmızı bir buton olarak duruyor (önceden alt
+                     hızlı-işlem sırasındaydı, madde 23-24 piksel-doğruluk düzeltmesiyle buraya
+                     taşındı; sıra Fiş Listesi/Sipariş Sil arasında ters olduğu 2026-09-05'te
+                     mockup'la tekrar karşılaştırılıp düzeltildi). Fonksiyon aynı - clear-cart-btn
+                     id'si korunuyor. -->
+                <button type="button" class="pos-side-icon danger" id="clear-cart-btn">
+                    <span class="pos-side-icon-glyph">🗑</span>Sipariş<br />Sil
                 </button>
             }
         </div>
