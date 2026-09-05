@@ -13,11 +13,16 @@ public sealed class RestaurantCheckViewModel
     public Guid ClosePaymentSubmissionKey { get; set; } = Guid.NewGuid();
     public decimal PayableTotal { get; set; }
 
-    // Alt özet çubuğu (2026-09-05 teknik doküman madde 2) - Ara Toplam | İndirim | Ödenen | Kalan
-    // HER ZAMAN görünür. AraToplam satırların net toplamı (kendi indirim/ikramları düşülmüş,
-    // TicketDiscountAmount düşülmeMİŞ); TicketDiscountAmount SADECE adisyon/tutar indirimi (satır
-    // indiriminden AYRI motor, madde 4) - PayableTotal = AraToplam - TicketDiscountAmount.
+    // Alt özet çubuğu (2026-09-05 teknik doküman madde 2, 2026-09-06'da satır indirimi de dahil
+    // edilecek şekilde genişletildi) - Ara Toplam | İndirim | Ödenen | Kalan HER ZAMAN görünür.
+    // AraToplam artık TAM BRÜT (satır indirimi DAHİL hiçbir şey düşülmemiş); "İndirim" alanında
+    // gösterilen TicketDiscountAmount + LineDiscountsTotal'dır (satır indirimleri ARTIK ayrıca
+    // gösteriliyor, önceden sadece her satırın kendi Tutar'ına gömülü kalıp footer'da hiç
+    // görünmüyordu). PayableTotal (ComputeCheckRunningTotal, netLinesTotal - TicketDiscountAmount)
+    // HİÇ değişmedi - AraToplam - (TicketDiscountAmount + LineDiscountsTotal) matematiksel olarak
+    // hâlâ PayableTotal'a eşit (netLinesTotal = AraToplam - LineDiscountsTotal).
     public decimal AraToplam { get; set; }
+    public decimal LineDiscountsTotal { get; set; }
     public decimal TicketDiscountAmount { get; set; }
     public decimal PaidTotal { get; set; }
 

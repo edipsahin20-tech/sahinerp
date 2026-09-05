@@ -738,9 +738,20 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             CashRegisterCreditCardAccountId = resolvedCashRegister?.CreditCardFinancialAccountId,
             CashRegisterMealCardAccountId = resolvedCashRegister?.MealCardFinancialAccountId,
             PayableTotal = ComputeCheckRunningTotal(check.Id),
+            // Edip, 2026-09-06: "satır indirimi yaptığında alt tarafa indirim bölümü açılsın ve
+            // ara toplam indirim toplam ona göre çalışsın matematik hesabı" - Ara Toplam artık
+            // TAM BRÜT (satır indirimi dahi düşülmeden) - satır indirimleri LineDiscountsTotal
+            // olarak AYRI toplanıp aşağıda TicketDiscountAmount ile birleştirilip "İndirim"
+            // satırında gösteriliyor. PayableTotal (ComputeCheckRunningTotal, netLinesTotal -
+            // ticketDiscount) HİÇ değişmedi - Ara Toplam - İndirim matematiksel olarak hâlâ AYNI
+            // PayableTotal'a eşit (netLinesTotal = grossLinesTotal - lineDiscounts).
             AraToplam = await dbContext.RestaurantOrderLines
                 .Where(x => x.RestaurantOrder.RestaurantCheckId == check.Id && x.Status != RestaurantOrderLineStatus.Cancelled)
-                .Select(x => x.Quantity * x.UnitPriceSnapshot - x.DiscountAmountSnapshot)
+                .Select(x => x.Quantity * x.UnitPriceSnapshot)
+                .SumAsync(),
+            LineDiscountsTotal = await dbContext.RestaurantOrderLines
+                .Where(x => x.RestaurantOrder.RestaurantCheckId == check.Id && x.Status != RestaurantOrderLineStatus.Cancelled)
+                .Select(x => x.DiscountAmountSnapshot)
                 .SumAsync(),
             TicketDiscountAmount = check.TicketDiscountAmount,
             PendingPayments = await dbContext.RestaurantCheckPendingPayments

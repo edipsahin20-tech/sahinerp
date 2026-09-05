@@ -36,10 +36,18 @@
     var mainPaidTotalEl = document.getElementById('main-paid-total');
     var mainPaidRowEl = document.getElementById('main-paid-row');
     var mainRemainingTotalEl = document.getElementById('main-remaining-total');
+    var mainDiscountRowEl = document.getElementById('main-discount-row');
+    var mainDiscountTotalEl = document.getElementById('main-discount-total');
     // Ticket (adisyon) indirimi sayfa yüklendikten sonra DEĞİŞMEZ - İndirim uygulaması her zaman
     // sepeti gönderip sayfayı yeniler (bkz. restaurant-pos.js submitDiscount), bu yüzden burada
     // sabit bir sayı olarak okunması güvenli.
     var ticketDiscountAmount = parseFloat(root.getAttribute('data-ticket-discount-amount')) || 0;
+    // Satır indirimleri (Edip, 2026-09-06: "satır indirimi yaptığında alt tarafa indirim bölümü
+    // açılsın") - BUNLAR sayfa yeniden yüklenmeden değişebilir (bekleyen satıra satır indirimi
+    // yerel JS state'tir) - restaurant-pos.js her renderCart()'ta window.RestaurantLineDiscountsTotal'ı
+    // günceller; buradaki data- değeri sadece İLK yükleme (henüz hiç renderCart() çağrılmadıysa)
+    // için düşülür.
+    var sentLinesDiscountTotalInitial = parseFloat(root.getAttribute('data-sent-lines-discount-total')) || 0;
     var payChangeWrap = document.getElementById('pay-change-wrap');
     var payChangeEl = document.getElementById('pay-change');
 
@@ -135,18 +143,28 @@
     // eklendiğinde (restaurant-pos.js) VE ödeme eklendiğinde (aşağıdaki refresh()) AYNI tek
     // hesaplama kullanılsın - iki ayrı yerde iki farklı Kalan Tutar formülü OLMASIN.
     function currentSubtotal() {
-        return window.RestaurantCartSubtotal != null ? window.RestaurantCartSubtotal : payableTotal + ticketDiscountAmount;
+        return window.RestaurantCartSubtotal != null ? window.RestaurantCartSubtotal : payableTotal + ticketDiscountAmount + sentLinesDiscountTotalInitial;
+    }
+
+    function currentLineDiscounts() {
+        return window.RestaurantLineDiscountsTotal != null ? window.RestaurantLineDiscountsTotal : sentLinesDiscountTotalInitial;
     }
 
     function updateMainScreenSummary() {
         var paid = paidTotal();
         var subtotal = currentSubtotal();
-        var kalan = Math.max(Math.round((subtotal - ticketDiscountAmount - paid) * 100) / 100, 0);
+        // İndirim (Edip, 2026-09-06: "satır indirimi yaptığında alt tarafa indirim bölümü
+        // açılsın") - fiş geneli (ticket) indirimi + TÜM satır indirimleri (bekleyen + gönderilmiş)
+        // birlikte gösterilir; Ara Toplam artık BRÜT olduğundan Kalan Tutar da İKİSİNİ de düşer.
+        var combinedDiscount = ticketDiscountAmount + currentLineDiscounts();
+        var kalan = Math.max(Math.round((subtotal - combinedDiscount - paid) * 100) / 100, 0);
         if (mainSubtotalTotalEl) mainSubtotalTotalEl.textContent = money(subtotal);
+        if (mainDiscountTotalEl) mainDiscountTotalEl.textContent = money(combinedDiscount);
         if (mainPaidTotalEl) mainPaidTotalEl.textContent = money(paid);
         // .style.display DEĞİL - satır Bootstrap'in "d-flex" (display:flex !important) sınıfını
         // taşıyor, inline style ona karşı kaybeder; .d-none Bootstrap'te AYNI önemde ama SONRA
         // tanımlı olduğu için ikisi birlikteyken kazanır (bkz. Check.cshtml'deki not).
+        if (mainDiscountRowEl) mainDiscountRowEl.classList.toggle('d-none', combinedDiscount <= 0);
         if (mainPaidRowEl) mainPaidRowEl.classList.toggle('d-none', paid <= 0);
         if (mainRemainingTotalEl) mainRemainingTotalEl.textContent = money(kalan);
     }

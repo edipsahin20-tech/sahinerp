@@ -57,6 +57,7 @@
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-ticket-discount-amount="@Model.TicketDiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-sent-lines-gross-total="@Model.SentOrders.SelectMany(o => o.Lines).Where(l => l.Status != "Cancelled").Sum(l => l.Quantity * l.UnitPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)"
+     data-sent-lines-discount-total="@Model.LineDiscountsTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
      data-cashier-name="@(((SahinSoft.Web.Models.RestaurantShellViewModel)ViewBag.Shell).UserFullName)">
@@ -229,7 +230,7 @@
                                  #line-act-remove) mekanizmasını kullanıyor - AYNI sunucu uçları
                                  (adjust-line-qty-form/toggle-line-comp-form/cancel-line-btn akışı,
                                  PIN onayı dahil), sadece tetikleme yeri değişti. -->
-                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-unit-price="@line.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                 <div class="cart-line-col-no">@(sentIdx + 1)</div>
                                 <div class="cart-line-col-name">
                                     <span class="cart-line-name-text">@line.ProductName@(!string.IsNullOrEmpty(line.PortionName) ? $" ({line.PortionName})" : "")</span>
@@ -275,9 +276,10 @@
                          .d-none de AYNI önem/özgüllükte ama Bootstrap'in kendi CSS'inde .d-flex'ten
                          SONRA tanımlı olduğu için ikisi birlikteyken kazanır (2026-09-05, ilk
                          denemede bulunan gerçek hata). -->
-                    <div class="d-flex justify-content-between@(Model.TicketDiscountAmount > 0 ? "" : " d-none")" id="main-discount-row">
+                    @{ var totalDiscountAmount = Model.TicketDiscountAmount + Model.LineDiscountsTotal; }
+                    <div class="d-flex justify-content-between@(totalDiscountAmount > 0 ? "" : " d-none")" id="main-discount-row">
                         <span>İndirim</span>
-                        <span class="text-danger" id="main-discount-total">@Model.TicketDiscountAmount.ToString("N2") ₺</span>
+                        <span class="text-danger" id="main-discount-total">@totalDiscountAmount.ToString("N2") ₺</span>
                     </div>
                     <div class="d-flex justify-content-between@(Model.PaidTotal > 0 ? "" : " d-none")" id="main-paid-row">
                         <span>Ödenen Tutar</span>
@@ -350,28 +352,28 @@
             @if (Model.ShowTicketNoteButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#ticketNoteModal">
-                    <span class="pos-side-icon-glyph">🗒</span>Fiş<br />Notu
+                    <i class="fa-solid fa-file-circle-plus pos-side-icon-glyph"></i>Fiş<br />Notu
                 </button>
             }
             @if (Model.IsSelfSaleCheck && Model.ShowTableTransferButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#transferToTableModal">
-                    <span class="pos-side-icon-glyph">⇄</span>Masa<br />Transfer
+                    <i class="fa-solid fa-right-left pos-side-icon-glyph"></i>Masa<br />Transfer
                 </button>
             }
             <button type="button" class="pos-side-icon" id="side-kitchen-btn">
-                <span class="pos-side-icon-glyph">♨</span>Mutfak
+                <i class="fa-solid fa-hat-chef pos-side-icon-glyph"></i>Mutfak
             </button>
             @if (Model.ShowPriceCheckButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#priceCheckModal">
-                    <span class="pos-side-icon-glyph">🔍</span>Fiyat<br />Gör
+                    <i class="fa-solid fa-magnifying-glass pos-side-icon-glyph"></i>Fiyat<br />Gör
                 </button>
             }
             @if (Model.ShowKeyboardButton)
             {
                 <button type="button" class="pos-side-icon" id="side-keyboard-btn">
-                    <span class="pos-side-icon-glyph">⌨</span>Klavye
+                    <i class="fa-solid fa-keyboard pos-side-icon-glyph"></i>Klavye
                 </button>
             }
             @if (Model.ShowProductListButton)
@@ -380,19 +382,19 @@
                      değil), ad/barkod modu seçilebilir, sonuç seçilince/Enter'a basılınca sepete
                      eklenir. Kategori alanına HİÇ dokunmaz - tamamen izole bir modal. -->
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#productListModal">
-                    <span class="pos-side-icon-glyph">📦</span>Ürün<br />Listesi
+                    <i class="fa-solid fa-boxes-stacked pos-side-icon-glyph"></i>Ürün<br />Listesi
                 </button>
             }
             @if (Model.ShowHoldReceiptButton)
             {
                 <button type="button" class="pos-side-icon" id="side-hold-btn">
-                    <span class="pos-side-icon-glyph">⏸</span>Fişi<br />Beklet
+                    <i class="fa-solid fa-pause pos-side-icon-glyph"></i>Fişi<br />Beklet
                 </button>
             }
             @if (Model.ShowHeldReceiptsButton)
             {
                 <button type="button" class="pos-side-icon" id="held-receipts-btn" data-bs-toggle="modal" data-bs-target="#heldReceiptsModal" style="position:relative;">
-                    <span class="pos-side-icon-glyph">📋</span>Bekleyen<br />Fişler
+                    <i class="fa-solid fa-file-lines pos-side-icon-glyph"></i>Bekleyen<br />Fişler
                     <!-- Madde 18 - canlı sayaç rozeti, boşken gizli. -->
                     <span id="held-receipts-badge" class="held-receipts-count-badge" style="display:none;">0</span>
                 </button>
@@ -400,13 +402,13 @@
             @if (Model.ShowComplimentaryReceiptButton)
             {
                 <button type="button" class="pos-side-icon" id="side-ticket-comp-btn">
-                    <span class="pos-side-icon-glyph">🎁</span>Fiş<br />İkram
+                    <i class="fa-solid fa-gift pos-side-icon-glyph"></i>Fiş<br />İkram
                 </button>
             }
             @if (Model.ShowReceiptListButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#receiptListModal">
-                    <span class="pos-side-icon-glyph">🧾</span>Fiş<br />Listesi
+                    <i class="fa-solid fa-file-circle-plus pos-side-icon-glyph"></i>Fiş<br />Listesi
                 </button>
             }
             @if (Model.ShowClearOrderButton)
@@ -418,7 +420,7 @@
                      mockup'la tekrar karşılaştırılıp düzeltildi). Fonksiyon aynı - clear-cart-btn
                      id'si korunuyor. -->
                 <button type="button" class="pos-side-icon danger" id="clear-cart-btn">
-                    <span class="pos-side-icon-glyph">🗑</span>Sipariş<br />Sil
+                    <i class="fa-solid fa-trash pos-side-icon-glyph"></i>Sipariş<br />Sil
                 </button>
             }
         </div>
@@ -969,7 +971,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content pay-modal">
             <div class="modal-header">
-                <h5 class="modal-title mb-0">İndirim</h5>
+                <h5 class="modal-title mb-0" id="discount-modal-title">İndirim</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">

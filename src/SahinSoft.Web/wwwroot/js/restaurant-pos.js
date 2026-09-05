@@ -38,11 +38,16 @@
     // GERÇEK ÇİFT İNDİRİM HATASI (2026-09-05, Edip bildirdi: "80 TL indirim yapıyorum ara toplama
     // da 80 TL indirim yapıyor... 2 kere indirim yapıyor") - data-payable-total zaten TicketDiscount
     // DÜŞÜLMÜŞ (net) bir değer (PayableTotal = AraToplam - TicketDiscountAmount, bkz.
-    // RestaurantController.ComputeCheckRunningTotal). Bu değer Ara Toplam'ı (BRÜT olması gereken)
-    // canlı güncellemek için kullanılınca, restaurant-close-payment.js Kalan Tutar'ı hesaplarken
-    // İNDİRİMİ BİR KEZ DAHA düşüyordu (net değerden bir daha net değer çıkarılmış oluyordu).
-    // TicketDiscountAmount geri eklenerek BRÜT (gerçek Ara Toplam ile aynı taban) değere çevrildi.
-    var sentLinesTotal = (parseFloat(root.getAttribute('data-payable-total')) || 0) + (parseFloat(root.getAttribute('data-ticket-discount-amount')) || 0);
+    // RestaurantController.ComputeCheckRunningTotal). Ara Toplam'ın (BRÜT olması gereken) canlı
+    // güncellemesi için doğrudan gerçek BRÜT sunucu değeri (data-sent-lines-gross-total, satır
+    // indirimi bile düşülmemiş - 2026-09-06'da "satır indirimi de İndirim'e yansısın" isteğiyle
+    // AraToplam'ın kendisi de BRÜT'e çevrildi) kullanılıyor - eski "PayableTotal + TicketDiscount"
+    // yeniden inşa formülüne artık gerek yok.
+    var sentLinesTotal = parseFloat(root.getAttribute('data-sent-lines-gross-total')) || 0;
+    // Gönderilmiş satırların TOPLAM satır indirimi (Edip, 2026-09-06: "satır indirimi yaptığında
+    // alt tarafa indirim bölümü açılsın") - Ara Toplam BRÜT olduğundan bu artık AYRICA İndirim
+    // alanına eklenmesi gereken bir tutar (önceden Ara Toplam'ın içine gömülüydü, hiç görünmüyordu).
+    var sentLinesDiscountTotal = parseFloat(root.getAttribute('data-sent-lines-discount-total')) || 0;
     var sendUrl = root.getAttribute('data-send-url');
     var catalog = JSON.parse(document.getElementById('pos-catalog-data').textContent || '[]');
     var cart = [];
@@ -317,29 +322,38 @@
         // gizli olan "Toplam" alanı canlı güncelleniyordu. window.RestaurantCartSubtotal'ı burada
         // güncelleyip restaurant-close-payment.js'teki paylaşılan yenileme fonksiyonunu çağırarak
         // İKİSİ de (ve Kalan Tutar'ın ödenen/indirim düşülmüş hali) senkron kalır.
-        function syncRunningTotals(subtotal) {
+        // lineDiscounts (2026-09-06, Edip: "satır indirimi yaptığında alt tarafa indirim bölümü
+        // açılsın") - Ara Toplam artık BRÜT olduğundan satır indirimleri (bekleyen + gönderilmiş)
+        // ayrıca toplanıp restaurant-close-payment.js'in İndirim satırına (Tİcket indirimiyle
+        // birlikte) yansıtılması için window.RestaurantLineDiscountsTotal'a yazılır.
+        function syncRunningTotals(subtotal, lineDiscounts) {
             totalEl.textContent = money(subtotal);
             window.RestaurantCartSubtotal = subtotal;
+            window.RestaurantLineDiscountsTotal = lineDiscounts;
             if (window.RestaurantRefreshRunningTotals) window.RestaurantRefreshRunningTotals();
         }
 
         if (cart.length === 0) {
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
-            syncRunningTotals(sentLinesTotal);
+            syncRunningTotals(sentLinesTotal, sentLinesDiscountTotal);
             sendBtn.disabled = true;
-            if (payBtn) payBtn.disabled = sentLinesTotal <= 0;
+            if (payBtn) payBtn.disabled = (sentLinesTotal - sentLinesDiscountTotal) <= 0;
             updateLineToolbar();
             return;
         }
 
         linesEl.innerHTML = '';
         var total = 0;
+        var totalGross = 0;
+        var pendingDiscountsTotal = 0;
         // Sıra numarası (Edip, 2026-09-05: "1,2,3 devam etsin kaç ürün varsa") - gönderilmiş
         // satırların DEVAMI olarak numaralanır, Check.cshtml'deki @@for ile AYNI tek sayaç
         // mantığı (gönderilmiş satırlar 1..N ise bekleyen sepet N+1'den başlar).
         var sentLineCount = document.querySelectorAll('.cart-line.sent').length;
         cart.forEach(function (line, idx) {
             total += lineTotal(line);
+            totalGross += line.quantity * line.unitPrice;
+            pendingDiscountsTotal += line.discountAmount || 0;
             var div = document.createElement('div');
             div.className = 'cart-line' + (line.cartId === selectedCartId ? ' selected' : '');
             var badges = '';
@@ -366,9 +380,11 @@
             linesEl.appendChild(div);
         });
 
-        syncRunningTotals(total + sentLinesTotal);
+        syncRunningTotals(totalGross + sentLinesTotal, pendingDiscountsTotal + sentLinesDiscountTotal);
         sendBtn.disabled = false;
-        if (payBtn) payBtn.disabled = (total + sentLinesTotal) <= 0;
+        // NET (indirim düşülmüş) toplam kullanılır - sentLinesTotal artık BRÜT olduğundan
+        // "ödenecek bir şey var mı" kontrolü için kendi indirimi geri düşülür.
+        if (payBtn) payBtn.disabled = (total + (sentLinesTotal - sentLinesDiscountTotal)) <= 0;
         updateLineToolbar();
     }
 
@@ -488,28 +504,27 @@
             window.posPrompt('Not (mutfağa iletilecek):', line.kitchenNote || '', applyNote);
         }
     });
+    // Satır indirimi - Edip, 2026-09-06, onaylı görsel: "satır indirimi yaptığımda da görsel
+    // 1'deki gibi % ve tutarlar... açılsın" - eskiden düz bir posPrompt (tek metin kutusu) idi,
+    // artık fiş geneli "İndirim" modalıyla AYNI zengin %/₺ + hazır yüzde + numpad arayüzü
+    // (window.openLineDiscountModal, bkz. ticketDiscountModal IIFE'i) tek bir satırın brüt
+    // tutarına uygulanıyor.
     document.getElementById('line-act-discount').addEventListener('click', function () {
         var line = selectedLine();
         if (!line) {
             var sentEl = selectedSentLineEl();
             if (!sentEl) return;
+            var qty = parseFloat(sentEl.getAttribute('data-qty')) || 0;
+            var unitPrice = parseFloat(sentEl.getAttribute('data-unit-price')) || 0;
             var currentDiscount = parseFloat(sentEl.getAttribute('data-discount')) || 0;
-            window.posPrompt('İndirim tutarı (₺):', currentDiscount, function (sentAmountStr) {
-                var sentAmount = parseFloat(sentAmountStr);
-                if (!isNaN(sentAmount) && sentAmount >= 0) {
-                    submitSentLineDiscount(selectedSentLineId, sentAmount);
-                }
-            });
+            if (window.openLineDiscountModal) {
+                window.openLineDiscountModal({ kind: 'sent', lineId: selectedSentLineId, gross: qty * unitPrice, currentDiscount: currentDiscount });
+            }
             return;
         }
-        window.posPrompt('İndirim tutarı (₺):', line.discountAmount || 0, function (amountStr) {
-            var amount = parseFloat(amountStr);
-            if (!isNaN(amount) && amount >= 0) {
-                line.discountAmount = amount;
-                line.isComplimentary = false;
-            }
-            renderCart();
-        });
+        if (window.openLineDiscountModal) {
+            window.openLineDiscountModal({ kind: 'pending', line: line, gross: line.quantity * line.unitPrice, currentDiscount: line.discountAmount || 0 });
+        }
     });
     document.getElementById('line-act-comp').addEventListener('click', function () {
         var line = selectedLine();
@@ -1303,12 +1318,19 @@
         var mode = 'percent';
         var digits = '';
         var fromPayment = false;
+        // Satır indirimi (Edip, 2026-09-06, onaylı görsel: "satır indirimi yaptığımda da görsel
+        // 1'deki gibi % ve tutarlar... sayıların olduğu gibi açılsın") - AYNI %/₺ + hazır yüzde +
+        // numpad modalı, tek fiş yerine TEK bir satırın brüt tutarına uygulanır. lineContext dolu
+        // olduğunda grossTotal() TÜM adisyon yerine SADECE o satırın brütünü döner.
+        var lineContext = null;
+        var modalTitleEl = document.getElementById('discount-modal-title');
 
         function cartGrossTotal() {
             return cart.reduce(function (sum, l) { return sum + l.quantity * l.unitPrice; }, 0);
         }
 
         function grossTotal() {
+            if (lineContext) return lineContext.gross;
             return cartGrossTotal() + sentLinesGrossTotal;
         }
 
@@ -1334,8 +1356,25 @@
         }
 
         window.openTicketDiscountModal = function (isFromPayment) {
+            lineContext = null;
+            if (modalTitleEl) modalTitleEl.textContent = 'İndirim';
             if (grossTotal() <= 0) { window.posAlert('Adisyonda ürün yok.'); return; }
             fromPayment = !!isFromPayment;
+            mode = 'percent';
+            digits = '';
+            modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-discount-mode') === mode);
+            });
+            refreshPreview();
+            new bootstrap.Modal(modalEl).show();
+        };
+
+        // Satır indirimi - ctx: { gross, kind: 'pending'|'sent', line? , lineId? }.
+        window.openLineDiscountModal = function (ctx) {
+            if (!ctx || ctx.gross <= 0) { window.posAlert('Bu satırın tutarı 0, indirim uygulanamaz.'); return; }
+            lineContext = ctx;
+            if (modalTitleEl) modalTitleEl.textContent = 'Satır İndirimi';
+            fromPayment = false;
             mode = 'percent';
             digits = '';
             modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
@@ -1398,6 +1437,23 @@
         });
 
         function submitDiscount(amount) {
+            // Satır indirimi - sunucu round-trip'i FARKLI (bekleyen satır sadece yerel JS state,
+            // gönderilmiş satır AYNI submitSentLineDiscount/PIN akışı) - fişin tamamı için olan
+            // ApplyDiscount uç noktasına HİÇ dokunmaz.
+            if (lineContext) {
+                if (lineContext.kind === 'pending') {
+                    lineContext.line.discountAmount = amount;
+                    lineContext.line.isComplimentary = false;
+                    renderCart();
+                } else {
+                    submitSentLineDiscount(lineContext.lineId, amount);
+                }
+                lineContext = null;
+                var inst = bootstrap.Modal.getInstance(modalEl);
+                if (inst) inst.hide();
+                return;
+            }
+
             var applyBtn = document.getElementById('discount-apply-btn');
             applyBtn.disabled = true;
             applyBtn.textContent = 'Uygulanıyor...';

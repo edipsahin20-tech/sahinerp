@@ -757,8 +757,14 @@
     border-color: #b23a3a;
 }
 
+/* Emoji yerine FontAwesome (Edip, 2026-09-06, onaylı görsel: "bizdekiler renkli olmasın,
+   görselde ne görüyorsan öyle olsun") - emoji glyph'ler tarayıcıda HER ZAMAN çok renkli
+   render edilir, tek renk (lacivert/beyaz) yapılamaz; ikon fontu currentColor kullanır,
+   böylece .pos-side-icon'un kendi rengini (lacivert, kırmızı butonda beyaz) birebir alır. */
 .restaurant-pos .pos-side-icon-glyph {
+    display: block;
     font-size: 1.15rem;
+    margin-bottom: 0.15rem;
 }
 
 /* Bekleyen Fişler (madde 18, 2026-09-04) - sidebar rozeti + profesyonel kart tasarımı. */
