@@ -536,16 +536,34 @@
     </div>
 </div>
 
+<!-- Fiyat Gör (madde 5, 2026-09-05 teknik doküman) - Ürün Listesi ile AYNI gerçek stok DB
+     araması (SearchProducts, Ad/Barkod modu), kategori paneline HİÇ dokunmaz. Eskiden sadece
+     zaten yüklü kategori kısayolu kataloğunda (isim bazlı) arıyordu - artık tam stoktan barkod
+     dahil arar. -->
 <div class="modal fade" id="priceCheckModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Fiyat Gör</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="text" id="price-check-search" class="product-search-input" style="max-width:none;" placeholder="Ürün ara..." autocomplete="off" />
-                <div id="price-check-results" class="price-check-results"></div>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="price-check-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Ürün adı, stok kodu veya barkod ara..." autocomplete="off" />
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-erp-outline active" id="price-check-mode-name" data-mode="name">Ürün Adı ile Ara</button>
+                        <button type="button" class="btn btn-erp-outline" id="price-check-mode-barcode" data-mode="barcode">Barkod ile Ara</button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th>KDV</th><th class="text-end">Fiyat</th></tr>
+                        </thead>
+                        <tbody id="price-check-results"></tbody>
+                    </table>
+                </div>
+                <p id="price-check-empty" class="text-secondary small p-2" style="display:none;">Sonuç bulunamadı.</p>
                 <div id="price-check-detail" class="price-check-detail" style="display:none;">
                     <div class="price-check-detail-name" id="price-check-name"></div>
                     <div class="price-check-detail-row"><span>Fiyat (KDV Dahil)</span><strong id="price-check-price"></strong></div>
@@ -553,7 +571,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Kapat</button>
                 <button type="button" class="btn btn-erp" id="price-check-add-btn" disabled>Ekrana Al</button>
             </div>
         </div>

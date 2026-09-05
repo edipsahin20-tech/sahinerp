@@ -686,28 +686,42 @@
         });
     }
 
-    // --- Fiyat Gör - müşteri kasada fiyat sorduğunda kataloğu tekrar sorgulamadan (zaten
-    // yüklü) hızlı bakış (Edip, 2026-09-03). Seçilen ürün "Ekrana Al" ile sepete eklenir. ---
+    // --- Fiyat Gör (madde 5, 2026-09-05 teknik doküman) - Ürün Listesi ile AYNI gerçek stok DB
+    // araması (SearchProducts, Ad/Barkod modu) - eskiden sadece zaten yüklü kategori kısayolu
+    // kataloğunda (isim bazlı) arıyordu, kategori panelini asla etkilemez. Seçilen satır detay
+    // paneline (Fiyat/KDV) düşer, "Ekrana Al" ile sepete eklenir - Ürün Listesi'nden farklı olarak
+    // tek tıkla eklemez, önce fiyat/KDV'yi göstermesi gerekir (spec). ---
     (function () {
         var modalEl = document.getElementById('priceCheckModal');
         if (!modalEl) return;
         var searchEl = document.getElementById('price-check-search');
         var resultsEl = document.getElementById('price-check-results');
+        var emptyEl = document.getElementById('price-check-empty');
         var detailEl = document.getElementById('price-check-detail');
         var nameEl = document.getElementById('price-check-name');
         var priceEl = document.getElementById('price-check-price');
         var taxEl = document.getElementById('price-check-tax');
         var addBtn = document.getElementById('price-check-add-btn');
-        var allProducts = [];
-        catalog.forEach(function (cat) { cat.products.forEach(function (p) { allProducts.push(p); }); });
+        var nameBtn = document.getElementById('price-check-mode-name');
+        var barcodeBtn = document.getElementById('price-check-mode-barcode');
+        var searchUrl = root.getAttribute('data-search-products-url');
+        var mode = 'name';
+        var debounceTimer = null;
+        var currentResults = [];
         var selected = null;
 
         function renderResults(products) {
+            currentResults = products;
             resultsEl.innerHTML = '';
-            products.slice(0, 30).forEach(function (p) {
-                var row = document.createElement('div');
-                row.className = 'price-check-result-row';
-                row.innerHTML = '<span>' + escapeHtml(p.name) + '</span><strong>' + money(p.salePrice) + '</strong>';
+            emptyEl.style.display = products.length === 0 ? '' : 'none';
+            products.forEach(function (p) {
+                var row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.innerHTML = '<td>' + escapeHtml(p.stockCode || '') + '</td>' +
+                    '<td>' + escapeHtml((p.barcodes && p.barcodes[0]) || '') + '</td>' +
+                    '<td>' + escapeHtml(p.name) + '</td>' +
+                    '<td>%' + p.taxRate + '</td>' +
+                    '<td class="text-end">' + money(p.salePrice) + '</td>';
                 row.addEventListener('click', function () { selectProduct(p); });
                 resultsEl.appendChild(row);
             });
@@ -722,20 +736,46 @@
             addBtn.disabled = false;
         }
 
+        function runSearch() {
+            var term = searchEl.value.trim();
+            if (!term) { renderResults([]); return; }
+            fetch(searchUrl + '?term=' + encodeURIComponent(term) + '&mode=' + mode)
+                .then(function (res) { return res.json(); })
+                .then(function (data) { renderResults(data || []); })
+                .catch(function () { renderResults([]); });
+        }
+
+        searchEl.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(runSearch, 250);
+        });
+
+        searchEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                if (currentResults.length === 1) { selectProduct(currentResults[0]); }
+                else { runSearch(); }
+            }
+        });
+
+        function setMode(newMode) {
+            mode = newMode;
+            nameBtn.classList.toggle('active', mode === 'name');
+            barcodeBtn.classList.toggle('active', mode === 'barcode');
+            runSearch();
+        }
+        nameBtn.addEventListener('click', function () { setMode('name'); });
+        barcodeBtn.addEventListener('click', function () { setMode('barcode'); });
+
         function reset() {
             selected = null;
             detailEl.style.display = 'none';
             addBtn.disabled = true;
             searchEl.value = '';
-            renderResults(allProducts);
+            renderResults([]);
+            setTimeout(function () { searchEl.focus(); }, 250);
         }
-
-        searchEl.addEventListener('input', function () {
-            var term = searchEl.value.trim().toLocaleLowerCase('tr-TR');
-            renderResults(!term ? allProducts : allProducts.filter(function (p) {
-                return p.name.toLocaleLowerCase('tr-TR').indexOf(term) !== -1;
-            }));
-        });
 
         addBtn.addEventListener('click', function () {
             if (!selected) return;
