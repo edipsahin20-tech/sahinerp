@@ -412,6 +412,19 @@
         });
     }
 
+    // Gönderilmiş satıra indirim (Edip, 2026-09-05: "bu satır indirimini yapsın bu hatayı
+    // vermesin üst butonlar aktif çalışsın" - önceki hali sadece bir uyarı gösterip fiş geneli
+    // %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). submitSentLineQtyChange/Comp ile
+    // AYNI PIN onay deseni.
+    function submitSentLineDiscount(lineId, amount) {
+        window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
+            document.getElementById('applyDiscountLineId').value = lineId;
+            document.getElementById('applyDiscountAmount').value = amount;
+            document.getElementById('applyDiscountApproverPin').value = pin || '';
+            document.getElementById('apply-line-discount-form').submit();
+        });
+    }
+
     function submitSentLineComp(lineId) {
         if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
         window.requestApproverPin(requireApprovalComplimentary, function (pin) {
@@ -472,9 +485,15 @@
     document.getElementById('line-act-discount').addEventListener('click', function () {
         var line = selectedLine();
         if (!line) {
-            // Gönderilmiş tek bir satıra özel indirim YOK - fiş geneli %İndirim modalı var,
-            // uydurma bir per-satır indirim uç noktası YOK.
-            if (selectedSentLineEl()) window.alert('Gönderilmiş satırda tekli indirim yok - sağdaki "%İndirim" (fiş geneli) kullanın.');
+            var sentEl = selectedSentLineEl();
+            if (!sentEl) return;
+            var currentDiscount = parseFloat(sentEl.getAttribute('data-discount')) || 0;
+            var sentAmountStr = window.prompt('İndirim tutarı (₺):', currentDiscount);
+            if (sentAmountStr === null) return;
+            var sentAmount = parseFloat(sentAmountStr);
+            if (!isNaN(sentAmount) && sentAmount >= 0) {
+                submitSentLineDiscount(selectedSentLineId, sentAmount);
+            }
             return;
         }
         var amountStr = window.prompt('İndirim tutarı (₺):', line.discountAmount || 0);

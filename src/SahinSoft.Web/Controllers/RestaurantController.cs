@@ -388,8 +388,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
         if (check.Status != RestaurantCheckStatus.Open)
         {
-            TempData["Error"] = "Bu adisyon artık açık değil.";
-            return RedirectToAction(nameof(Index));
+            // Adisyon artık açık değilse (ödeme alındı, iptal oldu, ya da son satır iptaliyle
+            // kendiliğinden kapandı - madde 20) masa/self/paket fark etmeksizin HER ZAMAN boş
+            // Self Satış ekranına dönülür, SKARY bir hata YOK (Edip, 2026-09-05: "işlem bittiğinde
+            // veya ödeme alındığında veya iptal olduğunda direkt self satış ekranında kalsın hata
+            // vermesin" - ClosePayment akışının Edip 2026-09-03 kararıyla AYNI ilke, bu GET yolunda
+            // eksikti).
+            return RedirectToAction(nameof(RestaurantSelfSaleController.Index), "RestaurantSelfSale");
         }
 
         // Kısayolda/Mobilde görünsün mü ayarları hem ürün hem kategori düzeyinde var - ikisi de
@@ -778,6 +783,22 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         try
         {
             await postingService.ToggleLineComplimentaryAsync(lineId, CurrentUserId, approverPin);
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Check), new { id = checkId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyOrderLineDiscount(int lineId, int checkId, decimal amount, string? approverPin = null)
+    {
+        try
+        {
+            await postingService.ApplyOrderLineDiscountAsync(lineId, amount, CurrentUserId, approverPin);
         }
         catch (InvalidOperationException ex)
         {

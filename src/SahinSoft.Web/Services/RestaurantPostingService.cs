@@ -1226,6 +1226,75 @@ public sealed class RestaurantPostingService(
         }, cancellationToken);
     }
 
+    // Mutfağa gönderilmiş TEK bir satıra indirim - Edip, 2026-09-05: "bu satır indirimini yapsın
+    // bu hatayı vermesin üst butonlar aktif çalışsın" (önceki hali sadece bir uyarı gösterip
+    // kullanıcıyı fiş geneli %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). Aynı yetki/
+    // onay deseni AdjustOrderLineQuantityAsync ile BİREBİR aynı (satır kilidi kaldırıldı, madde 9).
+    public Task ApplyOrderLineDiscountAsync(
+        int restaurantOrderLineId,
+        decimal discountAmount,
+        string performedByUserId,
+        string? approverPin = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (discountAmount < 0)
+        {
+            throw new InvalidOperationException("İndirim tutarı negatif olamaz.");
+        }
+
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                if (!await permissionService.CanEditKitchenSentLinesAsync(performedByUserId, cancellationToken))
+                {
+                    throw new InvalidOperationException("Mutfağa gönderilmiş ürünü düzenleme yetkiniz yok.");
+                }
+
+                string? approverUserId = null;
+                if (await permissionService.RequiresSecondApprovalForEditKitchenSentLinesAsync(cancellationToken))
+                {
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
+                }
+
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var line = await dbContext.RestaurantOrderLines
+                    .Include(x => x.RestaurantOrder).ThenInclude(x => x.RestaurantCheck)
+                    .SingleOrDefaultAsync(x => x.Id == restaurantOrderLineId, cancellationToken)
+                    ?? throw new InvalidOperationException("Sipariş satırı bulunamadı.");
+
+                if (line.RestaurantOrder.RestaurantCheck.Status != RestaurantCheckStatus.Open)
+                {
+                    throw new InvalidOperationException("Yalnızca açık adisyondaki satırlar düzenlenebilir.");
+                }
+
+                if (line.Status == RestaurantOrderLineStatus.Cancelled)
+                {
+                    throw new InvalidOperationException("İptal edilmiş satır düzenlenemez.");
+                }
+
+                var lineGross = line.Quantity * line.UnitPriceSnapshot;
+                line.DiscountAmountSnapshot = Math.Min(discountAmount, lineGross);
+                line.IsComplimentary = false;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                if (approverUserId is not null)
+                {
+                    await permissionService.LogApprovalAsync("ApplyOrderLineDiscount", performedByUserId, approverUserId, line.RestaurantOrder.RestaurantCheckId, line.Id, $"İndirim: {line.DiscountAmountSnapshot:N2}", cancellationToken);
+                }
+
+                return true;
+            });
+        }, cancellationToken);
+    }
+
     // Mutfağa gönderilmiş bir satırda ikram durumunu aç/kapat - Edip, 2026-09-03: "mutfağa
     // gönderildi diye herşeyi pasif hale getirme, ikram düzeltme aktif olsun". İkram AÇILIRKEN
     // satırın brüt tutarı kadar indirim uygulanır (pending sepetteki İkram tuşuyla AYNI mantık),

@@ -199,7 +199,7 @@
                                  #line-act-remove) mekanizmasını kullanıyor - AYNI sunucu uçları
                                  (adjust-line-qty-form/toggle-line-comp-form/cancel-line-btn akışı,
                                  PIN onayı dahil), sadece tetikleme yeri değişti. -->
-                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                 <div class="cart-line-col-name">@line.ProductName
                                     @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
                                     @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
@@ -404,6 +404,13 @@
     <input type="hidden" name="checkId" value="@Model.CheckId" />
     <input type="hidden" name="lineId" id="toggleCompLineId" />
     <input type="hidden" name="approverPin" id="toggleCompApproverPin" />
+</form>
+<form method="post" asp-action="ApplyOrderLineDiscount" id="apply-line-discount-form" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="checkId" value="@Model.CheckId" />
+    <input type="hidden" name="lineId" id="applyDiscountLineId" />
+    <input type="hidden" name="amount" id="applyDiscountAmount" />
+    <input type="hidden" name="approverPin" id="applyDiscountApproverPin" />
 </form>
 
 <!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
