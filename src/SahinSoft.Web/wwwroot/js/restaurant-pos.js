@@ -34,7 +34,15 @@
     // sadece bekleyen sepeti değil BUNU DA içermeli, aksi halde mutfağa gönderdikten sonra
     // Toplam sıfıra düşüyormuş gibi görünür (Edip, 2026-09-03: "mutfağa gönderdikten sonra tutar
     // kısmı 0 geliyor").
-    var sentLinesTotal = parseFloat(root.getAttribute('data-payable-total')) || 0;
+    //
+    // GERÇEK ÇİFT İNDİRİM HATASI (2026-09-05, Edip bildirdi: "80 TL indirim yapıyorum ara toplama
+    // da 80 TL indirim yapıyor... 2 kere indirim yapıyor") - data-payable-total zaten TicketDiscount
+    // DÜŞÜLMÜŞ (net) bir değer (PayableTotal = AraToplam - TicketDiscountAmount, bkz.
+    // RestaurantController.ComputeCheckRunningTotal). Bu değer Ara Toplam'ı (BRÜT olması gereken)
+    // canlı güncellemek için kullanılınca, restaurant-close-payment.js Kalan Tutar'ı hesaplarken
+    // İNDİRİMİ BİR KEZ DAHA düşüyordu (net değerden bir daha net değer çıkarılmış oluyordu).
+    // TicketDiscountAmount geri eklenerek BRÜT (gerçek Ara Toplam ile aynı taban) değere çevrildi.
+    var sentLinesTotal = (parseFloat(root.getAttribute('data-payable-total')) || 0) + (parseFloat(root.getAttribute('data-ticket-discount-amount')) || 0);
     var sendUrl = root.getAttribute('data-send-url');
     var catalog = JSON.parse(document.getElementById('pos-catalog-data').textContent || '[]');
     var cart = [];
