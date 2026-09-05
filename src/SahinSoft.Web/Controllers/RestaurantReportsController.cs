@@ -227,6 +227,82 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             vm.HourlyRevenueLabels = TurkishMonthNames.Select(m => m[..3]).ToList();
         }
 
+        // Onaylı Restoran Raporları mockup'ının 1. satırındaki raporlar (madde birebir-uygulama,
+        // 2026-09-05) - En Çok Satanlar/Kategori Satışları/KDV Dökümü/İndirim & İkram. Hepsi AYNI
+        // dönem filtresini (nonCancelled'ın kapsadığı RetailSale kümesi) kullanır - ayrı bir
+        // sorgu penceresi İCAT EDİLMEDİ.
+        var periodSaleIds = nonCancelled.Select(x => x.Id).ToList();
+        if (periodSaleIds.Count > 0)
+        {
+            var periodLines = await dbContext.RetailSaleLines
+                .AsNoTracking()
+                .Where(x => periodSaleIds.Contains(x.RetailSaleId))
+                .Select(x => new { x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
+                .ToListAsync();
+
+            vm.BestSellers = periodLines
+                .GroupBy(x => x.ProductNameSnapshot)
+                .Select(g => new RestaurantBestSellerRowViewModel(g.Key, g.Sum(x => x.Quantity), g.Sum(x => x.LineTotal)))
+                .OrderByDescending(x => x.Total)
+                .Take(15)
+                .ToList();
+
+            var categoryTotal = periodLines.Sum(x => x.LineTotal);
+            vm.CategorySales = periodLines
+                .GroupBy(x => x.CategoryName)
+                .Select(g => new RestaurantCategorySalesRowViewModel(g.Key, g.Sum(x => x.Quantity), g.Sum(x => x.LineTotal), categoryTotal > 0 ? Math.Round(g.Sum(x => x.LineTotal) / categoryTotal * 100, 1) : 0))
+                .OrderByDescending(x => x.Total)
+                .ToList();
+
+            vm.VatBreakdown = periodLines
+                .GroupBy(x => x.TaxRateSnapshot)
+                .Select(g =>
+                {
+                    var gross = g.Sum(x => x.LineTotal);
+                    var (matrah, vatAmount) = RestaurantPricingCalculator.ExtractTax(gross, g.Key);
+                    return new RestaurantVatRowViewModel(g.Key, matrah, vatAmount, gross);
+                })
+                .OrderBy(x => x.TaxRate)
+                .ToList();
+        }
+
+        // İndirim & İkram - dönem genelinde (kasiyer bazlı DEĞİL, bkz. aşağıdaki Kasiyer Raporu
+        // bunun kullanıcı filtreli hali) - RestaurantOrderLine.IsComplimentary madde 11'in kendi
+        // ayrımı, satır satır (hangi fiş, ne zaman, ne kadar) listelenir.
+        if (periodSaleIds.Count > 0)
+        {
+            var periodCheckIds = daySales.Where(x => periodSaleIds.Contains(x.Id)).Select(x => x.RestaurantCheckId).ToList();
+            var discountLines = await dbContext.RestaurantOrderLines
+                .AsNoTracking()
+                .Where(x => periodCheckIds.Contains(x.RestaurantOrder.RestaurantCheckId) && x.Status != RestaurantOrderLineStatus.Cancelled && x.DiscountAmountSnapshot > 0)
+                .Select(x => new
+                {
+                    x.IsComplimentary,
+                    x.DiscountAmountSnapshot,
+                    CheckId = x.RestaurantOrder.RestaurantCheckId
+                })
+                .ToListAsync();
+
+            vm.DiscountTotal = discountLines.Where(x => !x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot);
+            vm.ComplimentaryTotal = discountLines.Where(x => x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot);
+
+            var saleByCheckId = daySales.Where(x => periodSaleIds.Contains(x.Id)).ToDictionary(x => x.RestaurantCheckId);
+            vm.DiscountComplimentaryRows = discountLines
+                .GroupBy(x => new { x.CheckId, x.IsComplimentary })
+                .Where(g => saleByCheckId.ContainsKey(g.Key.CheckId))
+                .Select(g =>
+                {
+                    var sale = saleByCheckId[g.Key.CheckId];
+                    var sourceType = SourceTypeOf(sale.SectionName);
+                    var isPackage = sourceType == "package";
+                    var pkg = isPackage && packageNumbers.TryGetValue(sale.RestaurantCheckId, out var p) ? p : null;
+                    var sourceLabel = isPackage ? pkg?.PackageNumber ?? sale.TableName : sourceType == "self" ? "Self Satış" : sale.TableName;
+                    return new RestaurantDiscountComplimentaryRowViewModel(sale.IssuedAtUtc, sale.DocumentNumber, sourceLabel, g.Key.IsComplimentary, null, g.Sum(x => x.DiscountAmountSnapshot));
+                })
+                .OrderByDescending(x => x.IssuedAtUtc)
+                .ToList();
+        }
+
         var filtered = source switch
         {
             "table" => daySales.Where(x => SourceTypeOf(x.SectionName) == "table"),

@@ -80,7 +80,21 @@ public sealed class RestaurantReportsViewModel
     public List<RestaurantKasiyerOptionViewModel> KasiyerOptions { get; set; } = [];
     public string? SelectedKasiyerUserId { get; set; }
     public RestaurantKasiyerReportViewModel Kasiyer { get; set; } = new();
+
+    // Onaylı Restoran Raporları mockup'ının 1. satırındaki 5 rapor (madde birebir-uygulama,
+    // 2026-09-05) - hepsi ortak dönem filtresini (PeriodFilter/ReportDate) kullanır.
+    public List<RestaurantBestSellerRowViewModel> BestSellers { get; set; } = [];
+    public List<RestaurantCategorySalesRowViewModel> CategorySales { get; set; } = [];
+    public List<RestaurantVatRowViewModel> VatBreakdown { get; set; } = [];
+    public decimal DiscountTotal { get; set; }
+    public decimal ComplimentaryTotal { get; set; }
+    public List<RestaurantDiscountComplimentaryRowViewModel> DiscountComplimentaryRows { get; set; } = [];
 }
+
+public sealed record RestaurantBestSellerRowViewModel(string ProductName, decimal Quantity, decimal Total);
+public sealed record RestaurantCategorySalesRowViewModel(string CategoryName, decimal Quantity, decimal Total, decimal Percent);
+public sealed record RestaurantVatRowViewModel(decimal TaxRate, decimal Matrah, decimal VatAmount, decimal Gross);
+public sealed record RestaurantDiscountComplimentaryRowViewModel(DateTime IssuedAtUtc, string DocumentNumber, string SourceLabel, bool IsComplimentary, string? Reason, decimal Amount);
 
 public sealed record RestaurantPaymentBreakdownItemViewModel(string Label, decimal Amount, decimal Percent, string ColorVar);
 

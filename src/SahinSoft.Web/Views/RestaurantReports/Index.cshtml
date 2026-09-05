@@ -44,6 +44,15 @@
         <span class="rbtn">@Model.PeriodRangeLabel</span>
         <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(1).ToString("yyyy-MM-dd")">▷</a>
         <button type="button" class="rbtn gold" onclick="window.print()">▣ Yazdır</button>
+        <!-- Onaylı mockup'taki Excel/PDF butonları (madde birebir-uygulama) - Excel GERÇEK bir
+             .csv indirir (mevcut tablo görünür satırlarından, bkz. aşağıdaki inline script - site.js'teki
+             data-csv-export gerçek <table> bekliyor, buradaki raporlar div-grid olduğu için AYRI
+             küçük bir dışa aktarma yazıldı, ikisi de AYNI CSV mantığını kullanıyor). PDF için ayrı
+             bir sunucu tarafı üretim altyapısı YOK - tarayıcının kendi "Yazdır > PDF olarak kaydet"
+             hedefi zaten gerçek bir PDF üretimi, o yüzden PDF de aynı yazdırma diyaloğunu açıyor -
+             uydurma bir "PDF oluşturuldu" mesajı YOK. -->
+        <button type="button" class="rbtn" id="report-excel-btn">Excel</button>
+        <button type="button" class="rbtn" onclick="window.print()">PDF</button>
     </div>
 </div>
 
@@ -143,13 +152,139 @@
     </div>
 </div>
 
+<!-- Onaylı Restoran Raporları mockup'ının BİREBİR 2 satırlı rapor türü sekmesi (madde
+     birebir-uygulama, 2026-09-05). 1. satırdaki 6 rapor ortak dönem filtresini kullanır. -->
 <div class="report-nav2" style="margin-top:16px;">
-    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Fiş Hareketleri</b><small>Seçilen dönemin satışları</small></a>
+    <a class="rnav @(Model.ActiveTab == "overview" ? "active" : "")" asp-action="Index" asp-route-tab="overview" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◷ Günlük / Aylık</b><small>Dönem özeti</small></a>
+    <a class="rnav @(Model.ActiveTab == "payment" ? "active" : "")" asp-action="Index" asp-route-tab="payment" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◔ Ödeme Dağılımı</b><small>Ödeme türü kırılımı</small></a>
+    <a class="rnav @(Model.ActiveTab == "bestsellers" ? "active" : "")" asp-action="Index" asp-route-tab="bestsellers" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>♨ En Çok Satanlar</b><small>Ürün bazlı</small></a>
+    <a class="rnav @(Model.ActiveTab == "categories" ? "active" : "")" asp-action="Index" asp-route-tab="categories" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Kategori Satışları</b><small>Kategori bazlı</small></a>
+    <a class="rnav @(Model.ActiveTab == "vat" ? "active" : "")" asp-action="Index" asp-route-tab="vat" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>% KDV Dökümü</b><small>Oran bazlı</small></a>
+    <a class="rnav @(Model.ActiveTab == "discount" ? "active" : "")" asp-action="Index" asp-route-tab="discount" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◈ İndirim &amp; İkram</b><small>Fiş bazlı</small></a>
+</div>
+<div class="report-nav2" style="margin-top:8px;">
+    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Günlük Fişler</b><small>Seçilen dönemin satışları</small></a>
     <a class="rnav @(Model.ActiveTab == "kasiyer" ? "active" : "")" asp-action="Index" asp-route-tab="kasiyer" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◈ Kasiyer Raporu</b><small>Kullanıcı bazlı</small></a>
     <a class="rnav @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>X &nbsp; X Raporu</b><small>Anlık, vardiyayı kapatmaz</small></a>
     <a class="rnav @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>Z &nbsp; Z Raporu</b><small>Gün sonu kapanışı</small></a>
     <a class="rnav @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Z Listesi</b><small>Geçmiş kapanışlar</small></a>
 </div>
+
+@if (Model.ActiveTab == "overview")
+{
+    <div class="znote sub" style="margin-top:12px;">Üstteki dönem özeti (Net Ciro/Fiş/Ödeme Dağılımı/Ciro Akışı) bu sekmenin kendisidir - ayrıca fiş listesi için "Günlük Fişler" sekmesine geçin.</div>
+}
+else if (Model.ActiveTab == "payment")
+{
+    <div class="rcard" style="margin-top:12px; padding:20px;">
+        <h4>Ödeme Dağılımı</h4>
+        <p class="sub">@Model.PeriodRangeLabel dönemi - ödeme türü bazında tutar ve pay.</p>
+        @if (Model.PaymentBreakdown.Count == 0)
+        {
+            <div class="analytics-empty">Bu dönemde ödeme verisi yok.</div>
+        }
+        else
+        {
+            <div class="report-table-wrap" id="paymentBreakdownTable" style="border-top:1px solid var(--rs-border); border-radius:10px;">
+                <div class="rthead"><span>ÖDEME TÜRÜ</span><span>TUTAR</span><span>PAY</span></div>
+                @foreach (var item in Model.PaymentBreakdown)
+                {
+                    <div class="rrow2"><span><b>@item.Label</b></span><span>@item.Amount.ToString("N2") ₺</span><span>%@(item.Percent.ToString("0.0"))</span></div>
+                }
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "bestsellers")
+{
+    <div class="rcard" style="margin-top:12px; padding:0;">
+        <div style="padding:16px 16px 0;"><h4>En Çok Satanlar</h4><p class="sub">@Model.PeriodRangeLabel dönemi - tutara göre ilk 15 ürün.</p></div>
+        @if (Model.BestSellers.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Bu dönemde satış verisi yok.</div>
+        }
+        else
+        {
+            <div class="report-table-wrap" id="bestSellersTable">
+                <div class="rthead"><span>ÜRÜN</span><span>MİKTAR</span><span>TUTAR</span></div>
+                @foreach (var row in Model.BestSellers)
+                {
+                    <div class="rrow2"><span><b>@row.ProductName</b></span><span>@row.Quantity.ToString("N0")</span><span>@row.Total.ToString("N2") ₺</span></div>
+                }
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "categories")
+{
+    <div class="rcard" style="margin-top:12px; padding:0;">
+        <div style="padding:16px 16px 0;"><h4>Kategori Satışları</h4><p class="sub">@Model.PeriodRangeLabel dönemi.</p></div>
+        @if (Model.CategorySales.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Bu dönemde satış verisi yok.</div>
+        }
+        else
+        {
+            <div class="report-table-wrap" id="categorySalesTable">
+                <div class="rthead"><span>KATEGORİ</span><span>MİKTAR</span><span>TUTAR</span><span>PAY</span></div>
+                @foreach (var row in Model.CategorySales)
+                {
+                    <div class="rrow2"><span><b>@row.CategoryName</b></span><span>@row.Quantity.ToString("N0")</span><span>@row.Total.ToString("N2") ₺</span><span>%@(row.Percent.ToString("0.0"))</span></div>
+                }
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "vat")
+{
+    <div class="rcard" style="margin-top:12px; padding:0;">
+        <div style="padding:16px 16px 0;"><h4>KDV Dökümü</h4><p class="sub">@Model.PeriodRangeLabel dönemi - oran bazında matrah/KDV/brüt.</p></div>
+        @if (Model.VatBreakdown.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Bu dönemde satış verisi yok.</div>
+        }
+        else
+        {
+            <div class="report-table-wrap" id="vatTable">
+                <div class="rthead"><span>KDV ORANI</span><span>MATRAH</span><span>KDV TUTARI</span><span>BRÜT</span></div>
+                @foreach (var row in Model.VatBreakdown)
+                {
+                    <div class="rrow2"><span><b>%@row.TaxRate.ToString("N0")</b></span><span>@row.Matrah.ToString("N2") ₺</span><span>@row.VatAmount.ToString("N2") ₺</span><span>@row.Gross.ToString("N2") ₺</span></div>
+                }
+                <div class="rrow2" style="font-weight:800;"><span>TOPLAM</span><span>@Model.VatBreakdown.Sum(x => x.Matrah).ToString("N2") ₺</span><span>@Model.VatBreakdown.Sum(x => x.VatAmount).ToString("N2") ₺</span><span>@Model.VatBreakdown.Sum(x => x.Gross).ToString("N2") ₺</span></div>
+            </div>
+        }
+    </div>
+}
+else if (Model.ActiveTab == "discount")
+{
+    <div class="report-kpis2" style="margin-top:12px;">
+        <div class="rcard report-kpi2" style="--soft:#EEE9FF"><small>İNDİRİM TOPLAMI</small><strong>@Model.DiscountTotal.ToString("N2") ₺</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#FFF1CC"><small>İKRAM TOPLAMI</small><strong>@Model.ComplimentaryTotal.ToString("N2") ₺</strong></div>
+    </div>
+    <div class="rcard" style="margin-top:12px; padding:0;">
+        <div style="padding:16px 16px 0;"><h4>İndirim &amp; İkram</h4><p class="sub">@Model.PeriodRangeLabel dönemi - fiş bazında.</p></div>
+        @if (Model.DiscountComplimentaryRows.Count == 0)
+        {
+            <div class="p-3 text-secondary small">Bu dönemde indirim/ikram yok.</div>
+        }
+        else
+        {
+            <div class="report-table-wrap" id="discountTable">
+                <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>TÜR</span><span>TUTAR</span></div>
+                @foreach (var row in Model.DiscountComplimentaryRows)
+                {
+                    <div class="rrow2">
+                        <div><b>@row.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@row.DocumentNumber</small></div>
+                        <span>@row.SourceLabel</span>
+                        <span class="@(row.IsComplimentary ? "ok-badge2" : "")">@(row.IsComplimentary ? "İkram" : "İndirim")</span>
+                        <b>@row.Amount.ToString("N2") ₺</b>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
 
 @if (Model.ActiveTab == "daily")
 {
@@ -194,7 +329,7 @@
             <div><small>@sub.Label.ToUpperInvariant()</small><strong>@sub.Total.ToString("N2") ₺</strong></div>
         }
     </div>
-    <div class="report-table-wrap">
+    <div class="report-table-wrap" id="dailyReceiptsTable">
         <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
         @if (Model.Receipts.Count == 0)
         {
@@ -308,7 +443,7 @@ else if (Model.ActiveTab == "z")
 }
 else if (Model.ActiveTab == "zlist")
 {
-    <div class="report-table-wrap" style="border-top:1px solid var(--rs-border); border-radius:10px;">
+    <div class="report-table-wrap" id="zListTable" style="border-top:1px solid var(--rs-border); border-radius:10px;">
         <div class="rthead" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr;"><span>Z NO</span><span>KASA</span><span>AÇILIŞ</span><span>KAPANIŞ</span><span>BEKLENEN / SAYILAN</span><span>FARK</span></div>
         @if (Model.ZList.Count == 0)
         {
@@ -434,4 +569,38 @@ else if (Model.ActiveTab == "zlist")
             new bootstrap.Modal(document.getElementById('receiptModal')).show();
         </script>
     }
+    <script>
+        // Excel'e Aktar (madde birebir-uygulama, 2026-09-05) - site.js'teki data-csv-export
+        // GERÇEK <table> bekliyor, bu raporlar div-grid (.rthead/.rrow2) olduğu için AYNI CSV
+        // mantığıyla ayrı, küçük bir dışa aktarıcı. Sayfadaki İLK ".report-table-wrap[id]"
+        // (aktif sekmenin kendi tablosu) hedef alınır.
+        (function () {
+            var btn = document.getElementById('report-excel-btn');
+            if (!btn) return;
+            function csvCell(text) {
+                var value = String(text || '').trim().replace(/\s+/g, ' ');
+                return '"' + value.replace(/"/g, '""') + '"';
+            }
+            btn.addEventListener('click', function () {
+                var wrap = document.querySelector('.report-table-wrap[id]');
+                if (!wrap) { window.alert('Bu sekmede aktarılacak bir tablo yok.'); return; }
+                var rows = [];
+                var head = wrap.querySelector('.rthead');
+                if (head) { rows.push(Array.from(head.children).map(function (c) { return csvCell(c.textContent); }).join(';')); }
+                Array.from(wrap.querySelectorAll('.rrow2')).forEach(function (row) {
+                    rows.push(Array.from(row.children).map(function (c) { return csvCell(c.textContent); }).join(';'));
+                });
+                var csv = '﻿' + rows.join('\r\n');
+                var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'rapor-' + '@Model.ActiveTab' + '.csv';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        })();
+    </script>
 }
