@@ -591,6 +591,7 @@ public sealed class RestaurantPostingService(
         int branchId,
         string createdByUserId,
         Guid submissionKey,
+        decimal? platformCommissionAmount = null,
         CancellationToken cancellationToken = default) =>
         DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
@@ -641,7 +642,11 @@ public sealed class RestaurantPostingService(
                     CustomerName = customerName.Trim(),
                     CustomerPhone = string.IsNullOrWhiteSpace(customerPhone) ? null : customerPhone.Trim(),
                     DeliveryAddress = string.IsNullOrWhiteSpace(deliveryAddress) ? null : deliveryAddress.Trim(),
-                    Status = PackageOrderStatus.Preparing,
+                    // Onaylı Paket Operasyon Merkezi mockup'ı (madde birebir-uygulama, 2026-09-05)
+                    // "Yeni" durumuyla başlar - kasiyer "Onayla"ya basana kadar mutfağa gitmez
+                    // (bkz. AdvancePackageOrderAsync'in New→PendingApproval→Preparing sırası).
+                    Status = PackageOrderStatus.New,
+                    PlatformCommissionAmount = platformCommissionAmount,
                     SubmissionKey = submissionKey,
                     RestaurantCheck = check
                 };
@@ -683,6 +688,11 @@ public sealed class RestaurantPostingService(
 
                 var nextStatus = (packageOrder.Status, packageOrder.Channel) switch
                 {
+                    // Onaylı mockup'ın "Yeni"/"Onay Bekliyor" aşamaları (madde birebir-uygulama,
+                    // 2026-09-05) - kasiyer siparişi görüp kabul ettiğini, SONRA mutfağa
+                    // gönderilmeye hazır olduğunu iki AYRI adımda onaylar.
+                    (PackageOrderStatus.New, _) => PackageOrderStatus.PendingApproval,
+                    (PackageOrderStatus.PendingApproval, _) => PackageOrderStatus.Preparing,
                     (PackageOrderStatus.Preparing, _) => PackageOrderStatus.Ready,
                     (PackageOrderStatus.Ready, PackageOrderChannel.PickupInStore) => PackageOrderStatus.Delivered,
                     (PackageOrderStatus.Ready, _) => PackageOrderStatus.CourierWaiting,
@@ -714,6 +724,85 @@ public sealed class RestaurantPostingService(
                 return packageOrder;
             });
         }, cancellationToken);
+
+    // "İptal Et" (madde birebir-uygulama, Paket Operasyon Merkezi, 2026-09-05) - fiş/satır
+    // seviyesinde DEĞİL, siparişin TAMAMI seviyesinde bir iptal. Fiş-iptal yetkisiyle (madde 21,
+    // CanCancelReceipt) AYNI yetki kapısını kullanır - yeni bir izin bayrağı İCAT EDİLMEDİ, bu
+    // zaten "bir siparişi/fişi tamamen iptal etme" işleminin GERÇEK karşılığı. Aktif satırları
+    // toplu iptal edip ardından VoidEmptyCheckAsync ile AYNI mantıkla adisyonu kapatır.
+    public async Task CancelPackageOrderAsync(int packageOrderId, string cancelledByUserId, string reason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+        if (!await permissionService.CanCancelReceiptAsync(cancelledByUserId, cancellationToken))
+        {
+            throw new InvalidOperationException("Sipariş iptal etme yetkiniz yok.");
+        }
+
+        await DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync<object?>(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var packageOrder = await dbContext.PackageOrders
+                    .Include(x => x.RestaurantCheck).ThenInclude(x => x.Orders).ThenInclude(x => x.Lines)
+                    .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession)
+                    .SingleOrDefaultAsync(x => x.Id == packageOrderId, cancellationToken)
+                    ?? throw new InvalidOperationException("Paket siparişi bulunamadı.");
+
+                if (packageOrder.Status is PackageOrderStatus.Delivered or PackageOrderStatus.Cancelled)
+                {
+                    throw new InvalidOperationException("Bu sipariş zaten teslim edilmiş veya iptal edilmiş.");
+                }
+
+                var now = DateTime.UtcNow;
+                foreach (var line in packageOrder.RestaurantCheck.Orders.SelectMany(o => o.Lines).Where(l => l.Status != RestaurantOrderLineStatus.Cancelled))
+                {
+                    line.Status = RestaurantOrderLineStatus.Cancelled;
+                    line.UpdatedAtUtc = now;
+                }
+
+                packageOrder.Status = PackageOrderStatus.Cancelled;
+                packageOrder.CancellationReason = reason.Trim();
+                packageOrder.UpdatedAtUtc = now;
+
+                var check = packageOrder.RestaurantCheck;
+                check.Status = RestaurantCheckStatus.Cancelled;
+                check.UpdatedAtUtc = now;
+                check.RestaurantTableSession.Status = RestaurantTableSessionStatus.Closed;
+                check.RestaurantTableSession.ClosedAtUtc = now;
+                check.RestaurantTableSession.ClosedByUserId = cancelledByUserId;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return (object?)null;
+            });
+        }, cancellationToken);
+    }
+
+    // Kurye Ata (madde birebir-uygulama, Paket Operasyon Merkezi, 2026-09-05) - basit atama,
+    // gerçek bir GPS/rota hesabı YOK. Kurye "Teslimatta" durumuna otomatik geçer (kasiyer elle
+    // "Müsait"e geri almalı - ayrı bir "teslim tamamlandı → otomatik müsait" akışı İCAT EDİLMEDİ,
+    // spec'in istediği kadarıyla sınırlı).
+    public async Task AssignCourierAsync(int packageOrderId, int courierId, CancellationToken cancellationToken = default)
+    {
+        var packageOrder = await dbContext.PackageOrders.SingleOrDefaultAsync(x => x.Id == packageOrderId, cancellationToken)
+            ?? throw new InvalidOperationException("Paket siparişi bulunamadı.");
+        var courier = await dbContext.RestaurantCouriers.SingleOrDefaultAsync(x => x.Id == courierId && x.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Kurye bulunamadı.");
+
+        packageOrder.AssignedCourierId = courier.Id;
+        packageOrder.UpdatedAtUtc = DateTime.UtcNow;
+        courier.Status = CourierStatus.Delivering;
+        courier.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public Task<SendOrderToKitchenResult> SendOrderToKitchenAsync(
         int restaurantCheckId,

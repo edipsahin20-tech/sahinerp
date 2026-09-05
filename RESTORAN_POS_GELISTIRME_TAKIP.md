@@ -823,3 +823,125 @@ Sunucu "Sipariş satırı iptal edildi." VE hemen ardından "Bu adisyon artık a
 verdi, Masa Satış ekranında "Açık Adisyon 0.00 ₺" göründü - adisyon gerçekten otomatik kapandı.
 Self Satış'a tekrar girildiğinde BAŞKA bir (önceden açık kalmış, gerçekten boş) adisyon doğru
 şekilde yeniden kullanıldı - fantom açık fiş kalmadı.
+
+---
+
+## 4 mockup'ın birebir uygulanması + 3 canlı hata (2026-09-05)
+
+Edip aynı 4 referans görseli tekrar gönderip "bunları birebir yap ve test et... bana soru
+sormadan... hata bulursan önce düzelt sonra tekrar test et" talimatını verdi. Bu çalışma
+sırasında Edip'ten 3 ayrı CANLI (gerçek masaüstü uygulaması) hata bildirimi geldi, hepsi
+mockup işinin ÖNÜNE alınıp önce onlar çözüldü.
+
+### Canlı hata 1 — Parçalı ödeme tahsilatı KRİTİK hatası (TAMAMLANDI, TEST EDİLDİ)
+
+**Bulunan kök neden:** `RestaurantPayment.SubmissionKey` alanı UNIQUE index'liydi, ama
+`CloseCheckAsync` parçalı/çoklu ödeme kapatmada AYNI submissionKey'i satırların HER birine
+atıyordu (tek bir kullanıcı işlemi = tek submissionKey, ama birden fazla `RestaurantPayment`
+satırı demek). Sonuç: aynı fişte 2. bir ödeme satırı eklenince (ör. iki ayrı Nakit satırı,
+ya da Nakit+Kredi Kartı parçalı ödeme) SQL Server "Cannot insert duplicate key" hatası
+fırlatıyordu - kullanıcıya "Bağlantı hatası oluştu" olarak yansıyordu.
+**Düzeltme:** İndex `IsUnique()` kaldırılıp düz (non-unique) index'e çevrildi - idempotency
+zaten üst seviyede (`RestaurantCheck.SubmissionKey` + `Status` kontrolü) tam olarak
+sağlanıyor, `RestaurantPayment` seviyesinde ayrıca unique olmasına gerek yok.
+Migration: `FixRestaurantPaymentSubmissionKeyUniqueness` (20260905065901) - üretildi, uzak
+paylaşılan DB'ye DOĞRUDAN uygulandı (sadece DB constraint değişti, insert mantığı
+değişmedi - Edip'e bu düzeltmenin hangi build'de olursa olsun HEMEN etkili olduğu söylendi).
+**Nasıl test edildi:** Edip'in bildirdiği aynı senaryo (aynı fişte 2 ayrı Nakit satırı ile
+kapatma) tarayıcıda tekrarlandı - önce hata alındığı doğrulandı, düzeltmeden sonra AYNI
+senaryo sorunsuz tamamlandı.
+
+### Canlı hata 2 — Gönderilmiş satır düzenleme: küçük ikonlar yerine sabit üst araç çubuğu (TAMAMLANDI, TEST EDİLDİ)
+
+**Sorun:** "Ödemeyi Al" → "Adisyona Dön" sonrası gönderilmiş (sunucuya kaydedilmiş) satırların
+sağında küçük 🎁/✎/İptal ikon butonları çıkıyordu - Edip bunun yerine miktar artır/azalt/sil/
+ikram gibi işlemlerin sabit üst araç çubuğundan (henüz gönderilmemiş satırlarda zaten olduğu
+gibi) yapılmasını istedi - TEK bir etkileşim modeli.
+**Yapılan (gerçek mimari birleştirme, yüzeysel CSS gizleme DEĞİL):** Gönderilmiş satırlar artık
+tıklanınca seçiliyor (`selectedSentLineId`), sabit üst araç çubuğu (`#line-qty-minus/plus`,
+`#line-act-note`, `#line-act-discount`, `#line-act-comp`, `#line-act-remove`) seçili satırın
+türüne göre (henüz gönderilmemiş client-side satır mı, sunucuya kaydedilmiş satır mı) ya yerel
+JS mutasyonu ya da GERÇEK sunucu round-trip'i (gerekçe + 2. yetkili PIN onay formu) tetikliyor.
+Eski küçük ikon buton grubu (`.sent-line-actions`) tamamen kaldırıldı.
+**Nasıl test edildi:** Gönderilmiş bir satırda miktar artırma, İkram işaretleme, Sil (gerekçe +
+PIN onayı ile) - üçü de gerçek sunucu round-trip'i ile doğrulandı (sayfa yenileniyor, DB durumu
+değişiyor, hatta boş kalan adisyonun otomatik kapanması - madde 20 - da bu yoldan tetiklendi).
+
+### Canlı hata 3 — Bekleyen Fişler istemsiz otomatik geri getirme (TAMAMLANDI, TEST EDİLDİ)
+
+**Sorun:** Bir fiş "Fişi Beklet" ile bekletildikten sonra, kullanıcı Self Satış'a herhangi bir
+şekilde (Bekleyen Fişler'den ÇAĞIRMADAN) tekrar girince, o bekletilmiş fiş KENDİLİĞİNDEN geri
+geliyordu - `RestaurantSelfSaleController.Index()`'in "bu kullanıcı için en son açık self-satış
+check'ini yeniden aç" sorgusu, hâlâ Open durumdaki bekletilmiş check'e denk gelebiliyordu, ve
+istemci tarafı `restoreHeldCartIfAny()` bu eşleşen checkId'yi görünce KOŞULSUZ geri
+yüklüyordu.
+**Düzeltme:** Fonksiyon `restoreHeldCartIfExplicitlyRequested()` olarak yeniden adlandırıldı,
+artık SADECE URL'de `?restoreHeld=1` varsa çalışıyor (tüketildikten sonra `history.replaceState`
+ile URL'den temizleniyor). Bu bayrak SADECE "Bekleyen Fişler" modalındaki fiş kartının kendi
+linkine ekleniyor - başka hiçbir yoldan (ör. doğrudan check id ile gezinme, sekme yenileme)
+otomatik tetiklenmiyor.
+**Nasıl test edildi:** Bekletilmiş bir fişin ham check id'sine (`/Restaurant/Check/{id}`)
+`?restoreHeld=1` OLMADAN gidildiğinde artık BOŞ sepet görünüyor (önceden otomatik geri
+gelirdi); "Bekleyen Fişler" kartına gerçekten tıklanınca hâlâ doğru şekilde geri yükleniyor ve
+rozet sayacı hemen güncelleniyor.
+
+### Mockup birebir uygulaması — Self Satış / Masa Satış / Raporlar (TAMAMLANDI, TEST EDİLDİ)
+
+- **Self Satış:** Alt hızlı-işlem sırası mockup'a göre `Adisyon | Nakit | Kredi Kartı` oldu
+  (yeni `#self-adisyon-btn`, `.pay-method-btn.a` CSS sınıfı) - önceki oturumda "Adisyon" butonu
+  netleşene kadar bekletilmişti, görsel tekrar incelenip eklendi.
+- **Masa Satış:** Kat sekmelerinin altına durum-nokta lejantı (`.floor-tabs-row`/`.floor-legend`)
+  eklendi - Boş/Dolu/Hesap İstendi/Rezerve/Açık Adisyon renkleri tek bakışta okunuyor.
+- **Restoran Raporları:** 6 yeni rapor sekmesi (Genel Bakış/Ödeme Dağılımı/En Çok Satanlar/
+  Kategori Satışları/KDV Dökümü/İndirim&İkram) gerçek veriden (`BestSellers`/`CategorySales`/
+  `VatBreakdown`/`DiscountTotal`/`ComplimentaryTotal`) hesaplanıyor, gerçek CSV/Excel export
+  eklendi (mevcut `data-csv-export` mekanizması sadece gerçek `<table>` üzerinde çalıştığından,
+  bu div-grid rapor için ayrı bir `#report-excel-btn` script'i yazıldı).
+
+**Nasıl test edildi:** Her üç ekran tarayıcıda tek tek gezildi - Self Satış'ta Adisyon butonuna
+basılıp doğru davrandığı, Masa Satış'ta lejant renklerinin gerçek masa durumlarıyla eşleştiği,
+Raporlar'da 6 sekmenin hepsinin gerçek (sabit olmayan) rakamlar gösterdiği ve Excel indirmenin
+gerçek CSV dosyası ürettiği doğrulandı.
+
+### Paket Operasyon Merkezi — birebir uygulama (TAMAMLANDI, TEST EDİLDİ, 2026-09-05)
+
+**Kapsam notu:** Bu ekran madde 19 referans listesinde ("mimariyi bozma, derin geliştirme
+SONRAKİ pakette") ve madde 26-27'de (madde 35, "sonraki çalışma paketi") BİLİNÇLİ olarak
+kapsam dışı bırakılmıştı. Edip'in bu oturumdaki YENİ ve AÇIK talimatı ("bunları birebir yap")
+bu ertelemeyi kaldırıp ekranı ŞİMDİ, gerçek fonksiyonla inşa etme kararını gerektirdi - bu not
+o kapsam değişikliğini kayıt altına almak için.
+
+**Yapılanlar (gerçek, uçtan uca çalışan fonksiyon - görsel taklit DEĞİL):**
+- Durum kuyruğu gerçek yaşam döngüsüyle genişletildi: `PackageOrderStatus`'a `New(7)` ve
+  `PendingApproval(8)` eklendi (mevcut 1-6 değerleri geriye dönük uyumluluk için DEĞİŞTİRİLMEDİ,
+  yenileri sona eklendi) → Yeni→Onay Bekliyor→Hazırlanıyor→Hazır→Kurye Bekliyor→Yolda→Teslim
+  Edildi, 7 durum sekmesi de gerçek sayaçlarla.
+- Kanal sekmeleri genişletildi: `PackageOrderChannel`'a `Yemeksepeti/TrendyolYemek/GetirYemek`
+  eklendi (gerçek API entegrasyonu YOK - kasiyer siparişi elle girip kanalı etiketliyor, bu
+  BİLEREK böyle, "tasarım uydurma"/sahte entegrasyon iddiası kurulmadı).
+  6 kanal sekmesi de gerçek sayaçlarla.
+- 3 sütunlu düzen: (1) sipariş kuyruğu kartları, (2) detay paneli - müşteri bilgisi, fiyat
+  dökümü (platform komisyonu girilmişse net ödeme otomatik hesaplanıyor), sipariş satırları,
+  7 adımlı görsel durum çubuğu (stepper), Fiş Yazdır (gerçek satış kapanmışsa) + dinamik
+  etiketli "sıradaki adım" butonu, Adres Düzenle/İptal Et aksiyonları; (3) kurye paneli -
+  gerçek `RestaurantCourier` tablosundan kurye listesi + aktif sipariş sayısı, kurye atama
+  formu (sadece Hazır/Kurye Bekliyor durumundaki siparişlerde gösteriliyor), inline durum
+  değiştirme (Müsait/Teslimatta/Çevrimdışı), "+ Kurye Ekle" formu.
+- **Dürüst sınırlamalar (Edip'e açıkça bildirildi, sahte özellik uydurulmadı):** Gerçek GPS/
+  harita üzerinde canlı kurye takibi YOK - bunun yerine teslimat adresine gerçek bir Google
+  Haritalar linki var ("Konumu Aç"). Yemeksepeti/Trendyol/GetirYemek'ten gerçek otomatik
+  sipariş çekme YOK - alt bilgi çubuğunda "Entegrasyonlar: Planlanıyor" dürüst etiketi var,
+  sahte "3/3 Bağlı" gibi bir iddia YOK.
+- Yeni tablo `RestaurantCouriers` + `PackageOrder`'a `AssignedCourierId`/
+  `PlatformCommissionAmount`/`CancellationReason` kolonları. Migration:
+  `AddPackageOperationsCenter` (20260905074107).
+- İptal akışı mevcut yetki mekanizmasını (madde 21'in `CanCancelReceiptAsync`'i) kullanıyor,
+  yeni bir yetki bayrağı İCAT EDİLMEDİ.
+
+**Nasıl test edildi:** Tarayıcıda uçtan uca: yeni telefon siparişi oluşturuldu, 7 durumun
+tamamından sırayla geçirildi (her adımda buton etiketinin ve stepper'ın doğru güncellendiği
+doğrulandı), yeni kurye eklendi ve siparişe atandığı (kurye durumu otomatik "Teslimatta" oldu)
+doğrulandı, platform komisyonlu bir Yemeksepeti siparişi oluşturulup net ödeme hesabının doğru
+çıktığı doğrulandı, İptal Et akışı gerekçe girilerek denendi ve sipariş durumunun/adisyonun
+doğru kapandığı doğrulandı. Test verileri (iptal edilen sipariş, kurye durumu) temizlenip
+sistem gerçek kullanıma hazır bırakıldı.

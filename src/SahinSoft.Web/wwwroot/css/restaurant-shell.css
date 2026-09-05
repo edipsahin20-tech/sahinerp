@@ -271,9 +271,9 @@ html, body {
 .rest-shell .shift-diff-neg { color: var(--rs-red); font-weight: 700; }
 .rest-shell .shift-diff-zero { color: var(--rs-muted); font-weight: 700; }
 
-/* Paket & Gel-Al - master Premium pakette gerçek bir mockup vardı (bkz. #package section),
-   burada aynı liste+detay yerleşimi (.pack) mevcut bileşen diliyle (rcard/rtabs/pill) uyarlandı. */
-.rest-shell .pack-layout { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; margin-top: 4px; align-items: start; }
+/* Paket Operasyon Merkezi - onaylı mockup'ın 3 sütunlu düzeni (madde birebir-uygulama,
+   2026-09-05): Sipariş Kuyruğu | Seçili Sipariş | Kurye Takibi. */
+.rest-shell .pack-layout { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 14px; margin-top: 4px; align-items: start; }
 .rest-shell .pack-list { padding: 6px; max-height: 640px; overflow-y: auto; }
 .rest-shell .pack-item { display: block; padding: 12px 14px; border-radius: 10px; text-decoration: none; color: var(--rs-text); border: 1px solid transparent; margin-bottom: 4px; }
 .rest-shell .pack-item:hover { background: #FBFCFE; }
@@ -287,7 +287,30 @@ html, body {
 .rest-shell .pack-customer-card h4 { margin: 0 0 4px; }
 .rest-shell .pack-lines { line-height: 2.4; margin: 10px 0; }
 .rest-shell .pack-lines .pack-line-total { float: right; font-weight: 700; }
-.rest-shell .pack-actions { display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; margin-top: 14px; }
+.rest-shell .pack-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.rest-shell .pack-actions-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.rest-shell .pack-price-breakdown { border-top: 1px dashed var(--rs-border); border-bottom: 1px dashed var(--rs-border); padding: 8px 0; margin: 10px 0; }
+.rest-shell .pack-price-breakdown div { display: flex; justify-content: space-between; padding: 2px 0; font-size: 13px; }
+.rest-shell .pack-price-breakdown .pack-net { font-weight: 800; font-size: 15px; }
+.rest-shell .pack-stepper { display: flex; align-items: center; gap: 4px; margin: 14px 0; flex-wrap: wrap; }
+.rest-shell .pack-stepper .step { display: flex; flex-direction: column; align-items: center; font-size: 10.5px; color: var(--rs-muted); gap: 3px; }
+.rest-shell .pack-stepper .step-dot { width: 22px; height: 22px; border-radius: 50%; background: #F0F2F5; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.rest-shell .pack-stepper .step.done .step-dot { background: var(--rs-green); color: #fff; }
+.rest-shell .pack-stepper .step.current .step-dot { background: var(--rs-gold); color: #fff; }
+.rest-shell .pack-stepper .step-line { width: 20px; height: 2px; background: #E4E7EC; margin-bottom: 14px; }
+.rest-shell .pack-courier-panel { padding: 16px; max-height: 640px; overflow-y: auto; }
+.rest-shell .courier-card { border: 1px solid var(--rs-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rest-shell .courier-card b { display: block; font-size: 13px; }
+.rest-shell .courier-card small { color: var(--rs-muted); }
+.rest-shell .courier-status-pill { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.rest-shell .courier-status-pill.available { background: #E9F8F0; color: #188354; }
+.rest-shell .courier-status-pill.delivering { background: #EAF3FF; color: #1760B4; }
+.rest-shell .courier-status-pill.offline { background: #F0F2F5; color: var(--rs-muted); }
+.rest-shell .pack-channel-tabs, .rest-shell .pack-status-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.rest-shell .pack-integrations-bar { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 14px; background: #FBFCFE; border: 1px solid var(--rs-border); border-radius: 10px; font-size: 12px; color: var(--rs-muted); margin-top: 12px; }
+.rest-shell .pack-integrations-bar span { display: flex; align-items: center; gap: 5px; }
+.rest-shell .pack-integrations-bar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rs-green); display: inline-block; }
+.rest-shell .pack-integrations-bar .dot.off { background: #C9CDD4; }
 
 /* Raporlar - master Premium tasarımdaki report-hero/report-kpis2/report-workspace yerleşimi,
    mevcut kpi-rich/rtabs/rcard bileşen diliyle uyarlandı. */

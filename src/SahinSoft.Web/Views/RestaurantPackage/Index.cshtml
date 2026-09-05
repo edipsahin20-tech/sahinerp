@@ -2,17 +2,23 @@
 @using SahinSoft.Domain.Enums
 @{
     Layout = "_RestaurantShellLayout";
-    ViewData["Title"] = "Paket & Gel-Al";
+    ViewData["Title"] = "Paket Operasyon Merkezi";
 
     static string ChannelLabel(PackageOrderChannel channel) => channel switch
     {
         PackageOrderChannel.Phone => "Telefon",
         PackageOrderChannel.Web => "Web",
-        _ => "Gel-Al"
+        PackageOrderChannel.PickupInStore => "Gel-Al",
+        PackageOrderChannel.Yemeksepeti => "Yemeksepeti",
+        PackageOrderChannel.TrendyolYemek => "Trendyol Yemek",
+        PackageOrderChannel.GetirYemek => "GetirYemek",
+        _ => channel.ToString()
     };
 
     static string StatusLabel(PackageOrderStatus status) => status switch
     {
+        PackageOrderStatus.New => "Yeni",
+        PackageOrderStatus.PendingApproval => "Onay Bekliyor",
         PackageOrderStatus.Preparing => "Hazırlanıyor",
         PackageOrderStatus.Ready => "Hazır",
         PackageOrderStatus.CourierWaiting => "Kurye Bekliyor",
@@ -20,26 +26,91 @@
         PackageOrderStatus.Delivered => "Teslim Edildi",
         _ => "İptal"
     };
+
+    static string StatusTabKey(PackageOrderStatus status) => status switch
+    {
+        PackageOrderStatus.New => "new",
+        PackageOrderStatus.PendingApproval => "pendingapproval",
+        PackageOrderStatus.Preparing => "preparing",
+        PackageOrderStatus.Ready => "ready",
+        PackageOrderStatus.CourierWaiting => "courierwaiting",
+        PackageOrderStatus.OnTheWay => "ontheway",
+        _ => "delivered"
+    };
+
+    static string NextActionLabel(PackageOrderStatus status) => status switch
+    {
+        PackageOrderStatus.New => "Siparişi Kabul Et",
+        PackageOrderStatus.PendingApproval => "Onayla, Mutfağa Gönder",
+        PackageOrderStatus.Preparing => "Hazır Olarak İşaretle",
+        PackageOrderStatus.Ready => "Kurye Bekliyor Olarak İşaretle",
+        PackageOrderStatus.CourierWaiting => "Yolda Olarak İşaretle",
+        PackageOrderStatus.OnTheWay => "Teslim Edildi Olarak İşaretle",
+        _ => ""
+    };
+
+    var statusSteps = new[] { PackageOrderStatus.New, PackageOrderStatus.PendingApproval, PackageOrderStatus.Preparing, PackageOrderStatus.Ready, PackageOrderStatus.CourierWaiting, PackageOrderStatus.OnTheWay, PackageOrderStatus.Delivered };
+    var stepGlyphs = new[] { "1", "2", "♨", "✓", "🚲", "➜", "🏁" };
 }
 
 <div class="toolbar">
     <div>
         <div class="eyebrow">PAKET OPERASYONU</div>
-        <div class="h1">Paket & Gel-Al</div>
-        <div class="sub">Telefon, web ve şubeden teslim siparişlerini takip edin.</div>
+        <div class="h1">Paket Operasyon Merkezi</div>
+        <div class="sub">Tüm kanalları, mutfağı ve kuryeleri tek ekrandan yönetin.</div>
     </div>
-    <button type="button" class="rbtn gold no-print" data-bs-toggle="modal" data-bs-target="#newPackageModal">+ Yeni Paket Siparişi</button>
+    <div class="actions no-print" style="gap:8px;">
+        <button type="button" class="rbtn gold" data-bs-toggle="modal" data-bs-target="#newPackageModal" onclick="document.getElementById('newPackageChannel').value='1'; document.getElementById('newPackagePickupFields').style.display='none';">+ Yeni Telefon Siparişi</button>
+        <button type="button" class="rbtn" data-bs-toggle="modal" data-bs-target="#newPackageModal" onclick="document.getElementById('newPackageChannel').value='3'; document.getElementById('newPackagePickupFields').style.display='none';">+ Yeni Gel-Al</button>
+    </div>
 </div>
 
-
-<div class="rtabs no-print">
-    <a class="rtab @(Model.ActiveTab == "active" ? "active" : "")" asp-action="Index" asp-route-tab="active">Aktif <span>(@Model.ActiveCount)</span></a>
-    <a class="rtab @(Model.ActiveTab == "ready" ? "active" : "")" asp-action="Index" asp-route-tab="ready">Hazır <span>(@Model.ReadyCount)</span></a>
-    <a class="rtab @(Model.ActiveTab == "ontheway" ? "active" : "")" asp-action="Index" asp-route-tab="ontheway">Yolda <span>(@Model.OnTheWayCount)</span></a>
+<!-- "Entegrasyonlar" rozeti (madde birebir-uygulama) - GERÇEK bir Yemeksepeti/Trendyol/GetirYemek
+     API bağlantısı YOK (spec madde 35: "Paket Operasyon Merkezi'nin ayrıntılı geliştirmesi
+     sonraki çalışma paketinde") - uydurma bir "3/3 Bağlı" iddiası göstermek yerine dürüstçe
+     durum bildiriliyor. Sipariş yine kasiyer tarafından manuel girilir, sadece kanal olarak
+     işaretlenir. -->
+<div class="no-print" style="margin-bottom:8px;">
+    <span class="rest-pill" style="color:var(--rs-muted);">◇ Entegrasyonlar: Planlanıyor (sonraki çalışma paketi)</span>
 </div>
+
+<div class="pack-channel-tabs no-print" style="margin-bottom:8px;">
+    <a class="rtab @(Model.ChannelFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="all">Tümü <span>(@Model.TotalCount)</span></a>
+    <a class="rtab @(Model.ChannelFilter == "Phone" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="Phone">Telefon <span>(@Model.PhoneCount)</span></a>
+    <a class="rtab @(Model.ChannelFilter == "Web" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="Web">Web <span>(@Model.WebCount)</span></a>
+    <a class="rtab @(Model.ChannelFilter == "Yemeksepeti" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="Yemeksepeti">Yemeksepeti <span>(@Model.YemeksepetiCount)</span></a>
+    <a class="rtab @(Model.ChannelFilter == "TrendyolYemek" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="TrendyolYemek">Trendyol Yemek <span>(@Model.TrendyolYemekCount)</span></a>
+    <a class="rtab @(Model.ChannelFilter == "GetirYemek" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="GetirYemek">GetirYemek <span>(@Model.GetirYemekCount)</span></a>
+</div>
+
+<div class="pack-status-tabs no-print" style="margin-bottom:8px;">
+    <a class="rtab @(Model.ActiveTab == "new" ? "active" : "")" asp-action="Index" asp-route-tab="new" asp-route-channel="@Model.ChannelFilter">Yeni <span>(@Model.NewCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "pendingapproval" ? "active" : "")" asp-action="Index" asp-route-tab="pendingapproval" asp-route-channel="@Model.ChannelFilter">Onay Bekliyor <span>(@Model.PendingApprovalCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "preparing" ? "active" : "")" asp-action="Index" asp-route-tab="preparing" asp-route-channel="@Model.ChannelFilter">Hazırlanıyor <span>(@Model.PreparingCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "ready" ? "active" : "")" asp-action="Index" asp-route-tab="ready" asp-route-channel="@Model.ChannelFilter">Hazır <span>(@Model.ReadyCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "courierwaiting" ? "active" : "")" asp-action="Index" asp-route-tab="courierwaiting" asp-route-channel="@Model.ChannelFilter">Kurye Bekliyor <span>(@Model.CourierWaitingCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "ontheway" ? "active" : "")" asp-action="Index" asp-route-tab="ontheway" asp-route-channel="@Model.ChannelFilter">Yolda <span>(@Model.OnTheWayCount)</span></a>
+    <a class="rtab @(Model.ActiveTab == "delivered" ? "active" : "")" asp-action="Index" asp-route-tab="delivered" asp-route-channel="@Model.ChannelFilter">Teslim Edildi <span>(@Model.DeliveredCount)</span></a>
+</div>
+
+<form method="get" class="report-search-row no-print" style="margin-bottom:10px;">
+    <input type="hidden" name="tab" value="@Model.ActiveTab" />
+    <input type="hidden" name="channel" value="@Model.ChannelFilter" />
+    <input type="text" name="q" value="@Model.SearchTerm" class="rsearch-input" placeholder="Sipariş no, müşteri veya telefon ara..." />
+    <select name="courierId" class="rsearch-select" onchange="this.form.submit()">
+        <option value="">Tüm Kuryeler</option>
+        @foreach (var c in Model.Couriers)
+        {
+            <option value="@c.CourierId" selected="@(Model.CourierFilter == c.CourierId.ToString())">@c.Name</option>
+        }
+    </select>
+    <button type="submit" class="rbtn">Ara</button>
+    <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab">Filtreleri Temizle</a>
+</form>
 
 <div class="pack-layout">
     <div class="rcard pack-list no-print">
+        <div class="eyebrow" style="padding:8px 8px 0;">SİPARİŞ KUYRUĞU (@Model.Orders.Count)</div>
         @if (Model.Orders.Count == 0)
         {
             <div class="text-secondary small p-3">Bu sekmede sipariş yok.</div>
@@ -47,7 +118,7 @@
         @foreach (var order in Model.Orders)
         {
             <a class="pack-item @(Model.Selected?.PackageOrderId == order.PackageOrderId ? "active" : "")"
-               asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-selected="@order.PackageOrderId">
+               asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-channel="@Model.ChannelFilter" asp-route-selected="@order.PackageOrderId">
                 <b>@order.PackageNumber · @order.CustomerName</b>
                 <small>@ChannelLabel(order.Channel) · @order.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</small>
                 <div class="pack-item-bottom">
@@ -70,6 +141,25 @@
             <h2 style="margin:4px 0;">@s.PackageNumber</h2>
             <span class="rest-pill">@StatusLabel(s.Status)</span> <span class="rest-pill">@ChannelLabel(s.Channel)</span>
 
+            <div class="pack-actions no-print" style="margin-top:10px;">
+                @if (!string.IsNullOrWhiteSpace(s.CustomerPhone))
+                {
+                    <a class="rbtn" href="tel:@s.CustomerPhone">☎ Ara</a>
+                }
+                else
+                {
+                    <span class="rbtn" style="opacity:.4;">☎ Ara</span>
+                }
+                <button type="button" class="rbtn" data-bs-toggle="modal" data-bs-target="#editAddressModal">✎ Adres Düzenle</button>
+            </div>
+            <div class="pack-actions no-print" style="margin-top:8px;">
+                <a class="rbtn" asp-controller="Restaurant" asp-action="Check" asp-route-id="@s.CheckId">✎ Düzenle</a>
+                @if (s.Status is not (PackageOrderStatus.Delivered or PackageOrderStatus.Cancelled))
+                {
+                    <button type="button" class="rbtn" style="color:var(--rs-red);" data-bs-toggle="modal" data-bs-target="#cancelPackageModal">✕ İptal Et</button>
+                }
+            </div>
+
             <div class="pack-customer-card">
                 <h4>@s.CustomerName</h4>
                 @if (!string.IsNullOrWhiteSpace(s.CustomerPhone))
@@ -82,6 +172,15 @@
                 }
             </div>
 
+            @if (s.PlatformCommissionAmount is not null)
+            {
+                <div class="pack-price-breakdown">
+                    <div><span>Ara Toplam</span><b>@s.Total.ToString("N2") ₺</b></div>
+                    <div><span>Platform İndirimi</span><b style="color:var(--rs-red);">-@s.PlatformCommissionAmount.Value.ToString("N2") ₺</b></div>
+                    <div class="pack-net"><span>Restoran Hakedişi</span><b>@s.NetPayout.ToString("N2") ₺</b></div>
+                </div>
+            }
+
             <div class="pack-lines">
                 @foreach (var line in s.Lines)
                 {
@@ -93,23 +192,179 @@
                 }
             </div>
 
+            @if (!string.IsNullOrWhiteSpace(s.Note))
+            {
+                <div class="text-secondary small" style="margin-bottom:8px;"><b>Sipariş Notu:</b> @s.Note</div>
+            }
+
             <h2 style="text-align:right;">@s.Total.ToString("N2") ₺</h2>
 
+            @if (s.Status != PackageOrderStatus.Cancelled)
+            {
+                <div class="pack-stepper no-print">
+                    @for (var i = 0; i < statusSteps.Length; i++)
+                    {
+                        var stepStatus = statusSteps[i];
+                        var isCurrent = s.Status == stepStatus;
+                        var isPast = Array.IndexOf(statusSteps, s.Status) > i;
+                        <div class="step @(isPast ? "done" : "") @(isCurrent ? "current" : "")">
+                            <div class="step-dot">@(isPast ? "✓" : stepGlyphs[i])</div>
+                            <span>@StatusLabel(stepStatus)</span>
+                        </div>
+                        @if (i < statusSteps.Length - 1)
+                        {
+                            <div class="step-line"></div>
+                        }
+                    }
+                </div>
+            }
+
             <div class="pack-actions no-print">
-                <button type="button" class="rbtn" onclick="window.print()">Fiş Yazdır</button>
-                @if (s.Status != PackageOrderStatus.Delivered)
+                @if (s.RetailSaleId is not null)
+                {
+                    <a class="rbtn" asp-controller="Restaurant" asp-action="Receipt" asp-route-id="@s.RetailSaleId" target="_blank">🖶 Fiş Yazdır</a>
+                }
+                else
+                {
+                    <span class="rbtn" style="opacity:.4;" title="Ödeme alınınca fiş oluşur">🖶 Fiş Yazdır</span>
+                }
+                @if (s.Status is not (PackageOrderStatus.Delivered or PackageOrderStatus.Cancelled))
                 {
                     <form method="post" asp-action="Advance">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="packageOrderId" value="@s.PackageOrderId" />
                         <input type="hidden" name="tab" value="@Model.ActiveTab" />
                         <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
-                        <button type="submit" class="rbtn gold" style="width:100%;">Sonraki Duruma Geç →</button>
+                        <button type="submit" class="rbtn gold" style="width:100%;">@NextActionLabel(s.Status)</button>
                     </form>
                 }
             </div>
+
+            <!-- Adres Düzenle modalı -->
+            <div class="modal fade" id="editAddressModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form method="post" asp-action="EditCustomerInfo">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="packageOrderId" value="@s.PackageOrderId" />
+                            <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                            <div class="modal-header"><h5 class="modal-title">Müşteri / Adres Düzenle</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                            <div class="modal-body">
+                                <label class="form-label">Müşteri Adı</label>
+                                <input type="text" name="customerName" class="form-control mb-2" value="@s.CustomerName" required />
+                                <label class="form-label">Telefon</label>
+                                <input type="text" name="customerPhone" class="form-control mb-2" value="@s.CustomerPhone" />
+                                <label class="form-label">Teslimat Adresi</label>
+                                <textarea name="deliveryAddress" class="form-control" rows="2">@s.DeliveryAddress</textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                                <button type="submit" class="btn btn-erp-primary">Kaydet</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İptal Et modalı -->
+            <div class="modal fade" id="cancelPackageModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form method="post" asp-action="Cancel">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="packageOrderId" value="@s.PackageOrderId" />
+                            <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                            <div class="modal-header"><h5 class="modal-title">Siparişi İptal Et</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                            <div class="modal-body">
+                                <label class="form-label">İptal Gerekçesi</label>
+                                <input type="text" name="reason" class="form-control" required />
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                                <button type="submit" class="btn btn-danger">Siparişi İptal Et</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         }
     </div>
+
+    <!-- Kurye Takibi - onaylı mockup'ta bir CANLI harita var; GERÇEK GPS/rota entegrasyonu
+         olmadan sahte bir harita göstermek yerine (madde birebir-uygulama, 2026-09-05) kurye
+         roster'ı + gerçek "Konumu Aç" (teslimat adresine haritada yol tarifi) ile değiştirildi -
+         durum (Müsait/Teslimatta/Çevrimdışı) kasiyer/kurye tarafından elle güncellenir. -->
+    <div class="rcard pack-courier-panel no-print">
+        <div class="eyebrow">KURYE TAKİBİ</div>
+        @if (Model.Selected is not null && Model.Selected.Status is PackageOrderStatus.Ready or PackageOrderStatus.CourierWaiting)
+        {
+            <form method="post" asp-action="AssignCourier" class="d-flex gap-2 mb-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="packageOrderId" value="@Model.Selected.PackageOrderId" />
+                <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                <select name="courierId" class="form-select form-select-sm" required>
+                    <option value="">Kurye seç...</option>
+                    @foreach (var c in Model.Couriers.Where(x => x.Status != CourierStatus.Offline))
+                    {
+                        <option value="@c.CourierId">@c.Name</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-erp-primary btn-sm" style="white-space:nowrap;">Kurye Ata</button>
+            </form>
+        }
+        @if (Model.Selected?.AssignedCourierName is not null)
+        {
+            <div class="text-secondary small mb-2">Bu siparişe atanan: <b>@Model.Selected.AssignedCourierName</b></div>
+        }
+        @if (Model.Selected is not null && !string.IsNullOrWhiteSpace(Model.Selected.DeliveryAddress))
+        {
+            <a class="rbtn d-block text-center mb-3" target="_blank" href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(Model.Selected.DeliveryAddress)">📍 Konumu Aç (Teslimat Adresi)</a>
+        }
+
+        @foreach (var c in Model.Couriers)
+        {
+            <div class="courier-card">
+                <div>
+                    <b>@c.Name @(c.IsExternal ? "(Dış Kurye)" : "")</b>
+                    <small>@c.ActiveOrderCount aktif sipariş @(string.IsNullOrWhiteSpace(c.Phone) ? "" : "· " + c.Phone)</small>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-1">
+                    <span class="courier-status-pill @(c.Status == CourierStatus.Available ? "available" : c.Status == CourierStatus.Delivering ? "delivering" : "offline")">
+                        @(c.Status == CourierStatus.Available ? "Müsait" : c.Status == CourierStatus.Delivering ? "Teslimatta" : "Çevrimdışı")
+                    </span>
+                    <form method="post" asp-action="SetCourierStatus" class="d-flex gap-1">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="courierId" value="@c.CourierId" />
+                        <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                        <select name="status" class="form-select form-select-sm" style="font-size:10.5px; padding:2px 4px;" onchange="this.form.submit()">
+                            <option value="1" selected="@(c.Status == CourierStatus.Available)">Müsait</option>
+                            <option value="2" selected="@(c.Status == CourierStatus.Delivering)">Teslimatta</option>
+                            <option value="3" selected="@(c.Status == CourierStatus.Offline)">Çevrimdışı</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+        }
+        @if (Model.Couriers.Count == 0)
+        {
+            <div class="text-secondary small mb-2">Henüz kurye tanımlı değil.</div>
+        }
+
+        <button type="button" class="rbtn w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newCourierModal">+ Kurye Ekle</button>
+    </div>
+</div>
+
+<!-- Alt durum çubuğu (madde birebir-uygulama) - GERÇEK değerler: "Çift sipariş koruması" gerçek
+     bir SubmissionKey idempotency korumasıdır (bkz. RestaurantPostingService.CreatePackageOrderAsync),
+     diğerleri GERÇEK bir entegrasyon olmadığı için dürüstçe "Kapalı"/"Yok" gösterilir - uydurma
+     bir "3/3 Bağlı" iddiası YOK. -->
+<div class="pack-integrations-bar no-print">
+    <span><i class="dot off"></i>Otomatik sipariş alma: Kapalı</span>
+    <span><i class="dot off"></i>Menü/Fiyat eşitleme: Yok</span>
+    <span><i class="dot off"></i>Stok kapatma: Elle</span>
+    <span><i class="dot off"></i>Platform durumu: Bağlı Değil</span>
+    <span><i class="dot"></i>Çift sipariş koruması: Aktif</span>
+    <span><i class="dot"></i>Sistem çalışıyor</span>
 </div>
 
 <!-- Yeni Paket Siparişi modalı -->
@@ -120,27 +375,62 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="submissionKey" value="@Guid.NewGuid()" />
                 <div class="modal-header">
-                    <h5 class="modal-title">Yeni Paket Siparişi</h5>
+                    <h5 class="modal-title">Yeni Sipariş</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <label class="form-label">Kanal</label>
-                    <select name="channel" class="form-select mb-2" required>
+                    <select name="channel" id="newPackageChannel" class="form-select mb-2" required onchange="document.getElementById('platformCommissionField').style.display = (this.value >= 4 ? 'block' : 'none');">
                         <option value="1">Telefon</option>
                         <option value="2">Web</option>
                         <option value="3">Gel-Al</option>
+                        <option value="4">Yemeksepeti</option>
+                        <option value="5">Trendyol Yemek</option>
+                        <option value="6">GetirYemek</option>
                     </select>
                     <label class="form-label">Müşteri Adı</label>
                     <input type="text" name="customerName" class="form-control mb-2" required />
                     <label class="form-label">Telefon</label>
                     <input type="text" name="customerPhone" class="form-control mb-2" />
                     <label class="form-label">Teslimat Adresi</label>
-                    <textarea name="deliveryAddress" class="form-control" rows="2"></textarea>
-                    <div class="form-text">Gel-Al siparişinde telefon/adres zorunlu değildir; Telefon/Web siparişinde ikisi de zorunludur.</div>
+                    <textarea name="deliveryAddress" class="form-control mb-2" rows="2"></textarea>
+                    <div id="platformCommissionField" style="display:none;">
+                        <label class="form-label">Platform Komisyonu (₺)</label>
+                        <input type="number" step="0.01" min="0" name="platformCommissionAmount" class="form-control" placeholder="Örn: 40.00" />
+                        <div class="form-text">Platformun kestiği komisyon - sadece bu ekranda bilgi amaçlı, muhasebeye yansımaz.</div>
+                    </div>
+                    <div class="form-text">Gel-Al siparişinde telefon/adres zorunlu değildir; diğer kanallarda ikisi de zorunludur.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
                     <button type="submit" class="btn btn-erp-primary">Siparişi Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Yeni Kurye modalı -->
+<div class="modal fade" id="newCourierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-action="CreateCourier">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                <div class="modal-header"><h5 class="modal-title">Yeni Kurye</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <label class="form-label">Ad Soyad</label>
+                    <input type="text" name="name" class="form-control mb-2" required />
+                    <label class="form-label">Telefon</label>
+                    <input type="text" name="phone" class="form-control mb-2" />
+                    <div class="form-check form-switch">
+                        <input type="checkbox" name="isExternal" value="true" class="form-check-input" id="isExternalCheck" />
+                        <label class="form-check-label" for="isExternalCheck">Dış / Platform Kuryesi</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-erp-primary">Ekle</button>
                 </div>
             </form>
         </div>

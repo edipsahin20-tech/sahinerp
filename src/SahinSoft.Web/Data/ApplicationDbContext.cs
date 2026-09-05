@@ -95,6 +95,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantPermissionAuditLog> RestaurantPermissionAuditLogs => Set<RestaurantPermissionAuditLog>();
     public DbSet<RestaurantCheckPendingPayment> RestaurantCheckPendingPayments => Set<RestaurantCheckPendingPayment>();
     public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
+    public DbSet<RestaurantCourier> RestaurantCouriers => Set<RestaurantCourier>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
 
@@ -1547,12 +1548,21 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CustomerName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.CustomerPhone).HasMaxLength(30);
             entity.Property(x => x.DeliveryAddress).HasMaxLength(500);
+            entity.Property(x => x.PlatformCommissionAmount).HasPrecision(18, 2);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.HasIndex(x => x.PackageNumber).IsUnique();
             // 1 adisyon → en fazla 1 paket sipariş kaydı (bkz. entity üstündeki not).
             entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
             // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
             entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
             entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.AssignedCourier).WithMany().HasForeignKey(x => x.AssignedCourierId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<RestaurantCourier>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(30);
         });
 
         builder.Entity<RetailSale>(entity =>

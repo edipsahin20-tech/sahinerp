@@ -10490,3 +10490,84 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    ALTER TABLE [PackageOrders] ADD [AssignedCourierId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    ALTER TABLE [PackageOrders] ADD [CancellationReason] nvarchar(500) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    ALTER TABLE [PackageOrders] ADD [PlatformCommissionAmount] decimal(18,2) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    CREATE TABLE [RestaurantCouriers] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(200) NOT NULL,
+        [Phone] nvarchar(30) NULL,
+        [IsExternal] bit NOT NULL,
+        [Status] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantCouriers] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    CREATE INDEX [IX_PackageOrders_AssignedCourierId] ON [PackageOrders] ([AssignedCourierId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantCouriers_RecordId] ON [RestaurantCouriers] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    ALTER TABLE [PackageOrders] ADD CONSTRAINT [FK_PackageOrders_RestaurantCouriers_AssignedCourierId] FOREIGN KEY ([AssignedCourierId]) REFERENCES [RestaurantCouriers] ([Id]) ON DELETE SET NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905074107_AddPackageOperationsCenter'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905074107_AddPackageOperationsCenter', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

@@ -26,4 +26,15 @@ public sealed class PackageOrder : EntityBase
 
     public int RestaurantCheckId { get; set; }
     public RestaurantCheck RestaurantCheck { get; set; } = null!;
+
+    // Onaylı Paket Operasyon Merkezi mockup'ı (madde birebir-uygulama, 2026-09-05) - kurye ataması
+    // ve platform komisyonu ("Platform İndirimi" / "Restoran Hakedişi" satırları). Komisyon gerçek
+    // bir platform API'sinden GELMİYOR (entegrasyon yok, spec madde 35) - kasiyer siparişi
+    // Yemeksepeti/Trendyol/GetirYemek olarak işaretlerken elle girer, muhasebeye YANSIMAZ (sadece
+    // bu ekranda bilgi amaçlı gösterilir - gerçek satış tutarı zaten RestaurantCheck üzerinden
+    // aynı yerden geçiyor).
+    public int? AssignedCourierId { get; set; }
+    public RestaurantCourier? AssignedCourier { get; set; }
+    public decimal? PlatformCommissionAmount { get; set; }
+    public string? CancellationReason { get; set; }
 }
