@@ -21,25 +21,28 @@
 <body>
     <div class="rest-shell">
         <div class="rest-topbar">
-            <div class="rest-brand"><img src="~/images/logo-icon.png" alt="ŞahinSoft" class="rest-logo" /><span>ŞahinSoft <b>Restoran</b></span></div>
-            <div class="rest-pill">▣ @shell.BranchName</div>
+            <div class="rest-brand">
+                <img src="~/images/logo-icon.png" alt="ŞahinSoft" class="rest-logo" />
+                <span class="rest-brand-text"><span class="l1">ŞahinSoft</span><span class="l2">Restoran</span></span>
+            </div>
+            <div class="rest-pill">📍 @shell.BranchName ▾</div>
             <div class="rest-spacer"></div>
             @if (shell.IsShiftOpen)
             {
-                <div class="rest-pill green">● Vardiya Açık @(shell.ShiftOpenedAtUtc.HasValue ? "· " + shell.ShiftOpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")</div>
+                <div class="rest-pill green">🟢 Vardiya Açık @(shell.ShiftOpenedAtUtc.HasValue ? "· " + shell.ShiftOpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")</div>
             }
             else
             {
-                <a href="@Url.Action("Index", "RestaurantShift")" class="rest-pill" style="color:#C73E3E;">● Vardiya Kapalı</a>
+                <a href="@Url.Action("Index", "RestaurantShift")" class="rest-pill" style="color:#FF7A7A;">● Vardiya Kapalı</a>
             }
-            <div id="rest-clock" style="font-weight:800;"></div>
+            <div class="rest-pill" id="rest-clock" style="font-weight:800;"></div>
             <a href="@Url.Action("Index", "RestaurantKitchen")" class="rest-pill" style="text-decoration:none; color:inherit;">
-                ♨ <span style="background:#D94A4A;color:#fff;border-radius:99px;padding:2px 6px;">@shell.KitchenPendingCount</span>
+                🔔 <span style="background:#D94A4A;color:#fff;border-radius:99px;padding:2px 6px;">@shell.KitchenPendingCount</span>
             </a>
-            <div class="rest-pill">● @shell.UserFullName</div>
+            <div class="rest-pill">👤 @shell.UserFullName</div>
             <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Login", "RestaurantAuth")">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="rest-danger-btn">Programı Kapat</button>
+                <button type="submit" class="rest-danger-btn">⏻ Programı Kapat</button>
             </form>
         </div>
 
@@ -62,17 +65,19 @@
                     <a class="@NavClass("self")" href="@Url.Action("Index", "RestaurantSelfSale")"><span>◇</span><div><b>Self Satış</b><small>Hızlı satış</small></div></a>
                 }
                 <a class="@NavClass("reports")" href="@Url.Action("Index", "RestaurantReports")"><span>▥</span><div><b>Raporlar</b><small>Ciro &amp; vardiya</small></div></a>
-                <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>
-            </div>
-            <div class="rest-sidebar-bottom">
+
+                <!-- Ayarlar/Mutfak/Vardiya artık ayrı bir alt ızgara DEĞİL, ANA listenin devamı
+                     (Edip, 2026-09-05, onaylı görsel: "butun butonlar ... konumları herşey").
+                     Bölümden Çık, eskiden bu üçünün ÜSTÜNDEYDİ - görselde EN ALTTA, bu üçünden
+                     SONRA geliyor, sırası buna göre değişti. -->
+                <div class="rest-nav-divider"></div>
                 @if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator) || User.IsInRole(SahinSoft.Domain.Constants.AppRoles.RestaurantManager))
                 {
-                    <!-- Ayarlar, Mutfak'ın ÜSTÜNDE (Edip, 2026-09-04, madde 26). Sadece yönetici
-                         yetkisi olanlara görünür - kasiyer/garson için gereksiz kalabalık. -->
-                    <a href="@Url.Action("Index", "RestaurantSettings")">⚙<br>Ayarlar</a>
+                    <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantSettings")"><span>⚙</span><div><b>Ayarlar</b></div></a>
                 }
-                <a href="@Url.Action("Index", "RestaurantKitchen")">♨<br>Mutfak</a>
-                <a href="@Url.Action("Index", "RestaurantShift")">▤<br>Vardiya</a>
+                <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantKitchen")"><span>♨</span><div><b>Mutfak</b></div></a>
+                <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantShift")"><span>▤</span><div><b>Vardiya</b></div></a>
+                <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>
             </div>
         </aside>
 

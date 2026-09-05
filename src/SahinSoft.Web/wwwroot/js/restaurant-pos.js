@@ -86,9 +86,9 @@
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'category-tab' + (idx === 0 ? ' active' : '');
-            // Kategori adının yanında ürün sayısı - Edip'in kendi eski POS ekranındaki gibi
-            // (2026-09-03).
-            btn.innerHTML = escapeHtml(cat.categoryName) + ' <span class="category-tab-count">' + cat.products.length + '</span>';
+            // Ürün sayısı rozeti sekmenin SAĞ ÜST köşesinde (Edip, 2026-09-05, onaylı görsel:
+            // "butun butonlar ... konumları herşey") - eskiden başlığın hemen yanındaydı.
+            btn.innerHTML = '<span class="category-tab-name">' + escapeHtml(cat.categoryName) + '</span><span class="category-tab-count">' + cat.products.length + '</span>';
             // Kategori Tanımla'da seçilen renk burada aynen kullanılır (Edip, 2026-09-03).
             if (cat.color) btn.style.setProperty('--cat-tab-color', cat.color);
             btn.addEventListener('click', function () {
@@ -104,15 +104,20 @@
 
     function renderProducts(category) {
         activeCategory = category;
-        renderProductList(category.products);
+        renderProductList(category.products, category.color);
     }
 
-    function renderProductList(products) {
+    function renderProductList(products, categoryColor) {
         gridEl.innerHTML = '';
         products.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'product-tile';
+            // Ürün kartının sol kenarı kendi kategorisinin rengini taşır (Edip, 2026-09-05,
+            // onaylı görsel) - AYNI Kategori Tanımla'daki renk, sekmelerle tutarlı. Arama
+            // sonuçları birden çok kategoriden gelebileceği için (tek bir renk anlamsız) sadece
+            // kategori gezinme (renderProducts) yolunda uygulanır.
+            if (categoryColor) btn.style.borderLeft = '4px solid ' + categoryColor;
             // Stok Tanıtım Kartı'nda fotoğraf yüklenmişse kartta gösterilir, yoksa nötr bir
             // simge ile yer tutucu gösterilir (Edip, 2026-09-03: regeditpos referansı).
             var photoHtml = p.imagePath

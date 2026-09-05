@@ -213,6 +213,43 @@
     overflow: hidden;
 }
 
+/* Koyu tema (Edip, 2026-09-05, onaylı Self Satış görseli: "birebir aynısını istiyorum...
+   butun butonlar ve butonların uzerindeki simgeler dahil renkler buton renkler konumları
+   herşey"). SADECE bu sayfa (.pos-check-page, Self Satış/Masa Satış/Paket'in ortak adisyon
+   ekranı) - Masa Durumu'nun (Index.cshtml) kendi .restaurant-pos'u ve diğer restoran sayfaları
+   (Dashboard/Raporlar/Ayarlar) hâlâ kendi açık temalarını kullanır, .pos-check-page scope'u
+   dışına hiç sızmaz. --pos-surface BİLEREK beyaz bırakıldı - ürün kartları/sağ ikon şeridi gibi
+   "yüzen beyaz kart" bileşenler koyu zeminde AYNEN böyle kalmalı (görselde de öyle). */
+.restaurant-pos.pos-check-page {
+    --pos-bg: #0B1524;
+    --pos-border: rgba(255,255,255,.14);
+    --pos-text: #FFFFFF;
+    --pos-text-2: #93A3B8;
+    background: var(--pos-bg);
+    color: var(--pos-text);
+}
+
+.pos-check-page .erp-toolbar-title h1 {
+    color: #fff;
+}
+
+.pos-check-page .erp-toolbar-meta {
+    color: var(--pos-text-2);
+}
+
+/* Masayı Boşalt / Masa Durumu vb. eski açık temaya göre boyanmış outline butonlar - koyu
+   zeminde okunaklı kalsın diye. */
+.pos-check-page .product-panel-actions .btn-erp-outline {
+    background: rgba(255,255,255,.06);
+    border-color: rgba(255,255,255,.22);
+    color: #fff;
+}
+.pos-check-page .product-panel-actions .btn-erp-outline:hover {
+    background: rgba(255,255,255,.12);
+    border-color: rgba(255,255,255,.32);
+    color: #fff;
+}
+
 /* Üst başlık şeridi POS ekranında gereksiz yer kaplıyordu - daraltılıp altındaki içerik yukarı
    çekildi (Edip, 2026-09-03: "burayı kaldır üstte taşı herşeyi"). Sadece BU sayfada (.pos-check-
    page) - diğer ERP ekranlarındaki .erp-toolbar'a dokunulmadı. */
@@ -366,6 +403,46 @@
     padding: 0.9rem 1rem;
     border-bottom: 1px solid var(--pos-border);
     color: var(--pos-navy);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+}
+
+.restaurant-pos .cart-header-title { display: flex; flex-direction: column; gap: 0.1rem; }
+.restaurant-pos .cart-header-checknum { font-size: 0.78rem; color: var(--pos-text-2); font-weight: 600; }
+.restaurant-pos .cart-header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.restaurant-pos .cart-header .product-search-row { flex-basis: 100%; }
+
+/* Koyu adisyon ekranında sipariş paneli artık AYRI bir beyaz kart değil - sayfanın kendi
+   zeminiyle KAYNAŞIK (Edip, 2026-09-05, onaylı görsel: sağ panelin tamamı koyu zeminde,
+   sadece alt özet vurgulanıyor). */
+.pos-check-page .cart-panel {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+.pos-check-page .cart-header,
+.pos-check-page .cart-header strong {
+    color: #fff;
+}
+.pos-check-page .cart-lines-header {
+    color: var(--pos-text-2);
+    border-bottom-color: var(--pos-border);
+}
+.pos-check-page .cart-line {
+    border-bottom-color: rgba(255,255,255,.08);
+}
+.pos-check-page .cart-line-col-total {
+    color: #fff;
+}
+.pos-check-page .cart-sent-lines {
+    border-bottom-color: rgba(255,255,255,.14);
+}
+.pos-check-page .cart-line-toolbar {
+    background: transparent;
+    border-bottom-color: var(--pos-border);
 }
 
 .restaurant-pos .cart-lines {
@@ -581,6 +658,31 @@
     border-top: 1px solid var(--pos-border);
 }
 
+.pos-check-page .cart-footer {
+    color: #fff;
+}
+.pos-check-page .cart-footer .text-success {
+    color: #4FDE97 !important;
+}
+
+/* "Toplam" satırı vurgulanmış/altın zeminli kutuda (Edip, 2026-09-05, onaylı görsel). */
+.restaurant-pos .cart-footer-total-row {
+    margin-top: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--pos-radius-control);
+    background: rgba(226,164,0,.14);
+    font-size: 1.05rem;
+}
+.restaurant-pos .cart-footer-total-row span:first-child {
+    font-weight: 800;
+}
+.pos-check-page .cart-footer-total-row span:first-child {
+    color: #fff;
+}
+.pos-check-page .cart-footer-total-row #main-remaining-total {
+    color: var(--pos-gold-light) !important;
+}
+
 /* Satır işlem çubuğu - seçili satıra uygulanır, sepetin her satırında tekrarlanmaz (Edip,
    2026-09-03: "sabit olsun"). Hiçbir satır seçili değilken tüm butonlar disabled. */
 .restaurant-pos .cart-line-toolbar {
@@ -645,6 +747,27 @@
 .restaurant-pos .cart-line-toolbar > button:not(:disabled):hover {
     border-color: #D2DAE5;
     background: var(--pos-bg);
+}
+
+/* Not/İndirim/İkram/Sil koyu adisyon ekranında koyu "hap" (pill) butonlar (Edip, 2026-09-05,
+   onaylı görsel) - "Satırları Kilitle" görselde olsa da BİLEREK eklenmedi (Edip, tekrar tekrar:
+   "bu mantığı kullanmayacağız", bkz. proje geçmişi). */
+.pos-check-page .cart-line-toolbar > button {
+    background: rgba(255,255,255,.07);
+    border-color: rgba(255,255,255,.16);
+    color: #fff;
+}
+.pos-check-page .cart-line-toolbar > button.danger {
+    background: rgba(217,74,74,.16);
+    border-color: rgba(217,74,74,.4);
+    color: #FF8F8F;
+}
+.pos-check-page .cart-line-toolbar > button:not(:disabled):hover {
+    background: rgba(255,255,255,.13);
+    border-color: rgba(255,255,255,.28);
+}
+.pos-check-page .cart-qty-stepper span {
+    color: #fff;
 }
 
 .restaurant-pos .cart-line {
@@ -937,12 +1060,15 @@
 
 .restaurant-pos .product-search-row {
     margin-top: 0.6rem;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .restaurant-pos .product-search-input {
     width: 100%;
     max-width: 100%;
-    padding: 0.65rem 0.9rem;
+    padding: 0.65rem 2.2rem;
     border: 1px solid var(--pos-border);
     border-radius: var(--pos-radius-control);
     font-size: 0.88rem;
@@ -953,6 +1079,28 @@
     outline: none;
     border-color: var(--pos-gold);
     box-shadow: 0 0 0 3px rgba(226, 164, 0, .14);
+}
+
+.restaurant-pos .product-search-icon,
+.restaurant-pos .product-search-scan {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--pos-text-2);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+.restaurant-pos .product-search-icon { left: 0.8rem; }
+.restaurant-pos .product-search-scan { right: 0.8rem; }
+
+/* Koyu adisyon ekranında arama kutusu da koyu (Edip, 2026-09-05, onaylı görsel). */
+.pos-check-page .product-search-input {
+    background: rgba(255,255,255,.06);
+    border-color: var(--pos-border);
+    color: #fff;
+}
+.pos-check-page .product-search-input::placeholder {
+    color: var(--pos-text-2);
 }
 
 /* Simetrik 5 sütun (Edip, 2026-09-05: "sağ taraf kategoriler simetrik olsun yan yana 5 tane
@@ -973,6 +1121,7 @@
    (Edip, 2026-09-03: "kategoriler de buradaki gibi biraz daha büyük ve kare şeklinde olsun"). */
 .restaurant-pos .category-tab {
     --cat-tab-color: var(--pos-navy);
+    position: relative;
     border: 1px solid var(--cat-tab-color);
     background: var(--cat-tab-color);
     color: #fff;
@@ -988,27 +1137,49 @@
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
-    opacity: .55;
-    transition: opacity 120ms ease, box-shadow 120ms ease;
+    /* Eskiden inaktif sekmeler opacity:.55 ile soluklaştırılıyordu - onaylı görselde İNAKTİF
+       sekmeler de kendi kategori renginde TAM canlılıkta duruyor, sadece AKTİF olan altın/krem
+       renkle ayırt ediliyor (Edip, 2026-09-05). */
+    transition: box-shadow 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
 .restaurant-pos .category-tab:hover {
-    opacity: .8;
+    box-shadow: 0 0 0 2px rgba(255,255,255,.3);
 }
 
+/* Aktif sekme - kendi kategori renginin YERİNE değil, ÜZERİNE altın/krem vurgusu (Edip,
+   2026-09-05, onaylı görsel: aktif sekme her zaman krem/altın zeminde koyu yazı). */
 .restaurant-pos .category-tab.active {
-    opacity: 1;
-    box-shadow: 0 0 0 2px rgba(11, 34, 57, .25), var(--pos-shadow);
+    background: linear-gradient(var(--pos-gold-light), var(--pos-gold));
+    border-color: var(--pos-gold);
+    color: #2A2000;
+    box-shadow: 0 0 0 2px rgba(226,164,0,.35), var(--pos-shadow);
+}
+
+.restaurant-pos .category-tab-name {
+    display: block;
+    padding-right: 1.1rem;
 }
 
 .restaurant-pos .category-tab-count {
-    display: inline-block;
-    margin-left: 0.3rem;
-    padding: 0.05rem 0.4rem;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.3rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, .25);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
+}
+
+.restaurant-pos .category-tab.active .category-tab-count {
+    background: rgba(42, 32, 0, .18);
+    color: #2A2000;
 }
 
 /* Simetrik 5 sütun (Edip, 2026-09-05: onaylı görseldeki gibi "yan yana 5" ürün, 6 satır = 30

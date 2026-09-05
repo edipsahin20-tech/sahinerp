@@ -95,14 +95,7 @@
 
     <div class="pos-layout">
         <div class="product-panel">
-            <!-- Masaya Aktar / Masa Durumu üst başlıktan buraya taşındı - üstte yer açılsın
-                 (Edip, 2026-09-03: "masa aktar masa durumunu da sol tarafa taşı yer açılsın"). -->
             <div class="product-panel-actions">
-                @if (Model.IsSelfSaleCheck)
-                {
-                    <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
-                }
-                <a asp-action="Index" class="btn btn-erp-outline btn-sm">← Masa Durumu</a>
                 @if (!Model.IsSelfSaleCheck && Model.PayableTotal <= 0)
                 {
                     <!-- Müşteri hiçbir şey almadan gitti / her şey iptal edildi - normal ödeme
@@ -156,13 +149,28 @@
             </div>
 
             <div class="cart-main">
+                <!-- Masaya Aktar/Masa Durumu tekrar üst başlığa taşındı, "Yeni Sipariş"in
+                     karşısına (Edip, 2026-09-05, onaylı görsel: "butun butonlar ... konumları
+                     herşey") - eski 2026-09-03 kararının (sol tarafa taşı) YERİNE geçti. -->
                 <div class="cart-header">
-                    <strong>Yeni Sipariş</strong>
+                    <div class="cart-header-title">
+                        <strong>Yeni Sipariş</strong>
+                        <span class="cart-header-checknum">@Model.CheckNumber</span>
+                    </div>
+                    <div class="cart-header-actions">
+                        @if (Model.IsSelfSaleCheck)
+                        {
+                            <button type="button" class="btn btn-erp-outline btn-sm" data-bs-toggle="modal" data-bs-target="#transferToTableModal">⇄ Masaya Aktar</button>
+                        }
+                        <a asp-action="Index" class="btn btn-erp-outline btn-sm">▤ Masa Durumu</a>
+                    </div>
                     <!-- Ürün arama/barkod okutma sağ tarafa, "Yeni Sipariş"in altına taşındı
                          (Edip, 2026-09-03: "ürün arama ve barkod arama sağ tarafta ürün
                          şablonunda yeni siparişin altında olsun"). -->
                     <div class="product-search-row">
+                        <span class="product-search-icon">🔍</span>
                         <input type="text" id="product-search" class="product-search-input" placeholder="Ürün ara veya barkod okut..." autocomplete="off" />
+                        <span class="product-search-scan">⌨</span>
                     </div>
                 </div>
                 <!-- Satır işlem çubuğu SABİT - her satırın altında tekrarlanmaz, seçili satıra
@@ -175,10 +183,10 @@
                         <span id="line-qty-value">–</span>
                         <button type="button" id="line-qty-plus">+</button>
                     </div>
-                    <button type="button" id="line-act-note">Not</button>
-                    <button type="button" id="line-act-discount">İndirim</button>
-                    <button type="button" id="line-act-comp">İkram</button>
-                    <button type="button" id="line-act-remove" class="danger">Sil</button>
+                    <button type="button" id="line-act-note">★ Not</button>
+                    <button type="button" id="line-act-discount">✏ İndirim</button>
+                    <button type="button" id="line-act-comp">★ İkram</button>
+                    <button type="button" id="line-act-remove" class="danger">⊘ Sil</button>
                 </div>
                 <!-- Gönderilmiş (kalıcı) satırlar - "sepet"le AYNI yerde, ödeme ekranında
                      görünür, ayrı bir "mutfak" paneline hapsedilmez (Edip, 2026-09-03: "masa
@@ -193,7 +201,7 @@
                              göstersin 1,2,3 devam etsin kaç ürün varsa") - gönderilmiş VE bekleyen
                              satırlarda ortak, kesintisiz tek bir sayaç (bkz. aşağıdaki @@for ve
                              restaurant-pos.js renderCart() sentLineCount devamı). -->
-                        <span>#</span><span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span>
+                        <span>#</span><span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Birim Fiyat</span><span>Tutar</span>
                     </div>
                 </div>
                 @{
@@ -271,11 +279,14 @@
                         <span class="text-danger" id="main-discount-total">@Model.TicketDiscountAmount.ToString("N2") ₺</span>
                     </div>
                     <div class="d-flex justify-content-between@(Model.PaidTotal > 0 ? "" : " d-none")" id="main-paid-row">
-                        <span>Ödenen</span>
+                        <span>Ödenen Tutar</span>
                         <span class="text-success fw-bold" id="main-paid-total">@Model.PaidTotal.ToString("N2") ₺</span>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span>Kalan Tutar</span>
+                    <!-- "Kalan Tutar" -> "Toplam" (Edip, 2026-09-05, onaylı görsel: alt özette
+                         vurgulanmış, kalın "Toplam" satırı) - DEĞER aynı kalıyor (Ara Toplam -
+                         İndirim - Ödenen), sadece etiket/görsel vurgu görsele göre değişti. -->
+                    <div class="d-flex justify-content-between cart-footer-total-row">
+                        <span>Toplam</span>
                         <span class="text-danger fw-bold" id="main-remaining-total">@((Model.PayableTotal - Model.PaidTotal).ToString("N2")) ₺</span>
                     </div>
                     <div class="d-flex justify-content-between d-none">
