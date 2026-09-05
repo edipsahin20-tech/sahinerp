@@ -66,8 +66,8 @@ piksel eşleşmediği fark edildi:
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
 | 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ✅ tamam + test edildi (2026-09-05) |
 | 28-34 | Raporlar (ortak dönem filtresi, Kasiyer/X/Z/Z Listesi) | ✅ tamam + test edildi (2026-09-05) |
-| 35 | Paket — mimariyi bozma, derin geliştirme sonraki pakette | 🔒 dokunulmuyor (bilerek) |
-| 36 | Test ve teslim | ⏳ her madde kendi içinde test edilecek |
+| 35 | Paket — mimariyi bozma, derin geliştirme sonraki pakette | 🔒 dokunulmuyor (bilerek, spec'in kendi talimatı) |
+| 36 | Test ve teslim | ✅ tamam (2026-09-05) - her madde kendi içinde test edildi + final kapsamlı checklist geçişi yapıldı (aşağıya bak) |
 
 **Yasal:** ✅ tamam · 🔶 kısmen/mevcut doğrulanacak · ⏳ yapılmadı · 🔒 bilerek dokunulmuyor
 
@@ -275,6 +275,57 @@ seçilen Z'nin açılış-kapanış arası satış hareketleri) doğru çalış�
    Z-000009 kaydı listede görünüyor.
 
 Migration gerekmedi (şema değişikliği yok, sadece controller/view mantığı).
+
+### Madde 36 — Test ve Teslim Şartı, final kapsamlı checklist, 2026-09-05
+
+36 maddenin tamamı (35 hariç - spec'in kendi kararıyla kapsam dışı) tamamlandı. Spec'in madde
+36'da özellikle test edilmesini istediği liste, madde numarası ve test edildiği an ile:
+
+| Kontrol | Durum | Nerede test edildi |
+|---|---|---|
+| Hızlı Nakit | ✅ | Madde 3, 2026-09-04 |
+| Hızlı Kredi Kartı | ✅ | Madde 3/27, bu turda tekrar uçtan uca (gerçek banka hesabına düştüğü) doğrulandı |
+| Fiş sorulsun/sorulmasın | ✅ | Madde 3, 2026-09-04 |
+| Nakit para üstü | ✅ | Madde 4, 2026-09-04 |
+| Parçalı ödeme | ✅ | Madde 5, 2026-09-04 + bu turda 1/3 bölünmesiyle tekrar |
+| 1/2, 1/3, 1/4 bölme | ✅ | Madde 6 (1/2, 2026-09-04) + bu turda 1/3 (madde 36 kapsamında) |
+| Kuruş hassasiyeti | ✅ | Bu turda özel test: 125,00₺'nin 1/3'ü (41,67₺) + kalanı (83,33₺) - toplam TAM 125,00₺, yuvarlama kayması yok |
+| Ödeme iptal | ✅ | Madde 7, 2026-09-04 |
+| Adisyona dön | ✅ | Madde 8, 2026-09-04 |
+| Kısmi ödemenin korunması | ✅ | Madde 8, 2026-09-04 (tam sayfa yenilemede bile) |
+| İndirim / indirim iptal | ✅ | Madde 10, 2026-09-04 |
+| İkram | ✅ | Madde 11, 2026-09-04 |
+| Ödenmez | ✅ | Madde 12, 2026-09-04 |
+| Açık hesap + cari zorunluluğu | ✅ | Madde 13, 2026-09-04 |
+| Tahsilat carileri | ✅ | Madde 14 (2026-09-04) + madde 26 (Ayarlar'dan kısayol, 2026-09-05) |
+| Barkod | ✅ | Madde 15-16, 2026-09-04 |
+| Ürün Listesi | ✅ | Madde 15-16, 2026-09-04 |
+| Bekleyen fiş | ✅ | Madde 18, 2026-09-04 |
+| Fiş listesi filtreleri | ✅ | Madde 19, 2026-09-04 |
+| Sipariş silme yetkisi | ✅ | Madde 22, 2026-09-05 (CanClearOrder, sistem geneli + profil) |
+| İkinci yetkili şifresi | ✅ | Madde 21, 2026-09-04 |
+| Satır kilidinin kaldırılması | ✅ | Madde 9, 2026-09-04 |
+| Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ | Madde 25, 2026-09-04 |
+| Boş adisyon | ✅ | Madde 20, 2026-09-04/05 |
+| Masa kişi sayısı | ✅ | Madde 23-24, önceki oturumda doğrulandı |
+| Dolu/Boş masa geçişleri | ✅ | Oturum boyunca tekrar tekrar (masa açma/boşaltma) doğrulandı, ayrıca bu turda Self Satış'ta "Kapat" ile boş adisyon otomatik boşaltma tekrar test edildi |
+| Kasa/şube ayrımı | ✅ | Madde 27, 2026-09-05 - GERÇEK bir muhasebe hatası bulunup düzeltildi, uçtan uca doğrulandı |
+| Kasiyer raporu | ✅ | Madde 31, 2026-09-05 - hem "tümü" hem tek kasiyer hem güvenlik sınırı (Cashier-only kullanıcı) test edildi |
+| X raporu | ✅ | Madde 32, 2026-09-05 (dinamik ödeme dağılımıyla birlikte) |
+| Z kapanışı | ✅ | Madde 33, 2026-09-05 (onay metni spec'in birebir istediği metne çevrildi) |
+| Z listesi | ✅ | Madde 34, önceki oturumda doğrulanan drill-down korunuyor |
+| Responsive ekran davranışı | ✅ | Bu turda 1366×768 (15.6" hedef çözünürlük) taranıp sabit 3 sütunlu (kategori/sipariş/ikon şeridi) düzenin bozulmadığı doğrulandı |
+| Firma/tenant izolasyonu | ✅ | Mimari zaten kurulum-başına izole (bkz. [[project_sahinsoft_fresh_install_policy]]) - her kurulum bağımsız bir DB, çapraz-tenant veri karışması mümkün değil |
+
+**Bu turda bulunan, koda bağlı OLMAYAN bir gözlem (ayrı arka plan görevine kaydedildi, bu
+oturumda düzeltilmedi):** Kuruş hassasiyeti testi sırasında bir "Siparişi Tamamla" isteği
+istemciye "Bağlantı hatası" döndü, tekrar denemede ise gerçek bir SQL "duplicate key
+(RestaurantPayments.SubmissionKey)" hatası alındı - istemcinin gördüğü hata ile sunucunun asıl
+yazdığı arasında bir çift-tıklama/retry yarışı olduğu anlaşıldı. Hiçbir veri bozulmadı (adisyon
+açık kaldı, mükerrer fiş oluşmadı) - "Ödeme İptal" + temiz tekrar ile sorunsuz kapatıldı. Bu,
+CloseCheckAsync'in kendi retry/idempotency mekanizmasında (bu oturumda hiç dokunulmayan, önceden
+var olan bir kod yolu) nadir bir yarış durumu - ayrı bir arka plan görevi olarak kaydedildi
+(task_87bcb552), bu 36 maddelik işin kapsamı dışında.
 
 ### Madde 4-8 (Ödeme Al ekranı / Parçalı Ödeme / Tutarı Bölme / Ödeme İptal / Adisyona Dön) — MİMARİ BULGU, 2026-09-04
 
