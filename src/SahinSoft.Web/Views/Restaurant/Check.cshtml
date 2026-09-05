@@ -581,15 +581,13 @@
     </div>
 </div>
 
-<!-- Klavye (madde 17, Edip 2026-09-04 - baştan tasarlandı) - harfler solda/numpad sağda,
-     büyük dokunma tuşları, sol/sağ dock + boyut kontrolü, EKRAN DIŞINA HİÇ TAŞMAZ (fixed +
-     dock pozisyonlarıyla sınırlı, free-drag değil). Hiçbir alanda OTOMATİK açılmaz - sadece
-     "⌨ Klavye" ile elle açılır (ana barkod alanını fiziksel tarayıcıdan hiç ayırmaz).
-     Odaklanılan son metin alanına, imleç konumuna yazar - bkz. restaurant-pos.js. -->
-<div class="pos-virtual-keyboard" id="pos-virtual-keyboard" data-dock="left" data-size="md" style="display:none;">
-    <div class="pos-vk-toolbar">
-        <button type="button" class="pos-vk-tool" data-vk-action="dock-left" title="Sola yasla">◀</button>
-        <button type="button" class="pos-vk-tool" data-vk-action="dock-right" title="Sağa yasla">▶</button>
+<!-- Klavye (2026-09-05 teknik doküman madde 7) - harfler solda/numpad sağda, serbestçe
+     sürüklenebilir (üst çubuğu tutup taşınır, EKRAN DIŞINA HİÇ TAŞMAZ - JS clamp eder), +/-
+     ile kademeli büyütülüp küçültülebilir, son konum/boyut bu terminalde hatırlanır (bkz.
+     restaurant-pos.js, localStorage). Hiçbir alanda OTOMATİK açılmaz - sadece "⌨ Klavye" ile
+     elle açılır. Odaklanılan son metin alanına, imleç konumuna yazar. -->
+<div class="pos-virtual-keyboard" id="pos-virtual-keyboard" style="display:none;">
+    <div class="pos-vk-toolbar" id="pos-vk-drag-handle" title="Taşımak için tutup sürükleyin">
         <button type="button" class="pos-vk-tool" data-vk-action="size-down" title="Küçült">－</button>
         <button type="button" class="pos-vk-tool" data-vk-action="size-up" title="Büyüt">＋</button>
         <button type="button" class="pos-vk-tool pos-vk-tool-close" data-action="close" title="Kapat">✕</button>

@@ -742,9 +742,14 @@
 /* Sanal klavye (madde 17, 2026-09-04 baştan tasarlandı) - harfler solda/numpad sağda, sol/sağ
    dock + boyut kontrolü. EKRAN DIŞINA TAŞMAZ: her zaman fixed + bir köşeye sabit (free-drag
    DEĞİL), max-width/max-height viewport'a göre sınırlı, taşarsa kendi içinde kayar. */
+/* Klavye (2026-09-05 teknik doküman madde 7) - serbestçe sürüklenebilir (fixed left/top, JS
+   pointer-drag ile ayarlanır, EKRAN DIŞINA ÇIKMAZ - JS her sürüklemede viewport sınırına
+   clamp eder), +/- ile kademeli (--vk-scale CSS değişkeni) büyütülüp küçültülebilir, son
+   konum/boyut bu terminalde (localStorage) hatırlanır. */
 .pos-virtual-keyboard {
     position: fixed;
     bottom: 12px;
+    left: 12px;
     z-index: 1080;
     background: var(--pos-navy, #0B2239);
     border-radius: 12px;
@@ -753,25 +758,31 @@
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
     overflow: auto;
+    --vk-scale: 1;
 }
-.pos-virtual-keyboard[data-dock="left"] { left: 12px; right: auto; }
-.pos-virtual-keyboard[data-dock="right"] { right: 12px; left: auto; }
 
 .pos-vk-toolbar {
     display: flex;
     justify-content: flex-end;
     gap: 0.3rem;
     margin-bottom: 0.4rem;
+    cursor: move;
+    touch-action: none;
+    padding: 0.25rem;
+    border-radius: 6px;
 }
+.pos-vk-toolbar:active { background: rgba(255,255,255,.06); }
 .pos-vk-tool {
-    min-width: 2rem;
-    min-height: 2rem;
+    min-width: 2.6rem;
+    min-height: 2.6rem;
     border: none;
     border-radius: 6px;
     background: #16324E;
     color: #fff;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    touch-action: none;
 }
 .pos-vk-tool-close { background: #7a2b2b; margin-left: 0.5rem; }
 
@@ -796,18 +807,15 @@
 }
 
 .pos-virtual-keyboard button[data-key], .pos-virtual-keyboard button[data-action] {
-    min-width: 2.6rem;
-    min-height: 2.6rem;
+    min-width: calc(2.6rem * var(--vk-scale, 1));
+    min-height: calc(2.6rem * var(--vk-scale, 1));
     border: none;
     border-radius: 7px;
     background: #16324E;
     color: #fff;
-    font-size: 1rem;
+    font-size: calc(1rem * var(--vk-scale, 1));
     cursor: pointer;
 }
-/* Boyut kontrolü (data-size) - "kontrol edilebilir şekilde yeniden boyutlandırılabilir". */
-.pos-virtual-keyboard[data-size="sm"] button[data-key], .pos-virtual-keyboard[data-size="sm"] button[data-action] { min-width: 2rem; min-height: 2rem; font-size: 0.82rem; }
-.pos-virtual-keyboard[data-size="lg"] button[data-key], .pos-virtual-keyboard[data-size="lg"] button[data-action] { min-width: 3.4rem; min-height: 3.4rem; font-size: 1.25rem; }
 
 .pos-virtual-keyboard button:active {
     background: var(--pos-gold);
@@ -815,8 +823,8 @@
 }
 
 .pos-virtual-keyboard button.pos-vk-wide {
-    min-width: 4.2rem;
-    font-size: 0.82rem;
+    min-width: calc(4.2rem * var(--vk-scale, 1));
+    font-size: calc(0.82rem * var(--vk-scale, 1));
 }
 
 .pos-virtual-keyboard button[data-action="backspace"] {
@@ -824,7 +832,7 @@
 }
 
 .pos-virtual-keyboard button.pos-vk-space {
-    min-width: 10rem;
+    min-width: calc(10rem * var(--vk-scale, 1));
 }
 .pos-virtual-keyboard button.pos-vk-numpad-bs {
     background: #7a2b2b;

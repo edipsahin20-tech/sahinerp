@@ -896,26 +896,107 @@
         });
 
         toggleBtn.addEventListener('click', function () {
-            keyboardEl.style.display = keyboardEl.style.display === 'none' ? '' : 'none';
+            var opening = keyboardEl.style.display === 'none';
+            keyboardEl.style.display = opening ? '' : 'none';
+            // Ekran boyutu son kaydedilen konumdan bu yana küçülmüş olabilir (ör. farklı bir
+            // monitör) - gizliyken offsetWidth/Height 0 döndüğü için ilk yüklemedeki clamp
+            // güvenilir değildi, açılırken YENİDEN clamp edilir.
+            if (opening && typeof applyState === 'function') applyState(currentState());
         });
 
-        // Dock (sol/sağ) + boyut kontrolü (madde 17: "taşınabilir - sol veya sağ", "kontrol
-        // edilebilir şekilde yeniden boyutlandırılabilir"). Free-drag DEĞİL - bilinçli olarak
-        // her zaman bir köşeye sabitlenir ki EKRAN DIŞINA HİÇ TAŞMASIN.
-        var SIZES = ['sm', 'md', 'lg'];
-        keyboardEl.querySelector('[data-vk-action="dock-left"]').addEventListener('click', function () {
-            keyboardEl.setAttribute('data-dock', 'left');
-        });
-        keyboardEl.querySelector('[data-vk-action="dock-right"]').addEventListener('click', function () {
-            keyboardEl.setAttribute('data-dock', 'right');
-        });
+        // Serbest sürükleme + kademeli boyutlandırma + kalıcı hatırlama (2026-09-05 teknik
+        // doküman madde 7: "fare/dokunma ile serbestçe sürüklenebilecek; ekran sınırlarının
+        // dışına çıkamayacak", "+ ve - boyut butonları daha büyük dokunma hedeflerine sahip
+        // olacak", "son konum ve boyutunu kullanıcı/terminal bazında hatırlayacak"). Terminal
+        // bazında hatırlama için localStorage kullanılıyor - sunucuya hiç gitmiyor, o yüzden
+        // gerçekten "bu bilgisayar/terminal" bazlı.
+        var VK_STATE_KEY = 'sahinsoft-pos-keyboard-state';
+        var MIN_SCALE = 0.7, MAX_SCALE = 1.6, SCALE_STEP = 0.1;
+
+        function loadState() {
+            try { return JSON.parse(window.localStorage.getItem(VK_STATE_KEY) || 'null') || {}; }
+            catch (e) { return {}; }
+        }
+        function saveState(state) {
+            try { window.localStorage.setItem(VK_STATE_KEY, JSON.stringify(state)); } catch (e) { /* yoksay */ }
+        }
+
+        function clampPosition(left, top) {
+            var maxLeft = Math.max(0, window.innerWidth - keyboardEl.offsetWidth);
+            var maxTop = Math.max(0, window.innerHeight - keyboardEl.offsetHeight);
+            return { left: Math.min(Math.max(left, 0), maxLeft), top: Math.min(Math.max(top, 0), maxTop) };
+        }
+
+        function applyState(state) {
+            var scale = state.scale || 1;
+            keyboardEl.style.setProperty('--vk-scale', scale);
+            if (state.left != null && state.top != null) {
+                var clamped = clampPosition(state.left, state.top);
+                keyboardEl.style.left = clamped.left + 'px';
+                keyboardEl.style.top = clamped.top + 'px';
+                keyboardEl.style.bottom = 'auto';
+            }
+        }
+
+        function currentState() {
+            var rect = keyboardEl.getBoundingClientRect();
+            var scale = parseFloat(keyboardEl.style.getPropertyValue('--vk-scale')) || 1;
+            return { left: rect.left, top: rect.top, scale: scale };
+        }
+
+        applyState(loadState());
+
         keyboardEl.querySelector('[data-vk-action="size-down"]').addEventListener('click', function () {
-            var idx = Math.max(0, SIZES.indexOf(keyboardEl.getAttribute('data-size')) - 1);
-            keyboardEl.setAttribute('data-size', SIZES[idx]);
+            var s = currentState();
+            s.scale = Math.max(MIN_SCALE, Math.round((s.scale - SCALE_STEP) * 10) / 10);
+            applyState(s);
+            saveState(s);
         });
         keyboardEl.querySelector('[data-vk-action="size-up"]').addEventListener('click', function () {
-            var idx = Math.min(SIZES.length - 1, SIZES.indexOf(keyboardEl.getAttribute('data-size')) + 1);
-            keyboardEl.setAttribute('data-size', SIZES[idx]);
+            var s = currentState();
+            s.scale = Math.min(MAX_SCALE, Math.round((s.scale + SCALE_STEP) * 10) / 10);
+            applyState(s);
+            saveState(s);
+        });
+
+        var dragHandle = document.getElementById('pos-vk-drag-handle');
+        var dragging = false, dragStartX = 0, dragStartY = 0, startLeft = 0, startTop = 0;
+
+        function onDragStart(clientX, clientY) {
+            dragging = true;
+            var rect = keyboardEl.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            dragStartX = clientX;
+            dragStartY = clientY;
+        }
+        function onDragMove(clientX, clientY) {
+            if (!dragging) return;
+            var clamped = clampPosition(startLeft + (clientX - dragStartX), startTop + (clientY - dragStartY));
+            keyboardEl.style.left = clamped.left + 'px';
+            keyboardEl.style.top = clamped.top + 'px';
+            keyboardEl.style.bottom = 'auto';
+        }
+        function onDragEnd() {
+            if (!dragging) return;
+            dragging = false;
+            saveState(currentState());
+        }
+
+        dragHandle.addEventListener('pointerdown', function (e) {
+            if (e.target.closest('button')) return; // +/-/✕ tuşları sürüklemeyi başlatmasın
+            dragHandle.setPointerCapture(e.pointerId);
+            onDragStart(e.clientX, e.clientY);
+        });
+        dragHandle.addEventListener('pointermove', function (e) { onDragMove(e.clientX, e.clientY); });
+        dragHandle.addEventListener('pointerup', onDragEnd);
+        dragHandle.addEventListener('pointercancel', onDragEnd);
+
+        // Pencere yeniden boyutlanırsa (ör. tarayıcı boyutu değişirse) klavye ekran dışında
+        // kalmasın diye konum yeniden clamp edilir.
+        window.addEventListener('resize', function () {
+            if (keyboardEl.style.display === 'none') return;
+            applyState(currentState());
         });
     })();
 
