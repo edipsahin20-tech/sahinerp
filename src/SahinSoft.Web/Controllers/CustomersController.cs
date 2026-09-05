@@ -16,7 +16,7 @@ public sealed class CustomersController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator) : Controller
 {
-    public async Task<IActionResult> Index(string? search, bool? isActive)
+    public async Task<IActionResult> Index(string? search, bool? isActive, bool? onlyCollectionCari)
     {
         var query = dbContext.Customers
             .AsNoTracking()
@@ -34,6 +34,13 @@ public sealed class CustomersController(
         if (isActive.HasValue)
         {
             query = query.Where(x => x.IsActive == isActive.Value);
+        }
+
+        // Restoran Ayarları > Tahsilat Carileri kısayolu (madde 26/14) - Trendyol/Getir gibi
+        // yalnızca "Tahsilat Carisi" işaretli müşterileri listeler.
+        if (onlyCollectionCari == true)
+        {
+            query = query.Where(x => x.IsCollectionCari);
         }
 
         var customers = await query.ToListAsync();
@@ -64,6 +71,7 @@ public sealed class CustomersController(
 
         ViewBag.Search = search;
         ViewBag.IsActive = isActive;
+        ViewBag.OnlyCollectionCari = onlyCollectionCari;
         return View(model);
     }
 

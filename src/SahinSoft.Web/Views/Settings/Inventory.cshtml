@@ -147,6 +147,18 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Modül Görünürlüğü (Sol Ana Menü)</div>
+        <div class="card-body">
+            <p class="text-secondary small mb-3">Kapatılan modül sol ana menüden tamamen kaldırılır (butonlardan farklı - bu modülün TAMAMI). Restoran modülü kapalıysa bunların hiçbiri görünmez, bu ayarlar sadece Restoran Modülü açıkken geçerlidir.</p>
+            <div class="row row-cols-2 row-cols-md-3 g-2">
+                <div class="col"><div class="form-check form-switch"><input asp-for="ShowTableSaleNav" class="form-check-input" /><label asp-for="ShowTableSaleNav" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="ShowSelfSaleNav" class="form-check-input" /><label asp-for="ShowSelfSaleNav" class="form-check-label"></label></div></div>
+                <div class="col"><div class="form-check form-switch"><input asp-for="ShowPackageNav" class="form-check-input" /><label asp-for="ShowPackageNav" class="form-check-label"></label></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Sağ İşlem Menüsü (Sistem Geneli)</div>
         <div class="card-body">
             <p class="text-secondary small mb-3">Kapatılan buton restoran ekranında HERKESTEN gizlenir - bu "1. katman" (sistem geneli). Kullanıcı/profil bazlı "2. katman" için Ayarlar > Yetki Profilleri'ne bakın. İkisi de açık olmalı ki buton görünsün.</p>

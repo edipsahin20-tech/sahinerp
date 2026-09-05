@@ -14,4 +14,9 @@ public sealed class RestaurantShellViewModel
     public int ActiveTableCount { get; set; }
     public int TotalTableCount { get; set; }
     public decimal OpenCheckTotal { get; set; }
+
+    // Madde 26 (Ayarlar, 2026-09-05) - sol ana menüde bu 3 modülün kendisi görünsün mü.
+    public bool ShowTableSaleNav { get; set; } = true;
+    public bool ShowSelfSaleNav { get; set; } = true;
+    public bool ShowPackageNav { get; set; } = true;
 }

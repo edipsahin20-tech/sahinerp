@@ -133,6 +133,9 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.EnableComplimentaryReceiptButton = model.EnableComplimentaryReceiptButton;
         settings.EnableReceiptListButton = model.EnableReceiptListButton;
         settings.EnableClearOrderButton = model.EnableClearOrderButton;
+        settings.ShowTableSaleNav = model.ShowTableSaleNav;
+        settings.ShowSelfSaleNav = model.ShowSelfSaleNav;
+        settings.ShowPackageNav = model.ShowPackageNav;
         settings.FiscalDeviceType = model.FiscalDeviceType;
         settings.FiscalAgentUrl = model.FiscalAgentUrl;
         settings.OrderToDispatchPurchaseAutoApprove = model.OrderToDispatchPurchaseAutoApprove;
@@ -192,6 +195,9 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         EnableComplimentaryReceiptButton = settings.EnableComplimentaryReceiptButton,
         EnableReceiptListButton = settings.EnableReceiptListButton,
         EnableClearOrderButton = settings.EnableClearOrderButton,
+        ShowTableSaleNav = settings.ShowTableSaleNav,
+        ShowSelfSaleNav = settings.ShowSelfSaleNav,
+        ShowPackageNav = settings.ShowPackageNav,
         FiscalDeviceType = settings.FiscalDeviceType,
         FiscalAgentUrl = settings.FiscalAgentUrl,
         OrderToDispatchPurchaseAutoApprove = settings.OrderToDispatchPurchaseAutoApprove,

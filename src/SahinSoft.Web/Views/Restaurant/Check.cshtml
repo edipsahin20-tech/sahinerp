@@ -940,6 +940,14 @@
     }
     <script id="pos-catalog-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Catalog, catalogJsonOptions))</script>
     <script id="pos-financial-accounts-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts, catalogJsonOptions))</script>
+    <!-- Kasa Tanımları (madde 27) - kasiyerin şubesine bağlı kasadan çözülen, ödeme yöntemine göre
+         GERÇEK hedef hesap. Kasa tanımlı değilse üçü de null kalır, JS eski davranışa (ilk hesap)
+         geri düşer - bkz. restaurant-close-payment.js resolveFinancialAccountId(). -->
+    <script id="pos-cash-register-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+        cash = Model.CashRegisterCashAccountId,
+        creditCard = Model.CashRegisterCreditCardAccountId,
+        mealCard = Model.CashRegisterMealCardAccountId
+    }, catalogJsonOptions))</script>
     <script id="pos-fiscal-lines-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(fiscalLines, catalogJsonOptions))</script>
     <script id="pos-cancellation-reasons-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CancellationReasonPresets, catalogJsonOptions))</script>
     <script id="pos-quick-notes-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickNotePresets, catalogJsonOptions))</script>

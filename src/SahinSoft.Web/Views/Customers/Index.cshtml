@@ -12,8 +12,8 @@
 
 <div class="erp-page-head">
     <div>
-        <h1>Cari Listesi</h1>
-        <p>Cari hesapları, bakiyeleri ve risk durumlarını yönetin.</p>
+        <h1>@(ViewBag.OnlyCollectionCari == true ? "Tahsilat Carileri" : "Cari Listesi")</h1>
+        <p>@(ViewBag.OnlyCollectionCari == true ? "Trendyol/Getir gibi platform tahsilat carileri (Müşteriler > \"Tahsilat Carisi\" işaretli kayıtlar)." : "Cari hesapları, bakiyeleri ve risk durumlarını yönetin.")</p>
     </div>
     <div class="erp-page-head-actions">
         <button type="button" class="btn-erp-outline-secondary" data-csv-export="#customersTable" data-csv-name="cari-listesi">

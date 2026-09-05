@@ -8,6 +8,20 @@
     var closeUrl = root.getAttribute('data-close-url');
     var payableTotal = parseFloat(root.getAttribute('data-payable-total')) || 0;
     var financialAccounts = JSON.parse(document.getElementById('pos-financial-accounts-data').textContent || '[]');
+    // Kasa Tanımları (madde 27, 2026-09-05) - kasiyerin şubesine bağlı kasadan çözülen, ödeme
+    // yöntemine göre GERÇEK hedef hesap. Öncesinde HER ödeme yöntemi (Nakit/Kredi Kartı/Yemek
+    // Çeki) sabit olarak financialAccounts[0]'a (alfabetik ilk hesap) gidiyordu - hangi şubenin
+    // hangi kasası kullanıldığı hiç izlenmiyor, Nakit ve Kredi Kartı aynı hesaba karışıyordu.
+    var cashRegisterData = JSON.parse(document.getElementById('pos-cash-register-data') ? document.getElementById('pos-cash-register-data').textContent || '{}' : '{}');
+    function resolveFinancialAccountId(method) {
+        var byRegister = method === 1 ? cashRegisterData.cash
+            : method === 2 ? cashRegisterData.creditCard
+            : method === 3 ? (cashRegisterData.mealCard || cashRegisterData.creditCard)
+            : null;
+        if (byRegister) { return byRegister; }
+        // Kasa tanımlı değilse (henüz yapılandırılmamış şube) eski davranışa geri düş.
+        return financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null;
+    }
 
     // Kısmi ödeme (madde 4-8) - sunucuda kalıcı, muhasebeye HİÇ dokunmayan RestaurantCheckPendingPayment
     // kayıtları (bkz. RestaurantPostingService). Adisyona Dön modalı kapatır ama bu diziyi
@@ -206,9 +220,10 @@
     // normal ödeme modalı bu satırla ön dolu açılır, kasiyer elle düzeltebilir.
     window.RestaurantQuickPay = function (method) {
         if (payableTotal <= 0) return;
+        var quickMethod = parseInt(method, 10);
         var quickLine = {
-            method: parseInt(method, 10),
-            financialAccountId: financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null,
+            method: quickMethod,
+            financialAccountId: resolveFinancialAccountId(quickMethod),
             amount: payableTotal
         };
         submitClosePayment([quickLine], function (retailSale) {
@@ -300,7 +315,7 @@
             var amount = Math.min(typed, rem);
             if (amount <= 0) { return; }
             var method = parseInt(btn.getAttribute('data-method'), 10);
-            var financialAccountId = financialAccounts.length > 0 ? financialAccounts[0].financialAccountId : null;
+            var financialAccountId = resolveFinancialAccountId(method);
             var collectionCariId = btn.getAttribute('data-collection-cari-id');
 
             function addPending() {

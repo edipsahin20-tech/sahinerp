@@ -107,6 +107,14 @@ public sealed class InventorySettings : EntityBase
     public bool EnableReceiptListButton { get; set; } = true;
     public bool EnableClearOrderButton { get; set; } = true;
 
+    // Madde 26 (Ayarlar, 2026-09-05) - "Self Satış görünsün mü / Masa Satış görünsün mü / Paket
+    // görünsün mü" - sol ana menüdeki bu 3 modülün kendisini gösterir/gizler (yukarıdaki
+    // EnableXButton'lardan FARKLI katman - onlar bir modülÜN İÇİNDEKİ tek tek butonlar, bunlar
+    // modülün TAMAMI). Varsayılan HEPSİ AÇIK - mevcut davranışı bozmamak için.
+    public bool ShowTableSaleNav { get; set; } = true;
+    public bool ShowSelfSaleNav { get; set; } = true;
+    public bool ShowPackageNav { get; set; } = true;
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }

@@ -86,6 +86,15 @@ public sealed class RestaurantCheckViewModel
     public List<RestaurantCatalogCategoryViewModel> Catalog { get; set; } = [];
     public List<RestaurantFinancialAccountViewModel> FinancialAccounts { get; set; } = [];
 
+    // Kasa Tanımları (madde 27, 2026-09-05) - kasiyerin şubesine bağlı kasadan çözülen, ödeme
+    // yöntemine göre GERÇEK hedef hesap. Öncesinde JS her zaman FinancialAccounts[0]'ı (alfabetik
+    // ilk hesap) kullanıyordu - Nakit ve Kredi Kartı aynı hesaba yazılıyordu, hangi şubenin hangi
+    // kasası kullanıldığı hiç izlenmiyordu. Kasa tanımlı değilse (henüz yapılandırılmamış şube)
+    // null kalır, JS eski davranışa (ilk hesap) geri düşer.
+    public int? CashRegisterCashAccountId { get; set; }
+    public int? CashRegisterCreditCardAccountId { get; set; }
+    public int? CashRegisterMealCardAccountId { get; set; }
+
     // Kısmi ödeme (madde 4-8) - sunucuda kalıcı olarak kayıtlı, henüz kapanmamış ödemeler. Ana
     // ekranda Ödenen/Kalan özetini ve "Ödemeyi Al" modalının ilk açılışını doldurur.
     public List<RestaurantPendingPaymentViewModel> PendingPayments { get; set; } = [];

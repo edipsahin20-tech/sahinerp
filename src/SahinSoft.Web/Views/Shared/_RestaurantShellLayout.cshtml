@@ -46,9 +46,21 @@
         <aside class="rest-sidebar">
             <div class="rest-nav">
                 <a class="@NavClass("dashboard")" href="@Url.Action("Index", "RestaurantDashboard")"><span>⌂</span><div><b>Dashboard</b><small>Günlük kontrol merkezi</small></div></a>
-                <a class="@NavClass("tables")" href="@Url.Action("Index", "Restaurant")"><span>▦</span><div><b>Masa Satış</b><small>Salon &amp; adisyon</small></div></a>
-                <a class="@NavClass("package")" href="@Url.Action("Index", "RestaurantPackage")"><span>▣</span><div><b>Paket</b><small>Paket &amp; gel-al</small></div></a>
-                <a class="@NavClass("self")" href="@Url.Action("Index", "RestaurantSelfSale")"><span>◇</span><div><b>Self Satış</b><small>Hızlı satış</small></div></a>
+                @* Madde 26 (Ayarlar, 2026-09-05) - "Self Satış görünsün mü / Masa Satış görünsün mü /
+                   Paket görünsün mü" - InventorySettings'teki 3 bayrak (bkz. RestaurantControllerBase.
+                   BuildShellAsync). Kapalıysa modülün kendisi menüden TAMAMEN kalkar. *@
+                @if (shell.ShowTableSaleNav)
+                {
+                    <a class="@NavClass("tables")" href="@Url.Action("Index", "Restaurant")"><span>▦</span><div><b>Masa Satış</b><small>Salon &amp; adisyon</small></div></a>
+                }
+                @if (shell.ShowPackageNav)
+                {
+                    <a class="@NavClass("package")" href="@Url.Action("Index", "RestaurantPackage")"><span>▣</span><div><b>Paket</b><small>Paket &amp; gel-al</small></div></a>
+                }
+                @if (shell.ShowSelfSaleNav)
+                {
+                    <a class="@NavClass("self")" href="@Url.Action("Index", "RestaurantSelfSale")"><span>◇</span><div><b>Self Satış</b><small>Hızlı satış</small></div></a>
+                }
                 <a class="@NavClass("reports")" href="@Url.Action("Index", "RestaurantReports")"><span>▥</span><div><b>Raporlar</b><small>Ciro &amp; vardiya</small></div></a>
                 <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>
             </div>

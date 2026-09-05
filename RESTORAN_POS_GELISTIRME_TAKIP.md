@@ -64,7 +64,7 @@ piksel eşleşmediği fark edildi:
 | 22 | Sağ İşlem Menüsü parametrik/yetki kontrollü | ✅ tamam + test edildi (2026-09-05) |
 | 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | ✅ tamam + test edildi (2026-09-05) - "kişi sayısı sorulsun mu" zaten çalışıyordu (önceki oturumda doğrulandı); Masa Satış'ın kendisi (5'li özet kart satırı, renkli üst çizgili masa kartları, salon sekmeleri) mockup ile zaten eşleşiyor, tarayıcıda tekrar karşılaştırılıp doğrulandı; aynı görsel setinden Self Satış buton düzeni fidelity gap'i de bu oturumda düzeltildi (bkz. yukarıdaki Referans görseller notu) |
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
-| 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ⏳ |
+| 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ✅ tamam + test edildi (2026-09-05) |
 | 28-34 | Raporlar (ortak dönem filtresi, Kasiyer/X/Z/Z Listesi) | ⏳ |
 | 35 | Paket — mimariyi bozma, derin geliştirme sonraki pakette | 🔒 dokunulmuyor (bilerek) |
 | 36 | Test ve teslim | ⏳ her madde kendi içinde test edilecek |
@@ -142,6 +142,59 @@ kalıyor, JS erişimi hâlâ güvenli).
 Migration: `AddRightMenuVisibilityFlags` (20260904211751) - üretildi, elle düzeltildi (yukarıdaki
 UPDATE bloğu), `dotnet ef database update` ile uzak DB'ye uygulandı, `SahinSoftDb_Migration.sql`
 idempotent script'i hem `SahinSoft.DbSetup/` hem `deploy/` altına kopyalandı.
+
+### Madde 26-27 — Ayarlar reorganizasyonu + Kasa Tanımları, 2026-09-05
+
+**Madde 26 (Ayarlar):** Sol ana menüde "Ayarlar, Mutfak'ın ÜSTÜNDE" gereksinimi bu oturumun
+DAHA ÖNCEKİ bir bölümünde zaten karşılanmıştı (`_RestaurantShellLayout.cshtml`, `RestaurantSettingsController`/Index hub'ı) - bu turda hub'a şu yeni kartlar eklendi: **Kasa Tanımları**,
+**Banka & Kasa Hesapları** (ana ERP'nin `FinancialAccountsController`'ına köprü - ayrı bir kopya
+YOK), **Tahsilat Carileri** (`Customers/Index?onlyCollectionCari=true` - yeni, küçük bir filtre
+parametresi eklendi, sayfa başlığı da buna göre değişiyor). Ayrıca **"Modül Görünürlüğü"** kartı
+(Ayarlar > Stok Parametreleri) eklendi: `InventorySettings.ShowTableSaleNav/ShowSelfSaleNav/
+ShowPackageNav` (3 yeni bool, varsayılan hepsi açık) - kapatılan modül sol ana menüden TAMAMEN
+kalkıyor (`RestaurantControllerBase.BuildShellAsync` → `RestaurantShellViewModel` → `_RestaurantShellLayout.cshtml`'deki `@if`). Trendyol/Yemeksepeti/Getir entegrasyonu ve özel POS/İmPOS
+cihaz eşleştirmesi BİLEREK bu pakete dahil edilmedi - Paket Operasyon Merkezi'nin derin
+geliştirmesiyle (madde 35, "sonraki çalışma paketi") aynı kapsam dışı sınıf; hub'da bunu açıklayan
+bir not var, sessizce atlanmadı.
+
+**Madde 27 (Kasa Tanımları) - gerçek bir muhasebe hatası bulundu ve düzeltildi:** İnceleme
+sırasında ortaya çıktı ki restoran ödemeleri (Nakit/Kredi Kartı/Yemek Çeki fark etmeksizin) HER
+ZAMAN `FinancialAccounts` listesinin alfabetik İLK kaydına (`financialAccounts[0]`) yazılıyordu -
+hangi ödeme yöntemi seçilirse seçilsin aynı hesaba gidiyordu, şube bazlı hiçbir ayrım yoktu. Yeni
+`RestaurantCashRegister` tablosu (Branch FK + CashFinancialAccountId + CreditCardFinancialAccountId
++ nullable MealCardFinancialAccountId + Note) bu şube→kasa→hesap eşlemesini gerçek anlamda
+tanımlanabilir hale getirdi. `RestaurantCashRegistersController` (RestaurantSectionsController ile
+AYNI CRUD deseni - Evrak toolbar, lookup-picker Şube/Hesap seçimi). `RestaurantController.Check`
+GET artık kasiyerin şubesine bağlı AKTİF kasayı çözüp (yoksa merkez şubenin kasasına düşer, o da
+yoksa eski davranışa - ilk hesap - geri düşer) `CashRegisterCashAccountId`/`CreditCardAccountId`/
+`MealCardAccountId`'yi `pos-cash-register-data` JSON bloğu ile JS'e veriyor;
+`restaurant-close-payment.js`'teki YENİ `resolveFinancialAccountId(method)` fonksiyonu artık ödeme
+yöntemine göre DOĞRU hesabı seçiyor (`financialAccounts[0]` sabit seçimi tamamen kaldırıldı, 2
+çağrı noktası - RestaurantQuickPay ve pay-method-btn handler'ı - güncellendi). Varsayılan seed
+(`RestaurantCashRegister` Id=1, "Ana Kasa", Merkez Şube, üç hesabı da mevcut `FinancialAccount`
+Id=1'e - "Merkez Kasa" - eşleyen) eski davranışı BİREBİR korur, hiçbir kurulumu bozmaz; admin yeni
+bir banka/POS hesabı tanımlayıp burada eşleştirdiğinde ayrışma gerçek olur.
+
+**Test (tarayıcıda, 2026-09-05):** (1) Kasa Tanımları CRUD - "Ana Kasa" kaydı Düzenle ile açıldı,
+tüm lookup alanları (Şube/Nakit/Kredi Kartı/Yemek Kartı hesabı) doğru dolu geldi. (2) Yeni bir
+banka hesabı ("YAPI KREDİ NAKİT HESABI", zaten DB'de mevcut aktif bir hesap) Kredi Kartı slotuna
+atandı, kaydedildi - Check ekranındaki `pos-cash-register-data` JSON'ının `creditCard` alanı 1'den
+2'ye değişti, `cash`/`mealCard` 1'de kaldı (doğru ayrışma). (3) UÇTAN UCA gerçek işlem: Self
+Satış'ta 125,00 TL'lik bir ÇORBA satışı Kredi Kartı ile hızlı ödendi; `/Reports/
+FinancialTransactions?accountType=Bank` ekranında "YAPI KREDİ NAKİT HESABI" hesabına +125.00 TL
+"Restoran tahsilatı - AD.00087" hareketi GERÇEKTEN düştüğü doğrulandı (önceden bu tutar yanlışlıkla
+Merkez Nakit Kasası'na yazılırdı). (4) Modül Görünürlüğü - "Paket görünsün mü" kapatılıp sol
+menüden Paket'in kalktığı, sonra tekrar açılıp geri geldiği doğrulandı.
+
+Migrationlar: `AddRestaurantCashRegisters` (yeni tablo + Restrict FK'lar + "Ana Kasa" seed'i),
+`AddModuleNavVisibility` (3 yeni InventorySettings kolonu + mevcut Id=1 satırı için UpdateData).
+İkisi de uzak DB'ye uygulandı, `SahinSoftDb_Migration.sql` hem `SahinSoft.DbSetup/` hem `deploy/`
+altına kopyalandı.
+
+**Yan bulgu (bu maddeyle ilgisiz, kod incelemesi sırasında fark edildi):** `ApplicationDbContextFactory.cs`
+(EF Core design-time factory) yerel `Server=.\SQLEXPRESS`'e hard-code'luydu - bu madde 22'de zaten
+bulunup düzeltilmişti (bkz. o bölüm), burada tekrar not düşülmüyor, sadece bu Kasa Tanımları
+migration'ının da SORUNSUZ uygulanabilmesinin nedeni bu önceki düzeltme.
 
 ### Madde 4-8 (Ödeme Al ekranı / Parçalı Ödeme / Tutarı Bölme / Ödeme İptal / Adisyona Dön) — MİMARİ BULGU, 2026-09-04
 

@@ -1,0 +1,94 @@
+@model SahinSoft.Web.Models.RestaurantCashRegisterFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Kasa Tanımını Düzenle" : "Yeni Kasa Tanımı";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Kasa Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus placeholder="Örn: Restoran Kasa 1" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BranchId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.BranchId), Id = nameof(Model.BranchId),
+                        Value = Model.BranchId?.ToString(),
+                        DisplayValue = Model.BranchDisplay,
+                        Endpoint = Url.Action("Branches", "Lookup")!,
+                        Title = "Şube Seç", Placeholder = "Şube seçin" })" />
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel mt-3">
+        <div class="erp-panel-header">Bağlantılar</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small">Bu şubede alınan restoran ödemeleri seçilen yönteme göre burada tanımlı hesaba işlenir.</p>
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="CashFinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CashFinancialAccountId), Id = nameof(Model.CashFinancialAccountId),
+                        Value = Model.CashFinancialAccountId?.ToString(),
+                        DisplayValue = Model.CashFinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Nakit Hesabı Seç", Placeholder = "Hesap seçin" })" />
+                    <span asp-validation-for="CashFinancialAccountId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CreditCardFinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CreditCardFinancialAccountId), Id = nameof(Model.CreditCardFinancialAccountId),
+                        Value = Model.CreditCardFinancialAccountId?.ToString(),
+                        DisplayValue = Model.CreditCardFinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Kredi Kartı/Banka Hesabı Seç", Placeholder = "Hesap seçin" })" />
+                    <span asp-validation-for="CreditCardFinancialAccountId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="MealCardFinancialAccountId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.MealCardFinancialAccountId), Id = nameof(Model.MealCardFinancialAccountId),
+                        Value = Model.MealCardFinancialAccountId?.ToString(),
+                        DisplayValue = Model.MealCardFinancialAccountDisplay,
+                        Endpoint = Url.Action("FinancialAccounts", "Lookup")!,
+                        Title = "Yemek Kartı Hesabı Seç", Placeholder = "Hesap seçin (opsiyonel)" })" />
+                    <span asp-validation-for="MealCardFinancialAccountId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="Note"></label>
+                    <input asp-for="Note" class="form-control" placeholder="Örn: yazar kasa/POS bağlantı notu" />
+                    <span asp-validation-for="Note" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 mt-3">
+                <div class="form-check form-switch">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -10322,3 +10322,142 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE TABLE [RestaurantCashRegisters] (
+        [Id] int NOT NULL IDENTITY,
+        [BranchId] int NOT NULL,
+        [Name] nvarchar(max) NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CashFinancialAccountId] int NOT NULL,
+        [CreditCardFinancialAccountId] int NOT NULL,
+        [MealCardFinancialAccountId] int NULL,
+        [Note] nvarchar(max) NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantCashRegisters] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RestaurantCashRegisters_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_RestaurantCashRegisters_FinancialAccounts_CashFinancialAccountId] FOREIGN KEY ([CashFinancialAccountId]) REFERENCES [FinancialAccounts] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_RestaurantCashRegisters_FinancialAccounts_CreditCardFinancialAccountId] FOREIGN KEY ([CreditCardFinancialAccountId]) REFERENCES [FinancialAccounts] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_RestaurantCashRegisters_FinancialAccounts_MealCardFinancialAccountId] FOREIGN KEY ([MealCardFinancialAccountId]) REFERENCES [FinancialAccounts] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'BranchId', N'CashFinancialAccountId', N'CreatedAtUtc', N'CreditCardFinancialAccountId', N'IsActive', N'MealCardFinancialAccountId', N'Name', N'Note', N'UpdatedAtUtc') AND [object_id] = OBJECT_ID(N'[RestaurantCashRegisters]'))
+        SET IDENTITY_INSERT [RestaurantCashRegisters] ON;
+    EXEC(N'INSERT INTO [RestaurantCashRegisters] ([Id], [BranchId], [CashFinancialAccountId], [CreatedAtUtc], [CreditCardFinancialAccountId], [IsActive], [MealCardFinancialAccountId], [Name], [Note], [UpdatedAtUtc])
+    VALUES (1, 1, 1, ''2026-07-27T00:00:00.0000000Z'', 1, CAST(1 AS bit), 1, N''Ana Kasa'', NULL, NULL)');
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'BranchId', N'CashFinancialAccountId', N'CreatedAtUtc', N'CreditCardFinancialAccountId', N'IsActive', N'MealCardFinancialAccountId', N'Name', N'Note', N'UpdatedAtUtc') AND [object_id] = OBJECT_ID(N'[RestaurantCashRegisters]'))
+        SET IDENTITY_INSERT [RestaurantCashRegisters] OFF;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCashRegisters_BranchId] ON [RestaurantCashRegisters] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCashRegisters_CashFinancialAccountId] ON [RestaurantCashRegisters] ([CashFinancialAccountId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCashRegisters_CreditCardFinancialAccountId] ON [RestaurantCashRegisters] ([CreditCardFinancialAccountId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantCashRegisters_MealCardFinancialAccountId] ON [RestaurantCashRegisters] ([MealCardFinancialAccountId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantCashRegisters_RecordId] ON [RestaurantCashRegisters] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905000917_AddRestaurantCashRegisters'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905000917_AddRestaurantCashRegisters', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905001344_AddModuleNavVisibility'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [ShowPackageNav] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905001344_AddModuleNavVisibility'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [ShowSelfSaleNav] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905001344_AddModuleNavVisibility'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [ShowTableSaleNav] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905001344_AddModuleNavVisibility'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [ShowPackageNav] = CAST(1 AS bit), [ShowSelfSaleNav] = CAST(1 AS bit), [ShowTableSaleNav] = CAST(1 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905001344_AddModuleNavVisibility'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905001344_AddModuleNavVisibility', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

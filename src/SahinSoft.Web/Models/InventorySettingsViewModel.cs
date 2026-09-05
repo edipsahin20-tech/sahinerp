@@ -117,6 +117,14 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Sipariş Sil")]
     public bool EnableClearOrderButton { get; set; } = true;
 
+    // Madde 26 (Ayarlar) - sol ana menüde modülün TAMAMININ görünürlüğü.
+    [Display(Name = "Masa Satış görünsün mü")]
+    public bool ShowTableSaleNav { get; set; } = true;
+    [Display(Name = "Self Satış görünsün mü")]
+    public bool ShowSelfSaleNav { get; set; } = true;
+    [Display(Name = "Paket görünsün mü")]
+    public bool ShowPackageNav { get; set; } = true;
+
     [Display(Name = "Yazar Kasa")]
     public FiscalDeviceType FiscalDeviceType { get; set; }
 

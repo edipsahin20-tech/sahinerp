@@ -72,6 +72,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     // Restoran Modülü Faz 1 (bkz. CLEAN_ROOM_DEVELOPMENT.md)
     public DbSet<RestaurantSection> RestaurantSections => Set<RestaurantSection>();
+    // Kasa Tanımları (madde 27, 2026-09-05) - şube bazlı ödeme yöntemi → FinancialAccount eşlemesi.
+    public DbSet<RestaurantCashRegister> RestaurantCashRegisters => Set<RestaurantCashRegister>();
     public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
     public DbSet<RestaurantTableSession> RestaurantTableSessions => Set<RestaurantTableSession>();
     public DbSet<RestaurantTableSessionMove> RestaurantTableSessionMoves => Set<RestaurantTableSessionMove>();
@@ -1988,6 +1990,31 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             Name = "Merkez Kasa",
             AccountType = FinancialAccountType.Cash,
             CurrencyCode = "TRY",
+            CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
+        });
+        // Kasa Tanımları (madde 27) - 3 ayrı FinancialAccount FK'sı (Cash/CreditCard/MealCard)
+        // aynı tabloya, hepsi varsayılan Cascade olsaydı SQL Server "multiple cascade paths"
+        // hatası verirdi - üçü de Restrict (Product/TaxRate deseniyle AYNI, bkz. yukarısı).
+        builder.Entity<RestaurantCashRegister>(entity =>
+        {
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CashFinancialAccount).WithMany().HasForeignKey(x => x.CashFinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreditCardFinancialAccount).WithMany().HasForeignKey(x => x.CreditCardFinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.MealCardFinancialAccount).WithMany().HasForeignKey(x => x.MealCardFinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // Varsayılan kasa - mevcut/yeni kurulumlarda ödemelerin ESKİ davranışla (tek "Merkez Kasa"
+        // hesabına) birebir aynı şekilde akmaya devam etmesi için (Edip'in "fresh install" kuralı:
+        // demo veri DEĞİL, CompanySettings/InventorySettings Id=1 satırlarıyla AYNI sınıf - işlevsel
+        // sistem varsayılanı). Admin yeni bir banka/POS hesabı tanımladığında buradan
+        // CreditCardFinancialAccountId'yi değiştirip ayırabilir.
+        builder.Entity<RestaurantCashRegister>().HasData(new RestaurantCashRegister
+        {
+            Id = 1,
+            BranchId = 1,
+            Name = "Ana Kasa",
+            CashFinancialAccountId = 1,
+            CreditCardFinancialAccountId = 1,
+            MealCardFinancialAccountId = 1,
             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc)
         });
     }

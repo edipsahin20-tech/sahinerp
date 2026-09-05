@@ -418,6 +418,23 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             })
             .ToListAsync();
 
+        // Kasa Tanımları (madde 27, 2026-09-05) - kasiyerin şubesine bağlı AKTİF kasadan ödeme
+        // yöntemi başına gerçek hesap. RestaurantControllerBase.BuildShellAsync'teki AYNI "kullanıcı
+        // branch'i yoksa merkez şube" deseni - tek şubeli kurulumlarda (bugünkü durum) zaten tek
+        // kasa/tek şube var, davranış değişmez; çok şubeli kurulumda artık GERÇEKTEN şubeye göre
+        // ayrışır (öncesinde her şubede aynı ilk hesaba yazıyordu).
+        var currentUserBranchId = await dbContext.Users
+            .AsNoTracking()
+            .Where(x => x.Id == CurrentUserId)
+            .Select(x => x.BranchId)
+            .SingleOrDefaultAsync();
+        var resolvedCashRegister = await dbContext.RestaurantCashRegisters
+            .AsNoTracking()
+            .Where(x => x.IsActive && (currentUserBranchId == x.BranchId || x.Branch.IsHeadOffice))
+            .OrderByDescending(x => currentUserBranchId == x.BranchId)
+            .Select(x => new { x.CashFinancialAccountId, x.CreditCardFinancialAccountId, x.MealCardFinancialAccountId })
+            .FirstOrDefaultAsync();
+
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
@@ -538,6 +555,9 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 })
                 .ToList(),
             FinancialAccounts = financialAccounts,
+            CashRegisterCashAccountId = resolvedCashRegister?.CashFinancialAccountId,
+            CashRegisterCreditCardAccountId = resolvedCashRegister?.CreditCardFinancialAccountId,
+            CashRegisterMealCardAccountId = resolvedCashRegister?.MealCardFinancialAccountId,
             PayableTotal = ComputeCheckRunningTotal(check.Id),
             PendingPayments = await dbContext.RestaurantCheckPendingPayments
                 .AsNoTracking()

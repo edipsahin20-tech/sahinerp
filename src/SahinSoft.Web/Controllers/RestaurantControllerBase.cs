@@ -66,6 +66,13 @@ public abstract class RestaurantControllerBase(ApplicationDbContext dbContext) :
             .Select(x => x.Quantity * x.UnitPriceSnapshot - x.DiscountAmountSnapshot)
             .SumAsync();
 
+        // Madde 26 (Ayarlar) - sol ana menüde Masa Satış/Self Satış/Paket'in kendisi görünsün mü.
+        var navVisibility = await dbContext.InventorySettings
+            .AsNoTracking()
+            .Where(x => x.Id == 1)
+            .Select(x => new { x.ShowTableSaleNav, x.ShowSelfSaleNav, x.ShowPackageNav })
+            .SingleOrDefaultAsync();
+
         return new RestaurantShellViewModel
         {
             ActivePage = ActivePage,
@@ -76,7 +83,10 @@ public abstract class RestaurantControllerBase(ApplicationDbContext dbContext) :
             KitchenPendingCount = kitchenPendingCount,
             ActiveTableCount = activeTableCount,
             TotalTableCount = totalTableCount,
-            OpenCheckTotal = openCheckTotal
+            OpenCheckTotal = openCheckTotal,
+            ShowTableSaleNav = navVisibility?.ShowTableSaleNav ?? true,
+            ShowSelfSaleNav = navVisibility?.ShowSelfSaleNav ?? true,
+            ShowPackageNav = navVisibility?.ShowPackageNav ?? true
         };
     }
 }

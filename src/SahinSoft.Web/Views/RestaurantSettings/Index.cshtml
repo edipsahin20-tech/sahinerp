@@ -34,4 +34,35 @@
             </div>
         </a>
     </div>
+    <div class="col-md-4">
+        <a asp-controller="RestaurantCashRegisters" asp-action="Index" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Kasa Tanımları</div>
+                <div class="text-secondary small">Şube bazlı kasa - Nakit/Kredi Kartı/Yemek Kartı ödemelerinin hangi hesaba işleneceği</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-controller="FinancialAccounts" asp-action="Index" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Banka &amp; Kasa Hesapları</div>
+                <div class="text-secondary small">Ana ERP'nin muhasebe hesap tanımları - Kasa Tanımları buradaki hesaplara bağlanır</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-controller="Customers" asp-action="Index" asp-route-onlyCollectionCari="true" class="erp-panel text-decoration-none d-block h-100" style="color:inherit;">
+            <div class="erp-panel-body">
+                <div class="fw-bold fs-5 mb-1">Tahsilat Carileri</div>
+                <div class="text-secondary small">Trendyol/Getir gibi platform ödemelerinin cari kayıtları</div>
+            </div>
+        </a>
+    </div>
 </div>
+
+<!-- Trendyol/Yemeksepeti/Getir entegrasyonu, POS/İmPOS cihaz eşleştirmesi ve cihaz/bağlantı
+     ayarları BİLEREK bu pakete dahil edilmedi - Paket Operasyon Merkezi'nin derin
+     geliştirmesiyle AYNI kapsam dışı sınıf (spec madde 35: "Bu bölüm daha sonra ayrıntılı
+     geliştirilecektir; mevcut aşamada mimariyi bozma"). Yazar Kasa/POS ayarları zaten
+     yukarıdaki "Modül / Stok Parametreleri" kartı altında mevcut. -->
+<p class="text-secondary small mt-3">Trendyol/Yemeksepeti/Getir entegrasyonu ve özel POS/İmPOS cihaz eşleştirmesi Paket Operasyon Merkezi'nin ayrıntılı geliştirmesiyle birlikte (sonraki çalışma paketi) eklenecektir.</p>
