@@ -65,7 +65,7 @@ piksel eşleşmediği fark edildi:
 | 23-24 | Masa Satış tasarım + kişi sayısı sorulsun mu | ✅ tamam + test edildi (2026-09-05) - "kişi sayısı sorulsun mu" zaten çalışıyordu (önceki oturumda doğrulandı); Masa Satış'ın kendisi (5'li özet kart satırı, renkli üst çizgili masa kartları, salon sekmeleri) mockup ile zaten eşleşiyor, tarayıcıda tekrar karşılaştırılıp doğrulandı; aynı görsel setinden Self Satış buton düzeni fidelity gap'i de bu oturumda düzeltildi (bkz. yukarıdaki Referans görseller notu) |
 | 25 | Mutfağa gönderilmiş ürün düzenleme yetkisi | ✅ tamam + test edildi (madde 9 ile birlikte) |
 | 26-27 | Ayarlar reorganizasyon + Kasa tanımları (şube bazlı) | ✅ tamam + test edildi (2026-09-05) |
-| 28-34 | Raporlar (ortak dönem filtresi, Kasiyer/X/Z/Z Listesi) | ⏳ |
+| 28-34 | Raporlar (ortak dönem filtresi, Kasiyer/X/Z/Z Listesi) | ✅ tamam + test edildi (2026-09-05) |
 | 35 | Paket — mimariyi bozma, derin geliştirme sonraki pakette | 🔒 dokunulmuyor (bilerek) |
 | 36 | Test ve teslim | ⏳ her madde kendi içinde test edilecek |
 
@@ -195,6 +195,86 @@ altına kopyalandı.
 (EF Core design-time factory) yerel `Server=.\SQLEXPRESS`'e hard-code'luydu - bu madde 22'de zaten
 bulunup düzeltilmişti (bkz. o bölüm), burada tekrar not düşülmüyor, sadece bu Kasa Tanımları
 migration'ının da SORUNSUZ uygulanabilmesinin nedeni bu önceki düzeltme.
+
+### Madde 28-34 — Raporlar (ortak dönem filtresi, dinamik ödeme dağılımı, Kasiyer Raporu), 2026-09-05
+
+**Madde 28 (ortak dönem filtresi):** `RestaurantReportsController.Index`'e yeni `period`
+parametresi (day/week/month/year, varsayılan day) eklendi. `ComputePeriodRange()` helper'ı
+seçilen döneme göre başlangıç/bitiş (haftalık: Pazartesi-Pazar, aylık: ayın tamamı, yıllık: yılın
+tamamı) hesaplayıp mevcut `dayStartUtc`/`dayEndUtc` değişkenlerine ATANIYOR - bu sayede aşağı akan
+TÜM sorgular (KPI'lar, ödeme dağılımı, Fiş Hareketleri listesi) değişiklik yapılmadan otomatik
+dönem-farkında hale geldi. Filtre pill'leri (Günlük/Haftalık/Aylık/Yıllık) yalnızca spec'in
+belirttiği sekmelerde gösteriliyor - **Fiş Hareketleri VE Kasiyer Raporu'nda** (ikisi de dönem
+kullanır), X/Z/Z Listesi'nde YOK (spec'in kendisi bunları hariç tutuyor). ◁/▷ gezinme butonları da
+seçilen döneme göre adım atıyor (günlükken 1 gün, haftalıkken 1 hafta, vs.).
+
+**Madde 29 (Günlük/Aylık Rapor):** İlk açılış zaten "day" varsayılanıyla Günlük. Ciro Akışı grafiği
+döneme göre eksen değiştiriyor: Günlük→24 saatlik dilim (eskisi gibi, boşsa 08-22 arası
+kırpılıyor), Haftalık→7 günlük dilim (Pzt-Paz, Türkçe kısa gün adı + tarih), Aylık→ayın günleri
+kadar dilim, Yıllık→12 aylık dilim (Türkçe kısa ay adı). Excel/PDF/Yazdır zaten mevcut filtrelenmiş
+veriyi (`Model.Receipts`) kullanıyordu, değişmedi.
+
+**Madde 30 (Ödeme Dağılımı/Ürün/Kategori - hard-code yasağı):** Ödeme dağılımı ARTIK Nakit/Kredi
+Kartı/Yemek Çeki'ye sabit değil - `BuildPaymentBreakdown()` helper'ı o dönemde GERÇEKTEN var olan
+TÜM ödeme türlerinden (Ödenmez/Açık Hesap dahil) dinamik bir liste + toplam + CSS conic-gradient
+string'i üretiyor (madde 19'daki `AvailablePaymentFilters` ile AYNI "sadece gerçek olanı göster"
+prensibi). Hem ana rapor hem X Raporu bu ortak helper'ı kullanıyor. En Çok Satan Ürünler/Kategori
+Satışları/KDV Dökümü/İndirim&İkram için AYRI YENİ SEKME açılmadı - mevcut "Günlük Fişler"
+(şimdiki adıyla "Fiş Hareketleri") tablosu zaten indirim/iptal alt toplamlarını (madde 19) ve fiş
+bazlı detayı gösteriyor; bunun ötesinde ayrı grafik/tablo sayfaları spec'in "son onaylı Restoran
+Raporları görselini birebir referans al" talimatına göre görseli TEKRAR görmeden UYDURULMADI - bu
+kısıtlama not düşüldü, gerekirse görsel tekrar paylaşıldığında tamamlanabilir.
+
+**Madde 31 (Kasiyer Raporu):** Yeni "kasiyer" sekmesi. `RestaurantPermissionProfilesController`
+değil - burada yetki "rol" bazlı: `User.IsInRole(Administrator) || User.IsInRole(RestaurantManager)`
+olan biri dropdown'dan "Tüm Kasiyerler" veya belirli bir kasiyer seçebilir; SADECE bu iki rolde
+olmayan biri (Cashier/Waiter) HER ZAMAN kendi `CurrentUserId`'sine kilitli kalır (`kasiyerUserId`
+parametresi bu durumda YOK SAYILIR - sunucu tarafında, sadece UI'da gizlenmiyor). "Kasiyer" burada
+zaten sistemde her yerde kullanılan AYNI kavram - adisyonu açan kullanıcı (OpenerName). Gösterilen
+alanlar: satışlar, fiş sayısı, nakit, kredi kartı, diğer tahsilatlar (yemek kartı+ödenmez+açık
+hesap toplamı), indirim, ikram (RestaurantOrderLine.IsComplimentary ile AYRIŞTIRILMIŞ - madde
+11'in kendi ayrımı), iptal. **"İade" için ayrı bir alan UYDURULMADI** - bu sistemde dönüş/iade için
+ayrı bir kayıt mekanizması yok, iptal her zaman aynı reversal akışından geçiyor
+(`CancelRetailSaleAsync`), bu yüzden "İptal / İade" tek alanda birleşik gösteriliyor, dürüstçe not
+düşüldü.
+
+**Madde 32 (X Raporu):** Zaten önceki oturumda doğru mimariyle vardı (dönemi kapatmaz, veri
+sıfırlamaz). Bu turda SADECE ödeme dağılımı hard-code'dan kurtarılıp `BuildPaymentBreakdown()`'a
+taşındı.
+
+**Madde 33 (Z Raporu onay diyaloğu):** Her iki Z akışının (vardiya açıkken/kapalıyken) onay
+metinleri spec'in BİREBİR istediği metne çevrildi: *"Z raporu alınacak ve mevcut satış dönemi
+kapatılacaktır. Devam etmek istiyor musunuz?"* (öncesinde farklı, kendi yazdığımız bir metin
+vardı).
+
+**Madde 34 (Z Listesi):** Değişiklik yapılmadı - zaten önceki oturumda drill-down ("Fişi Gör",
+seçilen Z'nin açılış-kapanış arası satış hareketleri) doğru çalışıyordu, bu turda dokunulmadı.
+
+**Test (tarayıcıda, 2026-09-05):**
+1. Günlük → Haftalık → Aylık → Yıllık geçişleri tek tek denendi - her birinde DÖNEM ETİKETİ
+   ("05.09.2026" / "31.08 - 06.09.2026" / "Eylül 2026" / "2026"), NET CİRO/FİŞ toplamları ve Ciro
+   Akışı grafiğinin ekseni (saat/gün/gün/ay) doğru şekilde değişti; haftalık toplam (36.090₺) aylık
+   toplamla (36.090₺, ayın tamamı Eylül'ün 1-5'i olduğu için aynı çıktı) ve yıllık toplamla
+   (61.090₺ = Ağustos 25.000₺ + Eylül 36.090₺) tutarlı bulundu.
+2. Ödeme dağılımı dinamikliği - haftalık görünümde GERÇEKTEN 5 farklı ödeme türü (Nakit/Kredi
+   Kartı/Yemek Kartı/Açık Hesap/Ödenmez) ayrı ayrı listelendi, yüzdeleri topladığında ~100%
+   (55.0+43.2+0.7+0.7+0.3=99.9, yuvarlama farkı normal).
+3. Kasiyer Raporu - Administrator ile "Tüm Kasiyerler" (42 fiş, 36.089,98₺) ve tek bir kasiyer
+   ("Kasiyer" kullanıcısı, 24 fiş, 20.264,98₺ - alt küme olarak doğrulandı) arasında geçiş test
+   edildi. **Güvenlik sınırı** için özel olarak SADECE Cashier rolüne sahip yeni bir test personeli
+   ("Test Kasiyer2", PIN 4422) oluşturuldu - bu kullanıcıyla girişte dropdown HİÇ görünmedi
+   (`hasSelect: false`) ve rapor doğrudan kendi (boş, hiç satışı olmayan) verisine kilitliydi -
+   "normal kasiyer yalnızca kendi işlemlerini görmelidir" kuralı sunucu tarafında doğrulandı.
+   (Not: sistemin bootstrap "Kasiyer" hesabı KASITLI olarak tüm rollere sahip - bkz.
+   `IdentitySeed.cs` - bu yüzden ilk testte yanıltıcı biçimde "admin gibi" davrandı, gerçek bir
+   normal-kasiyer hesabıyla tekrar test edilerek doğrulandı.)
+4. X Raporu - dinamik dağılım doğrulandı (bugün sadece Kredi Kartı vardı, sadece o gösterildi).
+5. Z Raporu - onay diyaloğunun `onclick` attribute'u JS'ten okunup spec metniyle karakter karakter
+   eşleştiği doğrulandı.
+6. Z Listesi - sekme hâlâ doğru render ediliyor (dönem pill'leri burada YOK, doğru), var olan
+   Z-000009 kaydı listede görünüyor.
+
+Migration gerekmedi (şema değişikliği yok, sadece controller/view mantığı).
 
 ### Madde 4-8 (Ödeme Al ekranı / Parçalı Ödeme / Tutarı Bölme / Ödeme İptal / Adisyona Dön) — MİMARİ BULGU, 2026-09-04
 

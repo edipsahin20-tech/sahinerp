@@ -6,21 +6,31 @@ public sealed class RestaurantReportsViewModel
     public string SourceFilter { get; set; } = "all";
     public DateOnly ReportDate { get; set; }
 
-    // Günün özet KPI'ları (rapor tarihine göre, iptal hariç) - Dashboard'daki AYNI sorgu deseni.
+    // Ortak dönem filtresi (madde 28, 2026-09-05) - "Günlük | Haftalık | Aylık | Yıllık". Yalnızca
+    // "daily" (Fiş Hareketleri) ve Kasiyer Raporu sekmelerinde geçerli - spec'in kendisi X/Z/Z
+    // Listesi'ni HARİÇ tutuyor ("Kasiyer Raporu, X Raporu, Z Raporu ve Z Listesi hariç"). Seçilen
+    // döneme göre kartlar/grafik/tablo/fiş hareketleri BİRLİKTE güncellenir.
+    public string PeriodFilter { get; set; } = "day";
+    public string PeriodRangeLabel { get; set; } = string.Empty;
+
+    // Günün özet KPI'ları (seçilen döneme göre, iptal hariç) - Dashboard'daki AYNI sorgu deseni.
     public decimal NetRevenue { get; set; }
     public int ReceiptCount { get; set; }
     public decimal AverageReceipt { get; set; }
     public decimal CancelRatePercent { get; set; }
-    public decimal Cash { get; set; }
-    public decimal Card { get; set; }
-    public decimal MealCard { get; set; }
-    public decimal CashPercent { get; set; }
-    public decimal CardPercent { get; set; }
-    public decimal MealCardPercent { get; set; }
+    // Ödeme dağılımı (madde 30, 2026-09-05) - artık Nakit/Kredi Kartı/Yemek Çeki'ye HARD-CODE
+    // değil, o dönemde GERÇEKTEN var olan tüm ödeme türlerinden (Ödenmez/Açık Hesap dahil) dinamik
+    // oluşuyor - AvailablePaymentFilters ile AYNI desen.
+    public List<RestaurantPaymentBreakdownItemViewModel> PaymentBreakdown { get; set; } = [];
+    public decimal PaymentBreakdownTotal { get; set; }
+    public string PaymentBreakdownConicGradient { get; set; } = string.Empty;
 
-    // Saatlik ciro akışı (rapor tarihi için, iptal hariç) - Dashboard'daki Yoğunluk Haritası ile AYNI hesap deseni.
+    // Saatlik/günlük/aylık ciro akışı (seçilen dönem için, iptal hariç) - dönem büyüdükçe
+    // granülerlik kabalaşır (gün→saatlik, hafta/ay→günlük, yıl→aylık) - Dashboard'daki Yoğunluk
+    // Haritası ile AYNI hesap deseni, sadece eksen birimi değişken.
     public List<decimal> HourlyRevenue { get; set; } = [];
     public int HourlyRevenueStartHour { get; set; }
+    public List<string> HourlyRevenueLabels { get; set; } = [];
 
     // Vardiya/Z durumu (RestaurantCashShift'ten - yeni bir kapanış kavramı İCAT EDİLMEDİ).
     public bool IsShiftOpen { get; set; }
@@ -62,6 +72,31 @@ public sealed class RestaurantReportsViewModel
     // Fişi Gör modalı için.
     public int? SelectedReceiptId { get; set; }
     public RestaurantReceiptDetailViewModel? SelectedReceipt { get; set; }
+
+    // Kasiyer Raporu (madde 31, 2026-09-05) - "normal kasiyer yalnızca kendi işlemlerini
+    // görmelidir ... yetkili yönetici ise başka kasiyerleri veya tüm kasiyerleri seçebilmelidir".
+    // Ortak dönem filtresi bu sekmede de geçerli (PeriodFilter/ReportDate).
+    public bool CanPickAnyKasiyer { get; set; }
+    public List<RestaurantKasiyerOptionViewModel> KasiyerOptions { get; set; } = [];
+    public string? SelectedKasiyerUserId { get; set; }
+    public RestaurantKasiyerReportViewModel Kasiyer { get; set; } = new();
+}
+
+public sealed record RestaurantPaymentBreakdownItemViewModel(string Label, decimal Amount, decimal Percent, string ColorVar);
+
+public sealed record RestaurantKasiyerOptionViewModel(string UserId, string FullName);
+
+public sealed class RestaurantKasiyerReportViewModel
+{
+    public string DisplayName { get; set; } = string.Empty;
+    public decimal NetRevenue { get; set; }
+    public int ReceiptCount { get; set; }
+    public decimal Cash { get; set; }
+    public decimal Card { get; set; }
+    public decimal OtherCollections { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal ComplimentaryAmount { get; set; }
+    public int CancelledCount { get; set; }
 }
 
 public sealed record RestaurantReceiptRowViewModel(
@@ -85,9 +120,8 @@ public sealed class RestaurantXReportViewModel
     public DateTime OpenedAtUtc { get; set; }
     public int ReceiptCount { get; set; }
     public decimal NetRevenue { get; set; }
-    public decimal Cash { get; set; }
-    public decimal Card { get; set; }
-    public decimal MealCard { get; set; }
+    // Madde 30/32 - "Nakit, kart ve bütün diğer tahsilatlar" - hard-code 3 yöntem DEĞİL.
+    public List<RestaurantPaymentBreakdownItemViewModel> PaymentBreakdown { get; set; } = [];
 }
 
 public sealed record RestaurantZListRowViewModel(

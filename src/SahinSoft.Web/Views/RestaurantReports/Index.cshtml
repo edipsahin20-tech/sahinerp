@@ -13,6 +13,24 @@
         "package" => "Paket",
         _ => "Masa"
     };
+
+    // Madde 28 - ortak dönem filtresi Kasiyer Raporu, Fiş Hareketleri (eski "Günlük Fişler") ve
+    // dahil olduğu diğer standart raporlarda geçerli; X/Z/Z Listesi spec'in kendisi tarafından
+    // HARİÇ tutuluyor ("Kasiyer Raporu, X Raporu, Z Raporu ve Z Listesi hariç" - X/Z/Z Listesi
+    // için, Kasiyer için değil - Kasiyer'in kendisi dönem filtresi KULLANIR, sadece X/Z/Z Listesi
+    // kullanmaz).
+    var periodAwareTabs = new[] { "daily", "kasiyer" };
+    var usesPeriodFilter = periodAwareTabs.Contains(Model.ActiveTab);
+
+    // ◁/▷ ile bir önceki/sonraki DÖNEME atla (gün seçiliyken bir gün, hafta seçiliyken bir
+    // hafta, ay seçiliyken bir ay, yıl seçiliyken bir yıl) - period ile TUTARLI gezinme.
+    DateOnly StepDate(int direction) => Model.PeriodFilter switch
+    {
+        "week" => Model.ReportDate.AddDays(7 * direction),
+        "month" => Model.ReportDate.AddMonths(1 * direction),
+        "year" => Model.ReportDate.AddYears(1 * direction),
+        _ => Model.ReportDate.AddDays(1 * direction)
+    };
 }
 
 <div class="toolbar">
@@ -22,19 +40,31 @@
         <div class="sub">Satış, ödeme, fiş ve vardiya kapanışlarını tek ekrandan takip edin.</div>
     </div>
     <div class="actions no-print">
-        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.AddDays(-1).ToString("yyyy-MM-dd")">◁</a>
-        <span class="rbtn">@Model.ReportDate.ToString("dd.MM.yyyy")</span>
-        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.AddDays(1).ToString("yyyy-MM-dd")">▷</a>
+        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(-1).ToString("yyyy-MM-dd")">◁</a>
+        <span class="rbtn">@Model.PeriodRangeLabel</span>
+        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(1).ToString("yyyy-MM-dd")">▷</a>
         <button type="button" class="rbtn gold" onclick="window.print()">▣ Yazdır</button>
     </div>
 </div>
 
 <div class="report-scroll-area">
 
+@if (usesPeriodFilter)
+{
+    <!-- Ortak dönem filtresi (madde 28) - Günlük/Haftalık/Aylık/Yıllık. Seçilen döneme göre
+         kartlar/grafik/tablo/fiş hareketleri BİRLİKTE güncellenir (aynı sunucu isteği). -->
+    <div class="report-nav2" style="margin-bottom:12px;">
+        <a class="rnav @(Model.PeriodFilter == "day" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="day"><b>Günlük</b></a>
+        <a class="rnav @(Model.PeriodFilter == "week" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="week"><b>Haftalık</b></a>
+        <a class="rnav @(Model.PeriodFilter == "month" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="month"><b>Aylık</b></a>
+        <a class="rnav @(Model.PeriodFilter == "year" ? "active" : "")" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="year"><b>Yıllık</b></a>
+    </div>
+}
+
 <div class="report-hero">
     <div class="rcard report-hero-main">
-        <div class="eyebrow">GÜNÜN RAPOR ÖZETİ</div>
-        <h2 style="margin:6px 0;">@Model.ReportDate.ToString("dd.MM.yyyy") satış özeti</h2>
+        <div class="eyebrow">DÖNEM RAPOR ÖZETİ</div>
+        <h2 style="margin:6px 0;">@Model.PeriodRangeLabel satış özeti</h2>
         <div class="report-hero-metrics">
             <div><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N0") ₺</strong></div>
             <div><small>FİŞ</small><strong>@Model.ReceiptCount</strong></div>
@@ -56,21 +86,22 @@
 
 <div class="report-kpis2">
     <div class="rcard report-kpi2" style="--soft:#E8F6F3"><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N2") ₺</strong><em>@Model.ReceiptCount tamamlanan fiş</em></div>
-    <div class="rcard report-kpi2" style="--soft:#E9F8F0"><small>NAKİT</small><strong>@Model.Cash.ToString("N2") ₺</strong><em>%@(Model.CashPercent.ToString("0.0")) pay</em></div>
-    <div class="rcard report-kpi2" style="--soft:#EEE9FF"><small>KREDİ KARTI</small><strong>@Model.Card.ToString("N2") ₺</strong><em>%@(Model.CardPercent.ToString("0.0")) pay</em></div>
-    <div class="rcard report-kpi2" style="--soft:#FFF1CC"><small>YEMEK ÇEKİ</small><strong>@Model.MealCard.ToString("N2") ₺</strong><em>%@(Model.MealCardPercent.ToString("0.0")) pay</em></div>
+    @foreach (var item in Model.PaymentBreakdown)
+    {
+        <div class="rcard report-kpi2" style="--soft:#F2F2F2"><small>@item.Label.ToUpperInvariant()</small><strong>@item.Amount.ToString("N2") ₺</strong><em>%@(item.Percent.ToString("0.0")) pay</em></div>
+    }
     <div class="rcard report-kpi2" style="--soft:#EDF3F9"><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong><em>Ort. @Model.AverageReceipt.ToString("N2") ₺</em></div>
 </div>
 
 <div class="report-analytics">
     <div class="rcard analytics-card">
         <div class="analytics-head">
-            <div><h3>Saatlik Ciro Akışı</h3><small>@Model.ReportDate.ToString("dd.MM.yyyy") satış ritmi</small></div>
+            <div><h3>Ciro Akışı</h3><small>@Model.PeriodRangeLabel satış ritmi</small></div>
         </div>
         @{ var maxHourly = Model.HourlyRevenue.Count > 0 ? Math.Max(Model.HourlyRevenue.Max(), 1) : 1; }
         @if (Model.HourlyRevenue.Count == 0 || Model.HourlyRevenue.Sum() == 0)
         {
-            <div class="analytics-empty">Bu tarihte satış verisi yok.</div>
+            <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
         }
         else
         {
@@ -83,7 +114,7 @@
                     <div class="pc-col @(isPeak ? "hot" : "")">
                         <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
                         <div class="pc-bar" style="height:@(heightPct)%"></div>
-                        <div class="pc-label">@(Model.HourlyRevenueStartHour + i):00</div>
+                        <div class="pc-label">@(i < Model.HourlyRevenueLabels.Count ? Model.HourlyRevenueLabels[i] : "")</div>
                     </div>
                 }
             </div>
@@ -91,29 +122,30 @@
     </div>
     <div class="rcard analytics-card">
         <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Net ciro içindeki ödeme türleri</small></div></div>
-        @{ var paymentTotal = Model.Cash + Model.Card + Model.MealCard; }
-        @if (paymentTotal <= 0)
+        @if (Model.PaymentBreakdownTotal <= 0)
         {
-            <div class="analytics-empty">Bu tarihte ödeme verisi yok.</div>
+            <div class="analytics-empty">Bu dönemde ödeme verisi yok.</div>
         }
         else
         {
             <div class="donut2-wrap">
-                <div class="donut2" style="background:conic-gradient(var(--rs-purple) 0 @(Model.CardPercent)%, var(--rs-green) @(Model.CardPercent)% @(Model.CardPercent + Model.CashPercent)%, var(--rs-gold) @(Model.CardPercent + Model.CashPercent)% 100%)">
-                    <div class="donut2-center"><strong>@paymentTotal.ToString("N0") ₺</strong><small>Net Ciro</small></div>
+                <div class="donut2" style="background:@Model.PaymentBreakdownConicGradient">
+                    <div class="donut2-center"><strong>@Model.PaymentBreakdownTotal.ToString("N0") ₺</strong><small>Net Ciro</small></div>
                 </div>
             </div>
             <div class="payment-legend">
-                <div class="legend-row"><span class="dot" style="background:var(--rs-green)"></span><span>Nakit</span><b>%@(Model.CashPercent.ToString("0.0"))</b></div>
-                <div class="legend-row"><span class="dot" style="background:var(--rs-purple)"></span><span>Kredi Kartı</span><b>%@(Model.CardPercent.ToString("0.0"))</b></div>
-                <div class="legend-row"><span class="dot" style="background:var(--rs-gold)"></span><span>Yemek Çeki</span><b>%@(Model.MealCardPercent.ToString("0.0"))</b></div>
+                @foreach (var item in Model.PaymentBreakdown)
+                {
+                    <div class="legend-row"><span class="dot" style="background:@item.ColorVar"></span><span>@item.Label</span><b>%@(item.Percent.ToString("0.0"))</b></div>
+                }
             </div>
         }
     </div>
 </div>
 
 <div class="report-nav2" style="margin-top:16px;">
-    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Günlük Fişler</b><small>Bugünkü tüm satışlar</small></a>
+    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Fiş Hareketleri</b><small>Seçilen dönemin satışları</small></a>
+    <a class="rnav @(Model.ActiveTab == "kasiyer" ? "active" : "")" asp-action="Index" asp-route-tab="kasiyer" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◈ Kasiyer Raporu</b><small>Kullanıcı bazlı</small></a>
     <a class="rnav @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>X &nbsp; X Raporu</b><small>Anlık, vardiyayı kapatmaz</small></a>
     <a class="rnav @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>Z &nbsp; Z Raporu</b><small>Gün sonu kapanışı</small></a>
     <a class="rnav @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Z Listesi</b><small>Geçmiş kapanışlar</small></a>
@@ -122,10 +154,10 @@
 @if (Model.ActiveTab == "daily")
 {
     <div class="report-filter-row">
-        <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Tümü</a>
-        <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Masa</a>
-        <a class="rtab @(Model.SourceFilter == "package" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="package" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Paket</a>
-        <a class="rtab @(Model.SourceFilter == "self" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="self" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Self</a>
+        <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Tümü</a>
+        <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Masa</a>
+        <a class="rtab @(Model.SourceFilter == "package" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="package" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Paket</a>
+        <a class="rtab @(Model.SourceFilter == "self" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="self" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Self</a>
     </div>
 
     <!-- Madde 19 (Edip 2026-09-04) - Excel-vari filtreler: arama + ödeme türü (SADECE gerçekten
@@ -134,6 +166,7 @@
         <input type="hidden" name="tab" value="daily" />
         <input type="hidden" name="source" value="@Model.SourceFilter" />
         <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+        <input type="hidden" name="period" value="@Model.PeriodFilter" />
         <input type="text" name="q" value="@Model.SearchTerm" class="rsearch-input" placeholder="Fiş no, masa veya kasiyer ara..." />
         <select name="payment" class="rsearch-select" onchange="this.form.submit()">
             <option value="">Tüm Ödemeler</option>
@@ -176,9 +209,47 @@
                 <span>@r.PaymentSummary</span>
                 <span class="@(r.IsCancelled ? "cancel-badge2" : "ok-badge2")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
                 <b>@r.GrandTotal.ToString("N2") ₺</b>
-                <a class="view-btn no-print" asp-action="Index" asp-route-tab="daily" asp-route-source="@Model.SourceFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-selected="@r.RetailSaleId">Fişi Gör</a>
+                <a class="view-btn no-print" asp-action="Index" asp-route-tab="daily" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-selected="@r.RetailSaleId">Fişi Gör</a>
             </div>
         }
+    </div>
+}
+else if (Model.ActiveTab == "kasiyer")
+{
+    <!-- Kasiyer Raporu (madde 31, 2026-09-05) - normal kasiyer sadece kendi işlemlerini görür,
+         yönetici başka bir kasiyeri veya "Tüm Kasiyerler"i seçebilir. Ortak dönem filtresi
+         (yukarıdaki Günlük/Haftalık/Aylık/Yıllık pills) bu sekmede de geçerli. -->
+    @if (Model.CanPickAnyKasiyer)
+    {
+        <form method="get" class="report-search-row" style="margin-bottom:12px;">
+            <input type="hidden" name="tab" value="kasiyer" />
+            <input type="hidden" name="period" value="@Model.PeriodFilter" />
+            <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+            <select name="kasiyerUserId" class="rsearch-select" onchange="this.form.submit()">
+                <option value="">Tüm Kasiyerler</option>
+                @foreach (var k in Model.KasiyerOptions)
+                {
+                    <option value="@k.UserId" selected="@(Model.SelectedKasiyerUserId == k.UserId)">@k.FullName</option>
+                }
+            </select>
+        </form>
+    }
+    <div class="rcard x-report-card">
+        <h4>@Model.Kasiyer.DisplayName</h4>
+        <p class="sub">@Model.PeriodRangeLabel dönemi</p>
+        <div class="x-report-grid">
+            <div><small>SATIŞLAR</small><strong>@Model.Kasiyer.NetRevenue.ToString("N2") ₺</strong></div>
+            <div><small>FİŞ SAYISI</small><strong>@Model.Kasiyer.ReceiptCount</strong></div>
+            <div><small>NAKİT</small><strong>@Model.Kasiyer.Cash.ToString("N2") ₺</strong></div>
+            <div><small>KREDİ KARTI</small><strong>@Model.Kasiyer.Card.ToString("N2") ₺</strong></div>
+            <div><small>DİĞER TAHSİLATLAR</small><strong>@Model.Kasiyer.OtherCollections.ToString("N2") ₺</strong></div>
+            <div><small>İNDİRİM</small><strong>@Model.Kasiyer.DiscountAmount.ToString("N2") ₺</strong></div>
+            <div><small>İKRAM</small><strong>@Model.Kasiyer.ComplimentaryAmount.ToString("N2") ₺</strong></div>
+            <!-- "İade" için ayrı bir kayıt mekanizması bu sistemde YOK - dönüş her zaman aynı
+                 iptal/reversal akışından geçiyor (bkz. RestaurantPostingService.CancelRetailSaleAsync),
+                 bu yüzden ayrı bir sayı UYDURULMADI, İptal ile birleşik gösteriliyor. -->
+            <div><small>İPTAL / İADE</small><strong>@Model.Kasiyer.CancelledCount</strong></div>
+        </div>
     </div>
 }
 else if (Model.ActiveTab == "x")
@@ -193,9 +264,10 @@ else if (Model.ActiveTab == "x")
         <div class="x-report-grid">
             <div><small>NET CİRO</small><strong>@Model.XReport.NetRevenue.ToString("N2") ₺</strong></div>
             <div><small>FİŞ SAYISI</small><strong>@Model.XReport.ReceiptCount</strong></div>
-            <div><small>NAKİT</small><strong>@Model.XReport.Cash.ToString("N2") ₺</strong></div>
-            <div><small>KREDİ KARTI</small><strong>@Model.XReport.Card.ToString("N2") ₺</strong></div>
-            <div><small>YEMEK ÇEKİ</small><strong>@Model.XReport.MealCard.ToString("N2") ₺</strong></div>
+            @foreach (var item in Model.XReport.PaymentBreakdown)
+            {
+                <div><small>@item.Label.ToUpperInvariant()</small><strong>@item.Amount.ToString("N2") ₺</strong></div>
+            }
         </div>
     </div>
 }
@@ -211,7 +283,8 @@ else if (Model.ActiveTab == "z")
                 <input type="hidden" name="shiftId" value="@Model.OpenShiftId" />
                 <label class="form-label">Sayılan Nakit Tutarı</label>
                 <input type="number" name="closingBalanceCounted" step="0.01" min="0" class="form-control" required />
-                <button type="submit" class="rbtn gold" style="margin-top:10px;" onclick="return confirm('Z Raporu oluşturup vardiyayı kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.');">Z Raporu Oluştur (Vardiyayı Kapat)</button>
+                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin. -->
+                <button type="submit" class="rbtn gold" style="margin-top:10px;" onclick="return confirm('Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?');">Z Raporu Oluştur (Vardiyayı Kapat)</button>
             </form>
         }
         else
@@ -227,7 +300,8 @@ else if (Model.ActiveTab == "z")
             }
             <form method="post" asp-action="CreateDirectZReport" class="shift-form">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="rbtn gold" onclick="return confirm('Z Raporu alınacak ve gün sıfırlanacak. Bu işlem geri alınamaz. Devam edilsin mi?');">Z Raporu Al (Günü Sıfırla)</button>
+                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin. -->
+                <button type="submit" class="rbtn gold" onclick="return confirm('Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?');">Z Raporu Al (Günü Sıfırla)</button>
             </form>
         }
     </div>

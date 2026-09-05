@@ -48,13 +48,73 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         _ => "mixed"
     };
 
-    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null, string? payment = null, string? status = null, string? q = null)
+    private static readonly string[] TurkishMonthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+    private static readonly string[] TurkishShortDayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+    // Ortak dönem filtresi (madde 28, 2026-09-05) - "Günlük | Haftalık | Aylık | Yıllık". Hafta
+    // Pazartesi'den başlar (ISO 8601, TR pratiği). period tanınmıyorsa "day" davranışına düşer.
+    private static (DateTime StartUtc, DateTime EndUtc, string RangeLabel) ComputePeriodRange(string period, DateOnly reportDate)
+    {
+        switch (period)
+        {
+            case "week":
+                var dow = (int)reportDate.DayOfWeek;
+                var daysSinceMonday = dow == 0 ? 6 : dow - 1;
+                var monday = reportDate.AddDays(-daysSinceMonday);
+                var sunday = monday.AddDays(6);
+                var weekStart = monday.ToDateTime(TimeOnly.MinValue);
+                return (weekStart.ToUniversalTime(), weekStart.AddDays(7).ToUniversalTime(), $"{monday:dd.MM} - {sunday:dd.MM.yyyy}");
+            case "month":
+                var firstOfMonth = new DateOnly(reportDate.Year, reportDate.Month, 1);
+                var monthStart = firstOfMonth.ToDateTime(TimeOnly.MinValue);
+                return (monthStart.ToUniversalTime(), monthStart.AddMonths(1).ToUniversalTime(), $"{TurkishMonthNames[reportDate.Month - 1]} {reportDate.Year}");
+            case "year":
+                var yearStart = new DateTime(reportDate.Year, 1, 1);
+                return (yearStart.ToUniversalTime(), yearStart.AddYears(1).ToUniversalTime(), reportDate.Year.ToString());
+            default:
+                var dayStart = reportDate.ToDateTime(TimeOnly.MinValue);
+                return (dayStart.ToUniversalTime(), dayStart.AddDays(1).ToUniversalTime(), reportDate.ToString("dd.MM.yyyy"));
+        }
+    }
+
+    // Ödeme dağılımı artık hard-code 3 yöntem değil - o dönemde GERÇEKTEN var olan ödeme
+    // türlerinden dinamik (madde 30). Renk paleti sabit değil "yeter sayıda ayrışan renk" listesi.
+    private static readonly string[] PaymentBreakdownColors = ["var(--rs-green)", "var(--rs-purple)", "var(--rs-gold)", "#C73E3E", "#4A7FC1", "#888888"];
+
+    private static (List<RestaurantPaymentBreakdownItemViewModel> Items, decimal Total, string ConicGradient) BuildPaymentBreakdown(IEnumerable<(RestaurantPaymentMethod Method, decimal Amount)> payments)
+    {
+        var grouped = payments
+            .GroupBy(x => x.Method)
+            .Select(g => new { Method = g.Key, Amount = g.Sum(x => x.Amount) })
+            .Where(x => x.Amount != 0)
+            .OrderByDescending(x => x.Amount)
+            .ToList();
+
+        var total = grouped.Sum(x => x.Amount);
+        var items = new List<RestaurantPaymentBreakdownItemViewModel>();
+        var gradientParts = new List<string>();
+        var cumulative = 0m;
+        for (var i = 0; i < grouped.Count; i++)
+        {
+            var g = grouped[i];
+            var percent = total > 0 ? Math.Round(g.Amount / total * 100, 1) : 0;
+            var color = PaymentBreakdownColors[i % PaymentBreakdownColors.Length];
+            items.Add(new RestaurantPaymentBreakdownItemViewModel(PaymentMethodLabel(g.Method), g.Amount, percent, color));
+            var fromPct = total > 0 ? Math.Round(cumulative / total * 100, 2) : 0;
+            cumulative += g.Amount;
+            var toPct = total > 0 ? Math.Round(cumulative / total * 100, 2) : 0;
+            gradientParts.Add($"{color} {fromPct.ToString(System.Globalization.CultureInfo.InvariantCulture)}% {toPct.ToString(System.Globalization.CultureInfo.InvariantCulture)}%");
+        }
+        var conicGradient = gradientParts.Count == 0 ? "" : $"conic-gradient({string.Join(", ", gradientParts)})";
+        return (items, total, conicGradient);
+    }
+
+    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null, string? payment = null, string? status = null, string? q = null, string period = "day", string? kasiyerUserId = null)
     {
         ActivePage = "reports";
 
         var reportDate = date ?? DateOnly.FromDateTime(DateTime.Now);
-        var dayStartUtc = reportDate.ToDateTime(TimeOnly.MinValue).ToUniversalTime();
-        var dayEndUtc = dayStartUtc.AddDays(1);
+        var (dayStartUtc, dayEndUtc, periodRangeLabel) = ComputePeriodRange(period, reportDate);
 
         var daySales = await dbContext.RetailSales
             .AsNoTracking()
@@ -94,49 +154,78 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             ActiveTab = tab,
             SourceFilter = source,
             ReportDate = reportDate,
+            PeriodFilter = period is "week" or "month" or "year" ? period : "day",
+            PeriodRangeLabel = periodRangeLabel,
             NetRevenue = nonCancelled.Sum(x => x.GrandTotal),
             ReceiptCount = nonCancelled.Count,
             AverageReceipt = nonCancelled.Count == 0 ? 0 : nonCancelled.Sum(x => x.GrandTotal) / nonCancelled.Count,
             CancelRatePercent = daySales.Count == 0 ? 0 : Math.Round(daySales.Count(x => x.Status == RetailSaleStatus.Cancelled) * 100m / daySales.Count, 1)
         };
 
-        // Ödeme yöntemi kırılımı - tutar bazında, RestaurantPayments'tan (RetailSale'de yok).
+        // Ödeme dağılımı (madde 30) - tutar bazında, RestaurantPayments'tan (RetailSale'de yok),
+        // artık HARD-CODE 3 yöntem değil, o dönemde GERÇEKTEN var olan tüm türlerden dinamik.
         // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
         // negatif işaretle - aksi halde iptal edilen bir fişin ödemesi bu toplamlarda hâlâ
         // "alınmış" gibi görünmeye devam ederdi (Edip, 2026-09-03: fiş iptali sonrası fark edildi).
-        var dayPayments = await dbContext.RestaurantPayments
+        var periodPaymentsRaw = await dbContext.RestaurantPayments
             .AsNoTracking()
             .Where(x => x.PaidAtUtc >= dayStartUtc && x.PaidAtUtc < dayEndUtc)
-            .GroupBy(x => x.PaymentMethod)
-            .Select(g => new { Method = g.Key, Total = g.Sum(x => x.IsReversal ? -x.Amount : x.Amount) })
+            .Select(x => new { x.PaymentMethod, Amount = x.IsReversal ? -x.Amount : x.Amount })
             .ToListAsync();
-        vm.Cash = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.Cash)?.Total ?? 0;
-        vm.Card = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.CreditCard)?.Total ?? 0;
-        vm.MealCard = dayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.MealCard)?.Total ?? 0;
+        (vm.PaymentBreakdown, vm.PaymentBreakdownTotal, vm.PaymentBreakdownConicGradient) =
+            BuildPaymentBreakdown(periodPaymentsRaw.Select(x => (x.PaymentMethod, x.Amount)));
 
-        var paymentTotal = vm.Cash + vm.Card + vm.MealCard;
-        if (paymentTotal > 0)
+        // Ciro akışı (madde 28-29) - dönem büyüdükçe eksen kabalaşır: Günlük→saatlik,
+        // Haftalık/Aylık→günlük, Yıllık→aylık. Dashboard'daki Yoğunluk Haritası ile AYNI mantık,
+        // sadece eksen birimi seçilen döneme göre değişken.
+        if (vm.PeriodFilter == "day")
         {
-            vm.CashPercent = Math.Round(vm.Cash / paymentTotal * 100, 1);
-            vm.CardPercent = Math.Round(vm.Card / paymentTotal * 100, 1);
-            vm.MealCardPercent = Math.Round(100 - vm.CashPercent - vm.CardPercent, 1);
+            var hourTotals = new decimal[24];
+            foreach (var s in nonCancelled)
+            {
+                hourTotals[s.IssuedAtUtc.ToLocalTime().Hour] += s.GrandTotal;
+            }
+            var activeHours = Enumerable.Range(0, 24).Where(h => hourTotals[h] > 0).ToList();
+            var chartStartHour = activeHours.Count > 0 ? Math.Max(0, activeHours.Min() - 1) : 8;
+            var chartEndHour = activeHours.Count > 0 ? Math.Min(23, activeHours.Max() + 1) : 22;
+            vm.HourlyRevenueStartHour = chartStartHour;
+            vm.HourlyRevenue = Enumerable.Range(chartStartHour, chartEndHour - chartStartHour + 1).Select(h => hourTotals[h]).ToList();
+            vm.HourlyRevenueLabels = Enumerable.Range(chartStartHour, chartEndHour - chartStartHour + 1).Select(h => $"{h}:00").ToList();
         }
-
-        // Saatlik ciro akışı - Dashboard'daki Yoğunluk Haritası ile AYNI hesap deseni, rapor
-        // tarihine göre (bugünle sınırlı değil). Veri yoksa varsayılan olarak tipik restoran
-        // açılış saatleri (08-22) gösterilir, boş bir grafik yerine.
-        var hourTotals = new decimal[24];
-        foreach (var s in nonCancelled)
+        else if (vm.PeriodFilter == "week")
         {
-            hourTotals[s.IssuedAtUtc.ToLocalTime().Hour] += s.GrandTotal;
+            var weekTotals = new decimal[7];
+            var weekStartLocal = dayStartUtc.ToLocalTime().Date;
+            foreach (var s in nonCancelled)
+            {
+                var idx = (s.IssuedAtUtc.ToLocalTime().Date - weekStartLocal).Days;
+                if (idx is >= 0 and < 7) { weekTotals[idx] += s.GrandTotal; }
+            }
+            vm.HourlyRevenue = weekTotals.ToList();
+            vm.HourlyRevenueLabels = Enumerable.Range(0, 7).Select(i => $"{TurkishShortDayNames[i]} {weekStartLocal.AddDays(i):dd.MM}").ToList();
         }
-        var activeHours = Enumerable.Range(0, 24).Where(h => hourTotals[h] > 0).ToList();
-        var chartStartHour = activeHours.Count > 0 ? Math.Max(0, activeHours.Min() - 1) : 8;
-        var chartEndHour = activeHours.Count > 0 ? Math.Min(23, activeHours.Max() + 1) : 22;
-        vm.HourlyRevenueStartHour = chartStartHour;
-        vm.HourlyRevenue = Enumerable.Range(chartStartHour, chartEndHour - chartStartHour + 1)
-            .Select(h => hourTotals[h])
-            .ToList();
+        else if (vm.PeriodFilter == "month")
+        {
+            var daysInMonth = DateTime.DaysInMonth(reportDate.Year, reportDate.Month);
+            var monthTotals = new decimal[daysInMonth];
+            foreach (var s in nonCancelled)
+            {
+                var d = s.IssuedAtUtc.ToLocalTime().Day - 1;
+                if (d is >= 0 && d < daysInMonth) { monthTotals[d] += s.GrandTotal; }
+            }
+            vm.HourlyRevenue = monthTotals.ToList();
+            vm.HourlyRevenueLabels = Enumerable.Range(1, daysInMonth).Select(d => d.ToString()).ToList();
+        }
+        else // year
+        {
+            var yearTotals = new decimal[12];
+            foreach (var s in nonCancelled)
+            {
+                yearTotals[s.IssuedAtUtc.ToLocalTime().Month - 1] += s.GrandTotal;
+            }
+            vm.HourlyRevenue = yearTotals.ToList();
+            vm.HourlyRevenueLabels = TurkishMonthNames.Select(m => m[..3]).ToList();
+        }
 
         var filtered = source switch
         {
@@ -273,14 +362,13 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .AsNoTracking()
             .CountAsync(x => x.IssuedAtUtc >= xPeriodStartUtc && x.Status != RetailSaleStatus.Cancelled);
 
+        var (xBreakdown, _, _) = BuildPaymentBreakdown(periodPayments.Select(x => (x.PaymentMethod, x.IsReversal ? -x.Amount : x.Amount)));
         vm.XReport = new RestaurantXReportViewModel
         {
             OpenedAtUtc = openShift?.OpenedAtUtc ?? xPeriodStartUtc,
             ReceiptCount = periodReceiptCount,
             NetRevenue = periodPayments.Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-            Cash = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-            Card = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount),
-            MealCard = periodPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.MealCard).Sum(x => x.IsReversal ? -x.Amount : x.Amount)
+            PaymentBreakdown = xBreakdown
         };
 
         vm.ZList = await dbContext.RestaurantCashShifts
@@ -408,6 +496,64 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 };
             }
         }
+
+        // Kasiyer Raporu (madde 31, 2026-09-05) - "normal kasiyer yalnızca kendi işlemlerini
+        // görmelidir ... yetkili yönetici ise başka kasiyerleri veya tüm kasiyerleri
+        // seçebilmelidir". "Kasiyer" burada da diğer her yerdeki (Günlük Fişler'in
+        // SourceSubtitle'ı, Z Listesi vb.) AYNI kavram - adisyonu açan kullanıcı (OpenerName).
+        // Ortak dönem filtresi bu sekmede de geçerli (dayStartUtc/dayEndUtc zaten period'a göre).
+        vm.CanPickAnyKasiyer = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager);
+        var effectiveKasiyerUserId = vm.CanPickAnyKasiyer ? kasiyerUserId : CurrentUserId;
+        vm.SelectedKasiyerUserId = effectiveKasiyerUserId;
+
+        if (vm.CanPickAnyKasiyer)
+        {
+            var kasiyerIds = daySales.Select(x => x.OpenerName).Distinct().ToList();
+            vm.KasiyerOptions = kasiyerIds
+                .Select(id => new RestaurantKasiyerOptionViewModel(id, openerNames.GetValueOrDefault(id, id)))
+                .OrderBy(x => x.FullName)
+                .ToList();
+        }
+
+        var kasiyerSales = string.IsNullOrEmpty(effectiveKasiyerUserId)
+            ? daySales
+            : daySales.Where(x => x.OpenerName == effectiveKasiyerUserId).ToList();
+        var kasiyerNonCancelled = kasiyerSales.Where(x => x.Status != RetailSaleStatus.Cancelled).ToList();
+        var kasiyerCheckIds = kasiyerNonCancelled.Select(x => x.RestaurantCheckId).ToList();
+
+        var kasiyerPayments = kasiyerCheckIds.Count == 0
+            ? []
+            : await dbContext.RestaurantPayments
+                .AsNoTracking()
+                .Where(x => kasiyerCheckIds.Contains(x.RestaurantCheckId) && !x.IsReversal)
+                .Select(x => new { x.PaymentMethod, x.Amount })
+                .ToListAsync();
+
+        // İndirim/İkram AYRI izlenir - RestaurantOrderLine.IsComplimentary madde 11'in kendi
+        // ayrımı (ikram satırında DiscountAmountSnapshot = TAM brüt tutar). "İade" için bu
+        // kodda ayrı bir kavram/tablo YOK (dönüş = mevcut iptal/reversal mekanizmasının kendisi,
+        // bkz. RestaurantPostingService.CancelRetailSaleAsync) - uydurma bir sayı göstermek
+        // yerine tek bir "İptal" alanında birleştirildi, ayrıca not düşüldü (bkz. tracking dosyası).
+        var kasiyerLineAmounts = kasiyerCheckIds.Count == 0
+            ? []
+            : await dbContext.RestaurantOrderLines
+                .AsNoTracking()
+                .Where(x => kasiyerCheckIds.Contains(x.RestaurantOrder.RestaurantCheckId) && x.Status != RestaurantOrderLineStatus.Cancelled && x.DiscountAmountSnapshot > 0)
+                .Select(x => new { x.IsComplimentary, x.DiscountAmountSnapshot })
+                .ToListAsync();
+
+        vm.Kasiyer = new RestaurantKasiyerReportViewModel
+        {
+            DisplayName = string.IsNullOrEmpty(effectiveKasiyerUserId) ? "Tüm Kasiyerler" : openerNames.GetValueOrDefault(effectiveKasiyerUserId, "Kasiyer"),
+            NetRevenue = kasiyerNonCancelled.Sum(x => x.GrandTotal),
+            ReceiptCount = kasiyerNonCancelled.Count,
+            Cash = kasiyerPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.Amount),
+            Card = kasiyerPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.Amount),
+            OtherCollections = kasiyerPayments.Where(x => x.PaymentMethod is not (RestaurantPaymentMethod.Cash or RestaurantPaymentMethod.CreditCard)).Sum(x => x.Amount),
+            DiscountAmount = kasiyerLineAmounts.Where(x => !x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot),
+            ComplimentaryAmount = kasiyerLineAmounts.Where(x => x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot),
+            CancelledCount = kasiyerSales.Count(x => x.Status == RetailSaleStatus.Cancelled)
+        };
 
         return View(vm);
     }
