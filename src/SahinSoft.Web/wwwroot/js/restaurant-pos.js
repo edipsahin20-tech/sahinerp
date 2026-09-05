@@ -685,17 +685,22 @@
         var modalEl = document.getElementById('priceCheckModal');
         if (!modalEl) return;
         var searchEl = document.getElementById('price-check-search');
+        var searchBtn = document.getElementById('price-check-search-btn');
+        var resultsWrap = document.getElementById('price-check-results-wrap');
         var resultsEl = document.getElementById('price-check-results');
         var emptyEl = document.getElementById('price-check-empty');
+        var hintEl = document.getElementById('price-check-hint');
         var detailEl = document.getElementById('price-check-detail');
+        var stockCodeEl = document.getElementById('price-check-stockcode');
+        var barcodeEl = document.getElementById('price-check-barcode');
         var nameEl = document.getElementById('price-check-name');
         var priceEl = document.getElementById('price-check-price');
-        var taxEl = document.getElementById('price-check-tax');
+        var stockQtyEl = document.getElementById('price-check-stockqty');
         var addBtn = document.getElementById('price-check-add-btn');
         var nameBtn = document.getElementById('price-check-mode-name');
         var barcodeBtn = document.getElementById('price-check-mode-barcode');
-        var searchUrl = root.getAttribute('data-search-products-url');
-        var mode = 'name';
+        var listUrl = root.getAttribute('data-product-catalog-list-url');
+        var mode = 'barcode';
         var debounceTimer = null;
         var currentResults = [];
         var selected = null;
@@ -703,14 +708,16 @@
         function renderResults(products) {
             currentResults = products;
             resultsEl.innerHTML = '';
+            var showList = products.length > 1;
+            resultsWrap.style.display = showList ? '' : 'none';
             emptyEl.style.display = products.length === 0 ? '' : 'none';
             products.forEach(function (p) {
                 var row = document.createElement('tr');
                 row.style.cursor = 'pointer';
                 row.innerHTML = '<td>' + escapeHtml(p.stockCode || '') + '</td>' +
-                    '<td>' + escapeHtml((p.barcodes && p.barcodes[0]) || '') + '</td>' +
+                    '<td>' + escapeHtml(p.barcode || '') + '</td>' +
                     '<td>' + escapeHtml(p.name) + '</td>' +
-                    '<td>%' + p.taxRate + '</td>' +
+                    '<td>%' + p.taxRatePercent + '</td>' +
                     '<td class="text-end">' + money(p.salePrice) + '</td>';
                 row.addEventListener('click', function () { selectProduct(p); });
                 resultsEl.appendChild(row);
@@ -719,9 +726,12 @@
 
         function selectProduct(p) {
             selected = p;
+            resultsWrap.style.display = 'none';
+            stockCodeEl.textContent = p.stockCode || '';
+            barcodeEl.textContent = p.barcode || '';
             nameEl.textContent = p.name;
             priceEl.textContent = money(p.salePrice);
-            taxEl.textContent = '%' + p.taxRate;
+            stockQtyEl.textContent = p.stockQuantity;
             detailEl.style.display = '';
             addBtn.disabled = false;
         }
@@ -729,9 +739,13 @@
         function runSearch() {
             var term = searchEl.value.trim();
             if (!term) { renderResults([]); return; }
-            fetch(searchUrl + '?term=' + encodeURIComponent(term) + '&mode=' + mode)
+            fetch(listUrl + '?term=' + encodeURIComponent(term) + '&pageSize=20')
                 .then(function (res) { return res.json(); })
-                .then(function (data) { renderResults(data || []); })
+                .then(function (data) {
+                    var rows = (data && data.rows) || [];
+                    renderResults(rows);
+                    if (rows.length === 1) selectProduct(rows[0]);
+                })
                 .catch(function () { renderResults([]); });
         }
 
@@ -744,16 +758,22 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 clearTimeout(debounceTimer);
-                if (currentResults.length === 1) { selectProduct(currentResults[0]); }
-                else { runSearch(); }
+                runSearch();
             }
         });
+        searchBtn.addEventListener('click', function () { clearTimeout(debounceTimer); runSearch(); });
 
         function setMode(newMode) {
             mode = newMode;
             nameBtn.classList.toggle('active', mode === 'name');
             barcodeBtn.classList.toggle('active', mode === 'barcode');
-            runSearch();
+            searchEl.placeholder = mode === 'barcode' ? 'Barkod okutun veya yazın...' : 'Ürün adı ara...';
+            hintEl.style.display = mode === 'barcode' ? '' : 'none';
+            searchEl.value = '';
+            renderResults([]);
+            detailEl.style.display = 'none';
+            addBtn.disabled = true;
+            searchEl.focus();
         }
         nameBtn.addEventListener('click', function () { setMode('name'); });
         barcodeBtn.addEventListener('click', function () { setMode('barcode'); });
@@ -764,12 +784,21 @@
             addBtn.disabled = true;
             searchEl.value = '';
             renderResults([]);
+            setMode('barcode');
             setTimeout(function () { searchEl.focus(); }, 250);
         }
 
         addBtn.addEventListener('click', function () {
             if (!selected) return;
-            addToCart(selected);
+            addToCart({
+                productId: selected.productId,
+                name: selected.name,
+                salePrice: selected.salePrice,
+                taxRate: selected.taxRatePercent,
+                unit: selected.unit,
+                hasKitchenStation: selected.hasKitchenStation,
+                portions: []
+            });
             var instance = bootstrap.Modal.getInstance(modalEl);
             if (instance) instance.hide();
         });
@@ -777,89 +806,168 @@
         modalEl.addEventListener('show.bs.modal', reset);
     })();
 
-    // --- Ürün Listesi (madde 15-16, Edip 2026-09-04) - TAM stoktan arar (Fiyat Gör'ün aksine
-    // sadece kısayol/kataloğa bağlı değil, sunucudaki SearchProducts full stok sorgusu). Ad/Barkod
-    // modu arasında geçiş yapılabilir. Kategori alanına/sepete HİÇ dokunmaz - sadece seçilen ürünü
-    // addToCart ile ekler (AYNI Fiyat Gör'ün kullandığı fonksiyon). ---
+    // --- Ürün Listesi (Edip, 2026-09-05, onaylı görsel: "burdaki görselleri ilgili alanlarda
+    // birebir uygula") - ProductCatalogList (SearchProducts'tan AYRI) TÜM aktif stoku sayfalı
+    // listeler, Kategori/KDV Oranı/Stok Durumu filtreleri + gerçek stok miktarı/kategori adı
+    // döner. Kasiyer bir satırı işaretleyip (checkbox) "Ekrana Al"a basar - eskisi gibi tıkla-
+    // anında-ekle DEĞİL, görseldeki gibi seç + onayla akışı. ---
     (function () {
         var modalEl = document.getElementById('productListModal');
         if (!modalEl) return;
         var searchEl = document.getElementById('product-list-search');
+        var barcodeBtn = document.getElementById('product-list-mode-barcode');
+        var clearBtn = document.getElementById('product-list-clear-btn');
+        var categoryEl = document.getElementById('product-list-category');
+        var taxRateEl = document.getElementById('product-list-taxrate');
+        var inStockEl = document.getElementById('product-list-instock');
         var resultsEl = document.getElementById('product-list-results');
         var emptyEl = document.getElementById('product-list-empty');
-        var nameBtn = document.getElementById('product-list-mode-name');
-        var barcodeBtn = document.getElementById('product-list-mode-barcode');
-        var searchUrl = root.getAttribute('data-search-products-url');
-        var mode = 'name';
+        var countEl = document.getElementById('product-list-count');
+        var pagerEl = document.getElementById('product-list-pagination');
+        var addBtn = document.getElementById('product-list-add-btn');
+        var listUrl = root.getAttribute('data-product-catalog-list-url');
+        var pageSize = 12;
+        var currentPage = 1;
+        var totalCount = 0;
+        var lastRows = [];
+        var selectedProductId = null;
+        var filtersLoaded = false;
         var debounceTimer = null;
-        var currentResults = [];
 
-        function renderResults(products) {
-            currentResults = products;
+        function selectedRow() {
+            return lastRows.find(function (p) { return p.productId === selectedProductId; }) || null;
+        }
+
+        function renderPager() {
+            pagerEl.innerHTML = '';
+            var pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+            function addPagerBtn(label, page, disabled, active) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = label;
+                if (active) btn.className = 'active';
+                if (disabled) btn.disabled = true;
+                btn.addEventListener('click', function () { currentPage = page; loadList(); });
+                pagerEl.appendChild(btn);
+            }
+            addPagerBtn('‹', Math.max(1, currentPage - 1), currentPage <= 1, false);
+            for (var p = 1; p <= pageCount; p++) { addPagerBtn(String(p), p, false, p === currentPage); }
+            addPagerBtn('›', Math.min(pageCount, currentPage + 1), currentPage >= pageCount, false);
+        }
+
+        function renderResults() {
             resultsEl.innerHTML = '';
-            emptyEl.style.display = products.length === 0 ? '' : 'none';
-            products.forEach(function (p) {
+            emptyEl.style.display = lastRows.length === 0 ? '' : 'none';
+            countEl.textContent = 'Toplam ' + totalCount + ' ürün listeleniyor.';
+            lastRows.forEach(function (p) {
                 var row = document.createElement('tr');
                 row.style.cursor = 'pointer';
-                row.innerHTML = '<td>' + escapeHtml(p.stockCode || '') + '</td>' +
-                    '<td>' + escapeHtml((p.barcodes && p.barcodes[0]) || '') + '</td>' +
-                    '<td>' + escapeHtml(p.name) + '</td>' +
-                    '<td class="text-end">' + money(p.salePrice) + '</td>';
-                row.addEventListener('click', function () { selectProduct(p); });
+                var checked = p.productId === selectedProductId;
+                if (checked) row.classList.add('table-active');
+                row.innerHTML = '<td><input type="checkbox" class="form-check-input" ' + (checked ? 'checked' : '') + '></td>' +
+                    '<td>' + escapeHtml(p.stockCode || '') + '</td>' +
+                    '<td>' + escapeHtml(p.barcode || '') + '</td>' +
+                    '<td class="fw-bold">' + escapeHtml(p.name) + '</td>' +
+                    '<td><span class="pos-pill" style="background:#EAF3FF;color:#2878D8;">' + escapeHtml(p.categoryName || '') + '</span></td>' +
+                    '<td>%' + p.taxRatePercent + '</td>' +
+                    '<td class="text-success fw-bold">' + p.stockQuantity + '</td>' +
+                    '<td class="text-end fw-bold">' + money(p.salePrice) + '</td>';
+                row.addEventListener('click', function () {
+                    selectedProductId = (selectedProductId === p.productId) ? null : p.productId;
+                    addBtn.disabled = selectedProductId === null;
+                    renderResults();
+                });
                 resultsEl.appendChild(row);
             });
         }
 
-        function selectProduct(p) {
-            addToCart(p);
-            var instance = bootstrap.Modal.getInstance(modalEl);
-            if (instance) instance.hide();
+        function loadFiltersOnce() {
+            if (filtersLoaded) return;
+            filtersLoaded = true;
         }
 
-        function runSearch() {
-            var term = searchEl.value.trim();
-            if (!term) { renderResults([]); return; }
-            fetch(searchUrl + '?term=' + encodeURIComponent(term) + '&mode=' + mode)
+        function loadList() {
+            var params = new URLSearchParams({
+                term: searchEl.value.trim(),
+                page: String(currentPage),
+                pageSize: String(pageSize)
+            });
+            if (categoryEl.value) params.set('categoryId', categoryEl.value);
+            if (taxRateEl.value) params.set('taxRateId', taxRateEl.value);
+            if (inStockEl.checked) params.set('inStockOnly', 'true');
+            fetch(listUrl + '?' + params.toString())
                 .then(function (res) { return res.json(); })
-                .then(function (data) { renderResults(data || []); })
-                .catch(function () { renderResults([]); });
+                .then(function (data) {
+                    lastRows = data.rows || [];
+                    totalCount = data.totalCount || 0;
+                    if (!filtersLoaded) {
+                        (data.categories || []).forEach(function (c) {
+                            var opt = document.createElement('option');
+                            opt.value = c.id; opt.textContent = c.name;
+                            categoryEl.appendChild(opt);
+                        });
+                        (data.taxRates || []).forEach(function (t) {
+                            var opt = document.createElement('option');
+                            opt.value = t.id; opt.textContent = '%' + t.rate;
+                            taxRateEl.appendChild(opt);
+                        });
+                        loadFiltersOnce();
+                    }
+                    renderResults();
+                    renderPager();
+                })
+                .catch(function () { lastRows = []; totalCount = 0; renderResults(); renderPager(); });
         }
 
         searchEl.addEventListener('input', function () {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(runSearch, 250);
+            debounceTimer = setTimeout(function () { currentPage = 1; loadList(); }, 250);
         });
-
-        searchEl.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                clearTimeout(debounceTimer);
-                if (currentResults.length === 1) {
-                    selectProduct(currentResults[0]);
-                } else {
-                    runSearch();
-                }
-            }
+        [categoryEl, taxRateEl, inStockEl].forEach(function (el) {
+            el.addEventListener('change', function () { currentPage = 1; loadList(); });
         });
-
-        function setMode(newMode) {
-            mode = newMode;
-            nameBtn.classList.toggle('active', mode === 'name');
-            barcodeBtn.classList.toggle('active', mode === 'barcode');
-            searchEl.placeholder = mode === 'barcode' ? 'Barkod okutun veya yazın...' : 'Ürün adı ara...';
+        barcodeBtn.addEventListener('click', function () {
+            searchEl.placeholder = 'Barkod okutun veya yazın...';
             searchEl.value = '';
-            renderResults([]);
             searchEl.focus();
-        }
-        nameBtn.addEventListener('click', function () { setMode('name'); });
-        barcodeBtn.addEventListener('click', function () { setMode('barcode'); });
+        });
+        clearBtn.addEventListener('click', function () {
+            searchEl.value = '';
+            categoryEl.value = '';
+            taxRateEl.value = '';
+            inStockEl.checked = false;
+            searchEl.placeholder = 'Ürün adı, barkod veya stok kodu ile ara...';
+            currentPage = 1;
+            loadList();
+        });
+
+        addBtn.addEventListener('click', function () {
+            var p = selectedRow();
+            if (!p) return;
+            addToCart({
+                productId: p.productId,
+                name: p.name,
+                salePrice: p.salePrice,
+                taxRate: p.taxRatePercent,
+                unit: p.unit,
+                hasKitchenStation: p.hasKitchenStation,
+                portions: []
+            });
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) instance.hide();
+        });
 
         modalEl.addEventListener('show.bs.modal', function () {
-            setMode('name');
+            searchEl.value = '';
+            categoryEl.value = '';
+            taxRateEl.value = '';
+            inStockEl.checked = false;
+            selectedProductId = null;
+            addBtn.disabled = true;
+            currentPage = 1;
+            loadList();
         });
         modalEl.addEventListener('shown.bs.modal', function () {
-            // Ana barkod alanının aksine burada arama kutusuna odaklanmak GÜVENLİ - bu ayrı,
-            // izole bir modal, fiziksel tarayıcıyı ana ekrandan hiç ayırmıyor.
             searchEl.focus();
         });
     })();
@@ -927,8 +1035,8 @@
             shiftOn = !shiftOn;
             applyShift();
         });
-        keyboardEl.querySelector('[data-action="close"]').addEventListener('click', function () {
-            keyboardEl.style.display = 'none';
+        keyboardEl.querySelectorAll('[data-action="close"]').forEach(function (btn) {
+            btn.addEventListener('click', function () { keyboardEl.style.display = 'none'; });
         });
 
         toggleBtn.addEventListener('click', function () {
@@ -993,6 +1101,21 @@
             s.scale = Math.min(MAX_SCALE, Math.round((s.scale + SCALE_STEP) * 10) / 10);
             applyState(s);
             saveState(s);
+        });
+        // ◀▶ (Edip, 2026-09-05, onaylı görsel) - sürüklemeye ek olarak küçük adımlarla sola/sağa
+        // kaydırma; klavye zaten sürüklenebilir olduğundan bu sadece ince ayar kolaylığı.
+        var NUDGE_PX = 60;
+        keyboardEl.querySelector('[data-vk-action="move-left"]').addEventListener('click', function () {
+            var s = currentState();
+            s.left -= NUDGE_PX;
+            applyState(s);
+            saveState(currentState());
+        });
+        keyboardEl.querySelector('[data-vk-action="move-right"]').addEventListener('click', function () {
+            var s = currentState();
+            s.left += NUDGE_PX;
+            applyState(s);
+            saveState(currentState());
         });
 
         var dragHandle = document.getElementById('pos-vk-drag-handle');
@@ -1589,8 +1712,87 @@
 
         function todayIso() { return new Date().toISOString().slice(0, 10); }
 
+        // Sayfalama (Edip, 2026-09-05, onaylı görsel: "Toplam 42 fiş listeleniyor" + 1 2 3 4 5 ›
+        // sayfa numaraları) - satırlar zaten TEK seferde çekiliyor (lastRows), sayfalama sadece
+        // hangi satırların GÖSTERİLDİĞİNİ değiştiren istemci tarafı bir dilimleme.
+        var pageSize = 8;
+        var currentPage = 1;
+        var pagerEl = document.getElementById('receipt-list-pagination');
+
+        function receiptUrlForRow(r) {
+            var template = root.getAttribute('data-receipt-url-template');
+            return template ? template.replace('-1', String(r.id)) : null;
+        }
+
+        function renderPager() {
+            if (!pagerEl) return;
+            pagerEl.innerHTML = '';
+            var pageCount = Math.max(1, Math.ceil(lastRows.length / pageSize));
+            if (currentPage > pageCount) currentPage = pageCount;
+            function addBtn(label, page, disabled, active) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = label;
+                if (active) btn.className = 'active';
+                if (disabled) btn.disabled = true;
+                btn.addEventListener('click', function () { currentPage = page; renderRows(); renderPager(); });
+                pagerEl.appendChild(btn);
+            }
+            addBtn('‹', Math.max(1, currentPage - 1), currentPage <= 1, false);
+            for (var p = 1; p <= pageCount; p++) { addBtn(String(p), p, false, p === currentPage); }
+            addBtn('›', Math.min(pageCount, currentPage + 1), currentPage >= pageCount, false);
+        }
+
+        function renderRows() {
+            emptyEl.style.display = lastRows.length === 0 ? '' : 'none';
+            listEl.innerHTML = '';
+            var start = (currentPage - 1) * pageSize;
+            var pageRows = lastRows.slice(start, start + pageSize);
+            pageRows.forEach(function (r) {
+                var row = document.createElement('tr');
+                if (r.isCancelled) row.style.opacity = '0.6';
+                var receiptUrl = receiptUrlForRow(r);
+                row.innerHTML = '<td>' + escapeHtml(r.dateLabel) + '</td>' +
+                    '<td>' + escapeHtml(r.timeLabel) + '</td>' +
+                    '<td>' + escapeHtml(r.documentNumber) + '</td>' +
+                    '<td>' + escapeHtml(r.masaLabel) + '</td>' +
+                    '<td>' + escapeHtml(r.customerName) + '</td>' +
+                    '<td>' + escapeHtml(r.cashierName) + '</td>' +
+                    '<td class="text-end">' + money(r.grandTotal) + '</td>' +
+                    '<td>' + escapeHtml(r.paymentLabel) + '</td>' +
+                    '<td><span class="pos-pill ' + (r.isCancelled ? 'pos-pill-status-cancelled">İptal' : 'pos-pill-status-ok">Tamamlandı') + '</span></td>' +
+                    '<td class="text-nowrap">' +
+                    (receiptUrl ? '<a href="' + escapeHtml(receiptUrl) + '" target="_blank" rel="noopener" class="btn btn-erp-outline btn-sm" title="Görüntüle">🔍</a> ' +
+                        '<a href="' + escapeHtml(receiptUrl) + '" target="_blank" rel="noopener" class="btn btn-erp-outline btn-sm" title="Yazdır">🖨</a> ' : '') +
+                    (!r.isCancelled && isAdmin ? '<button type="button" class="btn btn-erp-outline btn-sm receipt-row-more" title="Diğer">⋯</button>' : '') +
+                    '</td>';
+                if (!r.isCancelled && isAdmin) {
+                    var moreBtn = row.querySelector('.receipt-row-more');
+                    if (moreBtn) {
+                        moreBtn.addEventListener('click', function () {
+                            window.posConfirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?', function () {
+                                var fd = new FormData();
+                                fd.append('__RequestVerificationToken', getCsrfToken());
+                                fd.append('retailSaleId', r.id);
+                                fetch(cancelReceiptUrl, { method: 'POST', body: fd })
+                                    .then(function (resp) { return resp.json(); })
+                                    .then(function (result) {
+                                        if (!result.success) {
+                                            window.posAlert(result.message || 'Fiş iptal edilemedi.');
+                                            return;
+                                        }
+                                        fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
+                                    });
+                            }, null, { danger: true });
+                        });
+                    }
+                }
+                listEl.appendChild(row);
+            });
+        }
+
         function loadList() {
-            listEl.innerHTML = '<tr><td colspan="9" class="text-secondary small p-2">Yükleniyor...</td></tr>';
+            listEl.innerHTML = '<tr><td colspan="10" class="text-secondary small p-2">Yükleniyor...</td></tr>';
             var params = new URLSearchParams({
                 from: fromEl.value || todayIso(),
                 to: toEl.value || todayIso(),
@@ -1614,46 +1816,10 @@
                         paymentEl.appendChild(opt);
                     });
                     var t = data.totals || { count: 0, grandTotal: 0, cancelledCount: 0 };
-                    totalsEl.textContent = t.count + ' fiş listeleniyor · Toplam ' + money(t.grandTotal) + (t.cancelledCount > 0 ? ' · ' + t.cancelledCount + ' iptal' : '');
-                    emptyEl.style.display = lastRows.length === 0 ? '' : 'none';
-                    listEl.innerHTML = '';
-                    lastRows.forEach(function (r) {
-                        var row = document.createElement('tr');
-                        if (r.isCancelled) row.style.opacity = '0.6';
-                        if (isAdmin && !r.isCancelled) row.style.cursor = 'pointer';
-                        row.innerHTML = '<td>' + escapeHtml(r.dateLabel) + '</td>' +
-                            '<td>' + escapeHtml(r.timeLabel) + '</td>' +
-                            '<td>' + escapeHtml(r.documentNumber) + '</td>' +
-                            '<td>' + escapeHtml(r.masaLabel) + '</td>' +
-                            '<td>' + escapeHtml(r.customerName) + '</td>' +
-                            '<td>' + escapeHtml(r.cashierName) + '</td>' +
-                            '<td class="text-end">' + money(r.grandTotal) + '</td>' +
-                            '<td>' + escapeHtml(r.paymentLabel) + '</td>' +
-                            '<td>' + (r.isCancelled ? '<span class="text-danger">İptal</span>' : '<span class="text-success">Tamamlandı</span>') + '</td>';
-                        if (!r.isCancelled) {
-                            row.addEventListener('click', function () {
-                                if (!isAdmin) {
-                                    window.posAlert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
-                                    return;
-                                }
-                                window.posConfirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?', function () {
-                                    var fd = new FormData();
-                                    fd.append('__RequestVerificationToken', getCsrfToken());
-                                    fd.append('retailSaleId', r.id);
-                                    fetch(cancelReceiptUrl, { method: 'POST', body: fd })
-                                        .then(function (resp) { return resp.json(); })
-                                        .then(function (result) {
-                                            if (!result.success) {
-                                                window.posAlert(result.message || 'Fiş iptal edilemedi.');
-                                                return;
-                                            }
-                                            fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
-                                        });
-                                }, null, { danger: true });
-                            });
-                        }
-                        listEl.appendChild(row);
-                    });
+                    totalsEl.textContent = 'Toplam ' + t.count + ' fiş listeleniyor · ' + money(t.grandTotal) + (t.cancelledCount > 0 ? ' · ' + t.cancelledCount + ' iptal' : '');
+                    currentPage = 1;
+                    renderRows();
+                    renderPager();
                 });
         }
 
@@ -1661,6 +1827,8 @@
         var searchDebounce = null;
         searchEl.addEventListener('input', function () { clearTimeout(searchDebounce); searchDebounce = setTimeout(loadList, 300); });
         [fromEl, toEl].forEach(function (el) { el.addEventListener('change', loadList); });
+        var filterBtn = document.getElementById('receipt-list-filter-btn');
+        if (filterBtn) filterBtn.addEventListener('click', loadList);
 
         clearBtn.addEventListener('click', function () {
             fromEl.value = todayIso();

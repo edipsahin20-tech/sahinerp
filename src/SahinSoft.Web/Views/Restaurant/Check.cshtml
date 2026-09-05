@@ -39,6 +39,7 @@
      data-filtered-receipts-url="@Url.Action("FilteredReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-search-products-url="@Url.Action("SearchProducts")"
+     data-product-catalog-list-url="@Url.Action("ProductCatalogList")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
      data-apply-discount-url="@Url.Action("ApplyDiscount")"
      data-apply-receipt-comp-url="@Url.Action("ApplyReceiptComplimentary")"
@@ -510,8 +511,16 @@
 <div class="modal fade" id="receiptListModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Fiş Listesi</h5>
+            <div class="modal-header pos-modal-header">
+                <div class="pos-modal-brand">
+                    <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
+                    <div class="pos-modal-brand-text"><span class="l1">ŞAHİNSOFT</span><span class="l2">Restoran POS</span></div>
+                </div>
+                <div class="pos-modal-divider"></div>
+                <div class="pos-modal-title-block">
+                    <h5 class="modal-title">Fiş Listesi</h5>
+                    <div class="pos-modal-subtitle">Tüm satış fişlerini görüntüleyin, arayın ve filtreleyin.</div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -522,6 +531,12 @@
                             <input type="date" id="receipt-list-from" class="form-control form-control-sm" />
                             <input type="date" id="receipt-list-to" class="form-control form-control-sm" />
                         </div>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1">Şube</label>
+                        <select id="receipt-list-branch" class="form-select form-select-sm">
+                            <option value="">Tümü</option>
+                        </select>
                     </div>
                     <div>
                         <label class="form-label small mb-1">Fiş Tipi</label>
@@ -546,26 +561,29 @@
                             <option value="cancelled">İptal</option>
                         </select>
                     </div>
-                    <div class="flex-grow-1" style="min-width:160px;">
-                        <label class="form-label small mb-1">Ara</label>
-                        <input type="text" id="receipt-list-search" class="form-control form-control-sm" placeholder="Fiş No, masa no, müşteri ara..." />
+                    <button type="button" class="btn btn-primary btn-sm" id="receipt-list-filter-btn" style="background:var(--pos-navy);border-color:var(--pos-navy);">🔽 Filtrele</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-end">
+                    <div class="flex-grow-1" style="min-width:220px;">
+                        <input type="text" id="receipt-list-search" class="form-control form-control-sm" placeholder="Fiş No, masa no, tutar, müşteri, kasiyer ara..." />
                     </div>
-                    <button type="button" class="btn btn-erp-outline btn-sm" id="receipt-list-clear-btn">Filtreleri Temizle</button>
+                    <button type="button" class="btn btn-erp-outline btn-sm" id="receipt-list-clear-btn">🧹 Temizle</button>
                     <button type="button" class="btn btn-success btn-sm" id="receipt-list-export-btn">📊 Excel'e Aktar</button>
                 </div>
                 <div id="receipt-list-totals" class="text-secondary small mb-2"></div>
                 <div class="table-responsive" style="max-height:360px; overflow-y:auto;">
                     <table class="table table-sm table-hover mb-0">
                         <thead>
-                            <tr><th>Tarih</th><th>Saat</th><th>Fiş No</th><th>Masa/Kaynak</th><th>Müşteri</th><th>Kasiyer</th><th class="text-end">Tutar</th><th>Ödeme Türü</th><th>Durum</th></tr>
+                            <tr><th>Tarih</th><th>Saat</th><th>Fiş No</th><th>Masa/Paket</th><th>Müşteri</th><th>Kasiyer</th><th class="text-end">Tutar</th><th>Ödeme Türü</th><th>Durum</th><th>İşlem</th></tr>
                         </thead>
                         <tbody id="receipt-list-body"></tbody>
                     </table>
                 </div>
                 <p id="receipt-list-empty" class="text-secondary small p-2" style="display:none;">Bu filtrede fiş yok.</p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+            <div class="modal-footer justify-content-between">
+                <div id="receipt-list-pagination" class="pos-modal-pagination"></div>
+                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">✕ Kapat</button>
             </div>
         </div>
     </div>
@@ -602,32 +620,57 @@
 <!-- Ürün Listesi (madde 15-16) - arama üstte, sonuçlar ortada, Stok Kodu|Barkod|Ürün Adı
      sütunları. Ad/Barkod modu arasında geçiş, arama sonuçları kategori alanını ETKİLEMEZ. -->
 <div class="modal fade" id="productListModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Ürün Listesi</h5>
+            <div class="modal-header pos-modal-header">
+                <div class="pos-modal-brand">
+                    <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
+                    <div class="pos-modal-brand-text"><span class="l1">ŞAHİNSOFT</span><span class="l2">Restoran POS</span></div>
+                </div>
+                <div class="pos-modal-divider"></div>
+                <div class="pos-modal-title-block">
+                    <h5 class="modal-title">Ürün Listesi</h5>
+                    <div class="pos-modal-subtitle">Ürünleri görüntüleyin, arayın ve seçin.</div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="d-flex gap-2 mb-2">
-                    <input type="text" id="product-list-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Ürün adı ara..." autocomplete="off" />
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-erp-outline active" id="product-list-mode-name" data-mode="name">Ad</button>
-                        <button type="button" class="btn btn-erp-outline" id="product-list-mode-barcode" data-mode="barcode">Barkod</button>
+                    <input type="text" id="product-list-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Ürün adı, barkod veya stok kodu ile ara..." autocomplete="off" />
+                    <button type="button" class="btn btn-erp-outline" id="product-list-mode-barcode">🔍 Barkod ile Ara</button>
+                    <button type="button" class="btn btn-erp-outline" id="product-list-clear-btn">🧹 Temizle</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-end">
+                    <div>
+                        <label class="form-label small mb-1">Kategori</label>
+                        <select id="product-list-category" class="form-select form-select-sm"><option value="">Tümü</option></select>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1">KDV Oranı</label>
+                        <select id="product-list-taxrate" class="form-select form-select-sm"><option value="">Tümü</option></select>
+                    </div>
+                    <div class="form-check mb-1">
+                        <input type="checkbox" class="form-check-input" id="product-list-instock">
+                        <label class="form-check-label small" for="product-list-instock">Sadece Stoktakiler</label>
                     </div>
                 </div>
                 <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
                     <table class="table table-sm table-hover mb-0">
                         <thead>
-                            <tr><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th class="text-end">Fiyat</th></tr>
+                            <tr><th></th><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th>Kategori</th><th>KDV</th><th>Stok Miktarı</th><th class="text-end">Fiyat</th></tr>
                         </thead>
                         <tbody id="product-list-results"></tbody>
                     </table>
                 </div>
                 <p id="product-list-empty" class="text-secondary small p-2" style="display:none;">Sonuç bulunamadı.</p>
+                <div id="product-list-count" class="text-secondary small mt-1"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
+            <div class="modal-footer justify-content-between">
+                <div id="product-list-pagination" class="pos-modal-pagination"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">✕ Kapat</button>
+                    <button type="button" class="btn" id="product-list-add-btn" style="background:linear-gradient(var(--pos-gold-light),var(--pos-gold));font-weight:800;" disabled>🛒 Ekrana Al</button>
+                </div>
             </div>
         </div>
     </div>
@@ -640,19 +683,30 @@
 <div class="modal fade" id="priceCheckModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Fiyat Gör</h5>
+            <div class="modal-header pos-modal-header">
+                <div class="pos-modal-brand">
+                    <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
+                    <div class="pos-modal-brand-text"><span class="l1">ŞAHİNSOFT</span><span class="l2">Restoran POS</span></div>
+                </div>
+                <div class="pos-modal-divider"></div>
+                <div class="pos-modal-title-block">
+                    <h5 class="modal-title">Fiyat Gör</h5>
+                    <div class="pos-modal-subtitle">Barkod ile veya ürün adıyla arama yaparak fiyat ve stok bilgisini görüntüleyin.</div>
+                </div>
+                <div class="pos-modal-tagline">İşletmenizin<br />Güçlü Çözüm Ortağı</div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex gap-2 mb-2">
-                    <input type="text" id="price-check-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Ürün adı, stok kodu veya barkod ara..." autocomplete="off" />
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-erp-outline active" id="price-check-mode-name" data-mode="name">Ürün Adı ile Ara</button>
-                        <button type="button" class="btn btn-erp-outline" id="price-check-mode-barcode" data-mode="barcode">Barkod ile Ara</button>
-                    </div>
+                <div class="btn-group mb-2" role="group">
+                    <button type="button" class="btn btn-erp-outline active" id="price-check-mode-barcode" data-mode="barcode">🔲 Barkod ile Ara</button>
+                    <button type="button" class="btn btn-erp-outline" id="price-check-mode-name" data-mode="name">🔍 Ürün Adı ile Ara</button>
                 </div>
-                <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="price-check-search" class="product-search-input" style="max-width:none; flex:1;" placeholder="Barkod okutun veya yazın..." autocomplete="off" />
+                    <button type="button" class="btn btn-erp-primary" id="price-check-search-btn">🔍 Ara</button>
+                </div>
+                <div class="alert alert-info small py-2 mb-2" id="price-check-hint">ℹ Barkod okuttuğunuzda ürün otomatik olarak listelenir.</div>
+                <div class="table-responsive mb-2" id="price-check-results-wrap" style="max-height:220px; overflow-y:auto; display:none;">
                     <table class="table table-sm table-hover mb-0">
                         <thead>
                             <tr><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th>KDV</th><th class="text-end">Fiyat</th></tr>
@@ -662,14 +716,29 @@
                 </div>
                 <p id="price-check-empty" class="text-secondary small p-2" style="display:none;">Sonuç bulunamadı.</p>
                 <div id="price-check-detail" class="price-check-detail" style="display:none;">
-                    <div class="price-check-detail-name" id="price-check-name"></div>
-                    <div class="price-check-detail-row"><span>Fiyat (KDV Dahil)</span><strong id="price-check-price"></strong></div>
-                    <div class="price-check-detail-row"><span>KDV Oranı</span><strong id="price-check-tax"></strong></div>
+                    <div class="fw-bold small text-secondary mb-2">Ürün Bilgisi</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 text-center">
+                            <thead><tr><th>Stok Kodu</th><th>Barkod</th><th>Ürün Adı</th><th>Fiyat</th><th>Stok Miktarı</th></tr></thead>
+                            <tbody>
+                                <tr>
+                                    <td id="price-check-stockcode" class="fw-bold"></td>
+                                    <td id="price-check-barcode" class="fw-bold"></td>
+                                    <td id="price-check-name" class="fw-bold"></td>
+                                    <td id="price-check-price" class="fw-bold"></td>
+                                    <td id="price-check-stockqty" class="text-success fw-bold"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-erp" id="price-check-add-btn" disabled>Ekrana Al</button>
+            <div class="modal-footer justify-content-between">
+                <div class="text-secondary small">ℹ Fiyatlar anlık stok bilgilerinden getirilmektedir.</div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">✕ Kapat</button>
+                    <button type="button" class="btn" id="price-check-add-btn" style="background:linear-gradient(var(--pos-gold-light),var(--pos-gold));font-weight:800;" disabled>🖥 Ekrana Al</button>
+                </div>
             </div>
         </div>
     </div>
@@ -681,7 +750,21 @@
      restaurant-pos.js, localStorage). Hiçbir alanda OTOMATİK açılmaz - sadece "⌨ Klavye" ile
      elle açılır. Odaklanılan son metin alanına, imleç konumuna yazar. -->
 <div class="pos-virtual-keyboard" id="pos-virtual-keyboard" style="display:none;">
-    <div class="pos-vk-toolbar" id="pos-vk-drag-handle" title="Taşımak için tutup sürükleyin">
+    <div class="pos-vk-header pos-modal-header" id="pos-vk-drag-handle" title="Taşımak için tutup sürükleyin">
+        <div class="pos-modal-brand">
+            <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
+            <div class="pos-modal-brand-text"><span class="l1">ŞAHİNSOFT</span><span class="l2">Restoran POS</span></div>
+        </div>
+        <div class="pos-modal-divider"></div>
+        <div class="pos-modal-title-block">
+            <h5 class="modal-title">Dokunmatik Klavye</h5>
+            <div class="pos-modal-subtitle">Hızlı, Kolay ve Pratik Kullanım</div>
+        </div>
+        <button type="button" class="btn-close" data-action="close" title="Kapat"></button>
+    </div>
+    <div class="pos-vk-toolbar">
+        <button type="button" class="pos-vk-tool" data-vk-action="move-left" title="Sola taşı">◀</button>
+        <button type="button" class="pos-vk-tool" data-vk-action="move-right" title="Sağa taşı">▶</button>
         <button type="button" class="pos-vk-tool" data-vk-action="size-down" title="Küçült">－</button>
         <button type="button" class="pos-vk-tool" data-vk-action="size-up" title="Büyüt">＋</button>
         <button type="button" class="pos-vk-tool pos-vk-tool-close" data-action="close" title="Kapat">✕</button>
@@ -689,19 +772,21 @@
     <div class="pos-vk-body">
         <div class="pos-vk-letters">
             <div class="pos-vk-row">
-                <button type="button" data-key="q">q</button><button type="button" data-key="w">w</button><button type="button" data-key="e">e</button><button type="button" data-key="r">r</button><button type="button" data-key="t">t</button><button type="button" data-key="y">y</button><button type="button" data-key="u">u</button><button type="button" data-key="ı">ı</button><button type="button" data-key="o">o</button><button type="button" data-key="p">p</button>
+                <button type="button" data-key="q">q</button><button type="button" data-key="w">w</button><button type="button" data-key="e">e</button><button type="button" data-key="r">r</button><button type="button" data-key="t">t</button><button type="button" data-key="y">y</button><button type="button" data-key="u">u</button><button type="button" data-key="ı">ı</button><button type="button" data-key="o">o</button><button type="button" data-key="p">p</button><button type="button" data-key="ğ">ğ</button><button type="button" data-key="ü">ü</button>
             </div>
             <div class="pos-vk-row">
-                <button type="button" data-key="a">a</button><button type="button" data-key="s">s</button><button type="button" data-key="d">d</button><button type="button" data-key="f">f</button><button type="button" data-key="g">g</button><button type="button" data-key="h">h</button><button type="button" data-key="j">j</button><button type="button" data-key="k">k</button><button type="button" data-key="l">l</button>
+                <button type="button" data-key="a">a</button><button type="button" data-key="s">s</button><button type="button" data-key="d">d</button><button type="button" data-key="f">f</button><button type="button" data-key="g">g</button><button type="button" data-key="h">h</button><button type="button" data-key="j">j</button><button type="button" data-key="k">k</button><button type="button" data-key="l">l</button><button type="button" data-key="ş">ş</button><button type="button" data-key="i">i</button>
             </div>
             <div class="pos-vk-row">
                 <button type="button" class="pos-vk-wide" data-action="shift">⇧</button>
-                <button type="button" data-key="z">z</button><button type="button" data-key="x">x</button><button type="button" data-key="c">c</button><button type="button" data-key="v">v</button><button type="button" data-key="b">b</button><button type="button" data-key="n">n</button><button type="button" data-key="m">m</button>
-                <button type="button" class="pos-vk-wide" data-action="backspace">⌫</button>
+                <button type="button" data-key="z">z</button><button type="button" data-key="x">x</button><button type="button" data-key="c">c</button><button type="button" data-key="v">v</button><button type="button" data-key="b">b</button><button type="button" data-key="n">n</button><button type="button" data-key="m">m</button><button type="button" data-key="ö">ö</button><button type="button" data-key="ç">ç</button>
+                <button type="button" class="pos-vk-wide pos-vk-backspace" data-action="backspace">⌫</button>
             </div>
             <div class="pos-vk-row">
-                <button type="button" data-key="ğ">ğ</button><button type="button" data-key="ü">ü</button><button type="button" data-key="ş">ş</button><button type="button" data-key="i">i</button><button type="button" data-key="ö">ö</button><button type="button" data-key="ç">ç</button>
-                <button type="button" class="pos-vk-space" data-key=" ">boşluk</button>
+                <button type="button" class="pos-vk-123" data-action="mode123">123</button>
+                <button type="button" data-key=",">,</button>
+                <button type="button" class="pos-vk-space" data-key=" ">Boşluk</button>
+                <button type="button" data-key=".">.</button>
             </div>
         </div>
         <div class="pos-vk-numpad">
@@ -710,6 +795,11 @@
             <div class="pos-vk-row"><button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button></div>
             <div class="pos-vk-row"><button type="button" data-key="0">0</button><button type="button" data-key=",">,</button><button type="button" class="pos-vk-numpad-bs" data-action="backspace">⌫</button></div>
         </div>
+    </div>
+    <div class="pos-vk-footer">
+        <button type="button" class="pos-vk-lang">🌐 TR</button>
+        <div class="pos-vk-footer-label">Türkçe Klavye</div>
+        <button type="button" class="pos-vk-close-btn" data-action="close">✕ Kapat</button>
     </div>
 </div>
 

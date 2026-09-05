@@ -429,6 +429,67 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return Json(products, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
     }
 
+    // Ürün Listesi modalı (Edip, 2026-09-05, onaylı görsel) - SearchProducts'tan FARKLI: arama
+    // terimi ZORUNLU DEĞİL (varsayılan olarak TÜM aktif ürünleri sayfalı listeler), Kategori/KDV
+    // Oranı/Stok Durumu filtreleri + gerçek stok miktarı/kategori adı döner. SearchProducts'a
+    // dokunulmadı - o zaten başka akışlarda (Fiyat Gör, sepete anında ekleme) kullanılıyor.
+    [HttpGet]
+    public async Task<IActionResult> ProductCatalogList(string? term, int? categoryId, int? taxRateId, bool inStockOnly = false, int page = 1, int pageSize = 12)
+    {
+        term = (term ?? string.Empty).Trim();
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = dbContext.Products.AsNoTracking().Where(x => x.IsActive);
+        if (term.Length > 0)
+        {
+            query = query.Where(x => x.Name.Contains(term) || x.StockCode.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term));
+        }
+        if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId.Value);
+        if (taxRateId.HasValue) query = query.Where(x => x.TaxRateId == taxRateId.Value);
+        if (inStockOnly) query = query.Where(x => x.StockQuantity > 0);
+
+        var totalCount = await query.CountAsync();
+        var rows = await query
+            .Include(x => x.Category)
+            .Include(x => x.TaxRate)
+            .Include(x => x.Barcodes.Where(b => b.IsActive))
+            .OrderBy(x => x.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new
+            {
+                productId = p.Id,
+                stockCode = p.StockCode,
+                barcode = p.Barcode ?? p.Barcodes.Select(b => b.Barcode).FirstOrDefault() ?? "",
+                name = p.Name,
+                categoryName = p.Category.Name,
+                taxRatePercent = p.TaxRate.Rate,
+                stockQuantity = p.StockQuantity,
+                salePrice = p.SalePrice,
+                unit = p.Unit,
+                hasKitchenStation = p.DefaultKitchenStationId != null,
+                imagePath = p.ImagePath,
+                taxRate = p.TaxRate.Rate
+            })
+            .ToListAsync();
+
+        var categories = await dbContext.ProductCategories.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
+            .Select(c => new { id = c.Id, name = c.Name }).ToListAsync();
+        var taxRates = await dbContext.TaxRates.AsNoTracking().OrderBy(x => x.Rate)
+            .Select(t => new { id = t.Id, rate = t.Rate }).ToListAsync();
+
+        return Json(new
+        {
+            rows,
+            totalCount,
+            page,
+            pageSize,
+            categories,
+            taxRates
+        }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+    }
+
     // "Ekrana Al" - fişin satırlarını (productId/quantity) döner, istemci zaten yüklü kataloğundan
     // eşleştirip sepete ekler (bkz. restaurant-pos.js) - ayrı bir ürün DTO'su gerekmez.
     [HttpGet]

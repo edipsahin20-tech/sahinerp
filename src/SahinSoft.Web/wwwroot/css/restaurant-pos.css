@@ -865,26 +865,42 @@
     left: 12px;
     z-index: 1080;
     background: var(--pos-navy, #0B2239);
-    border-radius: 12px;
-    padding: 0.5rem;
+    border-radius: 14px;
     box-shadow: 0 8px 28px rgba(0,0,0,.35);
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     --vk-scale: 1;
 }
+
+/* Marka'lı üst başlık (Edip, 2026-09-05, onaylı görsel: "Dokunmatik Klavye / Hızlı, Kolay ve
+   Pratik Kullanım") - .pos-modal-header ile AYNI görünüm, ama burada .btn-close yerine tek
+   tıkla kapatan normal bir X butonu (bkz. restaurant-pos.js data-action="close"). */
+.pos-virtual-keyboard .pos-modal-header {
+    border-radius: 14px 14px 0 0;
+    cursor: move;
+    touch-action: none;
+}
+.pos-virtual-keyboard .pos-modal-header .btn-close {
+    background: none;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    opacity: .85;
+    filter: none;
+    width: auto;
+    height: auto;
+}
+.pos-virtual-keyboard .pos-modal-header .btn-close::before { content: "✕"; }
 
 .pos-vk-toolbar {
     display: flex;
     justify-content: flex-end;
     gap: 0.3rem;
-    margin-bottom: 0.4rem;
-    cursor: move;
-    touch-action: none;
-    padding: 0.25rem;
-    border-radius: 6px;
+    padding: 0.5rem;
 }
-.pos-vk-toolbar:active { background: rgba(255,255,255,.06); }
 .pos-vk-tool {
     min-width: 2.6rem;
     min-height: 2.6rem;
@@ -903,7 +919,43 @@
     display: flex;
     gap: 0.6rem;
     align-items: flex-start;
+    padding: 0 0.5rem 0.5rem;
+    overflow: auto;
 }
+
+/* Alt çubuk (Edip, 2026-09-05, onaylı görsel: 🌐 TR solda, "Türkçe Klavye" ortada, mavi
+   "✕ Kapat" sağda). */
+.pos-vk-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255,255,255,.04);
+    border-top: 1px solid rgba(255,255,255,.1);
+}
+.pos-vk-lang {
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+.pos-vk-footer-label { color: rgba(255,255,255,.6); font-size: 0.82rem; font-weight: 600; }
+.pos-vk-close-btn {
+    border: 0;
+    background: #2878D8;
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.5rem 1.1rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.pos-vk-close-btn:hover { background: #2266bd; }
 .pos-vk-letters { display: flex; flex-direction: column; }
 .pos-vk-numpad {
     display: flex;
@@ -992,7 +1044,10 @@
     align-items: center;
 }
 
-.restaurant-pos .product-search-input {
+/* GERÇEK HATA (2026-09-05) - Ürün Listesi/Fiyat Gör modallarındaki kopyaları .restaurant-pos'un
+   DIŞINDA olduğundan (yukarıdaki .pos-modal-header notuyla AYNI kök neden) bu kural onlara hiç
+   uygulanmıyordu, tarayıcının çirkin varsayılan input görünümünde kalıyorlardı - önek kaldırıldı. */
+.product-search-input {
     width: 100%;
     max-width: 100%;
     padding: 0.65rem 2.2rem;
@@ -1002,7 +1057,7 @@
     background: var(--pos-surface);
 }
 
-.restaurant-pos .product-search-input:focus {
+.product-search-input:focus {
     outline: none;
     border-color: var(--pos-gold);
     box-shadow: 0 0 0 3px rgba(226, 164, 0, .14);
@@ -1210,4 +1265,77 @@
     font-size: 0.72rem;
     padding: 0.15rem 0.5rem;
     cursor: pointer;
+}
+
+/* ============================================================
+   Marka'lı modal başlığı (Edip, 2026-09-05, onaylı görseller:
+   "burdaki görselleri ilgili alanlarda birebir uygula") - Klavye/
+   Ürün Listesi/Fiş Listesi/Fiyat Gör modallarının HEPSİNDE AYNI:
+   koyu lacivert zemin, ŞahinSoft logosu + başlık + alt açıklama,
+   sağda (varsa) "İşletmenizin Güçlü Çözüm Ortağı" imzası.
+   GERÇEK HATA (2026-09-05, ilk denemede bulundu) - bu modallar
+   Razor'da .restaurant-pos'un KAPANIŞ etiketinden SONRA, .rest-main'in
+   DOĞRUDAN çocuğu olarak duruyor (DOM'da .restaurant-pos'un İÇİNDE
+   DEĞİLLER) - ".restaurant-pos .xyz" şeklinde scope'lanan HİÇBİR kural
+   onlara uygulanmıyordu (logo dev boyutunda kırpılmamış, arama kutusu
+   tarayıcının varsayılan çirkin görünümünde kalıyordu). Bu yüzden
+   aşağıdaki kurallar BİLEREK ".restaurant-pos" önekini TAŞIMIYOR - bu
+   CSS dosyası zaten SADECE bu sayfada yükleniyor, önek olmadan da
+   başka bir yere sızma riski yok. */
+.pos-modal-header {
+    background: linear-gradient(135deg, #0B1524, #10263F);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 0;
+}
+.pos-modal-brand { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.pos-modal-brand img { height: 34px; width: auto; }
+.pos-modal-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.pos-modal-brand-text .l1 { font-weight: 800; color: var(--pos-gold-light); font-size: 0.92rem; letter-spacing: .02em; }
+.pos-modal-brand-text .l2 { font-weight: 700; color: #fff; font-size: 0.72rem; }
+.pos-modal-divider { width: 1px; align-self: stretch; background: rgba(255,255,255,.22); flex-shrink: 0; }
+.pos-modal-title-block { flex: 1; min-width: 0; }
+.pos-modal-title-block .modal-title { color: #fff; font-weight: 800; font-size: 1.2rem; margin: 0; }
+.pos-modal-subtitle { color: rgba(255,255,255,.6); font-size: 0.8rem; margin-top: 2px; }
+.pos-modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); opacity: .85; flex-shrink: 0; }
+.pos-modal-tagline {
+    text-align: right;
+    color: rgba(255,255,255,.85);
+    font-size: 0.72rem;
+    line-height: 1.55;
+    border-right: 2px solid var(--pos-gold);
+    padding-right: 0.7rem;
+    flex-shrink: 0;
+}
+
+/* Ürün Listesi/Fiş Listesi tablolarındaki renkli KATEGORİ/DURUM/ÖDEME TÜRÜ etiketleri. */
+.pos-pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.pos-pill-status-ok { background: #E3F8EC; color: #1C7D50; }
+.pos-pill-status-cancelled { background: #FDECEC; color: #C73E3E; }
+
+/* Ürün Listesi/Fiş Listesi altındaki sayfalama (Edip'in onaylı görseli). */
+.pos-modal-pagination { display: flex; gap: 0.3rem; align-items: center; }
+.pos-modal-pagination button {
+    min-width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--pos-border);
+    background: #fff;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.pos-modal-pagination button.active {
+    background: var(--pos-navy);
+    border-color: var(--pos-navy);
+    color: #fff;
 }

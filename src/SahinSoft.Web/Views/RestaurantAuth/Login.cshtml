@@ -60,9 +60,17 @@
            görselin içinde birebir zaten var. Önceki (bu görsel elimde olmadan yapılan) gradyan +
            el yapımı metin yaklaşımı bununla DEĞİŞTİRİLDİ. */
         .login-left {
+            /* Edip, 2026-09-05: "görsel otomatik sığdırsın, ne eklersen ekle otomatik resmi
+               göstersin" - "cover" farklı en-boy oranındaki görsellerde kenarlardaki metni/
+               logoyu KIRPIYORDU (Edip'in kendi denediği farklı bir görselde görüldü). "contain"
+               ile hangi görsel eklenirse eklensin TAMAMI (hiç kırpılmadan) görünür - olası boş
+               kenar şeritleri markanın kendi koyu lacivertiyle (--pn-navy) dolduruluyor, bu
+               yüzden göz batan beyaz boşluk oluşmaz. */
+            background-color: var(--pn-navy);
             background-image: url('@backgroundUrl');
-            background-size: cover;
+            background-size: contain;
             background-position: center;
+            background-repeat: no-repeat;
         }
 
         /* Sağ giriş paneli */
