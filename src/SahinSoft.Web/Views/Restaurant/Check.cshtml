@@ -2,6 +2,16 @@
 @{
     Layout = "_RestaurantShellLayout";
     ViewData["Title"] = $"Adisyon {Model.CheckNumber}";
+    // GERÇEK HATA (2026-09-05, Edip'in bildirimiyle bulundu: "alt taraf sabit kalmıyor, Cari/
+    // İndirim/Kapat tuşları gidiyor") - .rest-main (kabuk içeriği) varsayılan olarak KENDİSİ
+    // overflow:auto'dur (bkz. restaurant-shell.css) - bu sayfa büyüdükçe (satır sayısı arttıkça)
+    // sadece kendi içindeki .cart-lines/.cart-sent-lines DEĞİL, TÜM .rest-main kaymaya başlıyor,
+    // alttaki sabit kalması gereken özet/butonlar ekran dışına düşüyordu - .pos-check-page'in
+    // KENDİ "height:100%; overflow:hidden" sabitlemesi ancak ebeveyni de sabitse işe yarar.
+    // MainFixed=true, .rest-main'i .rest-main-fixed'e çevirir (overflow:hidden) - Raporlar'ın
+    // kullandığı AYNI kabuk mekanizması, .report-scroll-area'ya gerek yok çünkü bu sayfa zaten
+    // kendi iç kaydırmasını (.cart-lines/.cart-sent-lines) kendisi yönetiyor.
+    ViewData["MainFixed"] = true;
     // Self Satış/Paket gizli sanal masaları bölüm adıyla AYNI masa adını taşır (bkz.
     // RestaurantPostingService.CreateSelfSaleCheckAsync yorumu) - başlıkta "Self Satış — Self
     // Satış" gibi anlamsız tekrar göstermemek için sadece görünümde birleştiriliyor, veri modeli
@@ -177,7 +187,7 @@
                      ve bekleyen satırlarda AYNI (Edip, 2026-09-03: "ürün şablonu böyle olsun"). -->
                 <div class="cart-lines-header-scroll">
                     <div class="cart-lines-header">
-                        <span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span><span></span>
+                        <span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span>
                     </div>
                 </div>
                 @{
@@ -219,7 +229,6 @@
                                 <div class="cart-line-col-kdv">%@line.TaxRate.ToString("N0")</div>
                                 <div class="cart-line-col-price">@line.UnitPrice.ToString("N2") ₺</div>
                                 <div class="cart-line-col-total">@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</div>
-                                <div></div>
                             </div>
                         }
                     </div>

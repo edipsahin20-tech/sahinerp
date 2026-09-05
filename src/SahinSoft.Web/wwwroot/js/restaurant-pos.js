@@ -317,8 +317,7 @@
                 '<div class="cart-line-col-unit">' + escapeHtml(line.unit || 'Adet') + '</div>' +
                 '<div class="cart-line-col-kdv">%' + line.taxRate + '</div>' +
                 '<div class="cart-line-col-price">' + money(line.unitPrice) + '</div>' +
-                '<div class="cart-line-col-total">' + money(lineTotal(line)) + '</div>' +
-                '<div></div>';
+                '<div class="cart-line-col-total">' + money(lineTotal(line)) + '</div>';
 
             div.addEventListener('click', function () {
                 selectedCartId = line.cartId;

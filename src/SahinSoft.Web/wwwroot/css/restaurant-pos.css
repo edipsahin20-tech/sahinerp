@@ -381,8 +381,11 @@
    kalır, grid'i bozmaz. */
 .restaurant-pos .cart-line {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 150px;
-    min-width: 556px;
+    /* Son 150px sütun eskiden satır başı İptal butonu içindi - artık TÜM satır işlemleri üst
+       araç çubuğundan yapılıyor (Edip, 2026-09-05), bu sütun her satırda hep boştu, tamamen
+       kaldırıldı ("işaretlediğim fazla olan boşlukları kaldır"). */
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px;
+    min-width: 406px;
     align-items: center;
     gap: 0.6rem;
     /* Satır yüksekliği sıkıştırıldı (Edip, 2026-09-05: "sağ taraf 4 tane ürünü ancak sığdırıyor,
@@ -455,8 +458,11 @@
 
 .restaurant-pos .cart-lines-header {
     display: grid;
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px 150px;
-    min-width: 556px;
+    /* Son 150px sütun eskiden satır başı İptal butonu içindi - artık TÜM satır işlemleri üst
+       araç çubuğundan yapılıyor (Edip, 2026-09-05), bu sütun her satırda hep boştu, tamamen
+       kaldırıldı ("işaretlediğim fazla olan boşlukları kaldır"). */
+    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px;
+    min-width: 406px;
     gap: 0.6rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
