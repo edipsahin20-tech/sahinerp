@@ -1,6 +1,25 @@
 @model SahinSoft.Web.Models.RestaurantPinLoginViewModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 @{
     Layout = null;
+
+    // Giriş ekranı arka planı - Edip'in kendi PIN klasörüne (wwwroot/uploads/branding) attığı
+    // dosya varsa o kullanılır, yoksa paketle gelen varsayılana (images/login-hero.jpg) düşülür.
+    // "uploads/" klasörü .gitignore'da zaten hariç tutulan ve dotnet publish çıktısının HİÇ
+    // parçası olmayan tek klasör (bkz. ProductsController'daki AYNI desen, "uploads/products") -
+    // bu yüzden Kurulum.ps1'in Expand-Archive -Force ile üzerine yazdığı her güncellemede
+    // korunur, YENİDEN KOD DEĞİŞİKLİĞİ/DERLEME GEREKMEDEN buraya bırakılan görsel kalıcı olur.
+    var brandingDir = System.IO.Path.Combine(WebHostEnvironment.WebRootPath, "uploads", "branding");
+    var customBackgroundUrl = (string?)null;
+    foreach (var ext in new[] { "jpg", "jpeg", "png", "webp" })
+    {
+        if (System.IO.File.Exists(System.IO.Path.Combine(brandingDir, "giris-arkaplan." + ext)))
+        {
+            customBackgroundUrl = Url.Content("~/uploads/branding/giris-arkaplan." + ext);
+            break;
+        }
+    }
+    var backgroundUrl = customBackgroundUrl ?? Url.Content("~/images/login-hero.jpg");
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -41,7 +60,7 @@
            görselin içinde birebir zaten var. Önceki (bu görsel elimde olmadan yapılan) gradyan +
            el yapımı metin yaklaşımı bununla DEĞİŞTİRİLDİ. */
         .login-left {
-            background-image: url('@Url.Content("~/images/login-hero.jpg")');
+            background-image: url('@backgroundUrl');
             background-size: cover;
             background-position: center;
         }

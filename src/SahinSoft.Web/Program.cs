@@ -127,6 +127,14 @@ builder.Services.AddHostedService<KitchenAutoReadyBackgroundService>();
 
 var app = builder.Build();
 
+// Giriş ekranı arka planı için (Edip, 2026-09-05: "bana bir yol yap ben görseli oraya attığımda
+// otomatik görsel değişsin") - "uploads/" klasörü .gitignore'da hariç tutulan ve dotnet publish
+// çıktısının HİÇ parçası olmayan tek klasör (bkz. ProductsController "uploads/products" - AYNI
+// desen), bu yüzden Kurulum.ps1'in üzerine yazdığı her güncellemede korunur. Klasör burada
+// önceden oluşturulur ki kurulumdan hemen sonra bile klasör gerçekten var olsun (fotoğraf
+// yükleme akışının aksine, ilk kullanımı "kod içinden yazma" değil "dışarıdan dosya bırakma").
+Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath, "uploads", "branding"));
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
