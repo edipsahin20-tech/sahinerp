@@ -27,17 +27,6 @@
         _ => "İptal"
     };
 
-    static string StatusTabKey(PackageOrderStatus status) => status switch
-    {
-        PackageOrderStatus.New => "new",
-        PackageOrderStatus.PendingApproval => "pendingapproval",
-        PackageOrderStatus.Preparing => "preparing",
-        PackageOrderStatus.Ready => "ready",
-        PackageOrderStatus.CourierWaiting => "courierwaiting",
-        PackageOrderStatus.OnTheWay => "ontheway",
-        _ => "delivered"
-    };
-
     static string NextActionLabel(PackageOrderStatus status) => status switch
     {
         PackageOrderStatus.New => "Siparişi Kabul Et",
