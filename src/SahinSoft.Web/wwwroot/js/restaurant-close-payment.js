@@ -304,14 +304,16 @@
 
     document.querySelectorAll('.pay-method-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
+            // GERÇEK HATA (2026-09-05, Edip'in bildirimiyle bulundu: "ödeme tiplerine
+            // tıklayamadım... tutar yazmadan direkt ödeme tiplerini kullanabilmeliyim") - Alınacak
+            // Tutar pencere açılışında bilinçli olarak 0'da başlıyor (madde 3), ama bu buton HİÇBİR
+            // ŞEY yazılmadıysa sessizce hiçbir şey yapmıyordu - kasiyer en sık senaryoda (kalanın
+            // TAMAMINI tek yöntemle ödemek) önce elle tutar girmek ZORUNDA kalıyordu. Artık hiçbir
+            // şey yazılmamışsa (typed<=0) doğrudan KALAN tutar kullanılır - bir şey yazılmışsa
+            // eskisi gibi kalanla sınırlanır, fazlası hiçbir zaman ödeme olarak kaydedilmez.
             var typed = entryValue();
-            if (typed <= 0) { return; }
-            // Girilen tutar kalanı aşarsa (ör. müşteri 50 TL verdi, kalan 47,50 TL) sadece
-            // KALAN kadarı kayda geçer - fazlası Para Üstü'dür, asla ödeme olarak yazılmaz
-            // (madde 4 - CloseCheckAsync'in "ödeme toplamı == adisyon tutarı" katı eşitliği
-            // bu sayede hiç bozulmaz, fazla tahsilat asla muhasebeye girmez).
             var rem = Math.max(remaining(), 0);
-            var amount = Math.min(typed, rem);
+            var amount = typed > 0 ? Math.min(typed, rem) : rem;
             if (amount <= 0) { return; }
             var method = parseInt(btn.getAttribute('data-method'), 10);
             var financialAccountId = resolveFinancialAccountId(method);
