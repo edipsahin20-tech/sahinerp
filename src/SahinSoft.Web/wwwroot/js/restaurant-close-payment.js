@@ -341,6 +341,11 @@
             var rem = Math.max(remaining(), 0);
             var amount = typed > 0 ? Math.min(typed, rem) : rem;
             if (amount <= 0) { return; }
+            // Edip, 2026-09-05: "kredi kartı tuşuna bastıysam işlemin tamamını alıyorum demektir,
+            // alınacak tutara 650 yazması lazım" - hiçbir şey yazılmadan bu butona basılınca
+            // (amount = kalan) ALINACAK TUTAR alanı sessizce 0'da kalıyordu; kasiyer az önce ne
+            // kadar tahsil ettiğini göremiyordu. Ödeme sunucuya gönderilmeden ÖNCE ekrana yansıtılır.
+            setEntryFromNumber(amount);
             var method = parseInt(btn.getAttribute('data-method'), 10);
             var financialAccountId = resolveFinancialAccountId(method);
             var collectionCariId = btn.getAttribute('data-collection-cari-id');
