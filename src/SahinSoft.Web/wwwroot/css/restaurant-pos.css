@@ -482,6 +482,22 @@
 .restaurant-pos .cart-sent-lines,
 .restaurant-pos .cart-lines {
     overflow-x: auto;
+    /* Dikey kaydırma çubuğu bazen sadece gönderilmiş VEYA sadece bekleyen tarafta çıkıyordu,
+       o taraftaki grid'in gerçek genişliğini (dolayısıyla Miktar/Birim/KDV/Fiyat/Tutar
+       sütunlarının konumunu) diğerinden birkaç piksel kaydırıyordu (Edip, 2026-09-05:
+       "ayrı veya sağa sola kaymış değil, hepsi aynı simetride olsun") - kaydırma çubuğu için
+       HER ZAMAN aynı boşluk ayrılarak (var olsun ya da olmasın) üç bölüm de her zaman aynı
+       genişlikte kalır. */
+    scrollbar-gutter: stable;
+}
+
+/* Başlık, gönderilmiş satırlarla AYNI konteyner iç boşluğunu (0.75rem) taşımıyordu - kendi
+   .cart-lines-header'ının 0.4rem'lik iç boşluğu TEK BAŞINA vardı, bu yüzden başlık sütunları
+   satırlara göre ~12px sola kaymış duruyordu (Edip, 2026-09-05, aynı şikayet). İki katman
+   (bu konteyner + .cart-lines-header'ın kendi 0.4rem'i) toplamda satırların toplam iç
+   boşluğuyla (konteyner 0.75rem + .cart-line'ın kendi 0.4rem'i) birebir eşleşir. */
+.restaurant-pos .cart-lines-header-scroll {
+    padding: 0 0.75rem;
 }
 
 .restaurant-pos .cart-lines-header {

@@ -32,9 +32,14 @@
     var receiptUrlTemplate = root.getAttribute('data-receipt-url-template');
     var requireReceiptPromptAfterQuickPay = root.getAttribute('data-require-receipt-prompt-after-quickpay') === 'true';
     var selfSaleUrl = root.getAttribute('data-self-sale-url');
+    var mainSubtotalTotalEl = document.getElementById('main-subtotal-total');
     var mainPaidTotalEl = document.getElementById('main-paid-total');
     var mainPaidRowEl = document.getElementById('main-paid-row');
     var mainRemainingTotalEl = document.getElementById('main-remaining-total');
+    // Ticket (adisyon) indirimi sayfa yüklendikten sonra DEĞİŞMEZ - İndirim uygulaması her zaman
+    // sepeti gönderip sayfayı yeniler (bkz. restaurant-pos.js submitDiscount), bu yüzden burada
+    // sabit bir sayı olarak okunması güvenli.
+    var ticketDiscountAmount = parseFloat(root.getAttribute('data-ticket-discount-amount')) || 0;
     var payChangeWrap = document.getElementById('pay-change-wrap');
     var payChangeEl = document.getElementById('pay-change');
 
@@ -121,15 +126,31 @@
 
     // Ödenen (Edip, 2026-09-05: "ödenen tutar yoksa göstermesin") - satır SADECE gerçek bir ödeme
     // girildiyse görünür; Kalan Tutar her zaman görünür.
+    //
+    // Ara Toplam/Kalan Tutar (Edip, 2026-09-05: "Ara Toplam yapmıyor şu an") - payableTotal
+    // sayfa yüklenişindeki DONMUŞ değerdir, sepete yeni ürün eklenince değişmez. Gerçek/güncel
+    // brüt toplam restaurant-pos.js'in her renderCart()'ta güncellediği window.RestaurantCartSubtotal
+    // - o script bu sayfada HER ZAMAN önce yüklendiği için ilk paint'te de zaten mevcuttur.
+    // Bu fonksiyon window.RestaurantRefreshRunningTotals olarak dışa açılır ki sepete ürün
+    // eklendiğinde (restaurant-pos.js) VE ödeme eklendiğinde (aşağıdaki refresh()) AYNI tek
+    // hesaplama kullanılsın - iki ayrı yerde iki farklı Kalan Tutar formülü OLMASIN.
+    function currentSubtotal() {
+        return window.RestaurantCartSubtotal != null ? window.RestaurantCartSubtotal : payableTotal + ticketDiscountAmount;
+    }
+
     function updateMainScreenSummary() {
         var paid = paidTotal();
+        var subtotal = currentSubtotal();
+        var kalan = Math.max(Math.round((subtotal - ticketDiscountAmount - paid) * 100) / 100, 0);
+        if (mainSubtotalTotalEl) mainSubtotalTotalEl.textContent = money(subtotal);
         if (mainPaidTotalEl) mainPaidTotalEl.textContent = money(paid);
         // .style.display DEĞİL - satır Bootstrap'in "d-flex" (display:flex !important) sınıfını
         // taşıyor, inline style ona karşı kaybeder; .d-none Bootstrap'te AYNI önemde ama SONRA
         // tanımlı olduğu için ikisi birlikteyken kazanır (bkz. Check.cshtml'deki not).
         if (mainPaidRowEl) mainPaidRowEl.classList.toggle('d-none', paid <= 0);
-        if (mainRemainingTotalEl) mainRemainingTotalEl.textContent = money(Math.max(remaining(), 0));
+        if (mainRemainingTotalEl) mainRemainingTotalEl.textContent = money(kalan);
     }
+    window.RestaurantRefreshRunningTotals = updateMainScreenSummary;
 
     function removePendingPaymentLine(line) {
         var afterRemoval = function () {

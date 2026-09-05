@@ -289,9 +289,21 @@
 
         var payBtn = document.getElementById('self-pay-btn');
 
+        // Ara Toplam/Kalan Tutar (Edip, 2026-09-05: "Ara Toplam yapmıyor şu an") - bu iki alan
+        // sayfa yüklenişinde sunucudan gelen (SADECE gönderilmiş satırları sayan) DONMUŞ değerle
+        // basılıyordu, sepete yeni ürün eklendiğinde hiç güncellenmiyordu - eskiden sadece şimdi
+        // gizli olan "Toplam" alanı canlı güncelleniyordu. window.RestaurantCartSubtotal'ı burada
+        // güncelleyip restaurant-close-payment.js'teki paylaşılan yenileme fonksiyonunu çağırarak
+        // İKİSİ de (ve Kalan Tutar'ın ödenen/indirim düşülmüş hali) senkron kalır.
+        function syncRunningTotals(subtotal) {
+            totalEl.textContent = money(subtotal);
+            window.RestaurantCartSubtotal = subtotal;
+            if (window.RestaurantRefreshRunningTotals) window.RestaurantRefreshRunningTotals();
+        }
+
         if (cart.length === 0) {
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
-            totalEl.textContent = money(sentLinesTotal);
+            syncRunningTotals(sentLinesTotal);
             sendBtn.disabled = true;
             if (payBtn) payBtn.disabled = sentLinesTotal <= 0;
             updateLineToolbar();
@@ -332,7 +344,7 @@
             linesEl.appendChild(div);
         });
 
-        totalEl.textContent = money(total + sentLinesTotal);
+        syncRunningTotals(total + sentLinesTotal);
         sendBtn.disabled = false;
         if (payBtn) payBtn.disabled = (total + sentLinesTotal) <= 0;
         updateLineToolbar();

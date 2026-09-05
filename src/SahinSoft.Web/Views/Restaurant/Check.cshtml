@@ -54,6 +54,7 @@
      data-cancel-pending-payments-url="@Url.Action("CancelPendingPayments")"
      data-receipt-url-template="@Url.Action("Receipt", new { id = -1 })"
      data-payable-total="@Model.PayableTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+     data-ticket-discount-amount="@Model.TicketDiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-sent-lines-gross-total="@Model.SentOrders.SelectMany(o => o.Lines).Where(l => l.Status != "Cancelled").Sum(l => l.Quantity * l.UnitPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)"
      data-fiscal-enabled="@Model.IsFiscalEnabled.ToString().ToLowerInvariant()"
      data-fiscal-agent-url="@Model.FiscalAgentUrl"
