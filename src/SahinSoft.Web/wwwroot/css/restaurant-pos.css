@@ -241,7 +241,9 @@
        grid'in taşmasını önler - adisyon satırları zaten kendi içinde yatay kayabiliyor (bkz.
        .cart-lines-header-scroll), o yüzden bu daralma okunabilirliği bozmuyor. */
     grid-template-columns: minmax(160px, 1fr) clamp(380px, 42vw, 680px) 76px;
-    gap: 1rem;
+    /* 1rem -> 0.55rem: numpad/sipariş paneli sola çok fazla boşluk bırakıyordu (Edip, 2026-09-05:
+       "numaralar olan yeri sağa doğru biraz daha kaydır sıkıştır"). */
+    gap: 0.55rem;
     align-items: stretch;
     flex: 1;
     min-height: 0;
@@ -383,7 +385,10 @@
     min-width: 556px;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.55rem 0.4rem;
+    /* Satır yüksekliği sıkıştırıldı (Edip, 2026-09-05: "sağ taraf 4 tane ürünü ancak sığdırıyor,
+       çok fazla boşluk bırakmasın") - önceki 0.55rem dikey dolgu, "✓ Mutfağa gönderildi"
+       etiketiyle birleşince ekranda 4 satırdan fazlasını sığdırmıyordu. */
+    padding: 0.3rem 0.4rem;
     border-bottom: 1px solid #EEF2F6;
     font-size: 0.85rem;
 }
@@ -495,7 +500,9 @@
 .restaurant-pos .cart-sent-lines {
     padding: 0.5rem 0.75rem 0;
     border-bottom: 1px dashed var(--pos-border);
-    max-height: 40%;
+    /* %40 -> %58: satır dolgusu sıkıştırılsa bile bu tavan azdı, birkaç satırdan sonra hemen
+       kaydırma gerektiriyordu (Edip, 2026-09-05: "sağ taraf 4 tane ürünü ancak sığdırıyor"). */
+    max-height: 58%;
     overflow-y: auto;
     flex: 0 0 auto;
 }
@@ -892,9 +899,13 @@
     box-shadow: 0 0 0 3px rgba(226, 164, 0, .14);
 }
 
+/* Simetrik 5 sütun (Edip, 2026-09-05: "sağ taraf kategoriler simetrik olsun yan yana 5 tane
+   kategori alsın") - önceki flex-wrap her sekmeyi kendi metin genişliğine göre boyutlandırıp
+   düzensiz bir ızgara üretiyordu (satır başına 4-5 arası değişen sayıda, farklı genişliklerde
+   sekme). Artık HER ZAMAN 5 eşit sütun, kategori sayısı ne olursa olsun. */
 .restaurant-pos .category-tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.4rem;
     margin-bottom: 0.75rem;
 }
@@ -910,8 +921,9 @@
     background: var(--cat-tab-color);
     color: #fff;
     border-radius: 10px;
-    padding: 0.85rem 1.1rem;
-    min-width: 96px;
+    padding: 0.85rem 0.6rem;
+    text-align: center;
+    width: 100%;
     max-width: 100%;
     /* Uzun/tek parça kategori adları (ör. "Başlangıçlar") aşırı sıkışık viewport'ta sekmeyi
        taşırabiliyordu - kelime gerekirse kırılabilsin diye (Edip, 2026-09-04: DPI ölçeklendirme
@@ -943,10 +955,13 @@
     font-weight: 700;
 }
 
+/* Simetrik 5 sütun (Edip, 2026-09-05: onaylı görseldeki gibi "yan yana 5" ürün, 6 satır = 30
+   ürün kaydırmadan sığsın) - önceki auto-fill genişliğe göre 4 ya da daha fazla sütuna
+   düşebiliyordu, tutarlı bir ızgara değildi. */
 .restaurant-pos .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -961,7 +976,9 @@
     overflow: hidden;
     text-align: left;
     cursor: pointer;
-    min-height: 160px;
+    /* 160px -> 128px: 5 sütun x 6 satır (30 ürün) kaydırmadan sığsın diye biraz kısaltıldı
+       (Edip, 2026-09-05) - dokunma hedefi yine de rahat büyüklükte kalıyor. */
+    min-height: 128px;
     display: flex;
     flex-direction: column;
     transition: transform 100ms ease, box-shadow 120ms ease, border-color 120ms ease;
