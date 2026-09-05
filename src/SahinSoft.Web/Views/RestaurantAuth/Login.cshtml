@@ -10,11 +10,11 @@
     <title>ŞahinSoft Restoran — Kasiyer Girişi</title>
     <style>
         :root {
-            --pn-navy: #0B2239;
-            --pn-navy2: #102B46;
+            --pn-navy: #0B1524;
+            --pn-navy2: #0F2033;
             --pn-gold: #E2A400;
             --pn-gold-light: #F2B813;
-            --pn-bg: #F5F6F8;
+            --pn-bg: #F4F7FB;
             --pn-surface: #FFFFFF;
             --pn-border: #E3E8EF;
             --pn-text: #132238;
@@ -27,42 +27,116 @@
             font-family: Inter, "Segoe UI", system-ui, sans-serif;
             color: var(--pn-text);
             display: flex;
-            background: linear-gradient(90deg, var(--pn-navy) 0 50%, var(--pn-bg) 50% 100%);
         }
         .login-left, .login-right {
             width: 50%;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Sol tanıtım paneli - onaylı görsel (Edip, 2026-09-05: "bunun aynısını giriş ekranına
+           koy") - gerçek fotoğraf yerine AYNI sıcak/karanlık restoran atmosferini taklit eden bir
+           gradyan kullanıldı (gerçek fotoğraf dosyası verilirse doğrudan buraya konabilir). */
+        .login-left {
+            background:
+                radial-gradient(ellipse 900px 700px at 15% 88%, rgba(226,164,0,.16), transparent 60%),
+                radial-gradient(ellipse 700px 600px at 92% 12%, rgba(46,80,120,.35), transparent 55%),
+                linear-gradient(160deg, #0A1220 0%, #0B1524 45%, #0E1B2C 100%);
             display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(28px, 5vh, 56px) clamp(28px, 5vw, 64px);
+        }
+
+        .hero-corner-tag {
+            position: absolute;
+            top: clamp(20px, 4vh, 40px);
+            right: clamp(24px, 4vw, 56px);
+            color: rgba(255,255,255,.55);
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: .16em;
+            text-align: right;
+            line-height: 1.7;
+            border-right: 2px solid var(--pn-gold);
+            padding-right: 12px;
+        }
+
+        .hero { color: #fff; width: 100%; max-width: 480px; }
+        .hero-brand { display: flex; align-items: center; gap: 14px; }
+        .hero-brand img { height: clamp(52px, 8vh, 76px); width: auto; }
+        .hero-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+        .hero-brand-text .name { font-size: clamp(22px, 2.6vw, 30px); font-weight: 800; letter-spacing: .01em; }
+        .hero-brand-text .sub { font-size: clamp(13px, 1.5vw, 16px); font-weight: 700; color: var(--pn-gold-light); letter-spacing: .03em; }
+        .hero-rule { height: 1px; background: linear-gradient(90deg, var(--pn-gold), rgba(226,164,0,0)); margin: clamp(16px, 3vh, 26px) 0; }
+
+        .hero h1 { font-size: clamp(26px, 3.6vw, 42px); line-height: 1.18; font-weight: 800; margin: 0 0 10px; }
+        .hero h1 .gold { color: var(--pn-gold-light); }
+        .hero-sub { color: rgba(255,255,255,.65); font-size: clamp(13px, 1.5vw, 15px); margin: 0 0 clamp(16px, 3vh, 26px); max-width: 380px; }
+
+        .hero-features { display: flex; flex-direction: column; gap: clamp(8px, 1.6vh, 14px); margin-bottom: clamp(16px, 3vh, 26px); }
+        .feature { display: flex; align-items: center; gap: 12px; }
+        .feature-icon {
+            flex: 0 0 auto;
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            background: rgba(226,164,0,.14);
+            border: 1px solid rgba(226,164,0,.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .feature-title { font-weight: 800; font-size: 13.5px; }
+        .feature-sub { color: rgba(255,255,255,.55); font-size: 12px; }
+
+        .hero-script {
+            font-family: "Segoe Script", "Brush Script MT", cursive;
+            color: var(--pn-gold-light);
+            font-size: clamp(18px, 2.4vw, 24px);
+            line-height: 1.3;
+            margin-bottom: clamp(14px, 2.6vh, 22px);
+        }
+
+        .hero-footer { color: rgba(255,255,255,.55); font-size: 12.5px; display: flex; gap: 18px; flex-wrap: wrap; }
+
+        /* Sağ giriş paneli */
+        .login-right {
+            background:
+                radial-gradient(ellipse 600px 500px at 100% 0%, rgba(226,164,0,.08), transparent 55%),
+                radial-gradient(ellipse 700px 550px at 100% 100%, rgba(11,34,57,.06), transparent 55%),
+                var(--pn-bg);
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
             padding: 24px;
-            position: relative;
         }
-        .hero { color: #fff; width: 100%; max-width: 420px; }
-        .hero .logo { height: 64px; width: auto; }
-        .hero .brandline { color: #f1c545; font-weight: 800; letter-spacing: .12em; margin: 10px 0 18px; font-size: 13px; }
-        .hero h1 { font-size: 40px; line-height: 1.12; font-weight: 400; margin: 0 0 16px; }
-        .hero .features { color: rgba(255,255,255,.75); font-size: 13.5px; }
 
         .login-date { position: absolute; top: 20px; right: 24px; text-align: right; color: var(--pn-text-2); font-size: 12.5px; }
 
-        .login-card { width: 100%; max-width: 380px; background: var(--pn-surface); border: 1px solid var(--pn-border); border-radius: 18px; padding: 28px; box-shadow: 0 8px 24px rgba(15,35,55,.08); }
-        .lock-badge { width: 56px; height: 56px; border-radius: 50%; background: #FBEFD2; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px; }
-        .login-title { text-align: center; margin: 0 0 4px; font-size: 20px; font-weight: 800; }
-        .login-sub { text-align: center; color: var(--pn-text-2); font-size: 13px; margin: 0 0 16px; }
+        .login-card { width: 100%; max-width: 380px; background: var(--pn-surface); border: 1px solid var(--pn-border); border-radius: 20px; padding: 32px 28px; box-shadow: 0 12px 32px rgba(15,35,55,.1); }
+        .lock-badge { width: 68px; height: 68px; border-radius: 50%; background: #FBEFD2; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; }
+        .login-title { text-align: center; margin: 0 0 4px; font-size: 21px; font-weight: 800; }
+        .login-sub { text-align: center; color: var(--pn-text-2); font-size: 13px; margin: 0 0 18px; }
 
-        .pin-dots { text-align: center; margin: 14px 0; letter-spacing: 8px; font-size: 18px; color: var(--pn-navy); }
-        .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
-        .pin-pad button { padding: 16px; border: 1px solid var(--pn-border); background: #fff; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 16px; transition: transform 100ms ease, background-color 120ms ease; }
+        .pin-dots { text-align: center; margin: 14px 0; letter-spacing: 10px; font-size: 20px; color: var(--pn-navy); }
+        .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+        .pin-pad button { padding: 18px; border: 1px solid var(--pn-border); background: #fff; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 17px; box-shadow: 0 2px 6px rgba(15,35,55,.05); transition: transform 100ms ease, background-color 120ms ease; }
         .pin-pad button:active { transform: scale(.96); background: var(--pn-bg); }
-        .login-btn { width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 10px; background: linear-gradient(90deg,#f0cf73,#e9bd46); font-weight: 800; cursor: pointer; font-size: 14px; }
+        .login-btn { width: 100%; margin-top: 16px; padding: 15px; border: 0; border-radius: 12px; background: linear-gradient(90deg,#f0cf73,#e9bd46); font-weight: 800; cursor: pointer; font-size: 15px; }
         .login-btn:active { transform: scale(.99); }
         .pin-error { color: var(--pn-danger); font-size: 13px; text-align: center; margin: 0 0 12px; min-height: 18px; }
-        .admin-login { text-align: center; margin-top: 16px; }
-        .admin-login a { color: var(--pn-text-2); font-size: 12.5px; text-decoration: none; }
+
+        .login-footer-block { text-align: center; margin-top: 22px; }
+        .login-footer-rule { display: flex; align-items: center; gap: 10px; color: var(--pn-border); margin-bottom: 10px; }
+        .login-footer-rule::before, .login-footer-rule::after { content: ""; flex: 1; height: 1px; background: var(--pn-border); }
+        .login-footer-brand { font-weight: 800; font-size: 13.5px; color: var(--pn-text); }
+        .login-footer-sub { font-size: 12px; color: var(--pn-text-2); margin-top: 2px; }
+        .admin-login { text-align: center; margin-top: 12px; }
+        .admin-login a { color: var(--pn-text-2); font-size: 12px; text-decoration: none; }
         .admin-login a:hover { text-decoration: underline; }
+
         @@media (max-width: 860px) {
-            body { background: var(--pn-bg); }
             .login-left { display: none; }
             .login-right { width: 100%; }
         }
@@ -70,18 +144,54 @@
 </head>
 <body>
     <div class="login-left">
+        <div class="hero-corner-tag">LEZZETİN<br />TEKNOLOJİYLE<br />BULUŞTUĞU<br />NOKTA</div>
         <div class="hero">
-            <img src="~/images/logo-icon.png" alt="ŞahinSoft" class="logo" />
-            <div class="brandline">ŞAHİNSOFT RESTORAN</div>
-            <h1>Servis hızını artıran<br />akıllı restoran<br />yönetimi.</h1>
-            <div class="features">• Masa &amp; adisyon &nbsp;&nbsp; • Paket &amp; self satış &nbsp;&nbsp; • Anlık raporlar</div>
+            <div class="hero-brand">
+                <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
+                <div class="hero-brand-text">
+                    <div class="name">ŞAHİNSOFT</div>
+                    <div class="sub">Restoran POS</div>
+                </div>
+            </div>
+            <div class="hero-rule"></div>
+            <h1>İşletmenizin<br /><span class="gold">Güçlü Çözüm Ortağı</span></h1>
+            <p class="hero-sub">Daha hızlı, daha verimli, daha kârlı bir restoran yönetimi.</p>
+            <div class="hero-features">
+                <div class="feature">
+                    <div class="feature-icon">🍴</div>
+                    <div><div class="feature-title">Masa &amp; Adisyon</div><div class="feature-sub">Kolay ve Hızlı Yönetim</div></div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">👆</div>
+                    <div><div class="feature-title">Self Satış</div><div class="feature-sub">Pratik Satış Deneyimi</div></div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🛍</div>
+                    <div><div class="feature-title">Paket &amp; Gel-Al</div><div class="feature-sub">Kolay Sipariş Yönetimi</div></div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <div><div class="feature-title">Detaylı Raporlama</div><div class="feature-sub">Anlık Analiz</div></div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚙️</div>
+                    <div><div class="feature-title">Esnek Yapı</div><div class="feature-sub">İhtiyacınıza Uygun Çözümler</div></div>
+                </div>
+            </div>
+            <div class="hero-script">İyi Yemek,<br />Mutlu İnsanlar...</div>
+            <div class="hero-footer">
+                <span>🌐 sahinbilisim.com.tr</span>
+                <span>📍 Nilüfer / Bursa</span>
+            </div>
         </div>
     </div>
     <div class="login-right">
         <!-- Personel PIN giriş ekranı (2026-09-05 teknik doküman madde 12, onaylı görsel
              01_Giris_Ekrani_ONAYLI.png) - personel/kasiyer LİSTESİ TAMAMEN KALDIRILDI, sağda
              SADECE PIN pad var. Doğru PIN doğru personeli kendisi bulur (bkz.
-             RestaurantAuthController.Login) - hatalı PIN'de kullanıcı adı İFŞA EDİLMEZ. -->
+             RestaurantAuthController.Login) - hatalı PIN'de kullanıcı adı İFŞA EDİLMEZ.
+             Sol tanıtım paneli + genel kart düzeni (2026-09-05, Edip'in gönderdiği yeni onaylı
+             görsel) - "bunun aynısını giriş ekranına koy". -->
         <div class="login-date" id="login-date"></div>
         <div class="login-card">
             <div class="lock-badge">🔒</div>
@@ -111,7 +221,12 @@
                 <button type="button" id="pin-back">⌫</button>
             </div>
             <button type="button" class="login-btn" id="pin-confirm">Giriş Yap →</button>
+        </div>
 
+        <div class="login-footer-block">
+            <div class="login-footer-rule"></div>
+            <div class="login-footer-brand">ŞahinSoft Restoran POS</div>
+            <div class="login-footer-sub">İşletmenizin Güçlü Çözüm Ortağı</div>
             <div class="admin-login">
                 <a href="/Identity/Account/Login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)">Yönetici Girişi (e-posta/şifre)</a>
             </div>
