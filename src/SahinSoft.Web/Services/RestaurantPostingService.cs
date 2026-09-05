@@ -206,11 +206,33 @@ public sealed class RestaurantPostingService(
     // basmaz - sadece RestaurantCheck.TicketDiscountAmount'a yazılır. Toplam hesaplaması
     // (RestaurantController.ComputeCheckRunningTotal, CloseCheckAsync) bu alanı satırların net
     // toplamından ayrıca düşer.
-    public async Task ApplyTicketDiscountAsync(int checkId, decimal totalDiscountAmount, CancellationToken cancellationToken = default)
+    // GERÇEK HATA (2026-09-05, incelemede bulundu): bu metod HİÇBİR yetki/onay kontrolü
+    // yapmıyordu - Ayarlar'daki "İndirim için 2. onay" (RequireSecondApprovalForDiscount) ve
+    // CanApplyDiscount izni TANIMLI ama hiçbir yerde KULLANILMIYORDU, yani anlamsızca duruyordu.
+    // Artık ToggleLineComplimentaryAsync/ApplyOrderLineDiscountAsync ile AYNI desen: yetkisiz
+    // kullanıcı reddedilir, parametre açıksa ikinci yetkili PIN'i şart.
+    public async Task ApplyTicketDiscountAsync(
+        int checkId,
+        decimal totalDiscountAmount,
+        string performedByUserId,
+        string? approverPin = null,
+        CancellationToken cancellationToken = default)
     {
         if (totalDiscountAmount < 0)
         {
             throw new InvalidOperationException("İndirim tutarı negatif olamaz.");
+        }
+
+        if (!await permissionService.CanApplyDiscountAsync(performedByUserId, cancellationToken))
+        {
+            throw new InvalidOperationException("İndirim uygulama yetkiniz yok.");
+        }
+
+        string? approverUserId = null;
+        if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
+        {
+            approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken)
+                ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
         }
 
         var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
@@ -227,6 +249,11 @@ public sealed class RestaurantPostingService(
 
         check.TicketDiscountAmount = Math.Min(totalDiscountAmount, netLinesTotal);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (approverUserId is not null)
+        {
+            await permissionService.LogApprovalAsync("ApplyTicketDiscount", performedByUserId, approverUserId, checkId, null, $"Tutar: {check.TicketDiscountAmount:N2}", cancellationToken);
+        }
     }
 
     // Fiş İkram (madde 11) - adisyondaki TÜM aktif satırları ikram eder (satır bazlı İkram'ın
@@ -1353,8 +1380,10 @@ public sealed class RestaurantPostingService(
 
     // Mutfağa gönderilmiş TEK bir satıra indirim - Edip, 2026-09-05: "bu satır indirimini yapsın
     // bu hatayı vermesin üst butonlar aktif çalışsın" (önceki hali sadece bir uyarı gösterip
-    // kullanıcıyı fiş geneli %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). Aynı yetki/
-    // onay deseni AdjustOrderLineQuantityAsync ile BİREBİR aynı (satır kilidi kaldırıldı, madde 9).
+    // kullanıcıyı fiş geneli %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). Yetki/onay
+    // deseni ApplyTicketDiscountAsync ile AYNI (CanApplyDiscount/RequireSecondApprovalForDiscount) -
+    // bu bir "satır düzenleme" değil, bir İNDİRİM işlemi; incelemede CanEditKitchenSentLines'a
+    // yanlışlıkla bağlanmış olduğu bulunup düzeltildi (2026-09-05).
     public Task ApplyOrderLineDiscountAsync(
         int restaurantOrderLineId,
         decimal discountAmount,
@@ -1372,15 +1401,15 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
-                if (!await permissionService.CanEditKitchenSentLinesAsync(performedByUserId, cancellationToken))
+                if (!await permissionService.CanApplyDiscountAsync(performedByUserId, cancellationToken))
                 {
-                    throw new InvalidOperationException("Mutfağa gönderilmiş ürünü düzenleme yetkiniz yok.");
+                    throw new InvalidOperationException("İndirim uygulama yetkiniz yok.");
                 }
 
                 string? approverUserId = null;
-                if (await permissionService.RequiresSecondApprovalForEditKitchenSentLinesAsync(cancellationToken))
+                if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 

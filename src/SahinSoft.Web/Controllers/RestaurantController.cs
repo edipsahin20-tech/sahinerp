@@ -193,11 +193,11 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     // o da tutar indirimi sayılsın"). JSON döner - restaurant-pos.js sayfayı kendi yeniler.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApplyDiscount(int checkId, decimal amount)
+    public async Task<IActionResult> ApplyDiscount(int checkId, decimal amount, string? approverPin = null)
     {
         try
         {
-            await postingService.ApplyTicketDiscountAsync(checkId, amount);
+            await postingService.ApplyTicketDiscountAsync(checkId, amount, CurrentUserId, approverPin);
             return Json(new { success = true });
         }
         catch (InvalidOperationException ex)
@@ -541,7 +541,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var fiscalSettings = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
-            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireReceiptPromptAfterQuickPay, x.ShowUnpaidPaymentType,
+            .Select(x => new { x.FiscalDeviceType, x.FiscalAgentUrl, x.IsKitchenTrackingEnabled, x.RequireCancellationReason, x.CancellationReasonPresets, x.QuickNotePresets, x.RequireSecondApprovalForCancelOrderLine, x.RequireSecondApprovalForEditKitchenSentLines, x.RequireSecondApprovalForComplimentary, x.RequireSecondApprovalForDiscount, x.RequireReceiptPromptAfterQuickPay, x.ShowUnpaidPaymentType,
                 x.EnableTicketNoteButton, x.EnableTableTransferButton, x.EnableSendToKitchenButton, x.EnablePriceCheckButton, x.EnableKeyboardButton, x.EnableHoldReceiptButton, x.EnableHeldReceiptsButton, x.EnableProductListButton, x.EnableComplimentaryReceiptButton, x.EnableReceiptListButton, x.EnableClearOrderButton })
             .SingleOrDefaultAsync();
 
@@ -580,6 +580,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             RequireSecondApprovalForCancelOrderLine = fiscalSettings?.RequireSecondApprovalForCancelOrderLine ?? false,
             RequireSecondApprovalForEditKitchenSentLines = fiscalSettings?.RequireSecondApprovalForEditKitchenSentLines ?? false,
             RequireSecondApprovalForComplimentary = fiscalSettings?.RequireSecondApprovalForComplimentary ?? false,
+            RequireSecondApprovalForDiscount = fiscalSettings?.RequireSecondApprovalForDiscount ?? false,
             RequireReceiptPromptAfterQuickPay = fiscalSettings?.RequireReceiptPromptAfterQuickPay ?? false,
             ShowUnpaidPaymentType = fiscalSettings?.ShowUnpaidPaymentType ?? false,
             AttachedCustomerId = check.AttachedCustomerId,

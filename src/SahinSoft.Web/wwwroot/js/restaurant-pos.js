@@ -349,6 +349,7 @@
     var selectedSentLineId = null;
     var requireApprovalEditKitchenSent = root.getAttribute('data-require-second-approval-edit-kitchen-sent') === 'true';
     var requireApprovalComplimentary = root.getAttribute('data-require-second-approval-complimentary') === 'true';
+    var requireApprovalDiscountForLine = root.getAttribute('data-require-second-approval-discount') === 'true';
 
     function selectedSentLineEl() {
         if (selectedSentLineId === null) return null;
@@ -377,10 +378,11 @@
 
     // Gönderilmiş satıra indirim (Edip, 2026-09-05: "bu satır indirimini yapsın bu hatayı
     // vermesin üst butonlar aktif çalışsın" - önceki hali sadece bir uyarı gösterip fiş geneli
-    // %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). submitSentLineQtyChange/Comp ile
-    // AYNI PIN onay deseni.
+    // %İndirim'e yönlendiriyordu, gerçek bir uç nokta yoktu). Onay bayrağı
+    // RequireSecondApprovalForDiscount'tur (satır düzenleme değil, bir İNDİRİM işlemi - bkz.
+    // RestaurantPostingService.ApplyOrderLineDiscountAsync).
     function submitSentLineDiscount(lineId, amount) {
-        window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
+        window.requestApproverPin(requireApprovalDiscountForLine, function (pin) {
             document.getElementById('applyDiscountLineId').value = lineId;
             document.getElementById('applyDiscountAmount').value = amount;
             document.getElementById('applyDiscountApproverPin').value = pin || '';
@@ -1126,11 +1128,11 @@
         var modalEl = document.getElementById('ticketDiscountModal');
         if (!modalEl) return;
         var applyDiscountUrl = root.getAttribute('data-apply-discount-url');
-        // Sunucudaki ApplyTicketDiscountAsync girilen tutarı satırların HAM brüt tutarına
-        // (Quantity * UnitPriceSnapshot, önceki indirimler hariç) göre dağıtır ve önceki satır
-        // indirimlerinin YERİNE geçer - bu yüzden önizleme de aynı HAM brüt tutarı esas almalı,
-        // yoksa satırlarda önceden indirim varsa (örn. ikinci kez indirim uygulanırken) önizleme
-        // ile gerçek sonuç uyuşmaz.
+        var requireApprovalDiscount = root.getAttribute('data-require-second-approval-discount') === 'true';
+        // Sunucudaki ApplyTicketDiscountAsync bu tutarı SADECE RestaurantCheck.TicketDiscountAmount'a
+        // yazar (2026-09-05 teknik doküman madde 4) - satırlara hiç dağıtılmaz/dokunulmaz. Önizleme
+        // burada HAM brüt tutar (satırların kendi indirim/ikramları düşülmüş toplamı) üzerinden
+        // hesaplanır - sunucudaki netLinesTotal ile AYNI taban.
         var sentLinesGrossTotal = parseFloat(root.getAttribute('data-sent-lines-gross-total')) || 0;
         var mode = 'percent';
         var digits = '';
@@ -1233,35 +1235,38 @@
             var applyBtn = document.getElementById('discount-apply-btn');
             applyBtn.disabled = true;
             applyBtn.textContent = 'Uygulanıyor...';
+
+            function fail() {
+                applyBtn.disabled = false;
+                applyBtn.textContent = 'Uygula';
+            }
+
             flushCartToKitchen(
                 function () {
-                    fetch(applyDiscountUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
-                        body: 'checkId=' + encodeURIComponent(checkId) + '&amount=' + encodeURIComponent(amount)
-                    })
-                        .then(function (res) { return res.json(); })
-                        .then(function (data) {
-                            if (!data.success) {
-                                window.posAlert('Hata: ' + (data.message || 'İndirim uygulanamadı.'));
-                                applyBtn.disabled = false;
-                                applyBtn.textContent = 'Uygula';
-                                return;
-                            }
-                            var url = new URL(window.location.href);
-                            if (fromPayment) url.searchParams.set('openPayment', '1');
-                            window.location.href = url.toString();
+                    window.requestApproverPin(requireApprovalDiscount, function (pin) {
+                        fetch(applyDiscountUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': getCsrfToken() },
+                            body: 'checkId=' + encodeURIComponent(checkId) + '&amount=' + encodeURIComponent(amount) + '&approverPin=' + encodeURIComponent(pin || '')
                         })
-                        .catch(function () {
-                            window.posAlert('Bağlantı hatası oluştu.');
-                            applyBtn.disabled = false;
-                            applyBtn.textContent = 'Uygula';
-                        });
+                            .then(function (res) { return res.json(); })
+                            .then(function (data) {
+                                if (!data.success) {
+                                    window.posAlert('Hata: ' + (data.message || 'İndirim uygulanamadı.'));
+                                    fail();
+                                    return;
+                                }
+                                var url = new URL(window.location.href);
+                                if (fromPayment) url.searchParams.set('openPayment', '1');
+                                window.location.href = url.toString();
+                            })
+                            .catch(function () {
+                                window.posAlert('Bağlantı hatası oluştu.');
+                                fail();
+                            });
+                    });
                 },
-                function () {
-                    applyBtn.disabled = false;
-                    applyBtn.textContent = 'Uygula';
-                });
+                fail);
         }
 
         document.getElementById('discount-apply-btn').addEventListener('click', function () {

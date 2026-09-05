@@ -57,6 +57,7 @@ public sealed class RestaurantCheckViewModel
     public bool RequireSecondApprovalForCancelOrderLine { get; set; }
     public bool RequireSecondApprovalForEditKitchenSentLines { get; set; }
     public bool RequireSecondApprovalForComplimentary { get; set; }
+    public bool RequireSecondApprovalForDiscount { get; set; }
 
     // Self Satış Hızlı Ödeme (madde 3) - açıkken kapanış sonrası "Fiş Yazdır | Kapat" diyaloğu
     // gösterilir, kapalıyken (varsayılan) hiç sorulmadan boş ekrana dönülür.
