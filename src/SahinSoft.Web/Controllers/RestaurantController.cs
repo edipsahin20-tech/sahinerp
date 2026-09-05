@@ -38,8 +38,15 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Where(x => x.IsActive)
             .ToListAsync();
 
+        var askGuestCount = await dbContext.InventorySettings
+            .AsNoTracking()
+            .Where(x => x.Id == 1)
+            .Select(x => x.AskGuestCountOnTableOpen)
+            .SingleOrDefaultAsync();
+
         var model = new RestaurantFloorViewModel
         {
+            AskGuestCountOnTableOpen = askGuestCount,
             Sections = sections.Select(section => new RestaurantFloorSectionViewModel
             {
                 Name = section.Name,

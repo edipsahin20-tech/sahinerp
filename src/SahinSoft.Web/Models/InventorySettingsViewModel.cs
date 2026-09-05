@@ -116,6 +116,8 @@ public sealed class InventorySettingsViewModel
     public bool EnableReceiptListButton { get; set; } = true;
     [Display(Name = "Sipariş Sil")]
     public bool EnableClearOrderButton { get; set; } = true;
+    [Display(Name = "Masa açılışında kişi sayısı sorulsun mu")]
+    public bool AskGuestCountOnTableOpen { get; set; } = true;
 
     // Madde 26 (Ayarlar) - sol ana menüde modülün TAMAMININ görünürlüğü.
     [Display(Name = "Masa Satış görünsün mü")]

@@ -100,7 +100,7 @@
                                 </span>
                             </button>
                             <form method="post" asp-action="CancelReservation" class="table-cancel-reservation"
-                                  onsubmit="return confirm('&quot;' + '@table.Name'.replace(/'/g,'') + '&quot; rezervasyonu iptal edilsin mi?');">
+                                  data-confirm-cancel-reservation="@table.Name">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="reservationId" value="@table.ReservationId" />
                                 <button type="submit" title="Rezervasyonu İptal Et">✕</button>
@@ -134,7 +134,10 @@
     }
 </div>
 
-<!-- Masa açma modalı -->
+<!-- Masa açma modalı - dokunmatik numpad ile kişi sayısı (2026-09-05 teknik doküman madde 13).
+     Bu modal SADECE "Masa açılışında kişi sayısı sorulsun mu?" (Ayarlar) açıkken tetiklenir -
+     kapalıysa masa doğrudan varsayılan kapasiteyle açılır (bkz. aşağıdaki JS). Açık bir masaya
+     tekrar girildiğinde bu modal zaten hiç tetiklenmez (data-open-check farklı bir akış). -->
 <div class="modal fade" id="openTableModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -142,13 +145,28 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="tableId" id="openTableId" />
                 <input type="hidden" name="submissionKey" id="openTableSubmissionKey" />
+                <input type="hidden" name="guestCount" id="openTableGuestCount" value="2" />
                 <div class="modal-header">
                     <h5 class="modal-title">Masa Aç — <span id="openTableName"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <label class="form-label">Kişi Sayısı</label>
-                    <input type="number" name="guestCount" id="openTableGuestCount" class="form-control" min="1" value="2" autofocus />
+                    <label class="form-label d-block text-center">Kişi Sayısı</label>
+                    <div class="text-center" style="font-size:2rem; font-weight:800; margin:6px 0 14px;" id="openTableGuestCountDisplay">2</div>
+                    <div class="pin-pad" id="guestCountNumpad" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; max-width:280px; margin:0 auto;">
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="1">1</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="2">2</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="3">3</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="4">4</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="5">5</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="6">6</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="7">7</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="8">8</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="9">9</button>
+                        <button type="button" class="btn btn-erp-outline" id="guestCountClear">C</button>
+                        <button type="button" class="btn btn-erp-outline" data-guest-digit="0">0</button>
+                        <button type="button" class="btn btn-erp-outline" id="guestCountBackspace">⌫</button>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Vazgeç</button>
@@ -254,8 +272,41 @@
     </div>
 </div>
 
+<!-- ŞahinSoft masaüstü-hissi onay penceresi (bkz. pos-dialog.js) - Check.cshtml'deki AYNI
+     mekanizma, bu ekranda da tarayıcının native confirm()'üne dönülmesin diye. -->
+<div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ŞahinSoft Restoran</h5>
+            </div>
+            <div class="modal-body">
+                <div id="posDialogMessage" style="white-space:pre-line;"></div>
+                <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
     <script>
+        document.querySelectorAll('[data-confirm-cancel-reservation]').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                if (form.dataset.confirmed === 'true') return;
+                e.preventDefault();
+                var tableName = form.getAttribute('data-confirm-cancel-reservation');
+                window.posConfirm('"' + tableName + '" rezervasyonu iptal edilsin mi?', function () {
+                    form.dataset.confirmed = 'true';
+                    form.submit();
+                }, null, { danger: true });
+            });
+        });
+
         var sectionTabs = document.getElementById('sectionTabs');
         if (sectionTabs) {
             sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (tab) {
@@ -299,12 +350,49 @@
             });
         });
 
+        // Masa açılışında kişi sayısı sorulsun mu (2026-09-05 teknik doküman madde 13, Ayarlar
+        // parametresi) - kapalıysa modal hiç gösterilmeden masa doğrudan varsayılan kapasiteyle
+        // açılır. Açık bir masaya tekrar girmek zaten AYRI bir akış (data-open-check) - buraya hiç
+        // uğramaz, bu yüzden "açık masaya tekrar girildiğinde sorulmayacak" otomatik sağlanır.
+        var askGuestCount = @Json.Serialize(Model.AskGuestCountOnTableOpen);
+        var openTableForm = document.getElementById('openTableModal').querySelector('form');
+
+        var guestCountDigits = '2';
+        function renderGuestCount() {
+            document.getElementById('openTableGuestCountDisplay').textContent = guestCountDigits === '' ? '0' : guestCountDigits;
+            document.getElementById('openTableGuestCount').value = guestCountDigits === '' ? '1' : guestCountDigits;
+        }
+        document.querySelectorAll('[data-guest-digit]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (guestCountDigits.length >= 3) return;
+                guestCountDigits = (guestCountDigits === '0' ? '' : guestCountDigits) + btn.getAttribute('data-guest-digit');
+                renderGuestCount();
+            });
+        });
+        document.getElementById('guestCountBackspace').addEventListener('click', function () {
+            guestCountDigits = guestCountDigits.slice(0, -1);
+            renderGuestCount();
+        });
+        document.getElementById('guestCountClear').addEventListener('click', function () {
+            guestCountDigits = '';
+            renderGuestCount();
+        });
+
         document.querySelectorAll('[data-open-table]').forEach(function (btn) {
             btn.addEventListener('click', function () {
+                var capacity = Math.min(2, parseInt(btn.getAttribute('data-capacity'), 10) || 2);
                 document.getElementById('openTableId').value = btn.getAttribute('data-open-table');
                 document.getElementById('openTableName').textContent = btn.getAttribute('data-table-name');
-                document.getElementById('openTableGuestCount').value = Math.min(2, parseInt(btn.getAttribute('data-capacity'), 10) || 2);
                 document.getElementById('openTableSubmissionKey').value = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random()));
+
+                if (!askGuestCount) {
+                    document.getElementById('openTableGuestCount').value = capacity;
+                    openTableForm.submit();
+                    return;
+                }
+
+                guestCountDigits = String(capacity);
+                renderGuestCount();
                 new bootstrap.Modal(document.getElementById('openTableModal')).show();
             });
         });

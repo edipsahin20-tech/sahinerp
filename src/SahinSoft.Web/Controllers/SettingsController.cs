@@ -133,6 +133,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.EnableComplimentaryReceiptButton = model.EnableComplimentaryReceiptButton;
         settings.EnableReceiptListButton = model.EnableReceiptListButton;
         settings.EnableClearOrderButton = model.EnableClearOrderButton;
+        settings.AskGuestCountOnTableOpen = model.AskGuestCountOnTableOpen;
         settings.ShowTableSaleNav = model.ShowTableSaleNav;
         settings.ShowSelfSaleNav = model.ShowSelfSaleNav;
         settings.ShowPackageNav = model.ShowPackageNav;
@@ -195,6 +196,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         EnableComplimentaryReceiptButton = settings.EnableComplimentaryReceiptButton,
         EnableReceiptListButton = settings.EnableReceiptListButton,
         EnableClearOrderButton = settings.EnableClearOrderButton,
+        AskGuestCountOnTableOpen = settings.AskGuestCountOnTableOpen,
         ShowTableSaleNav = settings.ShowTableSaleNav,
         ShowSelfSaleNav = settings.ShowSelfSaleNav,
         ShowPackageNav = settings.ShowPackageNav,

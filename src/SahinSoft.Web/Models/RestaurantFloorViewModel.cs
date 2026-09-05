@@ -3,6 +3,10 @@ namespace SahinSoft.Web.Models;
 public sealed class RestaurantFloorViewModel
 {
     public List<RestaurantFloorSectionViewModel> Sections { get; set; } = [];
+
+    // Madde 13 (2026-09-05 teknik doküman) - "Masa açılışında kişi sayısı sorulsun mu?"
+    // parametresi. Kapalıysa masa doğrudan varsayılan kapasiteyle açılır, modal HİÇ gösterilmez.
+    public bool AskGuestCountOnTableOpen { get; set; } = true;
 }
 
 public sealed class RestaurantFloorSectionViewModel

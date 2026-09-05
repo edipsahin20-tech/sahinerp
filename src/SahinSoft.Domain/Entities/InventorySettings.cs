@@ -107,6 +107,12 @@ public sealed class InventorySettings : EntityBase
     public bool EnableReceiptListButton { get; set; } = true;
     public bool EnableClearOrderButton { get; set; } = true;
 
+    // Masa açılışında kişi sayısı sorulsun mu (2026-09-05 teknik doküman madde 13) - kapalıysa
+    // masa doğrudan varsayılan (masanın kapasitesi) kişi sayısıyla açılır, hiç modal göstermez.
+    // Açık bir masaya TEKRAR girildiğinde bu ayardan bağımsız olarak ZATEN hiç sorulmaz (bkz.
+    // Restaurant/Index.cshtml - o akış sadece BOŞ masalarda tetiklenir).
+    public bool AskGuestCountOnTableOpen { get; set; } = true;
+
     // Madde 26 (Ayarlar, 2026-09-05) - "Self Satış görünsün mü / Masa Satış görünsün mü / Paket
     // görünsün mü" - sol ana menüdeki bu 3 modülün kendisini gösterir/gizler (yukarıdaki
     // EnableXButton'lardan FARKLI katman - onlar bir modülÜN İÇİNDEKİ tek tek butonlar, bunlar
