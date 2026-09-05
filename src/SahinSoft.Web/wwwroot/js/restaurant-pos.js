@@ -155,18 +155,27 @@
     }
 
     if (searchEl) {
+        // GERÇEK DEĞİŞİKLİK (Edip, 2026-09-06: "sol taraftaki kategoriler sabit olsun ... arama
+        // ve bulduğu ürünü orda göstermesin, sadece arka planda kendi içinde stoklarda arasın").
+        // Eskiden yazarken kategori sekmeleri/ürün ızgarası GEÇİCİ olarak arama sonuçlarıyla
+        // DEĞİŞTİRİLİYORDU (tabsEl.style.display='none' + renderProductList(results)) - artık
+        // kategori paneli YAZARKEN DE HİÇ DEĞİŞMİYOR. Arama tamamen "arka planda" çalışır: tam
+        // barkod eşleşmesi bulunduğu an ürün doğrudan sepete eklenir (aynı barkod okuyucu/Enter
+        // akışı), aksi halde kategori/ızgara alanına hiçbir şey yansımaz - belirsiz/çok sonuçlu
+        // aramalar için sağdaki "Ürün Listesi" (arama+filtre+sayfalama) kullanılır.
         searchEl.addEventListener('input', function () {
             var term = searchEl.value.trim();
-            if (!term) {
-                tabsEl.style.display = '';
-                lastSearchResults = [];
-                if (activeCategory) renderProducts(activeCategory);
-                return;
-            }
-            tabsEl.style.display = 'none';
+            if (!term) { lastSearchResults = []; return; }
             if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(function () {
-                runSearch(term, function (results) { renderProductList(results); });
+                runSearch(term, function (results) {
+                    var byBarcode = results.find(function (p) { return p.barcodes && p.barcodes.indexOf(term) !== -1; });
+                    if (byBarcode) {
+                        addToCart(byBarcode);
+                        searchEl.value = '';
+                        lastSearchResults = [];
+                    }
+                });
             }, 250);
         });
 
@@ -186,11 +195,11 @@
                 if (target) {
                     addToCart(target);
                     searchEl.value = '';
-                    tabsEl.style.display = '';
                     lastSearchResults = [];
-                    if (activeCategory) renderProducts(activeCategory);
+                } else if (results.length > 1) {
+                    window.posAlert(results.length + ' ürün bulundu. Daha net yazın veya sağdaki "Ürün Listesi"ni kullanın.');
                 } else {
-                    renderProductList(results);
+                    window.posAlert('Ürün bulunamadı.');
                 }
             });
         });
