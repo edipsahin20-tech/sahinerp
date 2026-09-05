@@ -35,69 +35,16 @@
             overflow: hidden;
         }
 
-        /* Sol tanıtım paneli - onaylı görsel (Edip, 2026-09-05: "bunun aynısını giriş ekranına
-           koy") - gerçek fotoğraf yerine AYNI sıcak/karanlık restoran atmosferini taklit eden bir
-           gradyan kullanıldı (gerçek fotoğraf dosyası verilirse doğrudan buraya konabilir). */
+        /* Sol tanıtım paneli - Edip'in kendi onaylı GÖRSELİ (2026-09-05: "bu görseli giriş
+           sayfasına ekle", dosya: GÖRSEL/GİRİŞ.jpeg) GERÇEK fotoğraf olarak kullanılıyor - logo/
+           başlık/özellik listesi/slogan/altbilgi ARTIK ayrı HTML/CSS metni DEĞİL, hepsi bu tek
+           görselin içinde birebir zaten var. Önceki (bu görsel elimde olmadan yapılan) gradyan +
+           el yapımı metin yaklaşımı bununla DEĞİŞTİRİLDİ. */
         .login-left {
-            background:
-                radial-gradient(ellipse 900px 700px at 15% 88%, rgba(226,164,0,.16), transparent 60%),
-                radial-gradient(ellipse 700px 600px at 92% 12%, rgba(46,80,120,.35), transparent 55%),
-                linear-gradient(160deg, #0A1220 0%, #0B1524 45%, #0E1B2C 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: clamp(28px, 5vh, 56px) clamp(28px, 5vw, 64px);
+            background-image: url('@Url.Content("~/images/login-hero.jpg")');
+            background-size: cover;
+            background-position: center;
         }
-
-        .hero-corner-tag {
-            position: absolute;
-            top: clamp(20px, 4vh, 40px);
-            right: clamp(24px, 4vw, 56px);
-            color: rgba(255,255,255,.55);
-            font-size: 11.5px;
-            font-weight: 700;
-            letter-spacing: .16em;
-            text-align: right;
-            line-height: 1.7;
-            border-right: 2px solid var(--pn-gold);
-            padding-right: 12px;
-        }
-
-        .hero { color: #fff; width: 100%; max-width: 480px; }
-        .hero-brand { display: flex; align-items: center; gap: 14px; }
-        .hero-brand img { height: clamp(52px, 8vh, 76px); width: auto; }
-        .hero-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-        .hero-brand-text .name { font-size: clamp(22px, 2.6vw, 30px); font-weight: 800; letter-spacing: .01em; }
-        .hero-brand-text .sub { font-size: clamp(13px, 1.5vw, 16px); font-weight: 700; color: var(--pn-gold-light); letter-spacing: .03em; }
-        .hero-rule { height: 1px; background: linear-gradient(90deg, var(--pn-gold), rgba(226,164,0,0)); margin: clamp(16px, 3vh, 26px) 0; }
-
-        .hero h1 { font-size: clamp(26px, 3.6vw, 42px); line-height: 1.18; font-weight: 800; margin: 0 0 10px; }
-        .hero h1 .gold { color: var(--pn-gold-light); }
-        .hero-sub { color: rgba(255,255,255,.65); font-size: clamp(13px, 1.5vw, 15px); margin: 0 0 clamp(16px, 3vh, 26px); max-width: 380px; }
-
-        .hero-features { display: flex; flex-direction: column; gap: clamp(8px, 1.6vh, 14px); margin-bottom: clamp(16px, 3vh, 26px); }
-        .feature { display: flex; align-items: center; gap: 12px; }
-        .feature-icon {
-            flex: 0 0 auto;
-            width: 38px; height: 38px;
-            border-radius: 10px;
-            background: rgba(226,164,0,.14);
-            border: 1px solid rgba(226,164,0,.3);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px;
-        }
-        .feature-title { font-weight: 800; font-size: 13.5px; }
-        .feature-sub { color: rgba(255,255,255,.55); font-size: 12px; }
-
-        .hero-script {
-            font-family: "Segoe Script", "Brush Script MT", cursive;
-            color: var(--pn-gold-light);
-            font-size: clamp(18px, 2.4vw, 24px);
-            line-height: 1.3;
-            margin-bottom: clamp(14px, 2.6vh, 22px);
-        }
-
-        .hero-footer { color: rgba(255,255,255,.55); font-size: 12.5px; display: flex; gap: 18px; flex-wrap: wrap; }
 
         /* Sağ giriş paneli */
         .login-right {
@@ -143,48 +90,9 @@
     </style>
 </head>
 <body>
-    <div class="login-left">
-        <div class="hero-corner-tag">LEZZETİN<br />TEKNOLOJİYLE<br />BULUŞTUĞU<br />NOKTA</div>
-        <div class="hero">
-            <div class="hero-brand">
-                <img src="~/images/logo-icon.png" alt="ŞahinSoft" />
-                <div class="hero-brand-text">
-                    <div class="name">ŞAHİNSOFT</div>
-                    <div class="sub">Restoran POS</div>
-                </div>
-            </div>
-            <div class="hero-rule"></div>
-            <h1>İşletmenizin<br /><span class="gold">Güçlü Çözüm Ortağı</span></h1>
-            <p class="hero-sub">Daha hızlı, daha verimli, daha kârlı bir restoran yönetimi.</p>
-            <div class="hero-features">
-                <div class="feature">
-                    <div class="feature-icon">🍴</div>
-                    <div><div class="feature-title">Masa &amp; Adisyon</div><div class="feature-sub">Kolay ve Hızlı Yönetim</div></div>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">👆</div>
-                    <div><div class="feature-title">Self Satış</div><div class="feature-sub">Pratik Satış Deneyimi</div></div>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">🛍</div>
-                    <div><div class="feature-title">Paket &amp; Gel-Al</div><div class="feature-sub">Kolay Sipariş Yönetimi</div></div>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">📊</div>
-                    <div><div class="feature-title">Detaylı Raporlama</div><div class="feature-sub">Anlık Analiz</div></div>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">⚙️</div>
-                    <div><div class="feature-title">Esnek Yapı</div><div class="feature-sub">İhtiyacınıza Uygun Çözümler</div></div>
-                </div>
-            </div>
-            <div class="hero-script">İyi Yemek,<br />Mutlu İnsanlar...</div>
-            <div class="hero-footer">
-                <span>🌐 sahinbilisim.com.tr</span>
-                <span>📍 Nilüfer / Bursa</span>
-            </div>
-        </div>
-    </div>
+    <!-- Sol panel artık TAMAMEN gerçek görsel (bkz. yukarıdaki .login-left background-image) -
+         içerik metni/logosu/özellik listesi görselin kendi içinde, burada ayrıca tekrarlanmıyor. -->
+    <div class="login-left"></div>
     <div class="login-right">
         <!-- Personel PIN giriş ekranı (2026-09-05 teknik doküman madde 12, onaylı görsel
              01_Giris_Ekrani_ONAYLI.png) - personel/kasiyer LİSTESİ TAMAMEN KALDIRILDI, sağda
