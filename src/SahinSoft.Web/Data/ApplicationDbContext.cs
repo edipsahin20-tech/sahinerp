@@ -288,6 +288,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.DispatchNoteLineId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.RestaurantOrderLine)
+                .WithMany()
+                .HasForeignKey(x => x.RestaurantOrderLineId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.ReversalOf)
                 .WithMany()
                 .HasForeignKey(x => x.ReversalOfId)

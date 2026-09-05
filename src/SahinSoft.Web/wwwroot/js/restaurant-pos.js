@@ -337,7 +337,13 @@
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
             syncRunningTotals(sentLinesTotal, sentLinesDiscountTotal);
             sendBtn.disabled = true;
-            if (payBtn) payBtn.disabled = (sentLinesTotal - sentLinesDiscountTotal) <= 0;
+            // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - NET (indirim/ikram
+            // düşülmüş) tutar kullanılıyordu: tam İkram edilmiş bir adisyonda (satırlar hâlâ VAR
+            // ama net=0) bu buton kalıcı olarak disabled kalıyor, sunucunun (Model.AraToplam
+            // BRÜT tabanlı) düzeltmesini burada JS ezip geçiyordu. Artık BRÜT (sentLinesTotal)
+            // kullanılıyor - "adisyonda gerçek ürün var mı" sorusu, ne kadarının tahsil
+            // edileceğinden bağımsız olmalı.
+            if (payBtn) payBtn.disabled = sentLinesTotal <= 0;
             updateLineToolbar();
             return;
         }
@@ -382,9 +388,9 @@
 
         syncRunningTotals(totalGross + sentLinesTotal, pendingDiscountsTotal + sentLinesDiscountTotal);
         sendBtn.disabled = false;
-        // NET (indirim düşülmüş) toplam kullanılır - sentLinesTotal artık BRÜT olduğundan
-        // "ödenecek bir şey var mı" kontrolü için kendi indirimi geri düşülür.
-        if (payBtn) payBtn.disabled = (total + (sentLinesTotal - sentLinesDiscountTotal)) <= 0;
+        // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - aynı NET/BRÜT karışıklığı
+        // burada da vardı (bkz. yukarıdaki boş-sepet dalı) - BRÜT toplamlar kullanılıyor artık.
+        if (payBtn) payBtn.disabled = (totalGross + sentLinesTotal) <= 0;
         updateLineToolbar();
     }
 
@@ -582,19 +588,24 @@
             .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
             .then(function (result) {
                 if (!result.ok || !result.data.success) {
-                    alert('Hata: ' + (result.data.error || 'Sipariş gönderilemedi.'));
+                    // GERÇEK HATA (2026-09-06, kapsamlı kabul testinde bulundu) - burada hâlâ
+                    // native tarayıcı alert()'i kullanılıyordu, "native browser alert/confirm/
+                    // prompt kullanılmayacak" kuralına aykırıydı (flushCartToKitchen PAYLAŞILAN
+                    // bir fonksiyon - Mutfağa Gönder/Masaya Aktar/Ödemeyi Al/Fişi Beklet/İkram
+                    // gibi BİRÇOK akışı etkiliyordu, sadece bu ekrandaki bir hata değildi).
+                    window.posAlert('Hata: ' + (result.data.error || 'Sipariş gönderilemedi.'));
                     onError();
                     return;
                 }
                 if (result.data.unroutedProductNames && result.data.unroutedProductNames.length > 0) {
                     // Gönderim sonrası masa durumuna otomatik dönmeden önce, mutfak istasyonu
                     // olmayan ürünleri kullanıcıya AÇIKÇA bildir (sessizce atlanmaz).
-                    alert('Şu ürünler mutfak istasyonuna sahip değil, mutfağa gönderilmedi:\n' + result.data.unroutedProductNames.join('\n'));
+                    window.posAlert('Şu ürünler mutfak istasyonuna sahip değil, mutfağa gönderilmedi:\n' + result.data.unroutedProductNames.join('\n'));
                 }
                 onDone();
             })
             .catch(function () {
-                alert('Sipariş gönderilirken bir bağlantı hatası oluştu.');
+                window.posAlert('Sipariş gönderilirken bir bağlantı hatası oluştu.');
                 onError();
             });
     }

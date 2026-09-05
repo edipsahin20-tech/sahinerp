@@ -14,6 +14,12 @@
     // hangi kasası kullanıldığı hiç izlenmiyor, Nakit ve Kredi Kartı aynı hesaba karışıyordu.
     var cashRegisterData = JSON.parse(document.getElementById('pos-cash-register-data') ? document.getElementById('pos-cash-register-data').textContent || '{}' : '{}');
     function resolveFinancialAccountId(method) {
+        // NOT: Ödenmez/Açık Hesap için de burada bir hesap ID'si döner (RestaurantPayment.
+        // FinancialAccountId DB'de NOT NULL - "izlenebilirlik/raporlama" için bir değer taşımak
+        // ZORUNLU, bkz. RestaurantPostingService.CloseCheckAsync). Ancak bu iki yöntemde
+        // FinancialTransaction HİÇ oluşturulmuyor - yani buradaki hesap gerçek bir kasa/banka
+        // hareketine dönüşmüyor. Ödeme satırındaki GÖRÜNÜM (renderLines) bu iki yöntem için
+        // ayrıca düzeltildi - kasa adı yerine cari adı gösteriliyor (madde 15, 2026-09-06).
         var byRegister = method === 1 ? cashRegisterData.cash
             : method === 2 ? cashRegisterData.creditCard
             : method === 3 ? (cashRegisterData.mealCard || cashRegisterData.creditCard)
@@ -59,6 +65,11 @@
         var input = document.getElementById('AttachedCustomerId');
         var v = input && input.value ? parseInt(input.value, 10) : NaN;
         return isNaN(v) ? null : v;
+    }
+
+    function attachedCustomerLabel() {
+        var label = document.getElementById('attach-customer-label');
+        return label ? label.textContent.trim() : null;
     }
 
     // Self satış ve masa satışta AYNI tek tetikleyici - "Kapat/Öde" ayrı bir buton olarak
@@ -192,9 +203,16 @@
             var row = document.createElement('div');
             row.className = 'pay-line-row';
             var account = financialAccounts.find(function (a) { return a.financialAccountId === line.financialAccountId; });
+            // Ödenmez (4) ve Açık Hesap (5) hiçbir zaman gerçek bir kasa/banka hareketi
+            // OLUŞTURMAZ (bkz. RestaurantPostingService.CloseCheckAsync) - buradaki hesap
+            // yalnızca DB kaydı NOT NULL olduğu için taşınan bir değer, ekranda GERÇEK hedefi
+            // yanlış yansıtmasın diye kasa adı hiç gösterilmez (madde 15/17, 2026-09-06).
+            var suffix = line.method === OPEN_ACCOUNT_METHOD ? attachedCustomerLabel()
+                : line.method === 4 ? null
+                : (account ? account.name : null);
             var label = document.createElement('span');
             label.innerHTML = '<b>' + METHOD_LABELS[line.method] + '</b>' +
-                (account ? ' <span style="color:#8793a3">(' + account.name + ')</span>' : '');
+                (suffix ? ' <span style="color:#8793a3">(' + suffix + ')</span>' : '');
             var amountWrap = document.createElement('span');
             amountWrap.style.display = 'flex';
             amountWrap.style.alignItems = 'center';
@@ -224,7 +242,11 @@
         var rem = remaining();
         remainingEl.textContent = money(Math.max(rem, 0));
         remainingEl.className = rem <= 0 ? 'text-success' : 'text-danger';
-        confirmBtn.disabled = rem !== 0 || paymentLines.length === 0;
+        // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - "paymentLines.length===0"
+        // koşulu kaldırıldı: tam İkram edilmiş bir adisyonda (rem zaten 0) toplanacak hiçbir tutar
+        // yoktur, sıfır ödeme satırıyla "Siparişi Tamamla" GEÇERLİDİR (bkz. RestaurantController.
+        // ClosePayment / CloseCheckAsync - aynı gün aynı kural orada da kaldırıldı).
+        confirmBtn.disabled = rem !== 0;
         if (!skipAutoFill && (entryDigits.length === 0 || entryValue() === 0)) {
             setEntryFromNumber(Math.max(rem, 0));
         } else {
@@ -348,6 +370,10 @@
 
     document.querySelectorAll('.pay-method-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
+            // GERÇEK HATA (2026-09-06, kapsamlı kabul testinde bulundu) - "Cari seçmelisiniz."
+            // gibi bir önceki denemeden kalan hata mesajı, sonraki deneme BAŞARILI olsa bile
+            // ekranda asılı kalıyordu (yalnızca modal kapatılıp yeniden açılınca temizleniyordu).
+            errorEl.style.display = 'none';
             // GERÇEK HATA (2026-09-05, Edip'in bildirimiyle bulundu: "ödeme tiplerine
             // tıklayamadım... tutar yazmadan direkt ödeme tiplerini kullanabilmeliyim") - Alınacak
             // Tutar pencere açılışında bilinçli olarak 0'da başlıyor (madde 3), ama bu buton HİÇBİR

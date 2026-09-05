@@ -776,11 +776,10 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClosePayment([FromBody] RestaurantClosePaymentRequest request)
     {
-        if (request.Payments.Count == 0)
-        {
-            return BadRequest(new { error = "En az bir ödeme satırı girilmelidir." });
-        }
-
+        // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - "Payments.Count == 0"
+        // koşulsuz reddi kaldırıldı: tam İkram edilmiş bir adisyonda (grandTotal=0) toplanacak
+        // hiçbir tutar yoktur, sıfır ödeme satırıyla kapatmak GEÇERLİDİR - CloseCheckAsync'teki
+        // "paymentsTotal != grandTotal" kontrolü zaten normal (grandTotal>0) adisyonları korur.
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var payments = request.Payments
             .Select(p => new RestaurantPaymentInput((RestaurantPaymentMethod)p.Method, p.FinancialAccountId, p.Amount))

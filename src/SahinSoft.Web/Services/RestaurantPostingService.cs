@@ -40,7 +40,8 @@ public sealed record SendOrderToKitchenResult(RestaurantOrder Order, IReadOnlyLi
 public sealed class RestaurantPostingService(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
-    RestaurantPermissionService permissionService)
+    RestaurantPermissionService permissionService,
+    InventoryBalanceService inventoryBalance)
 {
     // Masa/Self Satış/Paket - üç "yeni satış başlat" giriş noktasının hepsi bunu çağırır.
     // InventorySettings.RequireOpenShiftForSales kapalıyken (varsayılan) hiçbir şey yapmaz.
@@ -1809,7 +1810,7 @@ public sealed class RestaurantPostingService(
                     cancellationToken);
 
                 var check = await dbContext.RestaurantChecks
-                    .Include(x => x.Orders).ThenInclude(x => x.Lines)
+                    .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.Product)
                     .Include(x => x.RestaurantTableSession)
                     .SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
                     ?? throw new InvalidOperationException("Adisyon bulunamadı.");
@@ -1839,11 +1840,13 @@ public sealed class RestaurantPostingService(
                     throw new InvalidOperationException("Boş adisyon kapatılamaz.");
                 }
 
-                if (payments.Count == 0)
-                {
-                    throw new InvalidOperationException("En az bir ödeme satırı girilmelidir.");
-                }
-
+                // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - burada eskiden
+                // "payments.Count == 0" koşulsuz reddediliyordu. Tam İkram edilmiş bir adisyonda
+                // (tüm satırlar %100 indirimli, grandTotal=0) toplanacak HİÇBİR tutar yoktur - sıfır
+                // ödeme satırıyla kapatmak GEÇERLİ bir durumdur. Bu erken kontrol tamamen kaldırıldı;
+                // aşağıdaki "paymentsTotal != grandTotal" kontrolü zaten AYNI korumayı (grandTotal>0
+                // iken payments boşsa 0 != grandTotal olur, reddeder) daha isabetli bir hata
+                // mesajıyla sağlıyor.
                 decimal subtotal = 0, tax = 0, discount = 0, grossLinesTotal = 0;
                 var retailSaleLines = new List<RetailSaleLine>();
                 var lineTotals = new List<(RestaurantOrderLine Line, decimal LineTotal)>();
@@ -1933,6 +1936,66 @@ public sealed class RestaurantPostingService(
                         : RetailSaleFiscalizationStatus.NotFiscalized
                 };
                 dbContext.RetailSales.Add(retailSale);
+
+                // Stok hareketi (2026-09-05, Edip: kritik kabul testi bulgusu + talimatı) - Self/
+                // Masa/Paket TÜM ödeme türlerinde (Nakit/Kart/Açık Hesap/Ödenmez/İkram) adisyon
+                // GERÇEKTEN kapanınca, burada TEK bir choke point'te, normal Fatura/İrsaliye/Stok
+                // Fişi akışlarındaki AYNI StockMovement+Product.StockQuantity deseni kullanılır
+                // (bkz. InvoicePostingService.PostStockAndAccountAsync) - ayrı/geçici bir stok
+                // sistemi İCAT EDİLMEDİ. "Ödeme türü stok hareketini değiştirmemeli" (Edip) -
+                // netSaleTotal/netCollectionTotal ayrımı burada YOK, tüm iptal edilmemiş satırlar
+                // aynı şekilde düşülür. Açık adisyon üzerindeki satır/adisyon iptalinde
+                // (CancelOrderLineAsync/VoidEmptyCheckAsync) hiç stok hareketi oluşmadığından
+                // (henüz satış kapanmadı - Edip'in "finansal posting yapılmasın" kuralıyla
+                // simetrik) burada "ters" bir şeye gerek yok, iptal edilen satırlar zaten
+                // yukarıdaki `lines` filtresinde (Status != Cancelled) hiç yer almıyor.
+                var inventorySettings = await dbContext.InventorySettings
+                    .Where(x => x.Id == 1)
+                    .SingleOrDefaultAsync(cancellationToken)
+                    ?? throw new InvalidOperationException("Envanter ayarları bulunamadı.");
+                var trackedLines = lines.Where(x => x.Product.TrackStock).ToList();
+                if (trackedLines.Count > 0)
+                {
+                    var closedByUserBranchId = await dbContext.Users
+                        .Where(x => x.Id == closedByUserId)
+                        .Select(x => x.BranchId)
+                        .SingleOrDefaultAsync(cancellationToken);
+                    var warehouse = await dbContext.Warehouses
+                        .Where(x => x.IsActive && (closedByUserBranchId == x.BranchId || x.Branch.IsHeadOffice))
+                        .OrderByDescending(x => closedByUserBranchId == x.BranchId)
+                        .FirstOrDefaultAsync(cancellationToken)
+                        ?? throw new InvalidOperationException("Stok hareketi için aktif bir depo bulunamadı.");
+
+                    foreach (var line in trackedLines)
+                    {
+                        if (inventorySettings.EnforceStockLevel &&
+                            !inventorySettings.AllowNegativeStock &&
+                            !inventorySettings.AllowSaleWhenOutOfStock)
+                        {
+                            var available = await inventoryBalance.GetAvailableAsync(
+                                line.ProductId, null, warehouse.Id, cancellationToken);
+                            if (available < line.Quantity)
+                            {
+                                throw new InvalidOperationException(
+                                    $"{line.ProductNameSnapshot} için yeterli stok yok. Mevcut: {available:N3}");
+                            }
+                        }
+
+                        dbContext.StockMovements.Add(new StockMovement
+                        {
+                            MovementDateUtc = DateTime.UtcNow,
+                            MovementType = StockMovementType.Sale,
+                            Quantity = -line.Quantity,
+                            UnitCost = 0,
+                            DocumentNumber = documentNumber,
+                            ProductId = line.ProductId,
+                            WarehouseId = warehouse.Id,
+                            RestaurantOrderLineId = line.Id,
+                            Description = $"Restoran satışı - {check.CheckNumber}"
+                        });
+                        line.Product.StockQuantity -= line.Quantity;
+                    }
+                }
 
                 // netSaleTotal (Ödenmez hariç, Açık Hesap DAHİL - revenue Açık Hesap'ta da
                 // gerçekleşir) > 0 ise Sale hareketi oluşur. netCollectionTotal (Ödenmez VE Açık

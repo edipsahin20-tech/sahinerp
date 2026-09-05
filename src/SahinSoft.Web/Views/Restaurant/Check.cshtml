@@ -310,7 +310,16 @@
                              bırakıyordu) - ShowSendToKitchenButton hep true olduğu için şimdiye
                              kadar hiç fark edilmemişti. Native "hidden" özniteliği ile düzeltildi. -->
                         <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled @(Model.ShowSendToKitchenButton ? "" : "hidden")>♨ Mutfağa Gönder</button>
-                        <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
+                        <!-- GERÇEK HATA (2026-09-06, kapsamlı kabul testinde bulundu, Fiş İkram testi) -
+                             önceden Model.PayableTotal > 0 kullanılıyordu: adisyon TAM İKRAM edilince
+                             (tüm satırlar %100 indirimli, PayableTotal=0 ama gerçek/aktif ürünler VAR)
+                             bu buton kalıcı olarak disabled kalıyor, adisyon HİÇBİR yoldan kapatılamıyor
+                             (Kapat da self-pay-btn.disabled bayrağına bakıp "boş adisyon" sanıp
+                             VoidEmptyCheckAsync'e düşüyor, o da "aktif ürün var" diye reddediyor - adisyon
+                             tamamen kilitli kalıyordu). Model.AraToplam (BRÜT, indirimden ETKİLENMEZ)
+                             gerçek "adisyonda ürün var mı" sorusuna PayableTotal'dan daha doğru cevap
+                             verir - tam ikramda bile > 0 kalır. -->
+                        <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.AraToplam > 0 ? "" : " disabled")>Ödemeyi Al</button>
                     </div>
                     <!-- Onaylı Self Satış mockup'ı bu satırda "Adisyon | Nakit | Kredi Kartı" gösteriyor
                          (Yemek Çeki YOK) - madde 36 checklist'i de zaten sadece "Hızlı Nakit, Hızlı

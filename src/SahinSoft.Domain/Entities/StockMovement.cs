@@ -32,6 +32,8 @@ public sealed class StockMovement : EntityBase
     public InventoryCountLine? InventoryCountLine { get; set; }
     public int? DispatchNoteLineId { get; set; }
     public DispatchNoteLine? DispatchNoteLine { get; set; }
+    public int? RestaurantOrderLineId { get; set; }
+    public RestaurantOrderLine? RestaurantOrderLine { get; set; }
     public int? ReversalOfId { get; set; }
     public StockMovement? ReversalOf { get; set; }
 }
