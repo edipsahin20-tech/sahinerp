@@ -58,59 +58,13 @@
         return null;
     }
 
-    // --- Fişi Beklet / Bekleyen Fişler - henüz mutfağa gönderilmemiş sepetler, sunucuya değil bu
-    // tarayıcının localStorage'ına yazılır (Edip, 2026-09-03: "sağ tarafa fişi beklet, bekleyen
-    // fişler"). Sayfa hangi adisyona (checkId) ait açılırsa, o adisyon için bekletilmiş bir sepet
-    // varsa otomatik geri yüklenir - "Bekleyen Fişler" listesindeki bir satıra tıklamak zaten o
-    // adisyonun URL'sine gider. ---
-    var HELD_CARTS_KEY = 'sahinsoft-pos-held-carts';
-
-    function readHeldCarts() {
-        try {
-            return JSON.parse(window.localStorage.getItem(HELD_CARTS_KEY) || '[]');
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function writeHeldCarts(list) {
-        try {
-            window.localStorage.setItem(HELD_CARTS_KEY, JSON.stringify(list));
-        } catch (e) {
-            // localStorage kullanılamıyorsa (gizli sekme vb.) sessizce yok say - bekletme
-            // işlevi devre dışı kalır ama sayfa çalışmaya devam eder.
-        }
-    }
-
-    // GERÇEK HATA (2026-09-05, Edip'in bildirimiyle bulundu): "Fişi Beklet" tıklandığında YENİ
-    // boş bir Self Satış adisyonu açılır (bkz. RestaurantSelfSaleController.Hold), bekletilen
-    // ESKİ adisyon "Open" durumda hiç dokunulmadan kalır. Kasiyer Self Satış'a TEKRAR girdiğinde
-    // (Bekleyen Fişler'den DEĞİL, sadece sol menüden "Self Satış"a tıklayarak) ve o kullanıcının
-    // hâlâ o eski (bekletilmiş) adisyondan daha yeni bir Self Satış adisyonu yoksa,
-    // RestaurantSelfSaleController.Index "kullanıcının en son açık Self Satış adisyonu" sorgusuyla
-    // AYNI bekletilmiş adisyonun URL'sine geri döner - eskiden bu fonksiyon SAYFA HER AÇILDIĞINDA
-    // checkId eşleşirse OTOMATİK sepeti geri yüklüyordu, yani kasiyer "Bekleyenlere" hiç
-    // dokunmadan fiş kendiliğinden ekrana geri geliyordu ("hiçbir şekilde ben bekleyenlerden
-    // çağırmadan ekrana getirmesin" - Edip). Artık SADECE "Bekleyen Fişler" kartına tıklanınca
-    // eklenen ?restoreHeld=1 işareti varsa geri yükleniyor (bkz. aşağıdaki çağrı) - sıradan bir
-    // sayfa açılışında/yenilemede ASLA otomatik geri gelmiyor.
-    function restoreHeldCartIfExplicitlyRequested() {
-        var requested = new URLSearchParams(window.location.search).get('restoreHeld') === '1';
-        if (!requested) return;
-        var list = readHeldCarts();
-        var idx = -1;
-        for (var i = 0; i < list.length; i++) { if (list[i].checkId === checkId) { idx = i; break; } }
-        if (idx === -1) return;
-        var held = list[idx];
-        list.splice(idx, 1);
-        writeHeldCarts(list);
-        cart = held.cart || [];
-        cart.forEach(function (line) { cartSeq = Math.max(cartSeq, line.cartId); });
-        var cleanUrl = new URL(window.location.href);
-        cleanUrl.searchParams.delete('restoreHeld');
-        window.history.replaceState({}, '', cleanUrl.toString());
-        if (window.updateHeldReceiptsBadge) window.updateHeldReceiptsBadge();
-    }
+    // --- Fişi Beklet / Bekleyen Fişler (2026-09-05 teknik doküman madde 8) - GERÇEK bir veri
+    // tabanı durumu (RestaurantCheck.HeldAtUtc), localStorage YOK. Böylece hangi terminalden/
+    // kasiyerden bakılırsa bakılsın aynı liste görünür, ve bir tarayıcı verisi silindiğinde
+    // "bekletiyor gibi görünüp listede görünmeme" hatası oluşmaz (önceki mimarinin gerçek kökeni).
+    // Geri çağırma SADECE Bekleyen Fişler'deki bir karta tıklanınca (Recall POST) olur - sıradan
+    // bir Self Satış girişinde ASLA otomatik gelmez (HeldAtUtc dolu check'ler
+    // RestaurantSelfSaleController.Index'in "benim açık check'im" sorgusundan HARİÇ tutulur).
 
     // --- Kategori sekmeleri + ürün ızgarası + arama ---
     var tabsEl = document.getElementById('category-tabs');
@@ -1257,100 +1211,107 @@
         });
     })();
 
-    // --- Fişi Beklet ---
+    // --- Fişi Beklet - bekleyen (henüz gönderilmemiş) sepet varsa ÖNCE mutfağa/sunucuya
+    // gönderilir (flushCartToKitchen), SONRA adisyon Held olarak işaretlenir (bkz.
+    // RestaurantSelfSaleController.Hold) - hiçbir şey sadece bu tarayıcıda kalmaz, başka bir
+    // terminalden de Bekleyen Fişler'de görünür/geri çağrılabilir. ---
     (function () {
         var holdBtn = document.getElementById('side-hold-btn');
         if (!holdBtn) return;
         holdBtn.addEventListener('click', function () {
-            if (cart.length > 0) {
-                var list = readHeldCarts().filter(function (x) { return x.checkId !== checkId; });
-                list.push({
-                    checkId: checkId,
-                    checkNumber: checkNumber,
-                    tableLabel: tableLabel,
-                    savedAtIso: new Date().toISOString(),
-                    cart: cart
-                });
-                writeHeldCarts(list);
-                if (window.updateHeldReceiptsBadge) window.updateHeldReceiptsBadge();
-            }
-            if (isSelfSale) {
-                document.getElementById('hold-self-sale-form').submit();
-            } else {
+            if (!isSelfSale) {
                 window.location.href = root.getAttribute('data-back-url');
+                return;
             }
+            holdBtn.disabled = true;
+            flushCartToKitchen(
+                function () { document.getElementById('hold-self-sale-form').submit(); },
+                function () { holdBtn.disabled = false; window.posAlert('Sepet gönderilirken bağlantı hatası oluştu.'); });
         });
     })();
 
-    // --- Bekleyen Fişler (madde 18, Edip 2026-09-04 - profesyonel kart tasarımına çevrildi) ---
+    // --- Bekleyen Fişler (2026-09-05 teknik doküman madde 8) - GERÇEK DB sorgusu
+    // (RestaurantSelfSaleController.HeldReceipts), localStorage YOK - hangi terminalden bakılırsa
+    // bakılsın aynı liste. Karta tıklamak Recall'a POST eder (HeldAtUtc temizlenir), sonra Check
+    // ekranına döner - localStorage/?restoreHeld=1 kalıntısı YOK. ---
     (function () {
         var modalEl = document.getElementById('heldReceiptsModal');
         var badgeEl = document.getElementById('held-receipts-badge');
         var titleEl = document.getElementById('held-receipts-title');
         if (!modalEl) return;
         var listEl = document.getElementById('held-receipts-list');
+        var heldReceiptsUrl = root.getAttribute('data-held-receipts-url');
+        var recallUrl = root.getAttribute('data-recall-held-url');
 
-        function lineCount(entry) { return entry.cart.length; }
-        function lineTotalSum(entry) {
-            return entry.cart.reduce(function (sum, l) { return sum + lineTotal(l); }, 0);
-        }
-        function waitLabel(savedAtIso) {
-            var mins = Math.max(0, Math.floor((Date.now() - new Date(savedAtIso).getTime()) / 60000));
+        function waitLabel(heldAtIso) {
+            var mins = Math.max(0, Math.floor((Date.now() - new Date(heldAtIso).getTime()) / 60000));
             if (mins < 1) return '<1 dk';
             if (mins < 60) return mins + ' dk';
             return Math.floor(mins / 60) + 's ' + (mins % 60) + 'dk';
         }
-        function timeLabel(savedAtIso) {
-            var d = new Date(savedAtIso);
+        function timeLabel(heldAtIso) {
+            var d = new Date(heldAtIso);
             return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
         }
 
+        function fetchList(onDone) {
+            fetch(heldReceiptsUrl).then(function (r) { return r.json(); }).then(onDone).catch(function () { onDone([]); });
+        }
+
         // Canlı sayaç (madde 18: "Bekleyen Fişler (8)" gibi) - sidebar rozeti sayfa yüklenişinde
-        // ve her Fişi Beklet/açılış sonrası güncellenir.
+        // ve her Fişi Beklet sonrası güncellenir. Artık GERÇEK bir sunucu sorgusu - başka bir
+        // terminalde bekletilen bir fiş de bu sayaca yansır.
         function updateBadge() {
-            var count = readHeldCarts().length;
-            if (badgeEl) {
-                badgeEl.textContent = String(count);
-                badgeEl.style.display = count > 0 ? '' : 'none';
-            }
+            fetchList(function (list) {
+                if (badgeEl) {
+                    badgeEl.textContent = String(list.length);
+                    badgeEl.style.display = list.length > 0 ? '' : 'none';
+                }
+            });
         }
         updateBadge();
-        window.addEventListener('storage', updateBadge);
-        // Fişi Beklet AYNI sekmede yazdığı için 'storage' olayı tetiklenmez (o sadece BAŞKA
-        // sekmeler için ateşlenir) - o handler bu fonksiyonu doğrudan çağırabilsin diye dışa açık.
         window.updateHeldReceiptsBadge = updateBadge;
 
+        function recall(checkId) {
+            var fd = new FormData();
+            fd.append('__RequestVerificationToken', getCsrfToken());
+            fd.append('checkId', checkId);
+            fetch(recallUrl, { method: 'POST', body: fd }).then(function () {
+                window.location.href = '/Restaurant/Check/' + checkId;
+            });
+        }
+
         modalEl.addEventListener('show.bs.modal', function () {
-            var list = readHeldCarts();
-            updateBadge();
-            if (titleEl) titleEl.textContent = 'Bekleyen Fişler (' + list.length + ')';
-            if (list.length === 0) {
-                listEl.innerHTML = '<p class="text-secondary small p-2">Bekleyen fiş yok.</p>';
-                return;
-            }
-            // En eski EN ÜSTTE + ayrı vurgulu - "tek bakışta ayırt edilebilsin" şartı.
-            var sorted = list.slice().sort(function (a, b) { return new Date(a.savedAtIso) - new Date(b.savedAtIso); });
-            listEl.innerHTML = '';
-            sorted.forEach(function (entry, idx) {
-                var card = document.createElement('a');
-                // ?restoreHeld=1 - SADECE bu açık çağrı sepeti geri yükler (bkz.
-                // restoreHeldCartIfExplicitlyRequested), sıradan bir Self Satış girişi ASLA.
-                card.href = '/Restaurant/Check/' + entry.checkId + '?restoreHeld=1';
-                card.className = 'held-receipt-card' + (idx === 0 ? ' oldest' : '');
-                card.innerHTML =
-                    '<div class="held-receipt-card-top">' +
-                        '<span class="held-receipt-card-number">' + escapeHtml(entry.checkNumber) + '</span>' +
-                        '<span class="held-receipt-card-type">' + (isSelfSale ? 'Self Satış' : 'Masa Satış') + '</span>' +
-                    '</div>' +
-                    '<div class="held-receipt-card-meta">' +
-                        '<span>' + escapeHtml(entry.tableLabel) + ' · ' + timeLabel(entry.savedAtIso) + '</span>' +
-                        '<span>' + (idx === 0 ? '<span class="held-receipt-card-oldest-tag">EN ESKİ · </span>' : '') + waitLabel(entry.savedAtIso) + '</span>' +
-                    '</div>' +
-                    '<div class="held-receipt-card-bottom">' +
-                        '<span class="held-receipt-card-count">' + lineCount(entry) + ' kalem</span>' +
-                        '<span class="held-receipt-card-total">' + money(lineTotalSum(entry)) + '</span>' +
-                    '</div>';
-                listEl.appendChild(card);
+            listEl.innerHTML = '<p class="text-secondary small p-2">Yükleniyor...</p>';
+            fetchList(function (list) {
+                updateBadge();
+                if (titleEl) titleEl.textContent = 'Bekleyen Fişler (' + list.length + ')';
+                if (list.length === 0) {
+                    listEl.innerHTML = '<p class="text-secondary small p-2">Bekleyen fiş yok.</p>';
+                    return;
+                }
+                // Sunucu zaten HeldAtUtc'ye göre en eski önce sıralı döner.
+                listEl.innerHTML = '';
+                list.forEach(function (entry, idx) {
+                    var card = document.createElement('a');
+                    card.href = '#';
+                    card.className = 'held-receipt-card' + (idx === 0 ? ' oldest' : '');
+                    card.innerHTML =
+                        '<div class="held-receipt-card-top">' +
+                            '<span class="held-receipt-card-number">' + escapeHtml(entry.checkNumber) + '</span>' +
+                            '<span class="held-receipt-card-type">' + escapeHtml(entry.sourceLabel) + '</span>' +
+                        '</div>' +
+                        '<div class="held-receipt-card-meta">' +
+                            '<span>' + timeLabel(entry.heldAtUtc) + '</span>' +
+                            '<span>' + (idx === 0 ? '<span class="held-receipt-card-oldest-tag">EN ESKİ · </span>' : '') + waitLabel(entry.heldAtUtc) + '</span>' +
+                        '</div>' +
+                        '<div class="held-receipt-card-bottom">' +
+                            '<span class="held-receipt-card-count">' + entry.itemCount + ' kalem</span>' +
+                            '<span class="held-receipt-card-total">' + money(entry.total) + '</span>' +
+                        '</div>';
+                    card.addEventListener('click', function (e) { e.preventDefault(); recall(entry.checkId); });
+                    listEl.appendChild(card);
+                });
             });
         });
     })();
@@ -1534,7 +1495,6 @@
         });
     })();
 
-    restoreHeldCartIfExplicitlyRequested();
     renderCategories();
     renderCart();
 })();

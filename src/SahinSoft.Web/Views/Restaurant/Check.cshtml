@@ -23,6 +23,8 @@
      data-close-url="@Url.Action("ClosePayment")"
      data-back-url="@Url.Action("Index")"
      data-self-sale-url="@Url.Action("Index", "RestaurantSelfSale")"
+     data-held-receipts-url="@Url.Action("HeldReceipts", "RestaurantSelfSale")"
+     data-recall-held-url="@Url.Action("Recall", "RestaurantSelfSale")"
      data-today-receipts-url="@Url.Action("TodayReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-search-products-url="@Url.Action("SearchProducts")"
@@ -382,6 +384,7 @@
          Hold ve restaurant-pos.js) - masa satışta buna gerek yok, masa zaten kendi kalıcı kaydı. -->
     <form method="post" asp-controller="RestaurantSelfSale" asp-action="Hold" id="hold-self-sale-form" style="display:none;">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="checkId" value="@Model.CheckId" />
     </form>
 }
 

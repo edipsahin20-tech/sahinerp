@@ -10608,3 +10608,40 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905093736_AddCheckHeldFields'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [HeldAtUtc] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905093736_AddCheckHeldFields'
+)
+BEGIN
+    ALTER TABLE [RestaurantChecks] ADD [HeldByUserId] nvarchar(450) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905093736_AddCheckHeldFields'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantChecks_HeldAtUtc] ON [RestaurantChecks] ([HeldAtUtc]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905093736_AddCheckHeldFields'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905093736_AddCheckHeldFields', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

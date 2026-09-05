@@ -1323,7 +1323,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.TicketDiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.Property(x => x.HeldByUserId).HasMaxLength(450);
             entity.HasIndex(x => x.CheckNumber).IsUnique();
+            entity.HasIndex(x => x.HeldAtUtc);
             entity.HasIndex(x => new { x.RestaurantTableSessionId, x.OpenedAtUtc });
             // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
             entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");

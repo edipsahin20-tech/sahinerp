@@ -283,6 +283,38 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Fişi Beklet (2026-09-05 teknik doküman madde 8) - check GERÇEKTEN Status=Open kalır (veri
+    // bütünlüğü, ödeme geçmişi, kısmi ödemeler bozulmaz), sadece HeldAtUtc/HeldByUserId doldurulur.
+    // Boş bir check'i (hiç satırı olmayan) beklemek anlamsız - bu durumda çağıran taraf zaten
+    // hiçbir şey göndermemiştir, sessizce no-op geçilir (istisna fırlatılmaz, kasiyer akışı
+    // kesilmesin diye).
+    public async Task HoldCheckAsync(int checkId, string userId, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks
+            .Include(x => x.Orders).ThenInclude(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+
+        if (check.Status != RestaurantCheckStatus.Open) return;
+        var hasActiveLine = check.Orders.SelectMany(o => o.Lines).Any(l => l.Status != RestaurantOrderLineStatus.Cancelled);
+        if (!hasActiveLine) return;
+
+        check.HeldAtUtc = DateTime.UtcNow;
+        check.HeldByUserId = userId;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Bekleyen Fişler - "geri çağır" (madde 8) - HeldAtUtc/HeldByUserId temizlenir, check normal
+    // açık adisyon gibi Check ekranında görünür. localStorage/URL bayrağı YOK.
+    public async Task RecallHeldCheckAsync(int checkId, CancellationToken cancellationToken = default)
+    {
+        var check = await dbContext.RestaurantChecks.SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+            ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+        check.HeldAtUtc = null;
+        check.HeldByUserId = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // "Masayı Boşalt" - müşteri hiçbir şey almadan gitti ya da sipariş edilen her şey iptal
     // edildi; CloseCheckAsync bu durumda "Boş adisyon kapatılamaz" diye reddeder, adisyon açık
     // kalır ve masa DOLU görünmeye devam eder. Bu, ödemesiz bir çıkış yolu: adisyon İPTAL

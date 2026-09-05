@@ -28,6 +28,16 @@ public sealed class RestaurantCheck : EntityBase
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }
 
+    // Fişi Beklet (2026-09-05 teknik doküman madde 8) - önceden bekletme SADECE istemci
+    // localStorage'ında tutuluyordu (henüz gönderilmemiş satırlar dahil), bu yüzden başka bir
+    // terminalden/kasiyerden "listede görünmüyor" hatası veriyordu. Artık check GERÇEKTEN
+    // Status=Open kalır (veri bütünlüğü/ödeme akışı bozulmaz) ama bu iki alan doluysa "bekleyen"
+    // sayılır - RestaurantSelfSaleController.Index() kendi açık check'ini ararken bunu HARİÇ
+    // tutar, Bekleyen Fişler listesi ise TAM TERSİNE SADECE bunu sorgular (şube bazlı, tüm
+    // terminallerden görünür - bkz. RestaurantSelfSaleController.HeldReceipts/Recall).
+    public DateTime? HeldAtUtc { get; set; }
+    public string? HeldByUserId { get; set; }
+
     // Müşteri hesap istediğinde işaretlenir (Edip, 2026-09-03: MASTER tasarımdaki "HESAP İSTENDİ"
     // rozeti) - kapanışta zaten Status=Closed olacağı için ayrıca temizlenmesine gerek yok, açık
     // adisyon listelerinde bu alan null olmayan her check zaten "hesap bekliyor" demektir.
