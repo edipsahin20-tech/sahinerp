@@ -756,6 +756,31 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         }
     }
 
+    // "Sipariş Sil" (Edip, 2026-09-05: "yetkisi varsa her koşulda çalışsın") - istemcideki henüz
+    // gönderilmemiş sepet zaten boşsa (Ödemeyi Al'dan Adisyona Dön sonrası HER ŞEY gönderilmiş
+    // olur) bu uç nokta adisyondaki TÜM gönderilmiş satırları topluca iptal eder - bkz.
+    // RestaurantPostingService.ClearOrderAsync. Adisyon kendiliğinden boşaldığı için redirect
+    // Check(id) GET'in "artık açık değil" dalına düşer, bu da (madde 11 fix'i) otomatik temiz
+    // Self Satış'a yönlendirir.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearOrder(int checkId, string reason, string? approverPin = null)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        try
+        {
+            await postingService.ClearOrderAsync(checkId, userId, reason, approverPin);
+            TempData["Success"] = "Sipariş silindi.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Check), new { id = checkId });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelOrderLine(int lineId, int checkId, string reason, string? approverPin = null)

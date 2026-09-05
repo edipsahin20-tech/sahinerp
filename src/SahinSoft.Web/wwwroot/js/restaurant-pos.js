@@ -985,11 +985,38 @@
         if (!clearBtn) return;
 
         clearBtn.addEventListener('click', function () {
-            if (cart.length === 0) return;
-            window.posConfirm('Bekleyen sepetteki ' + cart.length + ' kalem silinsin mi?', function () {
-                cart = [];
-                selectedCartId = null;
-                renderCart();
+            if (cart.length > 0) {
+                window.posConfirm('Bekleyen sepetteki ' + cart.length + ' kalem silinsin mi?', function () {
+                    cart = [];
+                    selectedCartId = null;
+                    renderCart();
+                }, null, { danger: true });
+                return;
+            }
+            // Bekleyen (henüz gönderilmemiş) sepet boşsa - ör. Ödemeyi Al'a girip Adisyona Dön
+            // sonrası HER ŞEY zaten sunucuya gönderilmiş olur (Edip, 2026-09-05: "yetkisi varsa
+            // sipariş sil her koşulda çalışsın, hangi aşamadan dönerse dönsün") - bu durumda
+            // adisyondaki GÖNDERİLMİŞ satırları topluca iptal eden gerçek uç noktaya (ClearOrder)
+            // düşülür, sessizce hiçbir şey yapmadan durulmaz.
+            if (document.querySelectorAll('.cart-line.sent').length === 0) return;
+            var requireReason = root.getAttribute('data-require-cancellation-reason') === 'true';
+            var requireApproval = root.getAttribute('data-require-second-approval-cancel-line') === 'true';
+            function submitClearOrder(reason) {
+                window.requestApproverPin(requireApproval, function (pin) {
+                    document.getElementById('clearOrderReason').value = reason;
+                    document.getElementById('clearOrderApproverPin').value = pin || '';
+                    document.getElementById('clear-order-form').submit();
+                });
+            }
+            window.posConfirm('Adisyondaki TÜM ürünler silinecek ve adisyon kapanacak. Devam edilsin mi?', function () {
+                if (requireReason) {
+                    window.posPrompt('İptal gerekçesi:', '', function (reason) {
+                        if (!reason) { window.posAlert('İptal gerekçesi zorunludur.'); return; }
+                        submitClearOrder(reason);
+                    });
+                } else {
+                    submitClearOrder('Kasiyer - Sipariş Sil');
+                }
             }, null, { danger: true });
         });
 

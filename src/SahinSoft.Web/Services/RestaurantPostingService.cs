@@ -1127,27 +1127,127 @@ public sealed class RestaurantPostingService(
             });
         }, cancellationToken);
 
-        // Boş Adisyon (madde 20, Edip 2026-09-04) - "Self Satış'ta son ürün de iptal edilince
-        // adisyon KENDİLİĞİNDEN temizlenir, kullanıcı Kapat'a basmak ZORUNDA değildir." SADECE
-        // Self Satış'ta - Masa Satış'ta müşteri hâlâ masada oturuyor olabilir, adisyonu
-        // kendiliğinden iptal etmek YANLIŞ olurdu (spec bunu bilerek Self Satış'a sınırlıyor).
-        var isSelfSaleCheck = await dbContext.RestaurantChecks
-            .AsNoTracking()
-            .Where(x => x.Id == affectedCheckId && x.Status == RestaurantCheckStatus.Open)
-            .Select(x => x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (isSelfSaleCheck)
+        // Boş Adisyon (madde 20, Edip 2026-09-04: "Self Satış'ta son ürün de iptal edilince
+        // adisyon KENDİLİĞİNDEN temizlenir") - önceden SADECE Self Satış'a sınırlıydı ("Masa
+        // Satış'ta müşteri hâlâ masada oturuyor olabilir" endişesiyle). 2026-09-05 teknik
+        // doküman (madde 13) bunu AÇIKÇA Masa Satış'a da genişletti: "Tüm adisyon silinirse
+        // masa 0,00 açık kalmayacak, Boş durumuna dönecek." - bu yeni karar eskisinin YERİNE
+        // geçer, artık check'in hangi bölümde olduğuna bakılmaksızın (Self/Masa/Paket) çalışır.
+        try
         {
-            try
-            {
-                await VoidEmptyCheckAsync(affectedCheckId, cancelledByUserId, cancellationToken);
-            }
-            catch (InvalidOperationException)
-            {
-                // Adisyonda hâlâ aktif ürün var (bu iptal SONUNCUSU değildi) - normal durum,
-                // sessizce yok say.
-            }
+            await VoidEmptyCheckAsync(affectedCheckId, cancelledByUserId, cancellationToken);
         }
+        catch (InvalidOperationException)
+        {
+            // Adisyonda hâlâ aktif ürün var (bu iptal SONUNCUSU değildi) - normal durum,
+            // sessizce yok say.
+        }
+    }
+
+    // "Sipariş Sil" (Edip, 2026-09-05: "yetkisi varsa her koşulda çalışsın, ödeme ekranından
+    // Adisyona Dön sonrası aktif olmasın diye bir sebep yok") - önceden SADECE istemcideki henüz
+    // gönderilmemiş sepeti (JS cart dizisi) temizliyordu; ödeme ekranına girip Adisyona Dön
+    // sonrası TÜM satırlar zaten sunucuya gönderilmiş (cart boş) olduğundan buton görünüşte
+    // hiçbir şey yapmıyordu. Artık adisyondaki GÖNDERİLMİŞ satırları da (ayrı ayrı CancelOrderLine
+    // çağırmadan, TEK yetki/onay ile) topluca iptal eder - satır bazlı iptalle AYNI reversal
+    // mantığı (KitchenTicketLine iptali/outbox), sadece TEK gerekçe/PIN ile TÜM satırlara uygulanır.
+    // Son satır da iptal olduğundan adisyon kendiliğinden boşalır (VoidEmptyCheckAsync).
+    public Task ClearOrderAsync(
+        int checkId,
+        string performedByUserId,
+        string reason,
+        string? approverPin = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("İptal gerekçesi zorunludur.");
+        }
+
+        return DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                if (!await permissionService.CanClearOrderAsync(performedByUserId, cancellationToken))
+                {
+                    throw new InvalidOperationException("Siparişi silme yetkiniz yok.");
+                }
+
+                string? approverUserId = null;
+                if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
+                {
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
+                }
+
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var check = await dbContext.RestaurantChecks
+                    .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.KitchenTicketLines)
+                    .Include(x => x.RestaurantTableSession)
+                    .SingleOrDefaultAsync(x => x.Id == checkId, cancellationToken)
+                    ?? throw new InvalidOperationException("Adisyon bulunamadı.");
+
+                if (check.Status != RestaurantCheckStatus.Open)
+                {
+                    throw new InvalidOperationException("Yalnızca açık adisyonlar silinebilir.");
+                }
+
+                var activeLines = check.Orders.SelectMany(o => o.Lines).Where(l => l.Status != RestaurantOrderLineStatus.Cancelled).ToList();
+                if (activeLines.Count == 0)
+                {
+                    throw new InvalidOperationException("Adisyonda silinecek ürün yok.");
+                }
+
+                var now = DateTime.UtcNow;
+                foreach (var line in activeLines)
+                {
+                    line.Status = RestaurantOrderLineStatus.Cancelled;
+                    line.CancelledByUserId = performedByUserId;
+                    line.CancelledAtUtc = now;
+                    line.CancellationReason = reason;
+
+                    foreach (var ticketLine in line.KitchenTicketLines.Where(x => x.Status != KitchenTicketLineStatus.Cancelled))
+                    {
+                        ticketLine.Status = KitchenTicketLineStatus.Cancelled;
+                        dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
+                        {
+                            EventType = "KitchenTicketLineCancelled",
+                            PayloadJson = JsonSerializer.Serialize(new
+                            {
+                                KitchenTicketLineRecordId = ticketLine.RecordId,
+                                KitchenTicketId = ticketLine.KitchenTicketId,
+                                line.ProductNameSnapshot,
+                                line.PortionNameSnapshot,
+                                Reason = reason
+                            })
+                        });
+                    }
+                }
+
+                // Tüm satırlar iptal edildi - adisyon kendiliğinden boşalır (madde 13/20 ile AYNI
+                // davranış, VoidEmptyCheckAsync'i burada TEKRAR YAZMADAN inline uyguluyoruz çünkü
+                // check zaten bu transaction içinde Include'lu yüklü).
+                check.Status = RestaurantCheckStatus.Cancelled;
+                check.UpdatedAtUtc = now;
+                check.RestaurantTableSession.Status = RestaurantTableSessionStatus.Closed;
+                check.RestaurantTableSession.ClosedAtUtc = now;
+                check.RestaurantTableSession.ClosedByUserId = performedByUserId;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                if (approverUserId is not null)
+                {
+                    await permissionService.LogApprovalAsync("ClearOrder", performedByUserId, approverUserId, checkId, null, reason, cancellationToken);
+                }
+
+                return true;
+            });
+        }, cancellationToken);
     }
 
     // Mutfağa gönderilmiş bir satırın miktarını sonradan düzeltme - Edip, 2026-09-03: "mutfağa

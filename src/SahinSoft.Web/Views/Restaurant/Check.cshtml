@@ -420,6 +420,15 @@
     <input type="hidden" name="amount" id="applyDiscountAmount" />
     <input type="hidden" name="approverPin" id="applyDiscountApproverPin" />
 </form>
+<!-- "Sipariş Sil" - bekleyen sepet boşken (her şey zaten mutfağa gönderilmiş) adisyondaki TÜM
+     gönderilmiş satırları topluca iptal eder - bkz. restaurant-pos.js clear-cart-btn, madde
+     11 fix'i (2026-09-05, "yetkisi varsa her koşulda çalışsın"). -->
+<form method="post" asp-action="ClearOrder" id="clear-order-form" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="checkId" value="@Model.CheckId" />
+    <input type="hidden" name="reason" id="clearOrderReason" />
+    <input type="hidden" name="approverPin" id="clearOrderApproverPin" />
+</form>
 
 <!-- Bekleyen Fişler - "Fişi Beklet" ile bu tarayıcıda (localStorage) bekletilmiş, henüz mutfağa
      gönderilmemiş sepetlerin listesi (Edip, 2026-09-03). Sunucuya bağlı DEĞİL, sadece bu
