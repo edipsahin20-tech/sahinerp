@@ -247,10 +247,15 @@
                         <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled@(Model.ShowSendToKitchenButton ? "" : " style=\"display:none;\"")>♨ Mutfağa Gönder</button>
                         <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
                     </div>
+                    <!-- Onaylı Self Satış mockup'ı bu satırda "Adisyon | Nakit | Kredi Kartı" gösteriyor
+                         (Yemek Çeki YOK) - madde 36 checklist'i de zaten sadece "Hızlı Nakit, Hızlı
+                         Kredi Kartı" diyor, Yemek Çeki hiç anılmıyor. "Adisyon" tam ödeme modalını
+                         açar - #self-pay-btn ile AYNI davranış (bkz. restaurant-pos.js), yeni bir iş
+                         kuralı UYDURULMADI, var olan "Ödemeyi Al" akışına ikinci bir giriş noktası. -->
                     <div class="self-quickpay" id="self-quickpay">
+                        <button type="button" class="pay-method-btn a" id="self-adisyon-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>▤ Adisyon</button>
                         <button type="button" class="pay-method-btn n" data-quick-method="1">₺ Nakit</button>
                         <button type="button" class="pay-method-btn c" data-quick-method="2">▣ Kredi Kartı</button>
-                        <button type="button" class="pay-method-btn y" data-quick-method="3">◇ Yemek Çeki</button>
                     </div>
                     <!-- Nakit satırının altında hızlı işlem sırası (Edip, 2026-09-03: "sağ taraf
                          nakit butonun altına sipariş sil indirim kapat butonlarına yanyana koy
@@ -896,6 +901,7 @@
     .pay-method-btn.y { background: #f3d09a; }
     .pay-method-btn.u { background: #e8b4b4; }
     .pay-method-btn.o { background: #a9c9e8; }
+    .pay-method-btn.a { background: #cfd8e8; }
     .pay-footer { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px; }
 
     /* Self Satış hızlı ödeme kısayolları - MASTER tasarımdaki ürün panelinin altındaki

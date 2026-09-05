@@ -100,6 +100,16 @@
     color: #6946C4;
 }
 
+/* Masa Satış durum lejantı (mockup birebir-uygulama, 2026-09-05). */
+.floor-tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.floor-legend { display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700; color: var(--pos-navy, #1c2b3a); margin-left: auto; }
+.floor-legend span { display: flex; align-items: center; gap: 5px; }
+.floor-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.floor-legend .dot.empty { background: #188354; }
+.floor-legend .dot.busy { background: #1760B4; }
+.floor-legend .dot.bill { background: #A16C00; }
+.floor-legend .dot.res { background: #6946C4; }
+
 .restaurant-pos .table-tile .amt {
     position: absolute;
     right: 12px;

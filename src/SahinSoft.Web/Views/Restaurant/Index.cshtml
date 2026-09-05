@@ -35,16 +35,26 @@
 </div>
 
 <div class="restaurant-pos">
-    @if (Model.Sections.Count > 1)
-    {
-        <div class="rtabs" id="sectionTabs">
-            <button type="button" class="rtab active" data-section-filter="all">Tümü <small>@allTables.Count</small></button>
-            @foreach (var floorSection in Model.Sections)
-            {
-                <button type="button" class="rtab" data-section-filter="@floorSection.Name">@floorSection.Name <small>@floorSection.Tables.Count</small></button>
-            }
+    <div class="floor-tabs-row">
+        @if (Model.Sections.Count > 1)
+        {
+            <div class="rtabs" id="sectionTabs">
+                <button type="button" class="rtab active" data-section-filter="all">Tümü <small>@allTables.Count</small></button>
+                @foreach (var floorSection in Model.Sections)
+                {
+                    <button type="button" class="rtab" data-section-filter="@floorSection.Name">@floorSection.Name <small>@floorSection.Tables.Count</small></button>
+                }
+            </div>
+        }
+        <!-- Onaylı Masa Satış mockup'ındaki durum lejantı (madde birebir-uygulama, 2026-09-05) -
+             status-badge renkleriyle AYNI (empty/busy/bill/res), sadece görsel bir açıklama. -->
+        <div class="floor-legend">
+            <span><i class="dot empty"></i>BOŞ</span>
+            <span><i class="dot busy"></i>DOLU</span>
+            <span><i class="dot bill"></i>HESAP İSTENDİ</span>
+            <span><i class="dot res"></i>REZERVE</span>
         </div>
-    }
+    </div>
 
     @foreach (var floorSection in Model.Sections)
     {

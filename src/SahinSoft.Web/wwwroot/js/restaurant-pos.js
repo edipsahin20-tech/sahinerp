@@ -565,6 +565,15 @@
         });
     }
 
+    // "Adisyon" (onaylı mockup, madde birebir-uygulama) - tam ödeme modalını açan #self-pay-btn
+    // ile TAMAMEN AYNI davranış, yeni bir akış İCAT EDİLMEDİ - sadece ikinci bir giriş noktası.
+    var selfAdisyonBtn = document.getElementById('self-adisyon-btn');
+    if (selfAdisyonBtn && selfPayBtn) {
+        selfAdisyonBtn.addEventListener('click', function () {
+            selfPayBtn.click();
+        });
+    }
+
     // --- Fiyat Gör - müşteri kasada fiyat sorduğunda kataloğu tekrar sorgulamadan (zaten
     // yüklü) hızlı bakış (Edip, 2026-09-03). Seçilen ürün "Ekrana Al" ile sepete eklenir. ---
     (function () {
