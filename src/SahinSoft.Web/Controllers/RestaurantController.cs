@@ -336,7 +336,17 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 customerName = x.RestaurantCheck.AttachedCustomer != null ? x.RestaurantCheck.AttachedCustomer.Name : "-",
                 cashierName = openerNames.GetValueOrDefault(x.RestaurantCheck.RestaurantTableSession.OpenedByUserId, "-"),
                 grandTotal = x.GrandTotal,
-                paymentLabel = ReceiptPaymentLabel(methods),
+                // GERÇEK HATA (2026-09-06, kabul testinde bulundu, madde 18) - gerçek bir Tahsilat
+                // Carisi (Trendyol vb.) ile yapılan ödeme, Açık Hesap ile AYNI mekanizmayı
+                // kullandığından (bkz. restaurant-close-payment.js "collectionCariId") burada da
+                // düz "Açık Hesap" gösteriliyordu - fiş üzerinde GERÇEK tahsilat carisinin adı
+                // (ör. "Trendyol") kayboluyordu. Tek yöntemli ödemede bağlı cari işaretli bir
+                // Tahsilat Carisi ise, onun adı payment etiketi olarak kullanılır.
+                paymentLabel = methods.Distinct().Count() == 1
+                    && methods[0] == RestaurantPaymentMethod.OpenAccount
+                    && x.RestaurantCheck.AttachedCustomer is { IsCollectionCari: true } cari
+                        ? cari.Name
+                        : ReceiptPaymentLabel(methods),
                 paymentKey = ReceiptPaymentKey(methods),
                 isCancelled = x.Status == RetailSaleStatus.Cancelled
             };

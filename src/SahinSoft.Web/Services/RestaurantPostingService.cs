@@ -374,6 +374,17 @@ public sealed class RestaurantPostingService(
         check.RestaurantTableSession.Status = RestaurantTableSessionStatus.Closed;
         check.RestaurantTableSession.ClosedAtUtc = now;
         check.RestaurantTableSession.ClosedByUserId = userId;
+
+        // GERÇEK HATA (2026-09-06, kabul testinde bulundu, madde 20) - kısmi ödemesi olan bir
+        // adisyonda "Sipariş Sil" (tüm satırları iptal edip bu metodu tetikleyen) sonrası bu
+        // kayıtlar temizlenmiyordu, iptal edilmiş bir adisyona ait öksüz RestaurantCheckPendingPayment
+        // satırları kalıyordu. Muhasebeye hiç işlenmedikleri için (bkz. CloseCheckAsync'teki AYNI
+        // temizlik) silinmeleri güvenli.
+        var pendingPayments = await dbContext.RestaurantCheckPendingPayments
+            .Where(x => x.RestaurantCheckId == checkId)
+            .ToListAsync(cancellationToken);
+        dbContext.RestaurantCheckPendingPayments.RemoveRange(pendingPayments);
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -1296,6 +1307,14 @@ public sealed class RestaurantPostingService(
                 check.RestaurantTableSession.Status = RestaurantTableSessionStatus.Closed;
                 check.RestaurantTableSession.ClosedAtUtc = now;
                 check.RestaurantTableSession.ClosedByUserId = performedByUserId;
+
+                // GERÇEK HATA (2026-09-06, kabul testinde bulundu, madde 20) - VoidEmptyCheckAsync'e
+                // eklenen AYNI temizlik burada da gerekli: kısmi ödemesi olan bir adisyonda
+                // "Sipariş Sil" öksüz RestaurantCheckPendingPayment satırları bırakıyordu.
+                var pendingPayments = await dbContext.RestaurantCheckPendingPayments
+                    .Where(x => x.RestaurantCheckId == checkId)
+                    .ToListAsync(cancellationToken);
+                dbContext.RestaurantCheckPendingPayments.RemoveRange(pendingPayments);
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
