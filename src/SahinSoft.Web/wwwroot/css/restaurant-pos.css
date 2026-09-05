@@ -213,43 +213,6 @@
     overflow: hidden;
 }
 
-/* Koyu tema (Edip, 2026-09-05, onaylı Self Satış görseli: "birebir aynısını istiyorum...
-   butun butonlar ve butonların uzerindeki simgeler dahil renkler buton renkler konumları
-   herşey"). SADECE bu sayfa (.pos-check-page, Self Satış/Masa Satış/Paket'in ortak adisyon
-   ekranı) - Masa Durumu'nun (Index.cshtml) kendi .restaurant-pos'u ve diğer restoran sayfaları
-   (Dashboard/Raporlar/Ayarlar) hâlâ kendi açık temalarını kullanır, .pos-check-page scope'u
-   dışına hiç sızmaz. --pos-surface BİLEREK beyaz bırakıldı - ürün kartları/sağ ikon şeridi gibi
-   "yüzen beyaz kart" bileşenler koyu zeminde AYNEN böyle kalmalı (görselde de öyle). */
-.restaurant-pos.pos-check-page {
-    --pos-bg: #0B1524;
-    --pos-border: rgba(255,255,255,.14);
-    --pos-text: #FFFFFF;
-    --pos-text-2: #93A3B8;
-    background: var(--pos-bg);
-    color: var(--pos-text);
-}
-
-.pos-check-page .erp-toolbar-title h1 {
-    color: #fff;
-}
-
-.pos-check-page .erp-toolbar-meta {
-    color: var(--pos-text-2);
-}
-
-/* Masayı Boşalt / Masa Durumu vb. eski açık temaya göre boyanmış outline butonlar - koyu
-   zeminde okunaklı kalsın diye. */
-.pos-check-page .product-panel-actions .btn-erp-outline {
-    background: rgba(255,255,255,.06);
-    border-color: rgba(255,255,255,.22);
-    color: #fff;
-}
-.pos-check-page .product-panel-actions .btn-erp-outline:hover {
-    background: rgba(255,255,255,.12);
-    border-color: rgba(255,255,255,.32);
-    color: #fff;
-}
-
 /* Üst başlık şeridi POS ekranında gereksiz yer kaplıyordu - daraltılıp altındaki içerik yukarı
    çekildi (Edip, 2026-09-03: "burayı kaldır üstte taşı herşeyi"). Sadece BU sayfada (.pos-check-
    page) - diğer ERP ekranlarındaki .erp-toolbar'a dokunulmadı. */
@@ -408,42 +371,13 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.5rem 0.75rem;
+    flex: 0 0 auto;
 }
 
 .restaurant-pos .cart-header-title { display: flex; flex-direction: column; gap: 0.1rem; }
 .restaurant-pos .cart-header-checknum { font-size: 0.78rem; color: var(--pos-text-2); font-weight: 600; }
 .restaurant-pos .cart-header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .restaurant-pos .cart-header .product-search-row { flex-basis: 100%; }
-
-/* Koyu adisyon ekranında sipariş paneli artık AYRI bir beyaz kart değil - sayfanın kendi
-   zeminiyle KAYNAŞIK (Edip, 2026-09-05, onaylı görsel: sağ panelin tamamı koyu zeminde,
-   sadece alt özet vurgulanıyor). */
-.pos-check-page .cart-panel {
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-}
-.pos-check-page .cart-header,
-.pos-check-page .cart-header strong {
-    color: #fff;
-}
-.pos-check-page .cart-lines-header {
-    color: var(--pos-text-2);
-    border-bottom-color: var(--pos-border);
-}
-.pos-check-page .cart-line {
-    border-bottom-color: rgba(255,255,255,.08);
-}
-.pos-check-page .cart-line-col-total {
-    color: #fff;
-}
-.pos-check-page .cart-sent-lines {
-    border-bottom-color: rgba(255,255,255,.14);
-}
-.pos-check-page .cart-line-toolbar {
-    background: transparent;
-    border-bottom-color: var(--pos-border);
-}
 
 .restaurant-pos .cart-lines {
     overflow-y: auto;
@@ -633,11 +567,18 @@
 .restaurant-pos .cart-sent-lines {
     padding: 0.5rem 0.75rem 0;
     border-bottom: 1px dashed var(--pos-border);
-    /* %40 -> %58: satır dolgusu sıkıştırılsa bile bu tavan azdı, birkaç satırdan sonra hemen
-       kaydırma gerektiriyordu (Edip, 2026-09-05: "sağ taraf 4 tane ürünü ancak sığdırıyor"). */
-    max-height: 58%;
+    /* GERÇEK HATA (2026-09-05, Edip: "alt butonlar ürün ekledikçe kayıyor... sabit alan olsun,
+       web tarayıcı gibi çalışmasın") - sabit yükseklik/oran (%58, flex-shrink:0) demek satır
+       sayısı arttıkça bu bölüm BÜYÜYEBİLİYOR ama Ödemeyi Al/ödeme butonlarını taşıyan
+       .cart-footer'ın KENDİSİ flex-shrink:1 olduğundan sıkışınca içeriği .cart-panel'in
+       overflow:hidden'ı ARKASINDA kırpılıyordu (görünmez oluyordu, kaymıyor gibi görünse de
+       aslında ekran dışına taşıyordu). Artık .cart-lines ile AYNI flex:1'i paylaşıyor - ikisi
+       birlikte KALAN alanı bölüşüyor, .cart-footer (aşağıda flex-shrink:0) HER ZAMAN tam
+       görünür kalıyor, sadece bu iki liste kendi içinde kayıyor. */
+    flex: 1 1 auto;
+    min-height: 40px;
+    max-height: none;
     overflow-y: auto;
-    flex: 0 0 auto;
 }
 
 .restaurant-pos .cart-line .line-actions button {
@@ -656,13 +597,10 @@
 .restaurant-pos .cart-footer {
     padding: 0.85rem 1rem;
     border-top: 1px solid var(--pos-border);
-}
-
-.pos-check-page .cart-footer {
-    color: #fff;
-}
-.pos-check-page .cart-footer .text-success {
-    color: #4FDE97 !important;
+    /* Ödemeyi Al ve ödeme tipi butonlarını taşıyan bu alan HİÇBİR ZAMAN küçülmesin/kırpılmasın
+       (Edip, 2026-09-05: "alt butonlar kaymasın, sabit alan olsun, bir masaüstü uygulaması
+       düşün") - flex-shrink:0 ile her zaman kendi doğal (tam) yüksekliğinde kalır. */
+    flex: 0 0 auto;
 }
 
 /* "Toplam" satırı vurgulanmış/altın zeminli kutuda (Edip, 2026-09-05, onaylı görsel). */
@@ -675,12 +613,7 @@
 }
 .restaurant-pos .cart-footer-total-row span:first-child {
     font-weight: 800;
-}
-.pos-check-page .cart-footer-total-row span:first-child {
-    color: #fff;
-}
-.pos-check-page .cart-footer-total-row #main-remaining-total {
-    color: var(--pos-gold-light) !important;
+    color: var(--pos-navy);
 }
 
 /* Satır işlem çubuğu - seçili satıra uygulanır, sepetin her satırında tekrarlanmaz (Edip,
@@ -693,6 +626,7 @@
     border-bottom: 1px solid var(--pos-border);
     background: var(--pos-bg);
     flex-wrap: wrap;
+    flex: 0 0 auto;
 }
 
 .restaurant-pos .cart-qty-stepper {
@@ -749,26 +683,10 @@
     background: var(--pos-bg);
 }
 
-/* Not/İndirim/İkram/Sil koyu adisyon ekranında koyu "hap" (pill) butonlar (Edip, 2026-09-05,
-   onaylı görsel) - "Satırları Kilitle" görselde olsa da BİLEREK eklenmedi (Edip, tekrar tekrar:
-   "bu mantığı kullanmayacağız", bkz. proje geçmişi). */
-.pos-check-page .cart-line-toolbar > button {
-    background: rgba(255,255,255,.07);
-    border-color: rgba(255,255,255,.16);
-    color: #fff;
-}
-.pos-check-page .cart-line-toolbar > button.danger {
-    background: rgba(217,74,74,.16);
-    border-color: rgba(217,74,74,.4);
-    color: #FF8F8F;
-}
-.pos-check-page .cart-line-toolbar > button:not(:disabled):hover {
-    background: rgba(255,255,255,.13);
-    border-color: rgba(255,255,255,.28);
-}
-.pos-check-page .cart-qty-stepper span {
-    color: #fff;
-}
+/* Not/İndirim/İkram/Sil ikonlu (Edip, 2026-09-05, onaylı görsel) - "Satırları Kilitle" görselde
+   olsa da BİLEREK eklenmedi (Edip, tekrar tekrar: "bu mantığı kullanmayacağız", bkz. proje
+   geçmişi). Buton rengi AÇIK tema (bkz. .cart-line-toolbar > button yukarıda) - onaylı görselde
+   sağ panel BEYAZ zemin üzerinde, koyu SADECE üst çubuk/kenar çubuğunda. */
 
 .restaurant-pos .cart-line {
     cursor: pointer;
@@ -794,14 +712,22 @@
     overflow-y: auto;
 }
 
+/* GERÇEK HATA (2026-09-05, Edip: "sağ taraftaki butonlar otomatik sığdırsın aşağıya kaymasın")
+   - min-height + flex-shrink:0 demek her ikon SABİT bir tabanı vardı; buton sayısı (Fiş Notu,
+   Masa Transfer, Mutfak, Fiyat Gör, Klavye, Ürün Listesi, Fişi Beklet, Bekleyen Fişler, Fiş
+   İkram, Fiş Listesi, Sipariş Sil - 11 adet) kısa bir pencerede toplam yüksekliği aşınca rafın
+   TAMAMI değil sadece fazlası kırpılıyor/kaydırma gerektiriyordu. flex:1 (eşit paylaşım) +
+   min-height:0 ile HER ZAMAN tam N ikon mevcut yüksekliğe (rafın kendisi) sığar, kayma/kırpılma
+   olmaz - sadece ikon kartları kısa ekranda orantılı küçülür. */
 .restaurant-pos .pos-side-icon {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    min-height: clamp(52px, 8.5vh, 68px);
-    flex-shrink: 0;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: 68px;
     padding: 0.4rem 0.2rem;
     border: 1px solid var(--pos-border);
     background: var(--pos-surface);
@@ -813,6 +739,7 @@
     line-height: 1.15;
     cursor: pointer;
     text-align: center;
+    overflow: hidden;
 }
 
 .restaurant-pos .pos-side-icon:hover {
@@ -1093,16 +1020,6 @@
 .restaurant-pos .product-search-icon { left: 0.8rem; }
 .restaurant-pos .product-search-scan { right: 0.8rem; }
 
-/* Koyu adisyon ekranında arama kutusu da koyu (Edip, 2026-09-05, onaylı görsel). */
-.pos-check-page .product-search-input {
-    background: rgba(255,255,255,.06);
-    border-color: var(--pos-border);
-    color: #fff;
-}
-.pos-check-page .product-search-input::placeholder {
-    color: var(--pos-text-2);
-}
-
 /* Simetrik 5 sütun (Edip, 2026-09-05: "sağ taraf kategoriler simetrik olsun yan yana 5 tane
    kategori alsın") - önceki flex-wrap her sekmeyi kendi metin genişliğine göre boyutlandırıp
    düzensiz bir ızgara üretiyordu (satır başına 4-5 arası değişen sayıda, farklı genişliklerde
@@ -1147,13 +1064,10 @@
     box-shadow: 0 0 0 2px rgba(255,255,255,.3);
 }
 
-/* Aktif sekme - kendi kategori renginin YERİNE değil, ÜZERİNE altın/krem vurgusu (Edip,
-   2026-09-05, onaylı görsel: aktif sekme her zaman krem/altın zeminde koyu yazı). */
+/* Aktif sekme - kendi kategori rengini KORUR (Edip, 2026-09-03: "kategori rengi ... hangi renk
+   kategori tanımlamada seçtiysem o gözüksün"), sadece ince bir altın halka ile ayırt edilir. */
 .restaurant-pos .category-tab.active {
-    background: linear-gradient(var(--pos-gold-light), var(--pos-gold));
-    border-color: var(--pos-gold);
-    color: #2A2000;
-    box-shadow: 0 0 0 2px rgba(226,164,0,.35), var(--pos-shadow);
+    box-shadow: 0 0 0 2px var(--pos-gold), var(--pos-shadow);
 }
 
 .restaurant-pos .category-tab-name {
@@ -1175,11 +1089,6 @@
     background: rgba(255, 255, 255, .25);
     font-size: 0.68rem;
     font-weight: 700;
-}
-
-.restaurant-pos .category-tab.active .category-tab-count {
-    background: rgba(42, 32, 0, .18);
-    color: #2A2000;
 }
 
 /* Simetrik 5 sütun (Edip, 2026-09-05: onaylı görseldeki gibi "yan yana 5" ürün, 6 satır = 30
