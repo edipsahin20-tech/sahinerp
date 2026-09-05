@@ -300,7 +300,11 @@
 
         linesEl.innerHTML = '';
         var total = 0;
-        cart.forEach(function (line) {
+        // Sıra numarası (Edip, 2026-09-05: "1,2,3 devam etsin kaç ürün varsa") - gönderilmiş
+        // satırların DEVAMI olarak numaralanır, Check.cshtml'deki @@for ile AYNI tek sayaç
+        // mantığı (gönderilmiş satırlar 1..N ise bekleyen sepet N+1'den başlar).
+        var sentLineCount = document.querySelectorAll('.cart-line.sent').length;
+        cart.forEach(function (line, idx) {
             total += lineTotal(line);
             var div = document.createElement('div');
             div.className = 'cart-line' + (line.cartId === selectedCartId ? ' selected' : '');
@@ -309,9 +313,10 @@
             else if (line.discountAmount > 0) badges += ' <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim ' + money(line.discountAmount) + '</span>';
             if (!line.hasKitchenStation) badges += ' <span class="badge text-bg-secondary-subtle" title="Mutfak istasyonu tanımlı değil">İstasyonsuz</span>';
 
-            // Sabit şablon: Ürün Adı | Miktar | Birim | KDV | Fiyat | Tutar (Edip, 2026-09-03).
+            // Sabit şablon: # | Ürün Adı | Miktar | Birim | KDV | Fiyat | Tutar (Edip, 2026-09-03).
             div.innerHTML =
-                '<div class="cart-line-col-name">' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + badges +
+                '<div class="cart-line-col-no">' + (sentLineCount + idx + 1) + '</div>' +
+                '<div class="cart-line-col-name"><span class="cart-line-name-text">' + escapeHtml(line.name) + (line.portionName ? ' (' + escapeHtml(line.portionName) + ')' : '') + '</span>' + badges +
                 (line.kitchenNote ? '<div class="small text-secondary">Not: ' + escapeHtml(line.kitchenNote) + '</div>' : '') + '</div>' +
                 '<div class="cart-line-col-qty">' + line.quantity + '</div>' +
                 '<div class="cart-line-col-unit">' + escapeHtml(line.unit || 'Adet') + '</div>' +
@@ -556,8 +561,13 @@
             var btn = this;
             btn.disabled = true;
             btn.textContent = 'Gönderiliyor...';
+            // GERÇEK HATA (2026-09-05, Edip bildirdi) - burada data-back-url'e (Masa Durumu'na)
+            // yönlendiriyordu, yani "Mutfağa Gönder" adisyon ekranından TAMAMEN çıkarıyordu; bu
+            // yüzden alt ödeme butonları/ürün başlıkları "kayboluyor" gibi görünüyordu (aslında
+            // farklı bir sayfaya geçilmiş oluyordu). Mutfağa gönderim adisyon ekranında KALMALI,
+            // sadece sepeti temizleyip gönderilmiş satırları göstermek için sayfa yenilenmeli.
             flushCartToKitchen(
-                function () { window.location.href = root.getAttribute('data-back-url'); },
+                function () { window.location.reload(); },
                 function () { btn.disabled = false; btn.textContent = 'Mutfağa Gönder'; });
         });
     }

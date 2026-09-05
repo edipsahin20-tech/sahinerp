@@ -384,21 +384,49 @@
     /* Son 150px sütun eskiden satır başı İptal butonu içindi - artık TÜM satır işlemleri üst
        araç çubuğundan yapılıyor (Edip, 2026-09-05), bu sütun her satırda hep boştu, tamamen
        kaldırıldı ("işaretlediğim fazla olan boşlukları kaldır"). */
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px;
-    min-width: 406px;
+    /* Baştaki 24px sütun sıra numarası içindir (Edip, 2026-09-05: "sıra numaralarını göstersin
+       1,2,3 devam etsin kaç ürün varsa"). */
+    grid-template-columns: 24px minmax(90px,1fr) 44px 42px 34px 60px 64px;
+    min-width: 436px;
     align-items: center;
     gap: 0.6rem;
     /* Satır yüksekliği sıkıştırıldı (Edip, 2026-09-05: "sağ taraf 4 tane ürünü ancak sığdırıyor,
        çok fazla boşluk bırakmasın") - önceki 0.55rem dikey dolgu, "✓ Mutfağa gönderildi"
        etiketiyle birleşince ekranda 4 satırdan fazlasını sığdırmıyordu. */
     padding: 0.3rem 0.4rem;
+    /* Satır yüksekliği/genişliği ürün adına göre kafasına göre değişiyordu (uzun isimler
+       2 satıra sarıyordu) - Edip, 2026-09-05: "kafasına göre satır yüksekliği ve genişliği
+       yapıyor bu hepsinde standart olsun". Sabit min-height + isim sütununu tek satıra
+       zorlayan .cart-line-col-name kuralıyla TÜM satırlar (bekleyen ve gönderilmiş) aynı
+       yükseklikte. */
+    min-height: 2.3rem;
     border-bottom: 1px solid #EEF2F6;
     font-size: 0.85rem;
+}
+
+.restaurant-pos .cart-line-col-no {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--pos-text-2);
+    font-size: 0.78rem;
 }
 
 .restaurant-pos .cart-line-col-name {
     min-width: 0;
     overflow-wrap: break-word;
+}
+
+/* Ürün adı METNİ tek satıra sabitlenip taşarsa "..." ile kesilir - rozet (İKRAM/İndirim/
+   İstasyonsuz) ve Not satırı kendi doğal akışında ALTTA kalmaya devam eder, sadece uzun isimler
+   yüzünden satırın kendisi rastgele 2 satıra sarıp yükseklik/genişlik tutarsızlığı yaratmaz
+   (Edip, 2026-09-05: "kafasına göre satır yüksekliği ve genişliği yapıyor... standart olsun"). */
+.restaurant-pos .cart-line-name-text {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
 }
 
 .restaurant-pos .cart-line-col-qty,
@@ -461,8 +489,10 @@
     /* Son 150px sütun eskiden satır başı İptal butonu içindi - artık TÜM satır işlemleri üst
        araç çubuğundan yapılıyor (Edip, 2026-09-05), bu sütun her satırda hep boştu, tamamen
        kaldırıldı ("işaretlediğim fazla olan boşlukları kaldır"). */
-    grid-template-columns: minmax(90px,1fr) 44px 42px 34px 60px 64px;
-    min-width: 406px;
+    /* Baştaki 24px sütun sıra numarası içindir (Edip, 2026-09-05: "sıra numaralarını göstersin
+       1,2,3 devam etsin kaç ürün varsa"). */
+    grid-template-columns: 24px minmax(90px,1fr) 44px 42px 34px 60px 64px;
+    min-width: 436px;
     gap: 0.6rem;
     padding: 0.3rem 0.4rem;
     font-size: 0.7rem;
@@ -473,8 +503,12 @@
     border-bottom: 1px solid var(--pos-border);
 }
 
-.restaurant-pos .cart-lines-header span:not(:first-child) {
+.restaurant-pos .cart-lines-header span:not(:first-child):not(:nth-child(2)) {
     text-align: right;
+}
+
+.restaurant-pos .cart-lines-header span:first-child {
+    text-align: center;
 }
 
 /* Gönderilmiş satır soluk/pasif GÖRÜNMEZ (Edip, 2026-09-05: "pasif görünüm = işlem yapılamaz

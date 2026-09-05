@@ -603,7 +603,14 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             // kullanıyor (ayrı bir görünürlük bayrağı YOK, aynı işlemle birebir örtüşüyor).
             ShowTicketNoteButton = (fiscalSettings?.EnableTicketNoteButton ?? true) && await permissionService.CanAddNoteAsync(CurrentUserId),
             ShowTableTransferButton = (fiscalSettings?.EnableTableTransferButton ?? true) && await permissionService.CanSeeTableTransferAsync(CurrentUserId),
-            ShowSendToKitchenButton = (fiscalSettings?.EnableSendToKitchenButton ?? true) && await permissionService.CanSeeSendToKitchenAsync(CurrentUserId),
+            // Mutfağa Gönder SADECE gerçek Masa ve Paket siparişlerinde gösterilir/çalışır -
+            // Self Satış hızlı tezgah üstü satıştır (madde 12, "bir markette kasadan ürün alıp
+            // ödeyip çıkmak gibi"), mutfağa fiziksel sipariş gönderimi gerekmez; ürünler yine de
+            // Ödemeyi Al/Fişi Beklet gibi akışlardan önce sunucuya flushCartToKitchen ile
+            // otomatik yazılır, sadece bu MANUEL buton gizlenir (Edip, 2026-09-05). Self Satış
+            // "Masaya Aktar" ile gerçek bir masaya taşınırsa check artık Self Satış SAYILMAZ
+            // (SectionName değişir) - buton kendiliğinden geri görünür, ekstra kod gerekmez.
+            ShowSendToKitchenButton = !isSelfSaleCheck && (fiscalSettings?.EnableSendToKitchenButton ?? true) && await permissionService.CanSeeSendToKitchenAsync(CurrentUserId),
             ShowPriceCheckButton = (fiscalSettings?.EnablePriceCheckButton ?? true) && await permissionService.CanSeePriceCheckAsync(CurrentUserId),
             ShowKeyboardButton = (fiscalSettings?.EnableKeyboardButton ?? true) && await permissionService.CanSeeKeyboardAsync(CurrentUserId),
             ShowHoldReceiptButton = (fiscalSettings?.EnableHoldReceiptButton ?? true) && await permissionService.CanSeeHoldReceiptAsync(CurrentUserId),

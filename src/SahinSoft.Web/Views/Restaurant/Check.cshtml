@@ -12,6 +12,7 @@
     // kullandığı AYNI kabuk mekanizması, .report-scroll-area'ya gerek yok çünkü bu sayfa zaten
     // kendi iç kaydırmasını (.cart-lines/.cart-sent-lines) kendisi yönetiyor.
     ViewData["MainFixed"] = true;
+    ViewData["MainNoRightPad"] = true;
     // Self Satış/Paket gizli sanal masaları bölüm adıyla AYNI masa adını taşır (bkz.
     // RestaurantPostingService.CreateSelfSaleCheckAsync yorumu) - başlıkta "Self Satış — Self
     // Satış" gibi anlamsız tekrar göstermemek için sadece görünümde birleştiriliyor, veri modeli
@@ -187,7 +188,11 @@
                      ve bekleyen satırlarda AYNI (Edip, 2026-09-03: "ürün şablonu böyle olsun"). -->
                 <div class="cart-lines-header-scroll">
                     <div class="cart-lines-header">
-                        <span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span>
+                        <!-- Baştaki "#" sıra numarası sütunu (Edip, 2026-09-05: "sıra numaralarını
+                             göstersin 1,2,3 devam etsin kaç ürün varsa") - gönderilmiş VE bekleyen
+                             satırlarda ortak, kesintisiz tek bir sayaç (bkz. aşağıdaki @@for ve
+                             restaurant-pos.js renderCart() sentLineCount devamı). -->
+                        <span>#</span><span>Ürün Adı</span><span>Miktar</span><span>Birim</span><span>KDV</span><span>Fiyat</span><span>Tutar</span>
                     </div>
                 </div>
                 @{
@@ -202,8 +207,10 @@
                 @if (visibleSentLines.Count > 0)
                 {
                     <div class="cart-sent-lines" id="cart-sent-lines">
-                        @foreach (var (order, line) in visibleSentLines)
+                        @for (var sentIdx = 0; sentIdx < visibleSentLines.Count; sentIdx++)
                         {
+                            var order = visibleSentLines[sentIdx].order;
+                            var line = visibleSentLines[sentIdx].line;
                             <!-- Onaylı görsel isteği (Edip, 2026-09-05, "Adisyona Dön"dükten sonra
                                  sağ taraftaki küçük simgeler çıkmasın, sabit üst satırdaki
                                  miktar+/-/Sil/İkram alanlarından yapayım") - satır sağdaki KÜÇÜK
@@ -213,8 +220,9 @@
                                  (adjust-line-qty-form/toggle-line-comp-form/cancel-line-btn akışı,
                                  PIN onayı dahil), sadece tetikleme yeri değişti. -->
                             <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                                <div class="cart-line-col-name">@line.ProductName
-                                    @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
+                                <div class="cart-line-col-no">@(sentIdx + 1)</div>
+                                <div class="cart-line-col-name">
+                                    <span class="cart-line-name-text">@line.ProductName@(!string.IsNullOrEmpty(line.PortionName) ? $" ({line.PortionName})" : "")</span>
                                     @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
                                     @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span> }
                                     @if (Model.IsKitchenTrackingEnabled) { <span class="badge text-bg-secondary-subtle">@line.Status</span> }
@@ -237,29 +245,39 @@
                     <p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>
                 </div>
                 <div class="cart-footer">
-                    <!-- Alt özet HER ZAMAN 4 alan gösterir - Ara Toplam | İndirim | Ödenen | Kalan
-                         (2026-09-05 teknik doküman madde 2: "ödeme yapılıp yapılmamasına göre alan
-                         kaybolmayacak"). İndirim SADECE adisyon/tutar indirimidir (TicketDiscountAmount,
-                         madde 4) - satır indirimleri zaten her satırın kendi TUTAR'ına yansımıştır,
-                         burada AYRICA gösterilmez/toplanmaz. restaurant-close-payment.js
-                         updateMainScreenSummary() Ödenen/Kalan'ı canlı günceller. -->
+                    <!-- Alt özet (Edip, 2026-09-05 - önceki "her zaman 4 alan görünsün" kararının
+                         YERİNE geçti): Ara Toplam ve Kalan Tutar HER ZAMAN görünür; İndirim SADECE
+                         adisyon/tutar indirimi (TicketDiscountAmount, madde 4) varsa, Ödenen SADECE
+                         gerçekten bir ödeme girildiyse gösterilir - ilgili tutar 0 ise satır
+                         tamamen gizlenir ("indirim yoksa ve ödenen tutar yoksa göstermesin").
+                         restaurant-close-payment.js updateMainScreenSummary() Ödenen satırının
+                         görünürlüğünü ve Kalan'ı canlı günceller; İndirim yalnızca tam sayfa
+                         yeniden yüklenmesiyle değiştiği için sunucu tarafı yeterli. Eski "Toplam"
+                         satırı (Ara Toplam - İndirim ile aynı bilgiyi tekrarlıyordu, "gereksiz sil")
+                         DOM'dan kaldırılmadı (renderCart() hâlâ #cart-total'a doğrudan yazıyor,
+                         madde 22'deki JS güvenliği kuralı) - sadece görünürlüğü kapatıldı. -->
                     <div class="d-flex justify-content-between">
                         <span>Ara Toplam</span>
                         <span id="main-subtotal-total">@Model.AraToplam.ToString("N2") ₺</span>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <!-- d-none (style="display:none" DEĞİL) - Bootstrap'in .d-flex kuralı
+                         "display:flex !important" olduğundan satır içi style buna karşı kaybeder;
+                         .d-none de AYNI önem/özgüllükte ama Bootstrap'in kendi CSS'inde .d-flex'ten
+                         SONRA tanımlı olduğu için ikisi birlikteyken kazanır (2026-09-05, ilk
+                         denemede bulunan gerçek hata). -->
+                    <div class="d-flex justify-content-between@(Model.TicketDiscountAmount > 0 ? "" : " d-none")" id="main-discount-row">
                         <span>İndirim</span>
                         <span class="text-danger" id="main-discount-total">@Model.TicketDiscountAmount.ToString("N2") ₺</span>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between@(Model.PaidTotal > 0 ? "" : " d-none")" id="main-paid-row">
                         <span>Ödenen</span>
                         <span class="text-success fw-bold" id="main-paid-total">@Model.PaidTotal.ToString("N2") ₺</span>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <span>Kalan</span>
+                        <span>Kalan Tutar</span>
                         <span class="text-danger fw-bold" id="main-remaining-total">@((Model.PayableTotal - Model.PaidTotal).ToString("N2")) ₺</span>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between d-none">
                         <span>Toplam</span>
                         <span class="cart-total" id="cart-total">@Model.PayableTotal.ToString("N2") ₺</span>
                     </div>
@@ -270,7 +288,13 @@
                         <!-- Madde 22 - bu buton renderCart() içinde SIK SIK doğrudan (null
                              kontrolsüz) referans alınıyor, DOM'dan @@if ile kaldırmak yerine
                              görünürlüğü display:none ile kapatılıyor (JS güvenliği için). -->
-                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled@(Model.ShowSendToKitchenButton ? "" : " style=\"display:none;\"")>♨ Mutfağa Gönder</button>
+                        <!-- GERÇEK HATA (2026-09-05, incelemede bulundu) - önceki hali burada
+                             style="display:none;" yazmayı bir C# string içinde \" ile kaçırmaya
+                             çalışıyordu, bu Razor'da HTML özniteliği olarak DEĞİL düz metin olarak
+                             basılıyordu (tarayıcı geçersiz style'ı yok sayıp butonu GÖRÜNÜR
+                             bırakıyordu) - ShowSendToKitchenButton hep true olduğu için şimdiye
+                             kadar hiç fark edilmemişti. Native "hidden" özniteliği ile düzeltildi. -->
+                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled @(Model.ShowSendToKitchenButton ? "" : "hidden")>♨ Mutfağa Gönder</button>
                         <button type="button" class="self-payrow-pay" id="self-pay-btn"@(Model.PayableTotal > 0 ? "" : " disabled")>Ödemeyi Al</button>
                     </div>
                     <!-- Onaylı Self Satış mockup'ı bu satırda "Adisyon | Nakit | Kredi Kartı" gösteriyor

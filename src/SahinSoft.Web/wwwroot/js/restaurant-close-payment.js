@@ -33,6 +33,7 @@
     var requireReceiptPromptAfterQuickPay = root.getAttribute('data-require-receipt-prompt-after-quickpay') === 'true';
     var selfSaleUrl = root.getAttribute('data-self-sale-url');
     var mainPaidTotalEl = document.getElementById('main-paid-total');
+    var mainPaidRowEl = document.getElementById('main-paid-row');
     var mainRemainingTotalEl = document.getElementById('main-remaining-total');
     var payChangeWrap = document.getElementById('pay-change-wrap');
     var payChangeEl = document.getElementById('pay-change');
@@ -118,11 +119,15 @@
         renderEntry();
     }
 
-    // Ödenen/Kalan (madde 2, 2026-09-05 teknik doküman) - alan HER ZAMAN görünür, ödeme
-    // yapılmamışsa bile Ödenen 0,00/Kalan Toplam kadar gösterilir.
+    // Ödenen (Edip, 2026-09-05: "ödenen tutar yoksa göstermesin") - satır SADECE gerçek bir ödeme
+    // girildiyse görünür; Kalan Tutar her zaman görünür.
     function updateMainScreenSummary() {
         var paid = paidTotal();
         if (mainPaidTotalEl) mainPaidTotalEl.textContent = money(paid);
+        // .style.display DEĞİL - satır Bootstrap'in "d-flex" (display:flex !important) sınıfını
+        // taşıyor, inline style ona karşı kaybeder; .d-none Bootstrap'te AYNI önemde ama SONRA
+        // tanımlı olduğu için ikisi birlikteyken kazanır (bkz. Check.cshtml'deki not).
+        if (mainPaidRowEl) mainPaidRowEl.classList.toggle('d-none', paid <= 0);
         if (mainRemainingTotalEl) mainRemainingTotalEl.textContent = money(Math.max(remaining(), 0));
     }
 

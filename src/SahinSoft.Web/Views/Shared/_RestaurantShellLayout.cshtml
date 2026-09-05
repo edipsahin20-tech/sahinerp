@@ -79,8 +79,12 @@
         <!-- ViewData["MainFixed"] opsiyonel - sayfa kendi üst kısmını (toolbar/özet/sekmeler)
              sabit tutup yalnızca ALT içeriği kendi içinde kaydırmak isterse (Edip, 2026-09-04:
              "raporlar kısmı tam otursun sadece alt taraf ... kaysın") kullanılır; başka sayfa
-             bunu ayarlamazsa .rest-main eskisi gibi TEK BÜTÜN olarak kayar - davranış değişmez. -->
-        <main class="rest-main @(ViewData["MainFixed"] as bool? == true ? "rest-main-fixed" : "")">
+             bunu ayarlamazsa .rest-main eskisi gibi TEK BÜTÜN olarak kayar - davranış değişmez.
+             ViewData["MainNoRightPad"] (2026-09-05, Edip: "sağ raftaki boşluğu sil biraz daha
+             sağa kaydır") - Check.cshtml'deki sağ sabit ikon şeridi .rest-main'in standart 22px
+             sağ dolgusu yüzünden pencere kenarından ayrık duruyordu; SADECE bu sayfa için kaldırır,
+             diğer restoran sayfalarının dolgusuna dokunmaz. -->
+        <main class="rest-main @(ViewData["MainFixed"] as bool? == true ? "rest-main-fixed" : "") @(ViewData["MainNoRightPad"] as bool? == true ? "rest-main-no-right-pad" : "")">
             @if (TempData["Error"] is string error)
             {
                 <div class="alert alert-danger py-2">@error</div>

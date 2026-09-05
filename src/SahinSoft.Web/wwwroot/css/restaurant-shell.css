@@ -140,6 +140,13 @@ html, body {
     overflow-y: auto;
 }
 
+/* Sağ dolguyu SADECE Check.cshtml için kaldırır (Edip, 2026-09-05: "sağ raftaki boşluğu sil
+   biraz daha sağa kaydır") - sağdaki sabit ikon şeridi pencere kenarına yaslansın diye; diğer
+   restoran sayfalarının standart 22px dolgusuna dokunmaz. */
+.rest-shell .rest-main.rest-main-no-right-pad {
+    padding-right: 4px;
+}
+
 .rest-shell .rest-statusbar {
     grid-column: 1 / 3; background: #fff; border-top: 1px solid var(--rs-border); font-size: 12px;
     display: flex; align-items: center; padding: 0 16px; color: #5E6F84; gap: 22px;
