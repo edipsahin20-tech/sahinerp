@@ -10461,3 +10461,32 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905065901_FixRestaurantPaymentSubmissionKeyUniqueness'
+)
+BEGIN
+    DROP INDEX [IX_RestaurantPayments_SubmissionKey] ON [RestaurantPayments];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905065901_FixRestaurantPaymentSubmissionKeyUniqueness'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantPayments_SubmissionKey] ON [RestaurantPayments] ([SubmissionKey]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905065901_FixRestaurantPaymentSubmissionKeyUniqueness'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905065901_FixRestaurantPaymentSubmissionKeyUniqueness', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

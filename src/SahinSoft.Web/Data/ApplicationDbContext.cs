@@ -1467,8 +1467,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.Property(x => x.Amount).HasPrecision(18, 2);
             entity.HasIndex(x => x.RestaurantCheckId);
-            // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
-            entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");
+            // GERÇEK BUG (2026-09-05, Edip'in "parçalı ödeme tahsilatında sorun var" bildirimiyle
+            // bulundu): Bu satır ÖNCEDEN diğer tek-satır-tek-submission tablolarından (StockSlip
+            // vb.) KOPYALANMIŞ bir desendi - x.SubmissionKey üzerinde TEKİL (unique) bir indeks.
+            // Ama CloseCheckAsync (bkz. RestaurantPostingService) TEK bir kapanışta (özellikle
+            // parçalı/karma ödemede) AYNI submissionKey değeriyle BİRDEN FAZLA RestaurantPayment
+            // satırı ekliyor (foreach (var payment in payments) - hepsi aynı submissionKey'i
+            // taşıyor). Tekil indeks yüzünden ikinci satırın eklenmesi HER ZAMAN "Cannot insert
+            // duplicate key" SqlException'ına çarpıyordu - müşteriye "Bağlantı hatası oluştu"
+            // olarak sızıyordu (JSON olmayan 500 yanıtı res.json()'da patlıyordu). Çift-tıklama/
+            // mükerrer POST koruması zaten CHECK seviyesinde var (bkz. check.SubmissionKey +
+            // check.Status == Closed kontrolü, satır ~1506) - bu yüzden RestaurantPayment'ta AYRICA
+            // tekil bir kısıtlamaya hiç gerek yok, sadece denetim/sorgu amaçlı normal bir indeks
+            // yeterli.
+            entity.HasIndex(x => x.SubmissionKey);
             entity.HasOne(x => x.RestaurantCheck)
                 .WithMany(x => x.Payments)
                 .HasForeignKey(x => x.RestaurantCheckId)
