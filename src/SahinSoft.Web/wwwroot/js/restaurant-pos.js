@@ -82,7 +82,21 @@
         }
     }
 
-    function restoreHeldCartIfAny() {
+    // GERÇEK HATA (2026-09-05, Edip'in bildirimiyle bulundu): "Fişi Beklet" tıklandığında YENİ
+    // boş bir Self Satış adisyonu açılır (bkz. RestaurantSelfSaleController.Hold), bekletilen
+    // ESKİ adisyon "Open" durumda hiç dokunulmadan kalır. Kasiyer Self Satış'a TEKRAR girdiğinde
+    // (Bekleyen Fişler'den DEĞİL, sadece sol menüden "Self Satış"a tıklayarak) ve o kullanıcının
+    // hâlâ o eski (bekletilmiş) adisyondan daha yeni bir Self Satış adisyonu yoksa,
+    // RestaurantSelfSaleController.Index "kullanıcının en son açık Self Satış adisyonu" sorgusuyla
+    // AYNI bekletilmiş adisyonun URL'sine geri döner - eskiden bu fonksiyon SAYFA HER AÇILDIĞINDA
+    // checkId eşleşirse OTOMATİK sepeti geri yüklüyordu, yani kasiyer "Bekleyenlere" hiç
+    // dokunmadan fiş kendiliğinden ekrana geri geliyordu ("hiçbir şekilde ben bekleyenlerden
+    // çağırmadan ekrana getirmesin" - Edip). Artık SADECE "Bekleyen Fişler" kartına tıklanınca
+    // eklenen ?restoreHeld=1 işareti varsa geri yükleniyor (bkz. aşağıdaki çağrı) - sıradan bir
+    // sayfa açılışında/yenilemede ASLA otomatik geri gelmiyor.
+    function restoreHeldCartIfExplicitlyRequested() {
+        var requested = new URLSearchParams(window.location.search).get('restoreHeld') === '1';
+        if (!requested) return;
         var list = readHeldCarts();
         var idx = -1;
         for (var i = 0; i < list.length; i++) { if (list[i].checkId === checkId) { idx = i; break; } }
@@ -92,6 +106,10 @@
         writeHeldCarts(list);
         cart = held.cart || [];
         cart.forEach(function (line) { cartSeq = Math.max(cartSeq, line.cartId); });
+        var cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('restoreHeld');
+        window.history.replaceState({}, '', cleanUrl.toString());
+        if (window.updateHeldReceiptsBadge) window.updateHeldReceiptsBadge();
     }
 
     // --- Kategori sekmeleri + ürün ızgarası + arama ---
@@ -358,23 +376,73 @@
     // Butonlar ARTIK hiçbir zaman disabled olmuyor (mutfağa gönderilince sepet boşalıp seçili
     // satır kalmasa bile); her tıklama zaten kendi içinde "seçili satır yoksa hiçbir şey yapma"
     // koruması taşıyor (bkz. aşağıdaki click handler'ları), bu yüzden güvenli.
+    //
+    // Gönderilmiş (sent) satırlar (Edip, 2026-09-05, "Adisyona Dön"dükten sonra sağ taraftaki
+    // küçük simgeler çıkmasın, sabit üst satırdaki alanlardan yapayım") - PENDING sepet
+    // satırlarıyla AYNI tıkla-seç + sabit araç çubuğu mekanizmasını kullanır. Aralarındaki fark:
+    // pending satır saf JS state (anında, sunucuya dokunmadan), sent satır GERÇEK bir DB satırı -
+    // bu yüzden qty/ikram/sil işlemleri AYNI sunucu uçlarını (PIN onayı dahil) tetikler, sadece
+    // eskiden küçük ikonların yaptığını şimdi bu üst çubuk yapıyor.
+    var selectedSentLineId = null;
+    var requireApprovalEditKitchenSent = root.getAttribute('data-require-second-approval-edit-kitchen-sent') === 'true';
+    var requireApprovalComplimentary = root.getAttribute('data-require-second-approval-complimentary') === 'true';
+
+    function selectedSentLineEl() {
+        if (selectedSentLineId === null) return null;
+        return document.querySelector('.cart-line.sent[data-line-id="' + selectedSentLineId + '"]');
+    }
+
+    document.querySelectorAll('.cart-line.sent.selectable').forEach(function (row) {
+        row.addEventListener('click', function () {
+            selectedCartId = null;
+            selectedSentLineId = selectedSentLineId === parseInt(row.getAttribute('data-line-id'), 10) ? null : parseInt(row.getAttribute('data-line-id'), 10);
+            document.querySelectorAll('.cart-line.sent').forEach(function (r) { r.classList.remove('selected'); });
+            if (selectedSentLineId !== null) row.classList.add('selected');
+            renderCart();
+        });
+    });
+
+    function submitSentLineQtyChange(lineId, newQty) {
+        if (newQty <= 0) { window.alert('Geçersiz miktar.'); return; }
+        window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
+            document.getElementById('adjustQtyLineId').value = lineId;
+            document.getElementById('adjustQtyValue').value = newQty;
+            document.getElementById('adjustQtyApproverPin').value = pin || '';
+            document.getElementById('adjust-line-qty-form').submit();
+        });
+    }
+
+    function submitSentLineComp(lineId) {
+        if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
+        window.requestApproverPin(requireApprovalComplimentary, function (pin) {
+            document.getElementById('toggleCompLineId').value = lineId;
+            document.getElementById('toggleCompApproverPin').value = pin || '';
+            document.getElementById('toggle-line-comp-form').submit();
+        });
+    }
+
     function updateLineToolbar() {
         var line = selectedLine();
+        var sentEl = selectedSentLineEl();
         var qtyValueEl = document.getElementById('line-qty-value');
-        qtyValueEl.textContent = line ? line.quantity : '–';
+        qtyValueEl.textContent = line ? line.quantity : (sentEl ? sentEl.getAttribute('data-qty') : '–');
     }
 
     document.getElementById('line-qty-minus').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
-        line.quantity = Math.max(1, line.quantity - 1);
-        renderCart();
+        if (line) { line.quantity = Math.max(1, line.quantity - 1); renderCart(); return; }
+        var sentEl = selectedSentLineEl();
+        if (!sentEl) return;
+        var qty = parseFloat(sentEl.getAttribute('data-qty'));
+        submitSentLineQtyChange(selectedSentLineId, Math.max(1, qty - 1));
     });
     document.getElementById('line-qty-plus').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
-        line.quantity += 1;
-        renderCart();
+        if (line) { line.quantity += 1; renderCart(); return; }
+        var sentEl = selectedSentLineEl();
+        if (!sentEl) return;
+        var qty = parseFloat(sentEl.getAttribute('data-qty'));
+        submitSentLineQtyChange(selectedSentLineId, qty + 1);
     });
     // Hazır not seçenekleri varsa (Edip, 2026-09-03: "otomatik not girilecek alanlar ekle")
     // porsiyon seçimindeki AYNI numaralı liste deseni - ayrı bir modal gerekmez, kasiyer numara
@@ -382,7 +450,12 @@
     var quickNotePresets = JSON.parse(document.getElementById('pos-quick-notes-data').textContent || '[]');
     document.getElementById('line-act-note').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
+        if (!line) {
+            // Gönderilmiş satırın notu bu ekrandan değiştirilemez - ayrı bir sunucu ucu YOK,
+            // uydurma bir "kaydedildi" mesajı gösterilmiyor.
+            if (selectedSentLineEl()) window.alert('Gönderilmiş satırın notu buradan değiştirilemez.');
+            return;
+        }
         var note;
         if (quickNotePresets.length > 0) {
             var options = quickNotePresets.map(function (n, i) { return (i + 1) + ') ' + n; }).join('\n');
@@ -398,7 +471,12 @@
     });
     document.getElementById('line-act-discount').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
+        if (!line) {
+            // Gönderilmiş tek bir satıra özel indirim YOK - fiş geneli %İndirim modalı var,
+            // uydurma bir per-satır indirim uç noktası YOK.
+            if (selectedSentLineEl()) window.alert('Gönderilmiş satırda tekli indirim yok - sağdaki "%İndirim" (fiş geneli) kullanın.');
+            return;
+        }
         var amountStr = window.prompt('İndirim tutarı (₺):', line.discountAmount || 0);
         var amount = parseFloat(amountStr);
         if (!isNaN(amount) && amount >= 0) {
@@ -409,16 +487,18 @@
     });
     document.getElementById('line-act-comp').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
-        line.isComplimentary = !line.isComplimentary;
-        renderCart();
+        if (line) { line.isComplimentary = !line.isComplimentary; renderCart(); return; }
+        if (selectedSentLineId !== null) submitSentLineComp(selectedSentLineId);
     });
     document.getElementById('line-act-remove').addEventListener('click', function () {
         var line = selectedLine();
-        if (!line) return;
-        cart = cart.filter(function (x) { return x.cartId !== line.cartId; });
-        selectedCartId = null;
-        renderCart();
+        if (line) {
+            cart = cart.filter(function (x) { return x.cartId !== line.cartId; });
+            selectedCartId = null;
+            renderCart();
+            return;
+        }
+        if (selectedSentLineId !== null && window.triggerSentLineCancel) window.triggerSentLineCancel(selectedSentLineId);
     });
 
     // Sağ ikon şeridindeki "Mutfak" - alt kısımdaki Mutfağa Gönder ile aynı işlemi tetikler,
@@ -1054,43 +1134,6 @@
         });
     })();
 
-    // --- Gönderilmiş satırlarda miktar düzeltme / ikram - Edip, 2026-09-04, madde 9/21/25:
-    // "satır kilidi TAMAMEN KALDIRILACAK ... kullanıcının düzenleme/miktar değiştirme/silme/
-    // ikram/indirim/not/iptal yapabilmesini yetkiler belirleyecektir". Butonlar artık HER ZAMAN
-    // görünür/tıklanabilir - yetki kontrolü sunucu tarafında (RestaurantPermissionService), izin
-    // yoksa TempData["Error"] ile normal hata akışı üzerinden bildirilir. ---
-    (function () {
-        var requireApprovalEditKitchenSent = root.getAttribute('data-require-second-approval-edit-kitchen-sent') === 'true';
-        var requireApprovalComplimentary = root.getAttribute('data-require-second-approval-complimentary') === 'true';
-
-        document.querySelectorAll('.sent-line-qty-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var current = btn.getAttribute('data-qty');
-                var input = window.prompt('Yeni miktar:', current);
-                if (input === null) return;
-                var qty = parseFloat(input.replace(',', '.'));
-                if (isNaN(qty) || qty <= 0) { window.alert('Geçersiz miktar.'); return; }
-                window.requestApproverPin(requireApprovalEditKitchenSent, function (pin) {
-                    document.getElementById('adjustQtyLineId').value = btn.getAttribute('data-line-id');
-                    document.getElementById('adjustQtyValue').value = qty;
-                    document.getElementById('adjustQtyApproverPin').value = pin || '';
-                    document.getElementById('adjust-line-qty-form').submit();
-                });
-            });
-        });
-
-        document.querySelectorAll('.sent-line-comp-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                if (!window.confirm('Bu satırın ikram durumu değiştirilsin mi?')) return;
-                window.requestApproverPin(requireApprovalComplimentary, function (pin) {
-                    document.getElementById('toggleCompLineId').value = btn.getAttribute('data-line-id');
-                    document.getElementById('toggleCompApproverPin').value = pin || '';
-                    document.getElementById('toggle-line-comp-form').submit();
-                });
-            });
-        });
-    })();
-
     // --- Ürün şablonu satır başlığı/satırları yatay kaydırma senkronu - çok sıkışık viewport'
     // larda (ör. %150 Windows ölçeklendirme) sütunlar sığmayıp bu üç ayrı kapsayıcı (başlık,
     // gönderilmiş satırlar, bekleyen satırlar) kendi içinde yatay kayabiliyor (bkz. CSS); AYRI
@@ -1190,7 +1233,9 @@
             listEl.innerHTML = '';
             sorted.forEach(function (entry, idx) {
                 var card = document.createElement('a');
-                card.href = '/Restaurant/Check/' + entry.checkId;
+                // ?restoreHeld=1 - SADECE bu açık çağrı sepeti geri yükler (bkz.
+                // restoreHeldCartIfExplicitlyRequested), sıradan bir Self Satış girişi ASLA.
+                card.href = '/Restaurant/Check/' + entry.checkId + '?restoreHeld=1';
                 card.className = 'held-receipt-card' + (idx === 0 ? ' oldest' : '');
                 card.innerHTML =
                     '<div class="held-receipt-card-top">' +
@@ -1385,7 +1430,7 @@
         });
     })();
 
-    restoreHeldCartIfAny();
+    restoreHeldCartIfExplicitlyRequested();
     renderCategories();
     renderCart();
 })();

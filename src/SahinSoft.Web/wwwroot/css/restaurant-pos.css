@@ -471,6 +471,13 @@
     align-items: center;
 }
 
+/* Sadece iptal yetkisi olan (madde 9/21/25) gönderilmiş satırlar tıklanıp sabit araç çubuğuna
+   seçilebilir (Edip, 2026-09-05, "sağdaki küçük simgeler çıkmasın, üst satırdan yapayım") -
+   yetkisi olmayanlar seçilemez, imleç de bunu yansıtır. */
+.restaurant-pos .cart-line.sent:not(.selectable) {
+    cursor: default;
+}
+
 .restaurant-pos .cart-line.sent.cancelled {
     opacity: 0.45;
     text-decoration: line-through;

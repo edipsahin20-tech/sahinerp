@@ -186,7 +186,15 @@
                     <div class="cart-sent-lines" id="cart-sent-lines">
                         @foreach (var (order, line) in visibleSentLines)
                         {
-                            <div class="cart-line sent">
+                            <!-- Onaylı görsel isteği (Edip, 2026-09-05, "Adisyona Dön"dükten sonra
+                                 sağ taraftaki küçük simgeler çıkmasın, sabit üst satırdaki
+                                 miktar+/-/Sil/İkram alanlarından yapayım") - satır sağdaki KÜÇÜK
+                                 ikonlar yerine PENDING (henüz gönderilmemiş) sepet satırlarıyla AYNI
+                                 tıkla-seç + sabit araç çubuğu (#line-qty-minus/plus, #line-act-comp,
+                                 #line-act-remove) mekanizmasını kullanıyor - AYNI sunucu uçları
+                                 (adjust-line-qty-form/toggle-line-comp-form/cancel-line-btn akışı,
+                                 PIN onayı dahil), sadece tetikleme yeri değişti. -->
+                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                 <div class="cart-line-col-name">@line.ProductName
                                     @if (!string.IsNullOrEmpty(line.PortionName)) { <text> (@line.PortionName)</text> }
                                     @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
@@ -199,14 +207,7 @@
                                 <div class="cart-line-col-kdv">%@line.TaxRate.ToString("N0")</div>
                                 <div class="cart-line-col-price">@line.UnitPrice.ToString("N2") ₺</div>
                                 <div class="cart-line-col-total">@((line.Quantity * line.UnitPrice - line.DiscountAmount).ToString("N2")) ₺</div>
-                                <div class="sent-line-actions">
-                                    @if (line.CanCancel)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-outline-secondary sent-line-comp-btn" data-line-id="@line.LineId" title="İkram">🎁</button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary sent-line-qty-btn" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" title="Miktar Düzelt">✎</button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger cancel-line-btn" data-line-id="@line.LineId">İptal</button>
-                                    }
-                                </div>
+                                <div></div>
                             </div>
                         }
                     </div>
@@ -994,18 +995,20 @@
                 }
             });
 
-            document.querySelectorAll('.cancel-line-btn').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    document.getElementById('cancelLineId').value = btn.getAttribute('data-line-id');
-                    cancelPinReady = false;
-                    if (requireReason) {
-                        new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
-                    } else {
-                        reasonInput.value = 'Kasiyer iptali';
-                        cancelForm.requestSubmit ? cancelForm.requestSubmit() : cancelForm.submit();
-                    }
-                });
-            });
+            // Onaylı görsel isteği (Edip, 2026-09-05) - "Sil" artık sağdaki küçük "İptal"
+            // butonundan DEĞİL, sabit üst araç çubuğundan (#line-act-remove, bkz.
+            // restaurant-pos.js) tetikleniyor - o dosya bir sent satır seçiliyse bu fonksiyonu
+            // çağırıyor. Akışın kendisi (gerekçe modalı/PIN onayı) DEĞİŞMEDİ, sadece tetikleme yeri.
+            window.triggerSentLineCancel = function (lineId) {
+                document.getElementById('cancelLineId').value = lineId;
+                cancelPinReady = false;
+                if (requireReason) {
+                    new bootstrap.Modal(document.getElementById('cancelLineModal')).show();
+                } else {
+                    reasonInput.value = 'Kasiyer iptali';
+                    cancelForm.requestSubmit ? cancelForm.requestSubmit() : cancelForm.submit();
+                }
+            };
         })();
     </script>
     <script src="~/js/restaurant-close-payment.js" asp-append-version="true"></script>
