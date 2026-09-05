@@ -255,29 +255,118 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         return RedirectToAction(nameof(Check), new { id = checkId });
     }
 
-    // Fiş Listesi (POS ekranındaki sağ ikon şeridi) - bugün kesilmiş fişlerin kısa listesi,
-    // sayfa yenilemeden modalda gösterilsin diye JSON (Edip, 2026-09-03: "fiş listesi günlük fiş
-    // listesini gösterir isterse ekrana alıp düzeltebilir"). Raporlar'daki Günlük sekmesiyle AYNI
-    // kapsam (tüm restoran, tek kullanıcıya özel değil) - sadece burada tam sayfa yerine modal.
-    [HttpGet]
-    public async Task<IActionResult> TodayReceipts()
+    private static string ReceiptPaymentLabel(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
     {
-        var todayStartUtc = DateTime.Now.Date.ToUniversalTime();
-        var todayEndUtc = todayStartUtc.AddDays(1);
-        var receipts = await dbContext.RetailSales
+        0 => "Ödemesiz",
+        1 => methods[0] switch
+        {
+            RestaurantPaymentMethod.Cash => "Nakit",
+            RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
+            RestaurantPaymentMethod.MealCard => "Yemek Kartı",
+            RestaurantPaymentMethod.Unpaid => "Ödenmez",
+            RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
+            _ => methods[0].ToString()
+        },
+        _ => "Karma Ödeme"
+    };
+
+    private static string ReceiptPaymentKey(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
+    {
+        0 => "none",
+        1 => methods[0].ToString(),
+        _ => "mixed"
+    };
+
+    // Fiş Listesi (2026-09-05 teknik doküman madde 9, onaylı görsel 04_Fis_Listesi_ONAYLI.png) -
+    // Excel-vari filtrelenebilir, tarih ARALIĞI seçilebilir profesyonel liste. Raporlar'ın kendi
+    // "Günlük Fişler" sekmesiyle (RestaurantReportsController) AYNI iş mantığına (kaynak türü,
+    // ödeme türü, GERÇEK filtre seçenekleri) dayanır ama BİLİNÇLİ olarak o sayfanın Kasiyer/KDV/
+    // Kategori kırılımlarını TEKRARLAMAZ - bu sadece hızlı bir fiş arama/görüntüleme modalı,
+    // derinlemesine analiz Raporlar'da kalır.
+    [HttpGet]
+    public async Task<IActionResult> FilteredReceipts(DateTime? from = null, DateTime? to = null, string? sourceType = null, string? payment = null, string? status = null, string? q = null)
+    {
+        var fromUtc = (from?.Date ?? DateTime.Now.Date).ToUniversalTime();
+        var toUtc = (to?.Date ?? DateTime.Now.Date).AddDays(1).ToUniversalTime();
+
+        var query = dbContext.RetailSales
             .AsNoTracking()
-            .Where(x => x.IssuedAtUtc >= todayStartUtc && x.IssuedAtUtc < todayEndUtc && x.Status != RetailSaleStatus.Cancelled)
-            .OrderByDescending(x => x.IssuedAtUtc)
-            .Select(x => new
+            .Where(x => x.IssuedAtUtc >= fromUtc && x.IssuedAtUtc < toUtc)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.AttachedCustomer);
+
+        var packageNumbers = await dbContext.PackageOrders.AsNoTracking()
+            .Where(x => x.RestaurantCheck.LinkedRetailSaleId != null)
+            .ToDictionaryAsync(x => x.RestaurantCheckId, x => x.PackageNumber);
+
+        var all = await query.ToListAsync();
+
+        var openerIds = all.Select(x => x.RestaurantCheck.RestaurantTableSession.OpenedByUserId).Distinct().ToList();
+        var openerNames = await dbContext.Users.AsNoTracking()
+            .Where(x => openerIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.FullName);
+
+        var rows = all.Select(x =>
+        {
+            var sectionName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name;
+            var thisSourceType = sectionName == RestaurantPostingService.SelfSaleSectionName ? "self" : sectionName == "Paket" ? "package" : "table";
+            var methods = x.RestaurantCheck.Payments.Select(p => p.PaymentMethod).ToList();
+            var masaLabel = thisSourceType == "package"
+                ? (packageNumbers.GetValueOrDefault(x.RestaurantCheckId) ?? x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name)
+                : thisSourceType == "self" ? "Self Satış" : x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
+            return new
             {
                 id = x.Id,
-                documentNumber = x.DocumentNumber,
+                dateLabel = x.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy"),
                 timeLabel = x.IssuedAtUtc.ToLocalTime().ToString("HH:mm"),
+                documentNumber = x.DocumentNumber,
+                masaLabel,
+                sourceType = thisSourceType,
+                // x.Customer HER ZAMAN dolu ("Perakende Satışlar Carisi" walk-in cariye düşer,
+                // bkz. GetDefaultRetailCustomerIdAsync) - GERÇEK müşteri sadece kasiyer "Cari
+                // Ekle" ile açıkça bağladıysa (RestaurantCheck.AttachedCustomerId) anlamlıdır.
+                customerName = x.RestaurantCheck.AttachedCustomer != null ? x.RestaurantCheck.AttachedCustomer.Name : "-",
+                cashierName = openerNames.GetValueOrDefault(x.RestaurantCheck.RestaurantTableSession.OpenedByUserId, "-"),
                 grandTotal = x.GrandTotal,
-                tableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name
-            })
-            .ToListAsync();
-        return Json(receipts);
+                paymentLabel = ReceiptPaymentLabel(methods),
+                paymentKey = ReceiptPaymentKey(methods),
+                isCancelled = x.Status == RetailSaleStatus.Cancelled
+            };
+        }).ToList();
+
+        var sourceFiltered = string.IsNullOrWhiteSpace(sourceType) || sourceType == "all"
+            ? rows
+            : rows.Where(x => x.sourceType == sourceType).ToList();
+
+        var availablePaymentFilters = sourceFiltered
+            .Select(x => x.paymentKey)
+            .Distinct()
+            .OrderBy(x => x)
+            .Select(k => new { key = k, label = k == "mixed" ? "Karma Ödeme" : k == "none" ? "Ödemesiz" : Enum.TryParse<RestaurantPaymentMethod>(k, true, out var m) ? ReceiptPaymentLabel([m]) : k })
+            .ToList();
+
+        var finalRows = sourceFiltered.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(payment)) finalRows = finalRows.Where(x => x.paymentKey == payment);
+        if (status == "completed") finalRows = finalRows.Where(x => !x.isCancelled);
+        else if (status == "cancelled") finalRows = finalRows.Where(x => x.isCancelled);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            finalRows = finalRows.Where(x => x.documentNumber.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || x.masaLabel.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || x.customerName.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var finalList = finalRows.OrderByDescending(x => x.id).ToList();
+        var totals = new
+        {
+            count = finalList.Count,
+            grandTotal = finalList.Where(x => !x.isCancelled).Sum(x => x.grandTotal),
+            cancelledCount = finalList.Count(x => x.isCancelled)
+        };
+
+        return Json(new { rows = finalList, availablePaymentFilters, totals });
     }
 
     // Ürün/barkod arama - POS ekranındaki kategori kısayolu grid'i sadece ShowAsShortcut/

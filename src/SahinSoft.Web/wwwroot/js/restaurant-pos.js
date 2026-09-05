@@ -1497,20 +1497,30 @@
         });
     })();
 
-    // --- Fiş Listesi - bugün kesilmiş fişler. "Ekrana Al" GERÇEK BİR DÜZELTME: kapanmış fiş
-    // muhasebe bütünlüğü gereği yerinde değiştirilemez, bu yüzden önce fiş ters kayıtla iptal
-    // edilir (Administrator gerektirir - bkz. CancelReceiptForEdit), sonra satırları sepete
-    // klonlanır ki kasiyer ürün ekleyip/silip/ödeme tipini değiştirip yeniden ringleyebilsin
-    // (Edip, 2026-09-03: "muhasebe mantığında öyle çalışsın ama restoran mantığında adisyonu
-    // ekrana alıp düzenleyebilir/ürün ekleyip silebilir/ödeme tipini değiştirebilir"). ---
+    // --- Fiş Listesi (2026-09-05 teknik doküman madde 9) - Excel-vari filtrelenebilir liste
+    // (bkz. RestaurantController.FilteredReceipts). Satıra tıklamak (SADECE Administrator) eski
+    // davranışı korur: "Ekrana Al" GERÇEK BİR DÜZELTME - kapanmış fiş muhasebe bütünlüğü gereği
+    // yerinde değiştirilemez, önce fiş ters kayıtla iptal edilir (CancelReceiptForEdit), sonra
+    // satırları sepete klonlanır ki kasiyer ürün ekleyip/silip yeniden ringleyebilsin. ---
     (function () {
         var modalEl = document.getElementById('receiptListModal');
         if (!modalEl) return;
         var listEl = document.getElementById('receipt-list-body');
-        var todayReceiptsUrl = root.getAttribute('data-today-receipts-url');
+        var emptyEl = document.getElementById('receipt-list-empty');
+        var totalsEl = document.getElementById('receipt-list-totals');
+        var fromEl = document.getElementById('receipt-list-from');
+        var toEl = document.getElementById('receipt-list-to');
+        var sourceEl = document.getElementById('receipt-list-source');
+        var paymentEl = document.getElementById('receipt-list-payment');
+        var statusEl = document.getElementById('receipt-list-status');
+        var searchEl = document.getElementById('receipt-list-search');
+        var clearBtn = document.getElementById('receipt-list-clear-btn');
+        var exportBtn = document.getElementById('receipt-list-export-btn');
+        var filteredReceiptsUrl = root.getAttribute('data-filtered-receipts-url');
         var receiptLinesUrl = root.getAttribute('data-receipt-lines-url');
         var cancelReceiptUrl = root.getAttribute('data-cancel-receipt-url');
         var isAdmin = root.getAttribute('data-is-admin') === 'true';
+        var lastRows = [];
 
         function cloneLinesIntoCart(lines) {
             var missing = 0;
@@ -1538,41 +1548,117 @@
             if (missing > 0) window.posAlert(missing + ' kalem artık kataloğa dahil değil, eklenemedi.');
         }
 
-        modalEl.addEventListener('show.bs.modal', function () {
-            listEl.innerHTML = '<p class="text-secondary small p-2">Yükleniyor...</p>';
-            fetch(todayReceiptsUrl).then(function (r) { return r.json(); }).then(function (receipts) {
-                if (receipts.length === 0) {
-                    listEl.innerHTML = '<p class="text-secondary small p-2">Bugün kesilmiş fiş yok.</p>';
-                    return;
-                }
-                listEl.innerHTML = '';
-                receipts.forEach(function (r) {
-                    var row = document.createElement('div');
-                    row.className = 'price-check-result-row';
-                    row.innerHTML = '<span>' + escapeHtml(r.timeLabel) + ' · ' + escapeHtml(r.documentNumber) + ' <span class="text-secondary small">(' + escapeHtml(r.tableName) + ')</span></span><strong>' + money(r.grandTotal) + '</strong>';
-                    row.addEventListener('click', function () {
-                        if (!isAdmin) {
-                            window.posAlert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
-                            return;
-                        }
-                        window.posConfirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?', function () {
-                            var fd = new FormData();
-                            fd.append('__RequestVerificationToken', getCsrfToken());
-                            fd.append('retailSaleId', r.id);
-                            fetch(cancelReceiptUrl, { method: 'POST', body: fd })
-                                .then(function (resp) { return resp.json(); })
-                                .then(function (result) {
-                                    if (!result.success) {
-                                        window.posAlert(result.message || 'Fiş iptal edilemedi.');
-                                        return;
-                                    }
-                                    fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
-                                });
-                        }, null, { danger: true });
-                    });
-                    listEl.appendChild(row);
-                });
+        function todayIso() { return new Date().toISOString().slice(0, 10); }
+
+        function loadList() {
+            listEl.innerHTML = '<tr><td colspan="9" class="text-secondary small p-2">Yükleniyor...</td></tr>';
+            var params = new URLSearchParams({
+                from: fromEl.value || todayIso(),
+                to: toEl.value || todayIso(),
+                sourceType: sourceEl.value,
+                payment: paymentEl.value,
+                status: statusEl.value,
+                q: searchEl.value
             });
+            fetch(filteredReceiptsUrl + '?' + params.toString())
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    lastRows = data.rows || [];
+                    // Ödeme türü filtresi SADECE bu tarih/kaynak filtresinde GERÇEKTEN var olan
+                    // türlerden oluşur - hard-code liste değil (mevcut seçim korunur).
+                    var currentPayment = paymentEl.value;
+                    paymentEl.innerHTML = '<option value="">Tüm Ödemeler</option>';
+                    (data.availablePaymentFilters || []).forEach(function (f) {
+                        var opt = document.createElement('option');
+                        opt.value = f.key; opt.textContent = f.label;
+                        if (f.key === currentPayment) opt.selected = true;
+                        paymentEl.appendChild(opt);
+                    });
+                    var t = data.totals || { count: 0, grandTotal: 0, cancelledCount: 0 };
+                    totalsEl.textContent = t.count + ' fiş listeleniyor · Toplam ' + money(t.grandTotal) + (t.cancelledCount > 0 ? ' · ' + t.cancelledCount + ' iptal' : '');
+                    emptyEl.style.display = lastRows.length === 0 ? '' : 'none';
+                    listEl.innerHTML = '';
+                    lastRows.forEach(function (r) {
+                        var row = document.createElement('tr');
+                        if (r.isCancelled) row.style.opacity = '0.6';
+                        if (isAdmin && !r.isCancelled) row.style.cursor = 'pointer';
+                        row.innerHTML = '<td>' + escapeHtml(r.dateLabel) + '</td>' +
+                            '<td>' + escapeHtml(r.timeLabel) + '</td>' +
+                            '<td>' + escapeHtml(r.documentNumber) + '</td>' +
+                            '<td>' + escapeHtml(r.masaLabel) + '</td>' +
+                            '<td>' + escapeHtml(r.customerName) + '</td>' +
+                            '<td>' + escapeHtml(r.cashierName) + '</td>' +
+                            '<td class="text-end">' + money(r.grandTotal) + '</td>' +
+                            '<td>' + escapeHtml(r.paymentLabel) + '</td>' +
+                            '<td>' + (r.isCancelled ? '<span class="text-danger">İptal</span>' : '<span class="text-success">Tamamlandı</span>') + '</td>';
+                        if (!r.isCancelled) {
+                            row.addEventListener('click', function () {
+                                if (!isAdmin) {
+                                    window.posAlert('Kapanmış bir fişi düzeltmek için yönetici yetkisi gerekir.');
+                                    return;
+                                }
+                                window.posConfirm(r.documentNumber + ' fişi İPTAL EDİLİP satırları düzeltme için sepete eklenecek. Devam edilsin mi?', function () {
+                                    var fd = new FormData();
+                                    fd.append('__RequestVerificationToken', getCsrfToken());
+                                    fd.append('retailSaleId', r.id);
+                                    fetch(cancelReceiptUrl, { method: 'POST', body: fd })
+                                        .then(function (resp) { return resp.json(); })
+                                        .then(function (result) {
+                                            if (!result.success) {
+                                                window.posAlert(result.message || 'Fiş iptal edilemedi.');
+                                                return;
+                                            }
+                                            fetch(receiptLinesUrl + '?retailSaleId=' + r.id).then(function (resp) { return resp.json(); }).then(cloneLinesIntoCart);
+                                        });
+                                }, null, { danger: true });
+                            });
+                        }
+                        listEl.appendChild(row);
+                    });
+                });
+        }
+
+        [sourceEl, paymentEl, statusEl].forEach(function (el) { el.addEventListener('change', loadList); });
+        var searchDebounce = null;
+        searchEl.addEventListener('input', function () { clearTimeout(searchDebounce); searchDebounce = setTimeout(loadList, 300); });
+        [fromEl, toEl].forEach(function (el) { el.addEventListener('change', loadList); });
+
+        clearBtn.addEventListener('click', function () {
+            fromEl.value = todayIso();
+            toEl.value = todayIso();
+            sourceEl.value = 'all';
+            paymentEl.value = '';
+            statusEl.value = '';
+            searchEl.value = '';
+            loadList();
+        });
+
+        // Excel'e Aktar - gerçek CSV (Excel bunu doğrudan açar), sadece o an FİLTRELENMİŞ
+        // satırlar - kategori raporlarındaki export ile AYNI desen (data-csv-export kullanmıyor
+        // çünkü bu tablo her açılışta yeniden çiziliyor, statik <table> değil).
+        exportBtn.addEventListener('click', function () {
+            var header = ['Tarih', 'Saat', 'Fiş No', 'Masa/Kaynak', 'Müşteri', 'Kasiyer', 'Tutar', 'Ödeme Türü', 'Durum'];
+            var lines = [header.join(';')];
+            lastRows.forEach(function (r) {
+                lines.push([r.dateLabel, r.timeLabel, r.documentNumber, r.masaLabel, r.customerName, r.cashierName,
+                    r.grandTotal.toFixed(2).replace('.', ','), r.paymentLabel, r.isCancelled ? 'İptal' : 'Tamamlandı']
+                    .map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(';'));
+            });
+            var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'fis-listesi-' + (fromEl.value || todayIso()) + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            if (!fromEl.value) fromEl.value = todayIso();
+            if (!toEl.value) toEl.value = todayIso();
+            loadList();
         });
     })();
 

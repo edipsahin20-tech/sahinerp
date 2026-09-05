@@ -25,7 +25,7 @@
      data-self-sale-url="@Url.Action("Index", "RestaurantSelfSale")"
      data-held-receipts-url="@Url.Action("HeldReceipts", "RestaurantSelfSale")"
      data-recall-held-url="@Url.Action("Recall", "RestaurantSelfSale")"
-     data-today-receipts-url="@Url.Action("TodayReceipts")"
+     data-filtered-receipts-url="@Url.Action("FilteredReceipts")"
      data-receipt-lines-url="@Url.Action("ReceiptLines")"
      data-search-products-url="@Url.Action("SearchProducts")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
@@ -457,18 +457,66 @@
     </div>
 </div>
 
-<!-- Fiş Listesi - bugün kesilmiş fişlerin kısa listesi, istenirse satırları sepete klonlanıp
-     düzeltilebilir (Edip, 2026-09-03: "fiş listesi günlük fiş listesini gösterir isterse ekrana
-     alıp düzeltebilir"). -->
+<!-- Fiş Listesi (2026-09-05 teknik doküman madde 9, onaylı görsel 04_Fis_Listesi_ONAYLI.png) -
+     Excel-vari filtrelenebilir profesyonel pencere. Satıra tıklamak (SADECE Administrator)
+     eski davranışı korur: fiş İPTAL EDİLİP satırları düzeltme için sepete klonlanır (bkz.
+     restaurant-pos.js, CancelReceiptForEdit). -->
 <div class="modal fade" id="receiptListModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Fiş Listesi — Bugün</h5>
+                <h5 class="modal-title">Fiş Listesi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="receipt-list-body" class="price-check-results"></div>
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-end">
+                    <div>
+                        <label class="form-label small mb-1">Tarih Aralığı</label>
+                        <div class="d-flex gap-1">
+                            <input type="date" id="receipt-list-from" class="form-control form-control-sm" />
+                            <input type="date" id="receipt-list-to" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1">Fiş Tipi</label>
+                        <select id="receipt-list-source" class="form-select form-select-sm">
+                            <option value="all">Tümü</option>
+                            <option value="table">Masa</option>
+                            <option value="self">Self Satış</option>
+                            <option value="package">Paket / Gel-Al</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1">Ödeme Türü</label>
+                        <select id="receipt-list-payment" class="form-select form-select-sm">
+                            <option value="">Tüm Ödemeler</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1">Durum</label>
+                        <select id="receipt-list-status" class="form-select form-select-sm">
+                            <option value="">Tümü</option>
+                            <option value="completed">Tamamlandı</option>
+                            <option value="cancelled">İptal</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1" style="min-width:160px;">
+                        <label class="form-label small mb-1">Ara</label>
+                        <input type="text" id="receipt-list-search" class="form-control form-control-sm" placeholder="Fiş No, masa no, müşteri ara..." />
+                    </div>
+                    <button type="button" class="btn btn-erp-outline btn-sm" id="receipt-list-clear-btn">Filtreleri Temizle</button>
+                    <button type="button" class="btn btn-success btn-sm" id="receipt-list-export-btn">📊 Excel'e Aktar</button>
+                </div>
+                <div id="receipt-list-totals" class="text-secondary small mb-2"></div>
+                <div class="table-responsive" style="max-height:360px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr><th>Tarih</th><th>Saat</th><th>Fiş No</th><th>Masa/Kaynak</th><th>Müşteri</th><th>Kasiyer</th><th class="text-end">Tutar</th><th>Ödeme Türü</th><th>Durum</th></tr>
+                        </thead>
+                        <tbody id="receipt-list-body"></tbody>
+                    </table>
+                </div>
+                <p id="receipt-list-empty" class="text-secondary small p-2" style="display:none;">Bu filtrede fiş yok.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
