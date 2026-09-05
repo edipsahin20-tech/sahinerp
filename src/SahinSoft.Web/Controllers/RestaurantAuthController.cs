@@ -19,16 +19,13 @@ public sealed class RestaurantAuthController(
     IPasswordHasher<ApplicationUser> passwordHasher,
     IAntiforgery antiforgery) : Controller
 {
-    public async Task<IActionResult> Login(string? returnUrl = null)
-    {
-        var staff = await userManager.Users
-            .Where(x => x.IsActive && x.RestaurantPinHash != null)
-            .OrderBy(x => x.FullName)
-            .Select(x => new RestaurantStaffPickerItem { Id = x.Id, FullName = x.FullName })
-            .ToListAsync();
-
-        return View(new RestaurantPinLoginViewModel { Staff = staff, ReturnUrl = returnUrl ?? DefaultReturnUrl });
-    }
+    // Personel PIN giriş ekranı (2026-09-05 teknik doküman madde 12, onaylı görsel
+    // 01_Giris_Ekrani_ONAYLI.png) - eskiden burada aktif/PIN'i olan tüm personelin isim listesi
+    // yüklenip gösteriliyordu (RestaurantStaffPickerItem). Artık personel seçimi TAMAMEN
+    // KALDIRILDI - sağda SADECE PIN pad var, doğru PIN doğru kullanıcıyı kendisi bulur (bkz.
+    // POST Login, RestaurantPermissionService.VerifyApproverPinAsync'teki AYNI desen).
+    public IActionResult Login(string? returnUrl = null)
+        => View(new RestaurantPinLoginViewModel { ReturnUrl = returnUrl ?? DefaultReturnUrl });
 
     // Restoran modülü kendi shell'inde açılır - giriş sonrası ön muhasebenin Home/Index'ine değil,
     // doğrudan restoran Dashboard'una düşer (returnUrl belirtilmemişse).
@@ -41,8 +38,13 @@ public sealed class RestaurantAuthController(
     // yerelde antiforgery token'ı bozup AYNI çıplak 400'ü üretip doğruladım). Doğrulama burada
     // elle yapılıp başarısız olursa "PIN hatalı" ile AYNI, kullanıcının zaten bildiği akışa
     // (Login ekranına dön) düşülüyor - kasiyer için tek fark görünmüyor, sadece tekrar dener.
+    //
+    // userId ARTIK YOK (madde 12: "kullanıcı adı ifşa edilmeden hata gösterilir") - PIN, aktif
+    // ve PIN'i tanımlı TÜM personelin hash'ine karşı denenir (VerifyApproverPinAsync'teki AYNI
+    // desen), eşleşen İLK kullanıcı giriş yapan olur. Personel sayısı küçük olduğundan (bir
+    // restoranın kadrosu) bu döngü performans sorunu yaratmaz.
     [HttpPost]
-    public async Task<IActionResult> Login(string userId, string pin, string? returnUrl = null)
+    public async Task<IActionResult> Login(string pin, string? returnUrl = null)
     {
         returnUrl ??= DefaultReturnUrl;
 
@@ -56,16 +58,28 @@ public sealed class RestaurantAuthController(
             return RedirectToAction(nameof(Login), new { returnUrl });
         }
 
-        var user = await userManager.FindByIdAsync(userId);
-
-        if (user is null || !user.IsActive || string.IsNullOrEmpty(user.RestaurantPinHash) || string.IsNullOrWhiteSpace(pin))
+        if (string.IsNullOrWhiteSpace(pin))
         {
             TempData["Error"] = "PIN hatalı.";
             return RedirectToAction(nameof(Login), new { returnUrl });
         }
 
-        var verifyResult = passwordHasher.VerifyHashedPassword(user, user.RestaurantPinHash, pin.Trim());
-        if (verifyResult == PasswordVerificationResult.Failed)
+        var candidates = await userManager.Users
+            .Where(x => x.IsActive && x.RestaurantPinHash != null)
+            .ToListAsync();
+
+        ApplicationUser? matched = null;
+        foreach (var candidate in candidates)
+        {
+            var result = passwordHasher.VerifyHashedPassword(candidate, candidate.RestaurantPinHash!, pin.Trim());
+            if (result != PasswordVerificationResult.Failed)
+            {
+                matched = candidate;
+                break;
+            }
+        }
+
+        if (matched is null)
         {
             TempData["Error"] = "PIN hatalı.";
             return RedirectToAction(nameof(Login), new { returnUrl });
@@ -73,7 +87,7 @@ public sealed class RestaurantAuthController(
 
         // PasswordSignInAsync değil - PIN zaten yukarıda doğrulandı, burada doğrudan cookie
         // oluşturuluyor (Identity'nin normal e-posta/şifre kontrolünü tekrar tetiklemeye gerek yok).
-        await signInManager.SignInAsync(user, isPersistent: true);
+        await signInManager.SignInAsync(matched, isPersistent: true);
         return LocalRedirect(returnUrl);
     }
 }
