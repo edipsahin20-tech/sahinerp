@@ -125,12 +125,14 @@ html, body {
 
 .rest-shell .rest-main { grid-column: 2; grid-row: 2; overflow: auto; padding: 18px 22px; }
 
-/* Opsiyonel "sabit üst / kayan alt" düzeni (Edip, 2026-09-04: "raporlar kısmı tam otursun
-   sadece alt taraf ... kaysın") - Layout'taki ViewData["MainFixed"] ile sayfa bazında açılır,
-   varsayılan .rest-main davranışını (tek parça kayan) DEĞİŞTİRMEZ. .rest-main kendisi artık
-   kaymıyor, dikey flex olup ALTINDAKİ .report-scroll-area (özet/KPI/grafik/sekme başlıkları
-   dışındaki her şey) kalan boşluğu alıp kendi içinde kayıyor - yalnızca ince başlık şeridi
-   (sayfa adı, tarih oku, Yazdır) hep görünür kalır. */
+/* Sabit üst / kayan alt düzeni (Edip, 2026-09-04 ilk istek; 2026-09-06 güncellemesi: "bu alan
+   sabit olsun diğer alanlar aşağıya doğru kaysın... sekmelerdeki işlemler hareketli alanda
+   çalışsın") - Layout'taki ViewData["MainFixed"] ile sayfa bazında açılır, varsayılan .rest-main
+   davranışını (tek parça kayan) DEĞİŞTİRMEZ. Kaydırma artık İKİ KATMANLI: .report-scroll-area
+   (dönem pilleri + sekme ızgarası - HER sekmede ORTAK, hep sabit) kendisi ARTIK KAYMIYOR; onun
+   İÇİNDEKİ .report-tab-scroll (aktif sekmenin KENDİ içeriği - Günlük Fişler'in KPI/filtre/
+   tablosu dahil) kalan boşluğu alıp kendi içinde kayıyor - yalnızca ince başlık şeridi (sayfa
+   adı, tarih oku, Yazdır) VE dönem pilleri/sekme ızgarası hep görünür kalır. */
 .rest-shell .rest-main.rest-main-fixed {
     overflow: hidden;
     display: flex;
@@ -139,6 +141,14 @@ html, body {
 }
 
 .rest-shell .rest-main.rest-main-fixed .report-scroll-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.rest-shell .rest-main.rest-main-fixed .report-tab-scroll {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -534,7 +544,8 @@ html, body {
     /* Yazdırırken sabit üst/kayan alt düzeni kapatılır - kağıtta "scroll" olmaz, her şey normal
        akışta art arda basılmalı (Edip, 2026-09-04). */
     .rest-shell .rest-main.rest-main-fixed { display: block !important; overflow: visible !important; }
-    .rest-shell .rest-main.rest-main-fixed .report-scroll-area { overflow: visible !important; }
+    .rest-shell .rest-main.rest-main-fixed .report-scroll-area { overflow: visible !important; display: block !important; }
+    .rest-shell .rest-main.rest-main-fixed .report-tab-scroll { overflow: visible !important; }
     .rest-shell .pack-layout { grid-template-columns: 1fr !important; }
 }
 

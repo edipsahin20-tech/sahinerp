@@ -93,6 +93,12 @@
     <a class="rnavgrid @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">▦</i><span><b>Z Listesi</b><small>Geçmiş kapanışlar</small></span></a>
 </div>
 
+<!-- Sabit üst / kayan alt (2026-09-06, Edip: "bu alan sabit olsun diğer alanlar aşağıya doğru
+     kaysın... sekmelerdeki işlemler hareketli alanda çalışsın") - dönem pilleri + sekme ızgarası
+     (yukarıda) HER ZAMAN sabit kalır; hangi sekmeye tıklanırsa tıklansın o sekmenin KENDİ
+     içeriği (Günlük Fişler'in KPI/filtre/tablosu dahil) bu YENİ iç kaydırma alanında çalışır -
+     .report-scroll-area artık kendisi kaymıyor (bkz. CSS), kaydırma BURAYA taşındı. -->
+<div class="report-tab-scroll">
 @if (Model.ActiveTab == "overview")
 {
     <div class="report-hero" style="margin-top:16px;">
@@ -552,6 +558,7 @@ else if (Model.ActiveTab == "zlist")
 }
 
 <div class="znote sub" style="margin-top:12px;">X Raporu vardiyayı kapatmaz. Z Raporu gün sonu kapanışıdır. Z Listesi geçmiş Z kapanışlarını gösterir.</div>
+</div>
 </div>
 
 @if (Model.SelectedReceipt is not null)
