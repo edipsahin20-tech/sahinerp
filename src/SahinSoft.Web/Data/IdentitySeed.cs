@@ -22,7 +22,7 @@ public static class IdentitySeed
         }
 
         await SeedBootstrapAdminAsync(userManager, configuration);
-        await SeedBootstrapCashierAsync(scope.ServiceProvider, userManager, configuration);
+        await EnsureSystemCashierAccountAsync(scope.ServiceProvider, userManager, configuration);
     }
 
     private static async Task SeedBootstrapAdminAsync(UserManager<ApplicationUser> userManager, IConfiguration configuration)
@@ -59,24 +59,66 @@ public static class IdentitySeed
         }
     }
 
-    // Restoran modülü için PIN'le giriş yapan, tam yetkili bir varsayılan kasiyer - BootstrapAdmin
-    // ile AYNI desen (appsettings.json'daki "BootstrapCashier" bölümü boşsa hiçbir şey yapılmaz,
-    // her kurulumda kendi appsettings.json'ında ayrıca tanımlanması gerekir, koda GÖMÜLÜ bir PIN
-    // değeri YOKTUR - bkz. [[feedback_sahinsoft_secrets_in_package]]). Personel Kodu tabanlı
-    // kullanıcı adı + rastgele güçlü sistem şifresi + ayrı PIN hash'i, PersonnelController.Create
-    // ile AYNI kalıp (RestaurantPinHash normal AspNetUsers.PasswordHash'ten tamamen ayrı).
-    private static async Task SeedBootstrapCashierAsync(IServiceProvider scopedServices, UserManager<ApplicationUser> userManager, IConfiguration configuration)
-    {
-        var pin = configuration["BootstrapCashier:Pin"];
-        if (string.IsNullOrWhiteSpace(pin))
-        {
-            return;
-        }
+    // Restoran modülü için PIN'le giriş yapan, tam yetkili SABİT bir sistem/servis kasiyeri
+    // (2026-09-06, Edip: "66 admin yetkili... sabit olucak her müşteride"). appsettings.json'a
+    // BAĞIMLI DEĞİLDİR - PersonnelCode ve PIN kasıtlı olarak kod sabiti: bu bir gizli/kişisel
+    // secret DEĞİL, tanım gereği HER kurulumda aynı olması istenen, dokümante edilmiş bir servis
+    // erişim kodudur (bkz. [[feedback_sahinsoft_secrets_in_package]] olayı - o, gerçek bir DB
+    // şifresiydi, bununla karıştırılmamalı). Her uygulama başlangıcında çalışır ve İKİ senaryoyu
+    // da tek yerde çözer: (a) hesap hiç yoksa oluşturur, (b) hesap zaten varsa (upgrade edilen
+    // kurulum) PIN hash'inin GERÇEKTEN "66" ile doğrulandığını kontrol eder, doğrulanmıyorsa
+    // (örn. eski/yanlış bir hash kalmışsa) düzeltir - idempotent, hash zaten doğruysa hiçbir
+    // yazma yapmadan çıkar. PersonnelController.Edit bu hesabın PIN'ini/aktiflik durumunu
+    // ApplicationUser.IsProtectedSystemAccount bayrağıyla ayrıca korur.
+    private const string SystemCashierPersonnelCode = "KASIYER01";
+    private const string SystemCashierPin = "66";
 
-        var personnelCode = configuration["BootstrapCashier:PersonnelCode"] ?? "KASIYER01";
-        var existing = await userManager.Users.SingleOrDefaultAsync(x => x.PersonnelCode == personnelCode);
+    private static async Task EnsureSystemCashierAccountAsync(IServiceProvider scopedServices, UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    {
+        var passwordHasher = scopedServices.GetRequiredService<IPasswordHasher<ApplicationUser>>();
+        var existing = await userManager.Users.SingleOrDefaultAsync(x => x.PersonnelCode == SystemCashierPersonnelCode);
+
         if (existing is not null)
         {
+            var verifyResult = existing.RestaurantPinHash is null
+                ? PasswordVerificationResult.Failed
+                : passwordHasher.VerifyHashedPassword(existing, existing.RestaurantPinHash, SystemCashierPin);
+            var needsUpdate = false;
+
+            if (verifyResult == PasswordVerificationResult.Failed)
+            {
+                existing.RestaurantPinHash = passwordHasher.HashPassword(existing, SystemCashierPin);
+                needsUpdate = true;
+            }
+
+            if (!existing.IsProtectedSystemAccount)
+            {
+                existing.IsProtectedSystemAccount = true;
+                needsUpdate = true;
+            }
+
+            if (!existing.IsActive)
+            {
+                existing.IsActive = true;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate)
+            {
+                await userManager.UpdateAsync(existing);
+            }
+
+            var existingRoles = await userManager.GetRolesAsync(existing);
+            foreach (var role in new[] { AppRoles.Administrator, AppRoles.RestaurantManager, AppRoles.Cashier, AppRoles.Waiter })
+            {
+                if (!existingRoles.Contains(role))
+                {
+                    EnsureSucceeded(
+                        await userManager.AddToRoleAsync(existing, role),
+                        $"Sistem kasiyerine '{role}' rolü tamamlanamadı.");
+                }
+            }
+
             return;
         }
 
@@ -89,17 +131,18 @@ public static class IdentitySeed
         // Program.cs'te RequireUniqueEmail=true olduğu için Email null/boş bırakılamaz (Identity
         // "Email '' is invalid" diye reddediyor) - PIN'le giriş yapacağı için gerçek bir e-postaya
         // ihtiyacı yok, personelCode'dan türeyen sentetik ama geçerli formatlı bir adres veriliyor.
-        var syntheticEmail = $"{personnelCode.ToLowerInvariant()}@kasiyer.local";
+        var syntheticEmail = $"{SystemCashierPersonnelCode.ToLowerInvariant()}@kasiyer.local";
 
         var user = new ApplicationUser
         {
-            UserName = personnelCode,
+            UserName = SystemCashierPersonnelCode,
             Email = syntheticEmail,
             EmailConfirmed = false,
             FullName = configuration["BootstrapCashier:FullName"] ?? "Kasiyer",
             IsActive = true,
-            PersonnelCode = personnelCode,
-            BranchId = headOfficeBranchId
+            PersonnelCode = SystemCashierPersonnelCode,
+            BranchId = headOfficeBranchId,
+            IsProtectedSystemAccount = true
         };
 
         var randomPart = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(18))
@@ -108,10 +151,9 @@ public static class IdentitySeed
 
         EnsureSucceeded(
             await userManager.CreateAsync(user, systemPassword),
-            "Başlangıç kasiyeri oluşturulamadı.");
+            "Sistem kasiyeri oluşturulamadı.");
 
-        var passwordHasher = scopedServices.GetRequiredService<IPasswordHasher<ApplicationUser>>();
-        user.RestaurantPinHash = passwordHasher.HashPassword(user, pin.Trim());
+        user.RestaurantPinHash = passwordHasher.HashPassword(user, SystemCashierPin);
         await userManager.UpdateAsync(user);
 
         // "Tam yetkili" - Administrator zaten her restoran ekranının yetki listesinde var (bkz.
@@ -121,7 +163,7 @@ public static class IdentitySeed
         {
             EnsureSucceeded(
                 await userManager.AddToRoleAsync(user, role),
-                $"Başlangıç kasiyerine '{role}' rolü atanamadı.");
+                $"Sistem kasiyerine '{role}' rolü atanamadı.");
         }
     }
 

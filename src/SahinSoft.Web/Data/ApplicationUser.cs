@@ -34,4 +34,10 @@ public sealed class ApplicationUser : IdentityUser
     public string? RestaurantPinHash { get; set; }
     public decimal DiscountLowerLimitPercent { get; set; }
     public decimal DiscountUpperLimitPercent { get; set; }
+
+    // Sistem hesabı koruması (2026-09-06, KASIYER01) - Personel ekranından PIN
+    // değiştirilemez/pasife alınamaz. Dağınık "PersonnelCode == KASIYER01" if
+    // kontrolleri yerine tek, açık bir bayrak - bkz. IdentitySeed.EnsureSystemCashierAccountAsync,
+    // PersonnelController.Edit.
+    public bool IsProtectedSystemAccount { get; set; }
 }

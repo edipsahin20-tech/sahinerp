@@ -203,6 +203,18 @@ public sealed class PersonnelController(
             return NotFound();
         }
 
+        // Sistem hesabı koruması (KASIYER01, bkz. IdentitySeed.EnsureSystemCashierAccountAsync) -
+        // Personel ekranından yanlışlıkla pasife alınamaz veya PIN'i değiştirilemez; diğer alanlar
+        // (ad, vs.) normal şekilde düzenlenebilir kalır. TempData["Error"] kullanılıyor çünkü bu
+        // action başarıyla bittiğinde her zaman RedirectToAction ile döner - ModelState burada
+        // hiçbir zaman kullanıcıya gösterilmezdi.
+        var pinChangeBlocked = user.IsProtectedSystemAccount && (!string.IsNullOrWhiteSpace(form.Pin) || !form.IsActive);
+        if (user.IsProtectedSystemAccount)
+        {
+            form.IsActive = true;
+            form.Pin = null;
+        }
+
         user.FullName = form.FullName.Trim();
         user.IsActive = form.IsActive;
         MapOptionalFields(form, user);
@@ -266,6 +278,10 @@ public sealed class PersonnelController(
         await SyncPermissionProfilesAsync(user.Id, form.PermissionProfileIds);
 
         TempData["Success"] = "Personel güncellendi.";
+        if (pinChangeBlocked)
+        {
+            TempData["Error"] = "Bu bir sistem hesabıdır; PIN değiştirilemez veya pasife alınamaz.";
+        }
         return RedirectToAction(nameof(Create));
     }
 
