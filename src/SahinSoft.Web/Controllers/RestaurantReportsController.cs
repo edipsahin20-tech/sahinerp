@@ -621,8 +621,17 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         // seçebilmelidir". "Kasiyer" burada da diğer her yerdeki (Günlük Fişler'in
         // SourceSubtitle'ı, Z Listesi vb.) AYNI kavram - adisyonu açan kullanıcı (OpenerName).
         // Ortak dönem filtresi bu sekmede de geçerli (dayStartUtc/dayEndUtc zaten period'a göre).
+        //
+        // Varsayılan seçim (2026-09-06, Edip: "kasiyer kendi kasiyer raporunu görecek tüm
+        // kasiyerlerin raporunu değil") - KASIYER01 artık her kurulumda sabit tam yetkili bir
+        // hesap olduğu için (bkz. IdentitySeed.EnsureSystemCashierAccountAsync) admin/yönetici
+        // rolü taşıyan biri bu sekmeyi HİÇ seçim yapmadan ilk açtığında dahi "Tüm Kasiyerler"e
+        // düşmemeli - kendi raporunu görmeli, "Tüm Kasiyerler"i isterse aşağıdaki listeden
+        // AÇIKÇA seçer. `kasiyerUserId` query parametresi HİÇ gelmemişse (null, sayfa ilk kez
+        // açıldı) kendi hesabına düşülür; kullanıcı select kutusundan bilerek "Tüm Kasiyerler"i
+        // seçtiğinde ("" boş string olarak gelir, null DEĞİL) o zaman gerçekten hepsi gösterilir.
         vm.CanPickAnyKasiyer = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager);
-        var effectiveKasiyerUserId = vm.CanPickAnyKasiyer ? kasiyerUserId : CurrentUserId;
+        var effectiveKasiyerUserId = vm.CanPickAnyKasiyer ? (kasiyerUserId ?? CurrentUserId) : CurrentUserId;
         vm.SelectedKasiyerUserId = effectiveKasiyerUserId;
 
         if (vm.CanPickAnyKasiyer)

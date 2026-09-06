@@ -66,10 +66,22 @@
                         <a asp-action="Statement" asp-route-id="@item.Id" class="text-decoration-none" title="Cari Hareket Föyünü Görüntüle" style="color: inherit;">@item.Balance.ToString("N2") ₺</a>
                     </td>
                     <td>
-                        @if (!item.IsActive) { <span class="erp-status-pill red">Pasif</span> }
-                        else if (item.IsCustomer && item.IsSupplier) { <span class="erp-status-pill blue">Müşteri/Tedarikçi</span> }
-                        else if (item.IsSupplier) { <span class="erp-status-pill gray">Tedarikçi</span> }
-                        else { <span class="erp-status-pill green">Aktif</span> }
+                        @if (!item.IsActive)
+                        {
+                            <span class="erp-status-pill red">Pasif</span>
+                        }
+                        else if (item.IsCustomer && item.IsSupplier)
+                        {
+                            <span class="erp-status-pill blue">Müşteri/Tedarikçi</span>
+                        }
+                        else if (item.IsSupplier)
+                        {
+                            <span class="erp-status-pill gray">Tedarikçi</span>
+                        }
+                        else
+                        {
+                            <span class="erp-status-pill green">Aktif</span>
+                        }
                     </td>
                     <td>
                         <div class="erp-row-actions">

@@ -128,7 +128,8 @@
             var s = Model.Selected;
             <div class="eyebrow">SEÇİLİ SİPARİŞ</div>
             <h2 style="margin:4px 0;">@s.PackageNumber</h2>
-            <span class="rest-pill">@StatusLabel(s.Status)</span> <span class="rest-pill">@ChannelLabel(s.Channel)</span>
+            <span class="rest-pill">@StatusLabel(s.Status)</span>
+            <span class="rest-pill">@ChannelLabel(s.Channel)</span>
 
             <div class="pack-actions no-print" style="margin-top:10px;">
                 @if (!string.IsNullOrWhiteSpace(s.CustomerPhone))

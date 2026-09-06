@@ -234,14 +234,26 @@
                                 <div class="cart-line-col-no">@(sentIdx + 1)</div>
                                 <div class="cart-line-col-name">
                                     <span class="cart-line-name-text">@line.ProductName@(!string.IsNullOrEmpty(line.PortionName) ? $" ({line.PortionName})" : "")</span>
-                                    @if (line.IsComplimentary) { <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span> }
-                                    @if (line.DiscountAmount > 0 && !line.IsComplimentary) { <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span> }
-                                    @if (Model.IsKitchenTrackingEnabled) { <span class="badge text-bg-secondary-subtle">@line.Status</span> }
+                                    @if (line.IsComplimentary)
+                                    {
+                                        <span class="badge text-bg-info-subtle text-info-emphasis">İKRAM</span>
+                                    }
+                                    @if (line.DiscountAmount > 0 && !line.IsComplimentary)
+                                    {
+                                        <span class="badge text-bg-warning-subtle text-warning-emphasis">İndirim</span>
+                                    }
+                                    @if (Model.IsKitchenTrackingEnabled)
+                                    {
+                                        <span class="badge text-bg-secondary-subtle">@line.Status</span>
+                                    }
                                     <!-- Mutfağa gönderildi işareti - satırı SOLUKLAŞTIRMAK yerine
                                          (Edip, 2026-09-05: "pasif görünüm oluşmasın") küçük bir
                                          metin etiketiyle belirtilir. -->
                                     <span class="cart-line-sent-badge">✓ Mutfağa gönderildi</span>
-                                    @if (!string.IsNullOrEmpty(line.KitchenNote)) { <div class="small text-secondary">Not: @line.KitchenNote</div> }
+                                    @if (!string.IsNullOrEmpty(line.KitchenNote))
+                                    {
+                                        <div class="small text-secondary">Not: @line.KitchenNote</div>
+                                    }
                                 </div>
                                 <div class="cart-line-col-qty">@line.Quantity.ToString("N0")</div>
                                 <div class="cart-line-col-unit">@line.Unit</div>

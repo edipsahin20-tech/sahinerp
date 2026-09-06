@@ -60,8 +60,14 @@
 <div class="erp-panel">
     <div class="erp-panel-header">
         @Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.DispatchDateUtc.ToString("dd.MM.yyyy")
-        @if (!string.IsNullOrEmpty(Model.VehiclePlate)) { <span>&middot; @Model.VehiclePlate</span> }
-        @if (!string.IsNullOrEmpty(Model.CarrierName)) { <span>&middot; @Model.CarrierName</span> }
+        @if (!string.IsNullOrEmpty(Model.VehiclePlate))
+        {
+            <span>&middot; @Model.VehiclePlate</span>
+        }
+        @if (!string.IsNullOrEmpty(Model.CarrierName))
+        {
+            <span>&middot; @Model.CarrierName</span>
+        }
     </div>
     <div class="erp-panel-body p-0">
         <div class="erp-table-wrap">

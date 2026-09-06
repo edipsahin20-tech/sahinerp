@@ -555,10 +555,17 @@
 
 </div>
 
-@if (existingJson is not null)
-{
-    <script id="existing-quote-data" type="application/json">@Html.Raw(existingJson)</script>
+@{
+    // existingQuoteDataTag (2026-09-06) - @if{} ile sarmalı <script> hâli Razor derleyicisinde
+    // (SDK 10.0.302) markup'ı kod olarak yorumlatan bir hataya yol açıyordu. JS tarafı
+    // (quote-studio.js loadExistingQuoteIfAny) elementin VARLIĞINA bakıyor - existingJson null
+    // olduğunda script etiketinin DOM'a hiç girmemesi gerekiyor, bu yüzden ham string olarak
+    // koşullu üretilip @Html.Raw ile basılıyor (boş string = hiçbir şey basılmaz).
+    var existingQuoteDataTag = existingJson is null
+        ? ""
+        : $"<script id=\"existing-quote-data\" type=\"application/json\">{existingJson}</script>";
 }
+@Html.Raw(existingQuoteDataTag)
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>

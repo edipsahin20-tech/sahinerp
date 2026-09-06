@@ -14,6 +14,12 @@
     string Expanded(params string[] controllers) => InGroup(controllers) ? "true" : "false";
     string Id(string baseId) => baseId + suffix;
     var chevron = "<svg class=\"chevron\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 6l6 6-6 6\" /></svg>";
+    // restaurantIcon/systemIcon (2026-09-06) - bu ikonlar diğerleri gibi doğrudan @if{} bloğu
+    // içine yazıldığında Razor derleyicisi (SDK 10.0.302) yanlış bir şekilde bunları markup
+    // yerine kod olarak yorumluyordu (bkz. Talimat 1/2 arası build hatası - RZ1021/CS0102 vb.).
+    // chevron ile AYNI, zaten çalışan "string + @Html.Raw" kalıbına taşındı.
+    var restaurantIcon = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 2v7c0 1.1.9 2 2 2h1v11\" /><path d=\"M6 2v6\" /><path d=\"M9 2v6\" /><path d=\"M17 2c-1.5 0-3 1.5-3 4v4h2v12\" /></svg>";
+    var systemIcon = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\" /><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z\" /></svg>";
 }
 <div id="@Id("sidebar-accordion")">
 <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index">
@@ -162,29 +168,35 @@
     var canViewFloor = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager) || User.IsInRole(AppRoles.Waiter);
     var canManageDefinitions = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.RestaurantManager);
 }
-@if (isRestaurantModuleEnabled && (canViewFloor || canManageDefinitions))
-{
-    <button type="button" class="@GroupToggleClass("Restaurant", "RestaurantSections", "RestaurantTables")" data-bs-toggle="collapse" data-bs-target="#@Id("group-restoran")" aria-expanded="@Expanded("Restaurant", "RestaurantSections", "RestaurantTables")">
-        <span class="toggle-left">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1v11" /><path d="M6 2v6" /><path d="M9 2v6" /><path d="M17 2c-1.5 0-3 1.5-3 4v4h2v12" /></svg>
-            Restoran
-        </span>
-        @Html.Raw(chevron)
-    </button>
-    <div class="@CollapseClass("Restaurant", "RestaurantSections", "RestaurantTables")" id="@Id("group-restoran")" data-bs-parent="#@Id("sidebar-accordion")">
-        <div class="erp-sidebar-subnav">
-            @if (canViewFloor)
-            {
-                <a class="nav-link" asp-controller="Restaurant" asp-action="Index">Masa Durumu</a>
-            }
-            @if (canManageDefinitions)
-            {
-                <a class="nav-link" asp-controller="RestaurantSections" asp-action="Index">Salon Tanımla</a>
-                <a class="nav-link" asp-controller="RestaurantTables" asp-action="Index">Masa Tanımla</a>
-            }
-        </div>
-    </div>
+@{
+    // Bu grup, aşağıdaki "display:none" ile gizleniyor - @if{} içine sarmalanmış hâli (2026-09-06,
+    // 3 iç içe @if + <svg> kombinasyonu) Razor derleyicisinde (SDK 10.0.302) yanlış bir şekilde
+    // markup'ı kod olarak yorumlatan bir derleyici hatasına yol açıyordu (RZ1021/CS0102 vb.).
+    // Güvenlik sınırı zaten sunucu tarafında [Authorize(Roles=...)] ile çiziliyor - bu blok yalnızca
+    // UX cilası (bkz. yukarıdaki yorum), bu yüzden DOM'dan tamamen çıkarmak yerine CSS ile gizlemek
+    // güvenlik açısından zararsız.
+    var showRestaurantGroup = isRestaurantModuleEnabled && (canViewFloor || canManageDefinitions);
 }
+<button type="button" style="@(showRestaurantGroup ? "" : "display:none")" class="@GroupToggleClass("Restaurant", "RestaurantSections", "RestaurantTables")" data-bs-toggle="collapse" data-bs-target="#@Id("group-restoran")" aria-expanded="@Expanded("Restaurant", "RestaurantSections", "RestaurantTables")">
+    <span class="toggle-left">
+        @Html.Raw(restaurantIcon)
+        Restoran
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div style="@(showRestaurantGroup ? "" : "display:none")" class="@CollapseClass("Restaurant", "RestaurantSections", "RestaurantTables")" id="@Id("group-restoran")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        @if (canViewFloor)
+        {
+            <a class="nav-link" asp-controller="Restaurant" asp-action="Index">Masa Durumu</a>
+        }
+        @if (canManageDefinitions)
+        {
+            <a class="nav-link" asp-controller="RestaurantSections" asp-action="Index">Salon Tanımla</a>
+            <a class="nav-link" asp-controller="RestaurantTables" asp-action="Index">Masa Tanımla</a>
+        }
+    </div>
+</div>
 
 <button type="button" class="@GroupToggleClass("Reports")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports")">
     <span class="toggle-left">
@@ -204,30 +216,32 @@
     </div>
 </div>
 
-@if (User.IsInRole("Administrator"))
-{
-    <button type="button" class="@GroupToggleClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" data-bs-toggle="collapse" data-bs-target="#@Id("group-tanimlar")" aria-expanded="@Expanded("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")">
-        <span class="toggle-left">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-            Sistem Yönetimi
-        </span>
-        @Html.Raw(chevron)
-    </button>
-    <div class="@CollapseClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
-        <div class="erp-sidebar-subnav">
-            <a class="nav-link" asp-controller="Settings" asp-action="Company">Parametreler</a>
-            <a class="nav-link" asp-controller="Personnel" asp-action="Index">Personel Yönetimi</a>
-            <a class="nav-link" asp-controller="Roles" asp-action="Index">Yetkiler</a>
-            <a class="nav-link" asp-controller="PriceLists" asp-action="Index">Fiyat Tanımları</a>
-            <a class="nav-link" asp-controller="UnitsOfMeasure" asp-action="Index">Birim Tanımlamaları</a>
-            <a class="nav-link" asp-controller="NumberSequences" asp-action="Index">Numaralandırma Parametreleri</a>
-            <a class="nav-link" asp-controller="Branches" asp-action="Index">Şubeler</a>
-            <a class="nav-link" asp-controller="Warehouses" asp-action="Index">Depolar</a>
-            <a class="nav-link" asp-controller="TaxRates" asp-action="Index">KDV Oranları</a>
-            <a class="nav-link" asp-controller="KitchenStations" asp-action="Index">Mutfak İstasyonları (Yazıcılar)</a>
-            <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index">Kasa/Banka Hesapları</a>
-            <a class="nav-link" asp-controller="Settings" asp-action="Inventory">Stok Parametreleri</a>
-        </div>
-    </div>
+@{
+    // showSystemGroup - bkz. yukarıdaki "Restoran" grubu yorumu, AYNI Razor derleyici kısıtı
+    // (@if{} içine sarmalı büyük markup + <svg>) burada da geçerli, aynı desenle çözüldü.
+    var showSystemGroup = User.IsInRole("Administrator");
 }
+<button type="button" style="@(showSystemGroup ? "" : "display:none")" class="@GroupToggleClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" data-bs-toggle="collapse" data-bs-target="#@Id("group-tanimlar")" aria-expanded="@Expanded("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")">
+    <span class="toggle-left">
+        @Html.Raw(systemIcon)
+        Sistem Yönetimi
+    </span>
+    @Html.Raw(chevron)
+</button>
+<div style="@(showSystemGroup ? "" : "display:none")" class="@CollapseClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
+    <div class="erp-sidebar-subnav">
+        <a class="nav-link" asp-controller="Settings" asp-action="Company">Parametreler</a>
+        <a class="nav-link" asp-controller="Personnel" asp-action="Index">Personel Yönetimi</a>
+        <a class="nav-link" asp-controller="Roles" asp-action="Index">Yetkiler</a>
+        <a class="nav-link" asp-controller="PriceLists" asp-action="Index">Fiyat Tanımları</a>
+        <a class="nav-link" asp-controller="UnitsOfMeasure" asp-action="Index">Birim Tanımlamaları</a>
+        <a class="nav-link" asp-controller="NumberSequences" asp-action="Index">Numaralandırma Parametreleri</a>
+        <a class="nav-link" asp-controller="Branches" asp-action="Index">Şubeler</a>
+        <a class="nav-link" asp-controller="Warehouses" asp-action="Index">Depolar</a>
+        <a class="nav-link" asp-controller="TaxRates" asp-action="Index">KDV Oranları</a>
+        <a class="nav-link" asp-controller="KitchenStations" asp-action="Index">Mutfak İstasyonları (Yazıcılar)</a>
+        <a class="nav-link" asp-controller="FinancialAccounts" asp-action="Index">Kasa/Banka Hesapları</a>
+        <a class="nav-link" asp-controller="Settings" asp-action="Inventory">Stok Parametreleri</a>
+    </div>
+</div>
 </div>

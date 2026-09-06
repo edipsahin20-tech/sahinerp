@@ -543,10 +543,7 @@ else if (Model.ActiveTab == "zlist")
                 </div>
                 <div class="modal-body">
                     <div class="sub">@Model.SelectedReceipt.SourceLabel · @Model.SelectedReceipt.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
-                    @if (Model.SelectedReceipt.IsCancelled)
-                    {
-                        <div class="alert alert-danger py-1 mt-2">İptal edilmiş fiş</div>
-                    }
+                    <div style="@(Model.SelectedReceipt.IsCancelled ? "" : "display:none")" class="alert alert-danger py-1 mt-2">İptal edilmiş fiş</div>
                     <div style="margin-top:12px;">
                         @foreach (var line in Model.SelectedReceipt.Lines)
                         {
@@ -567,36 +564,39 @@ else if (Model.ActiveTab == "zlist")
                     </div>
                 </div>
                 <div class="modal-footer no-print">
-                    @if (!Model.SelectedReceipt.IsCancelled && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
-                    {
-                        <form method="post" asp-action="CancelReceipt" id="cancel-receipt-form" style="margin-right:auto;">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="retailSaleId" value="@Model.SelectedReceiptId" />
-                            <input type="hidden" name="returnTab" value="@Model.ActiveTab" />
-                            <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
-                            <input type="hidden" name="zShiftId" value="@Model.SelectedZShiftId" />
-                            <input type="hidden" name="reason" id="cancel-receipt-reason" />
-                            <button type="button" class="btn btn-danger" onclick="submitCancelReceipt()">Fişi Sil</button>
-                        </form>
-                    }
+                    <form method="post" asp-action="CancelReceipt" id="cancel-receipt-form" style="@(!Model.SelectedReceipt.IsCancelled && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator) ? "margin-right:auto;" : "display:none")">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="retailSaleId" value="@Model.SelectedReceiptId" />
+                        <input type="hidden" name="returnTab" value="@Model.ActiveTab" />
+                        <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+                        <input type="hidden" name="zShiftId" value="@Model.SelectedZShiftId" />
+                        <input type="hidden" name="reason" id="cancel-receipt-reason" />
+                        <button type="button" class="btn btn-danger" onclick="submitCancelReceipt()">Fişi Sil</button>
+                    </form>
                     <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
                     <button type="button" class="btn btn-erp-primary" onclick="window.print()">Yazdır</button>
                 </div>
             </div>
         </div>
     </div>
-    <script>
-        function submitCancelReceipt() {
-            window.posPrompt('İptal gerekçesi (fiş silinip yerine ters kayıt oluşturulacak):', '', function (reason) {
-                if (!reason || !reason.trim()) { return; }
-                window.posConfirm('Bu fişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', function () {
-                    document.getElementById('cancel-receipt-reason').value = reason.trim();
-                    document.getElementById('cancel-receipt-form').submit();
-                }, null, { danger: true });
-            });
-        }
-    </script>
 }
+@{
+    // submitCancelReceipt koşulsuz tanımlanıyor - yukarıdaki "if bloğu" içine sarmalı hâli (büyük
+    // modal markup + nested if + script) Razor derleyicisinde (SDK 10.0.302) markup'ı kod olarak
+    // yorumlatan bir hataya yol açıyordu. Modal zaten Model.SelectedReceipt null'sa DOM'a hiç
+    // girmediği için bu fonksiyon kullanılmadan kalır, zararsız.
+}
+<script>
+    function submitCancelReceipt() {
+        window.posPrompt('İptal gerekçesi (fiş silinip yerine ters kayıt oluşturulacak):', '', function (reason) {
+            if (!reason || !reason.trim()) { return; }
+            window.posConfirm('Bu fişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', function () {
+                document.getElementById('cancel-receipt-reason').value = reason.trim();
+                document.getElementById('cancel-receipt-form').submit();
+            }, null, { danger: true });
+        });
+    }
+</script>
 
 <!-- GERÇEK HATA (2026-09-06, Z dönem kapatma test talimatıyla bulundu) - bu sayfada Z kapatma/
      fiş silme akışları native confirm()/prompt()/alert() kullanıyordu ("native browser

@@ -42,8 +42,18 @@
                         <span class="cat-dot"></span>
                         <span class="cat-name">@top.Name</span>
                         <span class="cat-meta">
-                            @if (top.DisplayOrder != 0) { <span class="cat-order">@top.DisplayOrder</span> }
-                            @if (top.IsActive) { <i class="fa-solid fa-check cat-active"></i> } else { <i class="fa-solid fa-xmark cat-inactive"></i> }
+                            @if (top.DisplayOrder != 0)
+                            {
+                                <span class="cat-order">@top.DisplayOrder</span>
+                            }
+                            @if (top.IsActive)
+                            {
+                                <i class="fa-solid fa-check cat-active"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-xmark cat-inactive"></i>
+                            }
                         </span>
                     </a>
                     @foreach (var sub in top.SubCategories)
@@ -55,8 +65,18 @@
                             <span class="cat-dot"></span>
                             <span class="cat-name">@sub.Name</span>
                             <span class="cat-meta">
-                                @if (sub.DisplayOrder != 0) { <span class="cat-order">@sub.DisplayOrder</span> }
-                                @if (sub.IsActive) { <i class="fa-solid fa-check cat-active"></i> } else { <i class="fa-solid fa-xmark cat-inactive"></i> }
+                                @if (sub.DisplayOrder != 0)
+                                {
+                                    <span class="cat-order">@sub.DisplayOrder</span>
+                                }
+                                @if (sub.IsActive)
+                                {
+                                    <i class="fa-solid fa-check cat-active"></i>
+                                }
+                                else
+                                {
+                                    <i class="fa-solid fa-xmark cat-inactive"></i>
+                                }
                             </span>
                         </a>
                     }

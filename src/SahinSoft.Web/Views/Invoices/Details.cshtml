@@ -50,7 +50,7 @@
 @if (Model.Status == InvoiceStatus.Cancelled)
 {
     <div class="alert alert-danger py-2">
-        <strong>İptal edildi</strong> &middot; @Model.CancelledAtUtc?.ToString("dd.MM.yyyy HH:mm")<br />
+        <strong>İptal edildi</strong> · @Model.CancelledAtUtc?.ToString("dd.MM.yyyy HH:mm")<br />
         Gerekçe: @Model.CancellationReason
     </div>
 }
@@ -91,7 +91,7 @@
 }
 
 <div class="erp-panel">
-    <div class="erp-panel-header">@Model.CustomerName &middot; @Model.WarehouseName &middot; @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")</div>
+    <div class="erp-panel-header">@Model.CustomerName · @Model.WarehouseName · @Model.InvoiceDateUtc.ToString("dd.MM.yyyy")</div>
     <div class="erp-panel-body p-0">
         <div class="erp-table-wrap">
             <table class="erp-table">
@@ -149,12 +149,11 @@
     <div class="alert alert-success py-2 d-flex align-items-center gap-2">
         <i class="fa-solid fa-circle-check"></i>
         <span>
-            <strong>Kapalı Fatura</strong> &middot; @Model.SettlementPaymentMethodName / @Model.SettlementFinancialAccountName
-            @if (Model.SettlementReceiptId is int receiptId)
-            {
-                <text> &middot; </text>
-                <a asp-controller="PaymentReceipts" asp-action="Details" asp-route-id="@receiptId">@Model.SettlementReceiptNumber</a>
-            }
+            <strong>Kapalı Fatura</strong> <text>·</text> @Model.SettlementPaymentMethodName / @Model.SettlementFinancialAccountName
+            <span style="@(Model.SettlementReceiptId is null ? "display:none" : "")">
+                ·
+                <a asp-controller="PaymentReceipts" asp-action="Details" asp-route-id="@Model.SettlementReceiptId">@Model.SettlementReceiptNumber</a>
+            </span>
         </span>
     </div>
 }
