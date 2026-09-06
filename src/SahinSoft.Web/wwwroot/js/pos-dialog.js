@@ -41,10 +41,50 @@
         cancelBtn.onclick = null;
         inputEl.onkeydown = null;
         if (then) {
+            // GERÇEK HATA (2026-09-06, kapsamlı kabul testinde bulundu) - dokunmatik ekranda
+            // hızlı/üst üste dokunma (ör. "Evet"e art arda iki kez basmak) modal henüz AÇILMA
+            // geçişini bitirmeden close()'u tetikleyebiliyordu; Bootstrap'ın hide() metodu bu
+            // durumda kendi iç "_isTransitioning" korumasıyla SESSİZCE hiçbir şey yapmıyor,
+            // "hidden.bs.modal" da hiç ateşlenmiyor - callback (ör. Sipariş Sil'in gerçek
+            // gönderimi) SONSUZA DEK bekliyor, modal görünürde açık kalıyor ve okBtn.onclick zaten
+            // null olduğundan tekrar tıklamak da işe yaramıyordu. Güvenlik ağı: "hidden.bs.modal"
+            // makul bir sürede gelmezse callback yine de çalıştırılır - aynı callback'in iki kez
+            // çalışmaması "fired" bayrağıyla garanti edilir.
+            var fired = false;
+            function runOnce() {
+                if (fired) return;
+                fired = true;
+                then();
+            }
             modalEl.addEventListener('hidden.bs.modal', function handler() {
                 modalEl.removeEventListener('hidden.bs.modal', handler);
-                then();
+                runOnce();
             });
+            setTimeout(function () {
+                runOnce();
+                // Bootstrap'ın kendi hide() çağrısı sessizce hiçbir şey yapmadıysa modal
+                // görünürde hâlâ açık kalır - callback yukarıda zaten çalıştı, ama kullanıcı
+                // kafası karışmasın diye modalı burada da kapatmayı deneriz. Önce normal hide()
+                // (bu noktada geçiş durumu kesinlikle bitmiştir, normal çalışması beklenir);
+                // o da sessiz kalırsa (gözlemlenen bir durum - iç Bootstrap state'i beklenenden
+                // farklı kalabiliyor) son çare olarak DOM'u doğrudan kapalı hale getiririz.
+                if (modalEl.classList.contains('show')) {
+                    modal.hide();
+                    setTimeout(function () {
+                        if (modalEl.classList.contains('show')) {
+                            modalEl.classList.remove('show');
+                            modalEl.style.display = 'none';
+                            modalEl.setAttribute('aria-hidden', 'true');
+                            modalEl.removeAttribute('aria-modal');
+                            modalEl.removeAttribute('role');
+                            document.body.classList.remove('modal-open');
+                            document.body.style.removeProperty('overflow');
+                            document.body.style.removeProperty('padding-right');
+                            document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+                        }
+                    }, 200);
+                }
+            }, 500);
         }
         modal.hide();
     }
