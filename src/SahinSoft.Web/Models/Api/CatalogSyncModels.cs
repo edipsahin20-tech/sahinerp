@@ -65,6 +65,17 @@ public sealed class RestaurantCheckClosedPayload
     public decimal GrandTotal { get; set; }
     public string? TradeType { get; set; }
     public string CheckNumber { get; set; } = string.Empty;
+
+    // Talimat 1 (2026-09-06) - "Z kapandıktan sonra Z referansı daha önce muhasebeye aktarılmış
+    // satış kayıtlarına da kaynak kimliği üzerinden tamamlanabilmeli" ve "muhasebe satış kaydında
+    // en az ... Z Period/Report ID, Z No izlenebilir olmalı". Bu olay Z kapanmadan ÖNCE de merkeze
+    // gönderilmiş olabilir (RestaurantZPeriodId RetailSale'e satış anında yazılır, ama Z henüz
+    // AÇIK olabilir) - merkez tarafı bunu SyncController.PostTransactions'ta CurrentAccountTransaction.
+    // Description'a işler; Z kapandıktan sonra bu satış tekrar merkeze GÖNDERİLMEZ (outbox mesajı
+    // tektir, ProcessedAtUtc ile işaretlenir) - referans zaten ilk gönderimde tam olarak taşınır
+    // çünkü RestaurantZPeriodId satış KAPANIRKEN (Z'nin açık/kapalı olması fark etmeksizin) atanır.
+    public int? RestaurantZPeriodId { get; set; }
+    public string? RestaurantZNo { get; set; }
 }
 
 public sealed class TransactionSyncRequest

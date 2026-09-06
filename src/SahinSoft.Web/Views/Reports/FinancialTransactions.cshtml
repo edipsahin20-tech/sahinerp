@@ -57,6 +57,7 @@
                         <th data-sort="text">Hareket</th>
                         <th data-sort="text">Cari</th>
                         <th data-sort="text">Belge No</th>
+                        <th data-sort="text">Z No</th>
                         <th data-sort="text">Açıklama</th>
                         <th class="text-end" data-sort="number">Tutar</th>
                     </tr>
@@ -70,6 +71,15 @@
                         <td>@line.TransactionType</td>
                         <td>@line.CustomerName</td>
                         <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
+                        <td>
+                            @if (line.RestaurantZNo is not null)
+                            {
+                                <!-- Talimat 1 (2026-09-06) - "muhasebe tarafından da ADS ve Z'ye
+                                     geri gidilebilmeli": Z Listesi'nin kendi Detay/Fişi Gör
+                                     ekranına doğrudan atlar (bkz. RestaurantReportsController). -->
+                                <a asp-controller="RestaurantReports" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@line.RestaurantZPeriodId" asp-route-selected="@line.RestaurantRetailSaleId" class="erp-code-badge" style="text-decoration:none;" title="Z Detay ve fişe git">@line.RestaurantZNo</a>
+                            }
+                        </td>
                         <td>@line.Description</td>
                         <td class="text-end fw-semibold" style="color: @(line.IsIncoming ? "#1f7a4d" : "#8a2a2a");">
                             @(line.IsIncoming ? "+" : "-")@line.Amount.ToString("N2")
@@ -78,7 +88,7 @@
                 }
                 @if (Model.Lines.Count == 0)
                 {
-                    <tr data-live-search-empty><td colspan="7" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
+                    <tr data-live-search-empty><td colspan="8" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
                 }
                 </tbody>
             </table>

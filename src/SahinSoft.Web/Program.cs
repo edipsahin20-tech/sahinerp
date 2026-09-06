@@ -124,6 +124,7 @@ builder.Services.Configure<MerkezSyncOptions>(builder.Configuration.GetSection(M
 builder.Services.AddHttpClient("MerkezSync");
 builder.Services.AddHostedService<BranchSyncBackgroundService>();
 builder.Services.AddHostedService<KitchenAutoReadyBackgroundService>();
+builder.Services.AddHostedService<RestaurantAutoZBackgroundService>();
 
 var app = builder.Build();
 

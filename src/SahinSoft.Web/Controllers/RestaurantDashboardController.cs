@@ -28,25 +28,38 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         // hiç Z alınmadıysa (ya da son Z dünse) davranış aynen eskisi gibi, takvim gece yarısından
         // başlar. Hangi kasaya/kullanıcıya ait olduğuna bakılmaz (Vardiya'nın FinancialAccountId
         // bazlı kapsam hatası AYRI, henüz düzeltilmedi - buna bağımlı olmamak için kasıtlı).
-        var lastZClosedTodayUtc = await dbContext.RestaurantCashShifts
-            .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartUtc && x.ClosedAtUtc < todayEndUtc)
-            .OrderByDescending(x => x.ClosedAtUtc)
-            .Select(x => (DateTime?)x.ClosedAtUtc)
-            .FirstOrDefaultAsync();
-        var periodStartUtc = lastZClosedTodayUtc ?? todayStartUtc;
+        // 2026-09-06 Z Dönem Kapatma test talimatı - GERÇEK HATA (kabul testinde bulundu): önceki
+        // sürüm aktif dönemin başlangıcını RestaurantZPeriod.OpenedAtUtc olarak alıyor ama satışları
+        // yine ZAMAN ARALIĞI ile (IssuedAtUtc >= periodStartUtc) süzüyordu - bu dönemi TETİKLEYEN
+        // ilk satışın IssuedAtUtc'si (CloseCheckAsync içinde satırdan birkaç satır önce yazılır)
+        // periyodun kendi OpenedAtUtc'sinden (GetOrCreateActiveZPeriodIdAsync ayrı bir DateTime.
+        // UtcNow çağrısı yapar) birkaç milisaniye ÖNCE damgalanabiliyor, o satış zaman aralığının
+        // dışında kalıp sessizce ciro/fiş sayısından düşüyordu (Edip'in "sonradan tahmin edilmemeli"
+        // ek talimatının tam yasakladığı durum). Artık GERÇEK ZPeriodId FK'sı kullanılıyor.
+        var activeZPeriod = await dbContext.RestaurantZPeriods
+            .Where(x => x.Status == RestaurantZPeriodStatus.Open)
+            .Select(x => new { x.Id, x.OpenedAtUtc })
+            .SingleOrDefaultAsync();
+        var periodStartUtc = activeZPeriod is not null && activeZPeriod.OpenedAtUtc >= todayStartUtc ? activeZPeriod.OpenedAtUtc : todayStartUtc;
 
         var todaySales = await dbContext.RetailSales
             .AsNoTracking()
-            .Where(x => x.IssuedAtUtc >= periodStartUtc && x.IssuedAtUtc < todayEndUtc && x.Status != RetailSaleStatus.Cancelled)
+            .Where(x => activeZPeriod != null ? x.RestaurantZPeriodId == activeZPeriod.Id
+                : x.IssuedAtUtc >= periodStartUtc && x.IssuedAtUtc < todayEndUtc)
+            .Where(x => x.Status != RetailSaleStatus.Cancelled)
             .Select(x => new { x.GrandTotal, x.IssuedAtUtc })
             .ToListAsync();
 
         // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
         // negatif işaretle - aksi halde iptal edilen bir fişin ödemesi bu toplamlarda hâlâ
-        // "alınmış" gibi görünmeye devam ederdi.
+        // "alınmış" gibi görünmeye devam ederdi. Satışlarla AYNI nedenle (yukarıdaki yorum) artık
+        // ödemeler de RetailSale.RestaurantZPeriodId FK'sı üzerinden (RestaurantCheckId ile join)
+        // süzülüyor - zaman aralığı DEĞİL.
         var todayPayments = await dbContext.RestaurantPayments
             .AsNoTracking()
-            .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc)
+            .Where(x => activeZPeriod != null
+                ? dbContext.RetailSales.Any(rs => rs.RestaurantCheckId == x.RestaurantCheckId && rs.RestaurantZPeriodId == activeZPeriod.Id)
+                : x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc)
             .GroupBy(x => x.PaymentMethod)
             .Select(g => new { Method = g.Key, Total = g.Sum(x => x.IsReversal ? -x.Amount : x.Amount) })
             .ToListAsync();
@@ -71,6 +84,10 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             })
             .ToListAsync();
 
+        // GERÇEK HATA (2026-09-06, Z düzeltme kabul testinde bulundu) - wildcard yalnızca
+        // Nakit/Kredi Kartı dışındaki HER türü (Açık Hesap, Ödenmez, Yemek Kartı) "Yemek Kartı"
+        // gösteriyordu - "Son Hareketler" panelinde bir Ödenmez satışı yanlışlıkla Yemek Kartı
+        // görünüyordu.
         static string PaymentSummary(List<RestaurantPaymentMethod> methods) => methods.Count switch
         {
             0 => "-",
@@ -78,7 +95,10 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             {
                 RestaurantPaymentMethod.Cash => "Nakit",
                 RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
-                _ => "Yemek Kartı"
+                RestaurantPaymentMethod.MealCard => "Yemek Kartı",
+                RestaurantPaymentMethod.Unpaid => "Ödenmez",
+                RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
+                _ => methods[0].ToString()
             },
             _ => "Karma Ödeme"
         };
@@ -184,9 +204,16 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             });
         }
 
+        // Ödenmez iş kuralı düzeltmesi (2026-09-06, Edip) - Ödenmez'in finansal karşılığı yok,
+        // Net Ciro'yu ARTIRMAMALI (İkram gibi ayrı bir "gerçekleşmeyen tahsilat" türü). Ürün
+        // müşteriye çıktığı, fiş/Z bağlantısı korunduğu için ReceiptCount'tan DÜŞÜLMEZ - yalnızca
+        // ciro tutarından düşülür. RestaurantReportsController/RestaurantPostingService'teki AYNI
+        // kural burada da uygulanır (tek ortak iş kuralı).
+        var unpaidToday = todayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.Unpaid)?.Total ?? 0;
+
         var model = new RestaurantDashboardViewModel
         {
-            NetRevenueToday = todaySales.Sum(x => x.GrandTotal),
+            NetRevenueToday = todaySales.Sum(x => x.GrandTotal) - unpaidToday,
             ClosedReceiptCountToday = todaySales.Count,
             CashCollectedToday = todayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.Cash)?.Total ?? 0,
             CreditCardCollectedToday = todayPayments.FirstOrDefault(x => x.Method == RestaurantPaymentMethod.CreditCard)?.Total ?? 0,

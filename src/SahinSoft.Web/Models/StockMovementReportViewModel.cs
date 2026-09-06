@@ -87,4 +87,12 @@ public sealed class FinancialTransactionReportLineViewModel
     public string DocumentNumber { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? CustomerName { get; set; }
+
+    // Talimat 1 (2026-09-06) - "muhasebe tarafından ADS ve Z'ye geri gidilebilmeli": bu satırın
+    // kaynağı bir restoran satışıysa (DocumentNumber bir RetailSale.DocumentNumber ile eşleşiyorsa)
+    // ilgili Z dönemine tıklanabilir bir referans. Restoran dışı hareketlerde (fatura/tahsilat
+    // makbuzu vb.) null kalır.
+    public int? RestaurantZPeriodId { get; set; }
+    public string? RestaurantZNo { get; set; }
+    public int? RestaurantRetailSaleId { get; set; }
 }

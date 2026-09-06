@@ -122,6 +122,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.RequireSecondApprovalForAddNote = model.RequireSecondApprovalForAddNote;
         settings.RequireReceiptPromptAfterQuickPay = model.RequireReceiptPromptAfterQuickPay;
         settings.ShowUnpaidPaymentType = model.ShowUnpaidPaymentType;
+        settings.AutoZEnabled = model.AutoZEnabled;
+        settings.AutoZTimeLocal = model.AutoZTimeLocal;
         settings.EnableTicketNoteButton = model.EnableTicketNoteButton;
         settings.EnableTableTransferButton = model.EnableTableTransferButton;
         settings.EnableSendToKitchenButton = model.EnableSendToKitchenButton;
@@ -185,6 +187,8 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         RequireSecondApprovalForAddNote = settings.RequireSecondApprovalForAddNote,
         RequireReceiptPromptAfterQuickPay = settings.RequireReceiptPromptAfterQuickPay,
         ShowUnpaidPaymentType = settings.ShowUnpaidPaymentType,
+        AutoZEnabled = settings.AutoZEnabled,
+        AutoZTimeLocal = settings.AutoZTimeLocal,
         EnableTicketNoteButton = settings.EnableTicketNoteButton,
         EnableTableTransferButton = settings.EnableTableTransferButton,
         EnableSendToKitchenButton = settings.EnableSendToKitchenButton,

@@ -147,6 +147,18 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Otomatik Z</div>
+        <div class="card-body">
+            <div class="form-check form-switch"><input asp-for="AutoZEnabled" class="form-check-input" /><label asp-for="AutoZEnabled" class="form-check-label"></label></div>
+            <div class="mt-2" style="max-width:220px;">
+                <label asp-for="AutoZTimeLocal" class="form-label"></label>
+                <input asp-for="AutoZTimeLocal" class="form-control" />
+            </div>
+            <div class="form-text">Kapalıyken (varsayılan) Z yalnızca Raporlar'dan elle "Z Raporu Al" ile alınır. Açıkken, her gün belirtilen yerel saatte aktif Z döneminde en az bir finansal olarak kapanmış satış varsa Z otomatik olarak alınır - dönem tamamen boşsa boş bir Z oluşturulmaz. Aynı takvim gününde manuel + otomatik birden fazla Z alınabilir; esas kavram takvim günü değil Z dönemidir.</div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Modül Görünürlüğü (Sol Ana Menü)</div>
         <div class="card-body">
             <p class="text-secondary small mb-3">Kapatılan modül sol ana menüden tamamen kaldırılır (butonlardan farklı - bu modülün TAMAMI). Restoran modülü kapalıysa bunların hiçbiri görünmez, bu ayarlar sadece Restoran Modülü açıkken geçerlidir.</p>

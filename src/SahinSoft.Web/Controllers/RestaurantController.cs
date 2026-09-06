@@ -265,16 +265,18 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     private static string ReceiptPaymentLabel(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
     {
         0 => "Ödemesiz",
-        1 => methods[0] switch
-        {
-            RestaurantPaymentMethod.Cash => "Nakit",
-            RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
-            RestaurantPaymentMethod.MealCard => "Yemek Kartı",
-            RestaurantPaymentMethod.Unpaid => "Ödenmez",
-            RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
-            _ => methods[0].ToString()
-        },
+        1 => SinglePaymentMethodLabel(methods[0]),
         _ => "Karma Ödeme"
+    };
+
+    private static string SinglePaymentMethodLabel(RestaurantPaymentMethod method) => method switch
+    {
+        RestaurantPaymentMethod.Cash => "Nakit",
+        RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
+        RestaurantPaymentMethod.MealCard => "Yemek Kartı",
+        RestaurantPaymentMethod.Unpaid => "Ödenmez",
+        RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
+        _ => method.ToString()
     };
 
     private static string ReceiptPaymentKey(List<RestaurantPaymentMethod> methods) => methods.Distinct().Count() switch
@@ -896,8 +898,12 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             DiscountAmount = sale.DiscountAmount,
             TaxAmount = sale.TaxAmount,
             GrandTotal = sale.GrandTotal,
+            // GERÇEK HATA (2026-09-06, Z düzeltme kabul testinde bulundu) - bu satır içi switch
+            // yalnızca Nakit/Kredi Kartı'nı tanıyordu, geri kalan HER ödeme türünü (Açık Hesap,
+            // Ödenmez, Yemek Kartı) "Yemek Kartı" olarak etiketliyordu - Fiş Gör penceresinde bir
+            // Açık Hesap tahsilatı yanlışlıkla Yemek Kartı gösteriliyordu.
             Payments = sale.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => new RestaurantReceiptDetailPayment(
-                p.PaymentMethod switch { RestaurantPaymentMethod.Cash => "Nakit", RestaurantPaymentMethod.CreditCard => "Kredi Kartı", _ => "Yemek Kartı" },
+                SinglePaymentMethodLabel(p.PaymentMethod),
                 p.Amount)).ToList()
         };
 

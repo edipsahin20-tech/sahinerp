@@ -98,6 +98,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantCourier> RestaurantCouriers => Set<RestaurantCourier>();
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
+    public DbSet<RestaurantZPeriod> RestaurantZPeriods => Set<RestaurantZPeriod>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -1516,6 +1517,22 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(x => x.FinancialAccount).WithMany().HasForeignKey(x => x.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<RestaurantZPeriod>(entity =>
+        {
+            entity.Property(x => x.GrossTotal).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountTotal).HasPrecision(18, 2);
+            entity.Property(x => x.NetTotal).HasPrecision(18, 2);
+            entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
+            entity.Property(x => x.ComplimentaryTotal).HasPrecision(18, 2);
+            entity.Property(x => x.ClosedByUserId).HasMaxLength(450);
+            // Vardiya'daki (RestaurantCashShift) AYNI desen - her an tam olarak bir açık Z dönemi.
+            entity.HasIndex(x => x.Status)
+                .IsUnique()
+                .HasFilter("[Status] = 1")
+                .HasDatabaseName("IX_RestaurantZPeriods_OneOpen");
+            entity.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<RestaurantPermissionProfile>(entity =>
         {
             entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
@@ -1593,6 +1610,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
             entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.RestaurantZPeriod).WithMany(x => x.RetailSales).HasForeignKey(x => x.RestaurantZPeriodId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_RetailSales_Amounts",
                 "[SubtotalAmount] >= 0 AND [DiscountAmount] >= 0 AND [ServiceChargeAmount] >= 0 AND [TaxAmount] >= 0 AND [GrandTotal] >= 0"));

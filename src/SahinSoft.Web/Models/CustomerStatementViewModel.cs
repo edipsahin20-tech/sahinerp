@@ -21,4 +21,10 @@ public sealed class CustomerStatementLineViewModel
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public decimal RunningBalance { get; set; }
+
+    // Talimat 1 (2026-09-06) - "muhasebe tarafından da ADS ve Z'ye geri gidilebilmeli" (bkz.
+    // FinancialTransactionReportLineViewModel'deki AYNI alanların yorumu).
+    public int? RestaurantZPeriodId { get; set; }
+    public string? RestaurantZNo { get; set; }
+    public int? RestaurantRetailSaleId { get; set; }
 }

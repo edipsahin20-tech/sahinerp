@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SahinSoft.Web.Data;
 
@@ -11,9 +12,11 @@ using SahinSoft.Web.Data;
 namespace SahinSoft.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260906093915_AddRestaurantZPeriod")]
+    partial class AddRestaurantZPeriod
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2014,12 +2017,6 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<bool>("AutoGenerateBarcode")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("AutoZEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<TimeSpan?>("AutoZTimeLocal")
-                        .HasColumnType("time");
-
                     b.Property<string>("CancellationReasonPresets")
                         .HasColumnType("nvarchar(max)");
 
@@ -2207,7 +2204,6 @@ namespace SahinSoft.Web.Data.Migrations
                             AllowSaleWhenOutOfStock = false,
                             AskGuestCountOnTableOpen = true,
                             AutoGenerateBarcode = true,
-                            AutoZEnabled = false,
                             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultBarcodeType = "EAN13",
                             DefaultScalePrefix = "27",
@@ -5965,9 +5961,6 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.Property<DateTime?>("ClosedAtUtc")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("ClosedAutomatically")
-                        .HasColumnType("bit");
 
                     b.Property<string>("ClosedByUserId")
                         .HasMaxLength(450)

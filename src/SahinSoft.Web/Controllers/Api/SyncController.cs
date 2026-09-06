@@ -134,31 +134,51 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
 
             var documentNumber = $"{branchCode}-{payload.DocumentNumber}";
 
-            dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
-            {
-                TransactionDateUtc = payload.IssuedAtUtc,
-                TransactionType = CurrentAccountTransactionType.Sale,
-                DocumentNumber = documentNumber,
-                CurrencyCode = "TRY",
-                ExchangeRate = 1,
-                Debit = payload.GrandTotal,
-                Credit = 0,
-                CustomerId = retailCustomer.Id,
-                Description = $"[{branchCode}] Restoran satışı - {payload.CheckNumber}"
-            });
+            // Talimat 1 (2026-09-06) - "muhasebe satış kaydında en az Kaynak Satış ID, Adisyon No,
+            // Z Period/Report ID, Z No, şube, tarih-saat izlenebilir olmalı" - hepsi tek bir
+            // Description satırında, merkez tarafında ayrıca bir sütun İCAT EDİLMEDİ (bu tablo
+            // genel amaçlı CurrentAccountTransaction, restorana özel kolon eklemek YANLIŞ katman
+            // olurdu) - kaynak adisyon (CheckNumber), Z No ve şube kodu izlenebilir şekilde metne
+            // gömülür; RecordId zaten ExternalRecordMapping.ExternalId'de kalıcı olarak saklanır.
+            var zNoSuffix = payload.RestaurantZNo is not null ? $" - {payload.RestaurantZNo}" : string.Empty;
 
-            dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+            // GERÇEK HATA (2026-09-06, senkron kabul testinde bulundu) - tam İkram edilmiş bir
+            // fişin GrandTotal'ı 0,00'dır; Debit=0/Credit=0 olan bir Sale+Collection çifti
+            // CK_CurrentAccountTransactions_DebitCredit (Debit>0 XOR Credit>0) kısıtına çarpıp
+            // TÜM batch'i (100 olay) başarısız ediyordu - restoran tarafında zaten İkram hiçbir
+            // cari hareketi OLUŞTURMUYOR (bkz. RestaurantPostingService/Talimat 1 madde 2.1), aynı
+            // kural burada da uygulanır: finansal karşılığı olmayan (0,00) bir olay merkez carisine
+            // hiç yansıtılmaz, ama olay yine de İŞLENMİŞ sayılır (ExternalRecordMapping + Accepted)
+            // - aksi halde her poll turunda aynı olay sonsuza dek tekrar denenip aynı hatayla
+            // başarısız olurdu.
+            if (payload.GrandTotal > 0)
             {
-                TransactionDateUtc = payload.IssuedAtUtc,
-                TransactionType = CurrentAccountTransactionType.Collection,
-                DocumentNumber = documentNumber,
-                CurrencyCode = "TRY",
-                ExchangeRate = 1,
-                Debit = 0,
-                Credit = payload.GrandTotal,
-                CustomerId = retailCustomer.Id,
-                Description = $"[{branchCode}] Restoran tahsilatı - {payload.CheckNumber}"
-            });
+                dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                {
+                    TransactionDateUtc = payload.IssuedAtUtc,
+                    TransactionType = CurrentAccountTransactionType.Sale,
+                    DocumentNumber = documentNumber,
+                    CurrencyCode = "TRY",
+                    ExchangeRate = 1,
+                    Debit = payload.GrandTotal,
+                    Credit = 0,
+                    CustomerId = retailCustomer.Id,
+                    Description = $"[{branchCode}] Restoran satışı - {payload.CheckNumber}{zNoSuffix}"
+                });
+
+                dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                {
+                    TransactionDateUtc = payload.IssuedAtUtc,
+                    TransactionType = CurrentAccountTransactionType.Collection,
+                    DocumentNumber = documentNumber,
+                    CurrencyCode = "TRY",
+                    ExchangeRate = 1,
+                    Debit = 0,
+                    Credit = payload.GrandTotal,
+                    CustomerId = retailCustomer.Id,
+                    Description = $"[{branchCode}] Restoran tahsilatı - {payload.CheckNumber}{zNoSuffix}"
+                });
+            }
 
             dbContext.ExternalRecordMappings.Add(new ExternalRecordMapping
             {

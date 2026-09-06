@@ -75,6 +75,11 @@
                 {
                     <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantSettings")"><span>⚙</span><div><b>Ayarlar</b></div></a>
                 }
+                @if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+                {
+                    <!-- Talimat 1 (2026-09-06) madde 6 - Veri Sağlığı / Mutabakat Merkezi. -->
+                    <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantDataHealth")"><span>✓</span><div><b>Veri Sağlığı</b></div></a>
+                }
                 <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantKitchen")"><span>♨</span><div><b>Mutfak</b></div></a>
                 <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantShift")"><span>▤</span><div><b>Vardiya</b></div></a>
                 <a class="exit" href="@Url.Action("Index", "RestaurantDashboard")"><span>↪</span><div><b>Bölümden Çık</b><small>Dashboard'a geri dön</small></div></a>

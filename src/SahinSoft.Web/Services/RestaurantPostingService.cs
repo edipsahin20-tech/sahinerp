@@ -1645,66 +1645,6 @@ public sealed class RestaurantPostingService(
             });
         }, cancellationToken);
 
-    // "Z Raporu Al" - vardiya (açılış/kasa sayımı) mantığı olmadan doğrudan gün sonu kapanışı
-    // (Edip, 2026-09-03: "vardiya mantığı şu an kapalı olsun Z raporunda direkt rapor alsın ve
-    // günü sıfırlasın herşeyi"). Kapatılacak bir RestaurantCashShift YOKTUR - bu çağrı bizzat
-    // kapalı bir tane OLUŞTURUR: dönem (bugün alınmış son Z'den beri, yoksa gece yarısından beri -
-    // X Raporu/Dashboard ile AYNI mantık) şimdi kapanır, bu kaydın ClosedAtUtc'si bir sonraki
-    // dönemin başlangıcı olur - "günü sıfırlama" budur. FinancialAccountId/BranchId şema zorunluluğu
-    // için doldurulur ama tutarlar HİÇBİR hesaba göre filtrelenmez, dönemdeki TÜM ödemeler sayılır
-    // ("herşeyi sıfırlasın").
-    public Task<RestaurantCashShift> CreateDirectZReportAsync(
-        string cashierUserId,
-        CancellationToken cancellationToken = default) =>
-        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
-        {
-            var strategy = dbContext.Database.CreateExecutionStrategy();
-            return strategy.ExecuteAsync(async () =>
-            {
-                await using var transaction = await dbContext.Database.BeginTransactionAsync(
-                    IsolationLevel.Serializable,
-                    cancellationToken);
-
-                var now = DateTime.UtcNow;
-                var todayStartUtc = DateTime.Now.Date.ToUniversalTime();
-                var lastZClosedTodayUtc = await dbContext.RestaurantCashShifts
-                    .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartUtc && x.ClosedAtUtc < todayStartUtc.AddDays(1))
-                    .OrderByDescending(x => x.ClosedAtUtc)
-                    .Select(x => (DateTime?)x.ClosedAtUtc)
-                    .FirstOrDefaultAsync(cancellationToken);
-                var periodStartUtc = lastZClosedTodayUtc ?? todayStartUtc;
-
-                var periodNet = await dbContext.RestaurantPayments
-                    .Where(x => x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc <= now)
-                    .SumAsync(x => (decimal?)(x.IsReversal ? -x.Amount : x.Amount), cancellationToken) ?? 0m;
-
-                var branchId = await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync(cancellationToken);
-                var financialAccountId = await dbContext.Users
-                    .Where(x => x.Id == cashierUserId)
-                    .Select(x => x.DefaultFinancialAccountId)
-                    .SingleOrDefaultAsync(cancellationToken)
-                    ?? await dbContext.FinancialAccounts.Where(x => x.IsActive).Select(x => x.Id).FirstAsync(cancellationToken);
-
-                var shift = new RestaurantCashShift
-                {
-                    CashierUserId = cashierUserId,
-                    Status = RestaurantCashShiftStatus.Closed,
-                    OpenedAtUtc = periodStartUtc,
-                    ClosedAtUtc = now,
-                    OpeningBalance = 0,
-                    ClosingBalanceExpected = periodNet,
-                    ClosingBalanceCounted = periodNet,
-                    BranchId = branchId,
-                    FinancialAccountId = financialAccountId
-                };
-                dbContext.RestaurantCashShifts.Add(shift);
-
-                await dbContext.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-                return shift;
-            });
-        }, cancellationToken);
-
     // Mutfak ekranı (KDS) - bir fiş TEK BÜTÜN olarak ilerletilir (Sent→InProgress→Ready→Served),
     // satır bazlı değil - gerçek mutfakta bir istasyona düşen sipariş toptan hazırlanır. İptal
     // edilmiş satırlar (KitchenTicketLineStatus.Cancelled) ilerletmeye dahil edilmez.
@@ -1956,6 +1896,21 @@ public sealed class RestaurantPostingService(
                 };
                 dbContext.RetailSales.Add(retailSale);
 
+                var closedByUserBranchId = await dbContext.Users
+                    .Where(x => x.Id == closedByUserId)
+                    .Select(x => x.BranchId)
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                // Z Dönem Kapatma test talimatı (2026-09-06, Edip: "bir satışın hangi Z'ye ait
+                // olduğu sonradan tahmin edilmemeli - satış finansal olarak kapanırken içinde
+                // bulunduğu aktif Z dönemiyle ilişkilendirilmeli") - satış GERÇEKTEN kapanırken,
+                // burada, o anki aktif (Status=Open) Z dönemine kalıcı FK ile bağlanır. Yoksa
+                // (ilk satış / önceki Z henüz kapatılmamışsa bu asla olmaz ama ilk kurulumda hiç
+                // dönem yoksa) biri burada lazy oluşturulur.
+                var effectiveBranchId = closedByUserBranchId
+                    ?? await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync(cancellationToken);
+                retailSale.RestaurantZPeriodId = await GetOrCreateActiveZPeriodIdAsync(effectiveBranchId, cancellationToken);
+
                 // Stok hareketi (2026-09-05, Edip: kritik kabul testi bulgusu + talimatı) - Self/
                 // Masa/Paket TÜM ödeme türlerinde (Nakit/Kart/Açık Hesap/Ödenmez/İkram) adisyon
                 // GERÇEKTEN kapanınca, burada TEK bir choke point'te, normal Fatura/İrsaliye/Stok
@@ -1975,10 +1930,6 @@ public sealed class RestaurantPostingService(
                 var trackedLines = lines.Where(x => x.Product.TrackStock).ToList();
                 if (trackedLines.Count > 0)
                 {
-                    var closedByUserBranchId = await dbContext.Users
-                        .Where(x => x.Id == closedByUserId)
-                        .Select(x => x.BranchId)
-                        .SingleOrDefaultAsync(cancellationToken);
                     var warehouse = await dbContext.Warehouses
                         .Where(x => x.IsActive && (closedByUserBranchId == x.BranchId || x.Branch.IsHeadOffice))
                         .OrderByDescending(x => closedByUserBranchId == x.BranchId)
@@ -2125,6 +2076,16 @@ public sealed class RestaurantPostingService(
                 }
 
                 // Hibrit senkron (Faz C): şube bu olayı merkeze göndermek üzere kuyruğa alır.
+                // RetailSale.RecordId veritabanında NEWSEQUENTIALID() ile üretiliyor (bkz.
+                // ApplicationDbContext.OnModelCreating, ValueGeneratedOnAdd) - EF Core bu değeri
+                // ancak INSERT gerçekleştikten SONRA (OUTPUT ile) belleğe okur. Bu yüzden payload
+                // burada kurulmadan önce retailSale'i tek başına flush ediyoruz (Talimat 1 Section
+                // 11 mutabakat testinde bulundu: 302/303 kayıtta RetailSaleRecordId sıfır GUID
+                // çıkıyordu - transaction henüz commit edilmediği için atomiklik bozulmuyor, aynı
+                // transaction içinde aşağıdaki SaveChangesAsync+CommitAsync ile birlikte tek bir
+                // bütün olarak ya tamamen işleniyor ya da tamamen geri alınıyor).
+                await dbContext.SaveChangesAsync(cancellationToken);
+
                 dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
                 {
                     EventType = "RestaurantCheckClosed",
@@ -2137,7 +2098,9 @@ public sealed class RestaurantPostingService(
                         TaxAmount = retailSale.TaxAmount,
                         GrandTotal = retailSale.GrandTotal,
                         TradeType = retailSale.TradeType,
-                        CheckNumber = check.CheckNumber
+                        CheckNumber = check.CheckNumber,
+                        RestaurantZPeriodId = retailSale.RestaurantZPeriodId,
+                        RestaurantZNo = retailSale.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
                     })
                 });
 
@@ -2154,6 +2117,172 @@ public sealed class RestaurantPostingService(
                 return retailSale;
             });
         }, cancellationToken);
+
+    // Z Dönem Kapatma test talimatı (2026-09-06) - RestaurantCashShift'ten (Vardiya) BİLEREK ayrı
+    // tutulur (bkz. RestaurantZPeriod.cs yorumu). Bu metod ÇAĞRILDIĞI transaction'ın İÇİNDE
+    // çalışır (CloseCheckAsync zaten Serializable bir transaction açmış durumda) - ayrı bir
+    // transaction/strategy AÇMAZ, sadece dbContext üzerinde okuma/ekleme yapar.
+    private async Task<int> GetOrCreateActiveZPeriodIdAsync(int branchId, CancellationToken cancellationToken)
+    {
+        var openPeriodId = await dbContext.RestaurantZPeriods
+            .Where(x => x.Status == RestaurantZPeriodStatus.Open)
+            .Select(x => (int?)x.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (openPeriodId is not null)
+        {
+            return openPeriodId.Value;
+        }
+
+        var newPeriod = new RestaurantZPeriod
+        {
+            Status = RestaurantZPeriodStatus.Open,
+            OpenedAtUtc = DateTime.UtcNow,
+            BranchId = branchId
+        };
+        dbContext.RestaurantZPeriods.Add(newPeriod);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return newPeriod.Id;
+    }
+
+    // "Z Raporu Al" (2026-09-06, mevcut CreateDirectZReportAsync/RestaurantCashShift tabanlı
+    // mekanizmanın YERİNİ alır - o mekanizma zaman-aralığı tahminiyle çalışıyordu, Edip'in ek
+    // talimatı ("sonradan tahmin edilmemeli") bunu GERÇEK bir FK ilişkisine taşımayı gerektirdi.
+    // Aktif Z dönemini kapatır (LINKED satışlardan - zaman aralığından DEĞİL - özet hesaplanıp
+    // donar), hemen ardından yeni bir Açık dönem başlatır. Muhasebe/kasa/banka/cari/stok hiç
+    // etkilenmez - bu yalnızca restoran tarafının "aktif dönem" özetleyici/kapatıcısıdır, ikinci
+    // kez hiçbir hareket post etmez (madde: "Z özetleyici/kapatıcıdır, satış hareketlerini ikinci
+    // kez post etmez").
+    public Task<RestaurantZPeriod> CloseActiveZPeriodAsync(
+        string? closedByUserId,
+        CancellationToken cancellationToken = default,
+        bool isAutomatic = false) =>
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                var openPeriod = await dbContext.RestaurantZPeriods
+                    .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open, cancellationToken)
+                    ?? throw new InvalidOperationException("Açık bir Z dönemi bulunamadı.");
+
+                var sales = await dbContext.RetailSales
+                    .Where(x => x.RestaurantZPeriodId == openPeriod.Id && x.Status != RetailSaleStatus.Cancelled)
+                    .Select(x => new { x.SubtotalAmount, x.DiscountAmount, x.TaxAmount, x.GrandTotal, x.RestaurantCheckId })
+                    .ToListAsync(cancellationToken);
+
+                openPeriod.ReceiptCount = sales.Count;
+                openPeriod.GrossTotal = sales.Sum(x => x.SubtotalAmount + x.TaxAmount + x.DiscountAmount);
+                openPeriod.TaxTotal = sales.Sum(x => x.TaxAmount);
+
+                // Ödenmez iş kuralı (2026-09-06, Edip) - Ödenmez'in finansal karşılığı (kasa/banka/
+                // cari) yoktur, İkram gibi Net Ciro'ya DAHİL EDİLMEZ; ürün müşteriye çıktığı için fiş/
+                // Z bağlantısı ve stok hareketi korunur, yalnızca ciro tutarından düşülür. İkram ile
+                // ASLA birleştirilmez (İkram = RestaurantOrderLine.IsComplimentary/ComplimentaryTotal,
+                // ayrı bir alan; Ödenmez = RestaurantPayment.PaymentMethod=Unpaid, kendi payment-
+                // breakdown satırında ayrıca gösterilir). Bu tek kural Dashboard/X Raporu/Kasiyer
+                // Raporu'nda da (RestaurantDashboardController/RestaurantReportsController) aynı
+                // şekilde uygulanır.
+                var unpaidTotal = sales.Count == 0
+                    ? 0m
+                    : await dbContext.RestaurantPayments
+                        .Where(x => sales.Select(s => s.RestaurantCheckId).Contains(x.RestaurantCheckId)
+                            && !x.IsReversal && x.PaymentMethod == RestaurantPaymentMethod.Unpaid)
+                        .SumAsync(x => x.Amount, cancellationToken);
+                openPeriod.NetTotal = sales.Sum(x => x.GrandTotal) - unpaidTotal;
+
+                if (sales.Count > 0)
+                {
+                    // GERÇEK HATA (2026-09-06, Z kapatma kabul testinde bulundu) - ComplimentaryTotal
+                    // burada RestaurantOrderLines.DiscountAmountSnapshot'tan (satır bazlı İkram)
+                    // doğru hesaplanıyordu, ama DiscountTotal AYNI kaynaktan okunuyordu - fiş
+                    // TOPLAMINA uygulanan tutar/yüzde indirimi (ApplyTicketDiscountAsync, bkz.
+                    // restaurant-pos.js "toplam tutara indirim") satırlara HİÇ dağıtılmaz, sadece
+                    // RestaurantCheck.TicketDiscountAmount'a yazılır - bu yüzden ticket-seviyesi
+                    // indirimler Z özetinde SESSİZCE 0 görünüyordu. RetailSale.DiscountAmount HER
+                    // İKİ türü de (ticket + satır, İkram dahil) zaten doğru topluyor - gerçek
+                    // DiscountTotal, bu toplamdan İkram payını (ComplimentaryTotal) çıkararak
+                    // bulunur.
+                    var checkIds = sales.Select(x => x.RestaurantCheckId).ToList();
+                    var complimentaryTotal = await dbContext.RestaurantOrderLines
+                        .Where(x => checkIds.Contains(x.RestaurantOrder.RestaurantCheckId) && x.Status != RestaurantOrderLineStatus.Cancelled && x.IsComplimentary)
+                        .SumAsync(x => x.DiscountAmountSnapshot, cancellationToken);
+                    openPeriod.ComplimentaryTotal = complimentaryTotal;
+                    openPeriod.DiscountTotal = sales.Sum(x => x.DiscountAmount) - complimentaryTotal;
+                }
+
+                openPeriod.Status = RestaurantZPeriodStatus.Closed;
+                openPeriod.ClosedAtUtc = DateTime.UtcNow;
+                openPeriod.ClosedByUserId = closedByUserId;
+                openPeriod.ClosedAutomatically = isAutomatic;
+
+                var newPeriod = new RestaurantZPeriod
+                {
+                    Status = RestaurantZPeriodStatus.Open,
+                    OpenedAtUtc = openPeriod.ClosedAtUtc.Value,
+                    BranchId = openPeriod.BranchId
+                };
+                dbContext.RestaurantZPeriods.Add(newPeriod);
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return openPeriod;
+            });
+        }, cancellationToken);
+
+    // Otomatik Z (Talimat 1, 2026-09-06) - RestaurantAutoZBackgroundService'in her ~30 saniyede
+    // bir çağırdığı kontrol. Talimat'ın kendi sözleriyle: "Sistem 23:59'da 'bugün Z alındı mı?'
+    // diye körlemesine BAKMAYACAKTIR. Esas kontrol: o anda içerisinde finansal olarak kapanmış
+    // satış bulunan ve henüz Z ile kapatılmamış aktif RestaurantZPeriod var mı?" - bilerek GÜN
+    // BAZLI BİR WATERMARK YOK (ilk sürümde vardı, kaldırıldı - spesifikasyona aykırıydı ve gerçek
+    // testte tam da öngörülen şekilde yanlış davrandı: dönem boşken saat sınırı geçildiğinde
+    // watermark günü "işlendi" say diye kilitliyor, o günün İÇİNDE sonradan gelen satış hiç
+    // otomatik Z'ye giremiyordu). Doğal kendi-kendini-sınırlama zaten yeterli: bir dönem kapanıp
+    // hemen boş yeniden açıldığında (CloseActiveZPeriodAsync), o yeni dönem BOŞ olduğu için bir
+    // sonraki pollde tekrar kapanmaz - yeni bir satış gelene kadar. Aynı gün içinde birden fazla
+    // otomatik Z alınması KASITLI ve BEKLENEN bir davranıştır (talimat: "esas kavram takvim günü
+    // değil Z dönemidir"). Çift kapanma/duplicate Z riski watermark'a değil, tek-açık-dönem unique
+    // index'ine + CloseActiveZPeriodAsync'in Serializable transaction'ına dayanır: aynı anda iki
+    // çağrı gelse bile ikisi de AYNI açık dönemi hedefler, biri kapatır, öteki ya serileştirme
+    // çakışmasıyla yeniden dener (ve o noktada dönem zaten kapanmış/yeni dönem boş olduğu için
+    // hiçbir şey yapmaz) ya da zaten boş bulur - MANUEL Z ile TAMAMEN AYNI motoru kullanır, ayrı
+    // bir "otomatik kapanış" mantığı YOK.
+    public async Task<RestaurantZPeriod?> RunAutomaticZCheckAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+    {
+        var settings = await dbContext.InventorySettings
+            .AsNoTracking()
+            .SingleAsync(x => x.Id == 1, cancellationToken);
+        if (!settings.AutoZEnabled || settings.AutoZTimeLocal is null)
+        {
+            return null;
+        }
+
+        var nowLocal = nowUtc.ToLocalTime();
+        if (nowLocal.TimeOfDay < settings.AutoZTimeLocal.Value)
+        {
+            return null;
+        }
+
+        var openPeriod = await dbContext.RestaurantZPeriods
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open, cancellationToken);
+        if (openPeriod is null)
+        {
+            return null;
+        }
+
+        var hasClosedSales = await dbContext.RetailSales
+            .AnyAsync(x => x.RestaurantZPeriodId == openPeriod.Id && x.Status != RetailSaleStatus.Cancelled, cancellationToken);
+        if (!hasClosedSales)
+        {
+            return null;
+        }
+
+        return await CloseActiveZPeriodAsync(closedByUserId: null, cancellationToken, isAutomatic: true);
+    }
 
     // Kısmi ödeme (madde 4-8) - "Ödemeyi Al" modalında bir yöntem tuşuna basılınca sunucuya
     // KALICI olarak kaydedilir (RestaurantPayment/FinancialTransaction DEĞİL - muhasebeye henüz
@@ -2266,6 +2395,33 @@ public sealed class RestaurantPostingService(
                 }
 
                 var reversalDocumentNumber = $"IPTAL-{retailSale.DocumentNumber}";
+
+                // GERÇEK EKSİK (2026-09-06, Z dönem kapatma test talimatıyla bulundu) - fiş iptali
+                // finansal/cari tarafı ters kayıtla düzeltiyordu ama stok hiç geri eklenmiyordu;
+                // iptal edilen bir satışın ürünleri satılmamış sayılmalı. Orijinal StockMovement
+                // satırlarının AYNI depo/ürününe, ters işaretli (Quantity) yeni bir hareket
+                // yazılır - orijinal hareket asla silinmez/değiştirilmez (aynı ters kayıt ilkesi).
+                var originalStockMovements = await dbContext.StockMovements
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .ToListAsync(cancellationToken);
+                foreach (var originalMovement in originalStockMovements)
+                {
+                    dbContext.StockMovements.Add(new StockMovement
+                    {
+                        MovementDateUtc = DateTime.UtcNow,
+                        MovementType = StockMovementType.ReturnIn,
+                        Quantity = -originalMovement.Quantity,
+                        UnitCost = 0,
+                        DocumentNumber = reversalDocumentNumber,
+                        ProductId = originalMovement.ProductId,
+                        WarehouseId = originalMovement.WarehouseId,
+                        RestaurantOrderLineId = originalMovement.RestaurantOrderLineId,
+                        ReversalOfId = originalMovement.Id,
+                        Description = $"Restoran fişi iptali - {retailSale.DocumentNumber} - {reason}"
+                    });
+                    var product = await dbContext.Products.SingleAsync(x => x.Id == originalMovement.ProductId, cancellationToken);
+                    product.StockQuantity -= originalMovement.Quantity;
+                }
 
                 var originalAccountTransactions = await dbContext.CurrentAccountTransactions
                     .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)

@@ -93,6 +93,14 @@ public sealed class InventorySettingsViewModel
     [Display(Name = "Ödenmez Ödeme Tipi Gösterilsin mi?")]
     public bool ShowUnpaidPaymentType { get; set; }
 
+    // Talimat 1 (2026-09-06) - varsayılan kapalı, açık olmadıkça Z yalnızca elle alınır.
+    [Display(Name = "Otomatik Z Alınsın mı?")]
+    public bool AutoZEnabled { get; set; }
+
+    [Display(Name = "Otomatik Z Saati")]
+    [DataType(DataType.Time)]
+    public TimeSpan? AutoZTimeLocal { get; set; }
+
     // Sağ İşlem Menüsü (madde 22) - sistem geneli açık/kapalı katmanı.
     [Display(Name = "Fiş Notu")]
     public bool EnableTicketNoteButton { get; set; } = true;

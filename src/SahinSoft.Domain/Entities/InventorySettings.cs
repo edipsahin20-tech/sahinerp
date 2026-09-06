@@ -121,6 +121,18 @@ public sealed class InventorySettings : EntityBase
     public bool ShowSelfSaleNav { get; set; } = true;
     public bool ShowPackageNav { get; set; } = true;
 
+    // Otomatik Z (Talimat 1, 2026-09-06) - kapalıyken (varsayılan) davranış bugünkü gibi, Z
+    // yalnızca elle "Z Raporu Al" ile alınır. Açıkken her gün AutoZTimeLocal saatinde (yerel
+    // saat, TSİ) aktif Z döneminde en az bir finansal-kapanmış satış varsa OTOMATİK Z alınır -
+    // dönem boşsa boş Z oluşturulmaz (bkz. RestaurantAutoZBackgroundService/
+    // RestaurantPostingService.RunAutomaticZCheckAsync, MANUEL Z ile AYNI CloseActiveZPeriodAsync
+    // motorunu kullanır, ayrı bir kapanış motoru İCAT EDİLMEDİ). Bilerek gün-bazlı bir watermark
+    // YOK (bkz. RunAutomaticZCheckAsync'in kendi yorumu - talimatın "bugün Z alındı mı diye
+    // körlemesine bakma" kuralına uymak için kaldırıldı, ilk sürümde vardı ve gerçek testte
+    // yanlış davrandı).
+    public bool AutoZEnabled { get; set; }
+    public TimeSpan? AutoZTimeLocal { get; set; }
+
     public bool OrderToDispatchPurchaseAutoApprove { get; set; }
     public bool OrderToDispatchSalesAutoApprove { get; set; }
     public bool OrderToInvoicePurchaseAutoApprove { get; set; }

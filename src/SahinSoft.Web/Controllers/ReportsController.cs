@@ -193,17 +193,38 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
 
         var transactions = await query.Take(500).ToListAsync();
 
+        // Talimat 1 (2026-09-06) - "muhasebe satış kaydında en az Kaynak Satış ID, Adisyon No,
+        // Z Period/Report ID, Z No izlenebilir olmalı; muhasebe tarafından da ADS ve Z'ye geri
+        // gidilebilmeli". Restoran satışları FinancialTransaction.DocumentNumber'da RetailSale.
+        // DocumentNumber'ı (PSF.xxxxx) AYNEN taşır (bkz. RestaurantPostingService.CloseCheckAsync)
+        // - burada tek bir toplu sorguyla DocumentNumber -> (RetailSaleId, ZPeriodId) eşlemesi
+        // çıkarılıp satırlara iğnelenir. Restoran dışı hareketlerde (fatura/tahsilat vb.) eşleşme
+        // bulunamaz, alanlar null kalır - uydurma bir bağlantı KURULMAZ.
+        var documentNumbers = transactions.Select(x => x.DocumentNumber).Distinct().ToList();
+        var retailSaleLookup = await dbContext.RetailSales
+            .AsNoTracking()
+            .Where(x => documentNumbers.Contains(x.DocumentNumber))
+            .Select(x => new { x.DocumentNumber, x.Id, x.RestaurantZPeriodId })
+            .ToDictionaryAsync(x => x.DocumentNumber, x => new { x.Id, x.RestaurantZPeriodId });
+
         var lines = transactions
-            .Select(x => new FinancialTransactionReportLineViewModel
+            .Select(x =>
             {
-                TransactionDateUtc = x.TransactionDateUtc,
-                AccountName = x.FinancialAccount.Name,
-                TransactionType = x.TransactionType.GetDisplayName(),
-                IsIncoming = x.TransactionType is FinancialTransactionType.Collection or FinancialTransactionType.TransferIn or FinancialTransactionType.Opening,
-                Amount = x.Amount,
-                DocumentNumber = x.DocumentNumber,
-                Description = x.Description,
-                CustomerName = x.Customer != null ? x.Customer.Name : null
+                retailSaleLookup.TryGetValue(x.DocumentNumber, out var retailSale);
+                return new FinancialTransactionReportLineViewModel
+                {
+                    TransactionDateUtc = x.TransactionDateUtc,
+                    AccountName = x.FinancialAccount.Name,
+                    TransactionType = x.TransactionType.GetDisplayName(),
+                    IsIncoming = x.TransactionType is FinancialTransactionType.Collection or FinancialTransactionType.TransferIn or FinancialTransactionType.Opening,
+                    Amount = x.Amount,
+                    DocumentNumber = x.DocumentNumber,
+                    Description = x.Description,
+                    CustomerName = x.Customer != null ? x.Customer.Name : null,
+                    RestaurantRetailSaleId = retailSale?.Id,
+                    RestaurantZPeriodId = retailSale?.RestaurantZPeriodId,
+                    RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
+                };
             })
             .ToList();
 

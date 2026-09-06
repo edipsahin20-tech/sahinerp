@@ -70,6 +70,7 @@
                         <th data-sort="date">Tarih</th>
                         <th data-sort="text">İşlem</th>
                         <th data-sort="text">Belge No</th>
+                        <th data-sort="text">Z No</th>
                         <th data-sort="text">Açıklama</th>
                         <th class="text-end" data-sort="number">Borç</th>
                         <th class="text-end" data-sort="number">Alacak</th>
@@ -80,7 +81,7 @@
                 @if (Model.OpeningBalance != 0)
                 {
                     <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
-                        <td colspan="6">Devreden Bakiye</td>
+                        <td colspan="7">Devreden Bakiye</td>
                         <td class="text-end">@Model.OpeningBalance.ToString("N2")</td>
                     </tr>
                 }
@@ -90,6 +91,12 @@
                         <td>@line.TransactionDateUtc.ToString("dd.MM.yyyy")</td>
                         <td>@line.TransactionType</td>
                         <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
+                        <td>
+                            @if (line.RestaurantZNo is not null)
+                            {
+                                <a asp-controller="RestaurantReports" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@line.RestaurantZPeriodId" asp-route-selected="@line.RestaurantRetailSaleId" class="erp-code-badge" style="text-decoration:none;" title="Z Detay ve fişe git">@line.RestaurantZNo</a>
+                            }
+                        </td>
                         <td>@line.Description</td>
                         <td class="text-end">@(line.Debit > 0 ? line.Debit.ToString("N2") : "")</td>
                         <td class="text-end">@(line.Credit > 0 ? line.Credit.ToString("N2") : "")</td>
@@ -99,7 +106,7 @@
                 @if (Model.Lines.Count == 0)
                 {
                     <tr data-live-search-empty>
-                        <td colspan="7" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
+                        <td colspan="8" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
                     </tr>
                 }
                 </tbody>
@@ -107,9 +114,9 @@
                 {
                     <tfoot>
                         <tr>
-                            <td colspan="4" class="text-end">Toplam</td>
-                            <td class="text-end" data-sum-col="4"></td>
+                            <td colspan="5" class="text-end">Toplam</td>
                             <td class="text-end" data-sum-col="5"></td>
+                            <td class="text-end" data-sum-col="6"></td>
                             <td></td>
                         </tr>
                     </tfoot>

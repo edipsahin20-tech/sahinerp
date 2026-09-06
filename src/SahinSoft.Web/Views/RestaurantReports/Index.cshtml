@@ -130,16 +130,20 @@
         }
     </div>
     <div class="rcard analytics-card">
-        <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Net ciro içindeki ödeme türleri</small></div></div>
+        <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Ödeme türlerine göre dağılım</small></div></div>
         @if (Model.PaymentBreakdownTotal <= 0)
         {
             <div class="analytics-empty">Bu dönemde ödeme verisi yok.</div>
         }
         else
         {
+            <!-- Ödenmez iş kuralı (2026-09-06, Edip): finansal karşılığı olmadığı için Net Ciro'ya
+                 dahil değildir - bu yüzden merkez etiket kasıtlı olarak "Net Ciro" DEĞİL, "Toplam
+                 Tahsilat/İşlem" (Ödenmez dahil TÜM ödeme türlerinin toplamı) olarak gösterilir; aksi
+                 halde bu donut'un merkezindeki rakam üstteki NET CİRO kutusuyla ÇELİŞİRDİ. -->
             <div class="donut2-wrap">
                 <div class="donut2" style="background:@Model.PaymentBreakdownConicGradient">
-                    <div class="donut2-center"><strong>@Model.PaymentBreakdownTotal.ToString("N0") ₺</strong><small>Net Ciro</small></div>
+                    <div class="donut2-center"><strong>@Model.PaymentBreakdownTotal.ToString("N0") ₺</strong><small>Toplam İşlem</small></div>
                 </div>
             </div>
             <div class="payment-legend">
@@ -377,6 +381,7 @@ else if (Model.ActiveTab == "kasiyer")
             <div><small>FİŞ SAYISI</small><strong>@Model.Kasiyer.ReceiptCount</strong></div>
             <div><small>NAKİT</small><strong>@Model.Kasiyer.Cash.ToString("N2") ₺</strong></div>
             <div><small>KREDİ KARTI</small><strong>@Model.Kasiyer.Card.ToString("N2") ₺</strong></div>
+            <div><small>ÖDENMEZ</small><strong>@Model.Kasiyer.Unpaid.ToString("N2") ₺</strong></div>
             <div><small>DİĞER TAHSİLATLAR</small><strong>@Model.Kasiyer.OtherCollections.ToString("N2") ₺</strong></div>
             <div><small>İNDİRİM</small><strong>@Model.Kasiyer.DiscountAmount.ToString("N2") ₺</strong></div>
             <div><small>İKRAM</small><strong>@Model.Kasiyer.ComplimentaryAmount.ToString("N2") ₺</strong></div>
@@ -413,13 +418,15 @@ else if (Model.ActiveTab == "z")
         @if (Model.IsShiftOpen)
         {
             <p class="sub">Gün sonu kapanışı — vardiyayı kapatır, aynı vardiya için ikinci kez Z alınamaz.</p>
-            <form method="post" asp-action="CloseShift" class="shift-form">
+            <form method="post" asp-action="CloseShift" class="shift-form" id="close-shift-form">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="shiftId" value="@Model.OpenShiftId" />
                 <label class="form-label">Sayılan Nakit Tutarı</label>
                 <input type="number" name="closingBalanceCounted" step="0.01" min="0" class="form-control" required />
-                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin. -->
-                <button type="submit" class="rbtn gold" style="margin-top:10px;" onclick="return confirm('Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?');">Z Raporu Oluştur (Vardiyayı Kapat)</button>
+                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin - GERÇEK HATA (2026-09-06,
+                     Z dönem kapatma test talimatıyla bulundu): native confirm() kullanılıyordu,
+                     "native browser alert/confirm/prompt kullanılmayacak" kuralına aykırıydı. -->
+                <button type="button" class="rbtn gold" style="margin-top:10px;" id="close-shift-submit-btn">Z Raporu Oluştur (Vardiyayı Kapat)</button>
             </form>
         }
         else
@@ -433,10 +440,12 @@ else if (Model.ActiveTab == "z")
             {
                 <div class="text-secondary small mb-2">Son Z: @Model.LastZNumber (@Model.LastZClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))</div>
             }
-            <form method="post" asp-action="CreateDirectZReport" class="shift-form">
+            <form method="post" asp-action="CreateDirectZReport" class="shift-form" id="create-direct-z-form">
                 @Html.AntiForgeryToken()
-                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin. -->
-                <button type="submit" class="rbtn gold" onclick="return confirm('Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?');">Z Raporu Al (Günü Sıfırla)</button>
+                <!-- Onay metni spec madde 33'ün BİREBİR talep ettiği metin - GERÇEK HATA (2026-09-06,
+                     Z dönem kapatma test talimatıyla bulundu): native confirm() kullanılıyordu,
+                     "native browser alert/confirm/prompt kullanılmayacak" kuralına aykırıydı. -->
+                <button type="button" class="rbtn gold" id="create-direct-z-submit-btn">Z Raporu Al (Günü Sıfırla)</button>
             </form>
         }
     </div>
@@ -444,22 +453,24 @@ else if (Model.ActiveTab == "z")
 else if (Model.ActiveTab == "zlist")
 {
     <div class="report-table-wrap" id="zListTable" style="border-top:1px solid var(--rs-border); border-radius:10px;">
-        <div class="rthead" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr;"><span>Z NO</span><span>KASA</span><span>AÇILIŞ</span><span>KAPANIŞ</span><span>BEKLENEN / SAYILAN</span><span>FARK</span></div>
+        <div class="rthead" style="grid-template-columns: 120px 90px 1fr 1fr 90px 90px 90px 90px 90px 90px;"><span>Z NO</span><span>FİŞ</span><span>AÇILIŞ</span><span>KAPANIŞ</span><span>BRÜT</span><span>İNDİRİM</span><span>NET</span><span>İKRAM</span><span>KDV</span></div>
         @if (Model.ZList.Count == 0)
         {
-            <div class="p-3 text-secondary small">Henüz kapanmış vardiya (Z) yok.</div>
+            <div class="p-3 text-secondary small">Henüz kapanmış Z dönemi yok.</div>
         }
         @foreach (var z in Model.ZList)
         {
-            var diff = (z.CountedBalance ?? 0) - (z.ExpectedBalance ?? 0);
-            <a class="rrow2" style="grid-template-columns: 120px 1fr 1fr 1fr 1fr 1fr; text-decoration:none; color:inherit; cursor:pointer;@(Model.SelectedZShiftId == z.ShiftId ? " background:#FFF6DF;" : "")"
+            <a class="rrow2" style="grid-template-columns: 120px 90px 1fr 1fr 90px 90px 90px 90px 90px 90px; text-decoration:none; color:inherit; cursor:pointer;@(Model.SelectedZShiftId == z.ShiftId ? " background:#FFF6DF;" : "")"
                asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@z.ShiftId">
                 <b>@z.ZNumber</b>
-                <span>@z.FinancialAccountName</span>
+                <span>@z.Summary.ReceiptCount</span>
                 <span>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                 <span>@z.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
-                <span>@(z.ExpectedBalance?.ToString("N2")) ₺ / @(z.CountedBalance?.ToString("N2")) ₺</span>
-                <b class="@(diff > 0 ? "ok-badge2" : diff < 0 ? "cancel-badge2" : "")">@diff.ToString("N2") ₺</b>
+                <span>@z.Summary.GrossTotal.ToString("N2") ₺</span>
+                <span>@z.Summary.DiscountTotal.ToString("N2") ₺</span>
+                <b>@z.Summary.NetTotal.ToString("N2") ₺</b>
+                <span>@z.Summary.ComplimentaryTotal.ToString("N2") ₺</span>
+                <span>@z.Summary.TaxTotal.ToString("N2") ₺</span>
             </a>
         }
     </div>
@@ -471,15 +482,38 @@ else if (Model.ActiveTab == "zlist")
                 <div><b>@Model.SelectedZNumber</b> <span class="sub">satış hareketleri</span></div>
                 <span class="sub">@Model.SelectedZReceipts.Count fiş</span>
             </div>
+            @if (Model.SelectedZSummary is not null)
+            {
+                <div style="padding:14px 16px; border-bottom:1px solid var(--rs-border); display:flex; flex-wrap:wrap; gap:18px;">
+                    <div><small>BRÜT</small><br /><b>@Model.SelectedZSummary.GrossTotal.ToString("N2") ₺</b></div>
+                    <div><small>İNDİRİM</small><br /><b>@Model.SelectedZSummary.DiscountTotal.ToString("N2") ₺</b></div>
+                    <div><small>NET CİRO</small><br /><b>@Model.SelectedZSummary.NetTotal.ToString("N2") ₺</b></div>
+                    <div><small>KDV</small><br /><b>@Model.SelectedZSummary.TaxTotal.ToString("N2") ₺</b></div>
+                    <div><small>İKRAM</small><br /><b>@Model.SelectedZSummary.ComplimentaryTotal.ToString("N2") ₺</b></div>
+                    @foreach (var item in Model.SelectedZSummary.PaymentBreakdown)
+                    {
+                        <div><small>@item.Label.ToUpperInvariant()</small><br /><b>@item.Amount.ToString("N2") ₺</b></div>
+                    }
+                </div>
+            }
             <div class="report-table-wrap">
-                <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
+                <!-- Sipariş/Fiş Sıra Numarası (2026-09-06 ek talimat) - muhasebesel belge kimliği
+                     DEĞİLDİR (o DocumentNumber/PSF.xxxxx'tir, hiç değişmez), sadece restoran
+                     tarafında bilgi amaçlı DÖNEM İÇİ sıra - her yeni Z'de 1'den başlar. Liste en
+                     yeni fiş üstte (IssuedAtUtc DESC) geldiği için sıra numarası ters çevrilir: en
+                     ESKİ fiş "1", en YENİ fiş Count olur (dönem içindeki gerçek kronolojik sıra). -->
+                @{ const string zDetayCols = "grid-template-columns: 70px 110px 1.3fr 90px 110px 100px 100px 90px;"; }
+                <div class="rthead" style="@zDetayCols"><span>SİPARİŞ NO</span><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
                 @if (Model.SelectedZReceipts.Count == 0)
                 {
                     <div class="p-3 text-secondary small">Bu Z'de fiş yok.</div>
                 }
-                @foreach (var r in Model.SelectedZReceipts)
+                @{ var zReceiptCount = Model.SelectedZReceipts.Count; }
+                @for (var zi = 0; zi < zReceiptCount; zi++)
                 {
-                    <div class="rrow2">
+                    var r = Model.SelectedZReceipts[zi];
+                    <div class="rrow2" style="@zDetayCols">
+                        <span class="text-secondary">@(zReceiptCount - zi)</span>
                         <div><b>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@r.DocumentNumber</small></div>
                         <div><b>@r.SourceLabel</b><small>@r.SourceSubtitle</small></div>
                         <span><i class="type-badge2 @r.SourceType">@SourceTypeLabel(r.SourceType)</i></span>
@@ -553,16 +587,54 @@ else if (Model.ActiveTab == "zlist")
     </div>
     <script>
         function submitCancelReceipt() {
-            var reason = window.prompt('İptal gerekçesi (fiş silinip yerine ters kayıt oluşturulacak):');
-            if (!reason || !reason.trim()) { return; }
-            if (!window.confirm('Bu fişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) { return; }
-            document.getElementById('cancel-receipt-reason').value = reason.trim();
-            document.getElementById('cancel-receipt-form').submit();
+            window.posPrompt('İptal gerekçesi (fiş silinip yerine ters kayıt oluşturulacak):', '', function (reason) {
+                if (!reason || !reason.trim()) { return; }
+                window.posConfirm('Bu fişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', function () {
+                    document.getElementById('cancel-receipt-reason').value = reason.trim();
+                    document.getElementById('cancel-receipt-form').submit();
+                }, null, { danger: true });
+            });
         }
     </script>
 }
 
+<!-- GERÇEK HATA (2026-09-06, Z dönem kapatma test talimatıyla bulundu) - bu sayfada Z kapatma/
+     fiş silme akışları native confirm()/prompt()/alert() kullanıyordu ("native browser
+     alert/confirm/prompt kullanılmayacak" kuralına aykırı, bkz. Check.cshtml/pos-dialog.js'teki
+     AYNI kural). posDialogModal + pos-dialog.js Check.cshtml'e ÖZGÜ olduğundan (paylaşılan
+     restoran shell layout'unda değil) burada sayfaya özel, bağımsız bir kopyası eklendi. -->
+<div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ŞahinSoft Restoran</h5>
+            </div>
+            <div class="modal-body">
+                <div id="posDialogMessage" style="white-space:pre-line;"></div>
+                <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var zConfirmText = 'Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?';
+            ['close-shift-submit-btn', 'create-direct-z-submit-btn'].forEach(function (id) {
+                var btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('click', function () {
+                    window.posConfirm(zConfirmText, function () { btn.closest('form').submit(); }, null, { danger: true });
+                });
+            });
+        })();
+    </script>
     @if (Model.SelectedReceipt is not null)
     {
         <script>
@@ -583,7 +655,7 @@ else if (Model.ActiveTab == "zlist")
             }
             btn.addEventListener('click', function () {
                 var wrap = document.querySelector('.report-table-wrap[id]');
-                if (!wrap) { window.alert('Bu sekmede aktarılacak bir tablo yok.'); return; }
+                if (!wrap) { window.posAlert('Bu sekmede aktarılacak bir tablo yok.'); return; }
                 var rows = [];
                 var head = wrap.querySelector('.rthead');
                 if (head) { rows.push(Array.from(head.children).map(function (c) { return csvCell(c.textContent); }).join(';')); }

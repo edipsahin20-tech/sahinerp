@@ -39,6 +39,14 @@ public sealed class RetailSale : EntityBase
     public int RestaurantCheckId { get; set; }
     public RestaurantCheck RestaurantCheck { get; set; } = null!;
 
+    // Z Dönem Kapatma test talimatı (2026-09-06) - satış finansal olarak kapanırken (bkz.
+    // RestaurantPostingService.CloseCheckAsync) o anki AKTİF Z dönemine kalıcı olarak bağlanır;
+    // sonradan zaman aralığıyla tahmin edilmez. ZReportNumber (yukarıda, önceden hiç
+    // doldurulmuyordu) Z kapanınca "Z-0000xx" görüntü metniyle doldurulur - ayrı bir join
+    // gerekmeden ekranda/raporlarda hızlı gösterim için.
+    public int? RestaurantZPeriodId { get; set; }
+    public RestaurantZPeriod? RestaurantZPeriod { get; set; }
+
     // Opsiyonel — walk-in satışta boş kalabilir.
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }

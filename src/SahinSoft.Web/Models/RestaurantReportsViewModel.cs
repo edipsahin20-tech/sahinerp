@@ -68,6 +68,11 @@ public sealed class RestaurantReportsViewModel
     public int? SelectedZShiftId { get; set; }
     public string? SelectedZNumber { get; set; }
     public List<RestaurantReceiptRowViewModel> SelectedZReceipts { get; set; } = [];
+    // Z Dönem Kapatma test talimatı (2026-09-06, madde 4) - Z Listesi/Z Detay'da yalnızca tek bir
+    // bakiye rakamı değil, fiş sayısı + brüt/indirim/net/KDV + ödeme türü kırılımı da görünmeli.
+    // Zaten var olan zaman-aralığı bazlı sorgu (OpenedAtUtc→ClosedAtUtc) üzerinden hesaplanır -
+    // yeni bir şema/ZPeriodId eklenmedi, mevcut çalışan mimari korunuyor.
+    public RestaurantZSummaryViewModel? SelectedZSummary { get; set; }
 
     // Fişi Gör modalı için.
     public int? SelectedReceiptId { get; set; }
@@ -107,6 +112,7 @@ public sealed class RestaurantKasiyerReportViewModel
     public int ReceiptCount { get; set; }
     public decimal Cash { get; set; }
     public decimal Card { get; set; }
+    public decimal Unpaid { get; set; }
     public decimal OtherCollections { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal ComplimentaryAmount { get; set; }
@@ -146,7 +152,21 @@ public sealed record RestaurantZListRowViewModel(
     DateTime ClosedAtUtc,
     decimal OpeningBalance,
     decimal? ExpectedBalance,
-    decimal? CountedBalance);
+    decimal? CountedBalance,
+    RestaurantZSummaryViewModel Summary);
+
+// Z Dönem Kapatma test talimatı (2026-09-06, madde 2/4/12) - bir Z döneminin brüt/indirim/net/KDV
+// ve ödeme türü kırılımı. Hem Z Listesi satırında hem Z Detay'da AYNI hesaplama kullanılır.
+public sealed class RestaurantZSummaryViewModel
+{
+    public int ReceiptCount { get; set; }
+    public decimal GrossTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal NetTotal { get; set; }
+    public decimal TaxTotal { get; set; }
+    public decimal ComplimentaryTotal { get; set; }
+    public List<RestaurantPaymentBreakdownItemViewModel> PaymentBreakdown { get; set; } = [];
+}
 
 public sealed class RestaurantReceiptDetailViewModel
 {

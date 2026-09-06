@@ -149,19 +149,6 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
 
         var nonCancelled = daySales.Where(x => x.Status != RetailSaleStatus.Cancelled).ToList();
 
-        var vm = new RestaurantReportsViewModel
-        {
-            ActiveTab = tab,
-            SourceFilter = source,
-            ReportDate = reportDate,
-            PeriodFilter = period is "week" or "month" or "year" ? period : "day",
-            PeriodRangeLabel = periodRangeLabel,
-            NetRevenue = nonCancelled.Sum(x => x.GrandTotal),
-            ReceiptCount = nonCancelled.Count,
-            AverageReceipt = nonCancelled.Count == 0 ? 0 : nonCancelled.Sum(x => x.GrandTotal) / nonCancelled.Count,
-            CancelRatePercent = daySales.Count == 0 ? 0 : Math.Round(daySales.Count(x => x.Status == RetailSaleStatus.Cancelled) * 100m / daySales.Count, 1)
-        };
-
         // Ödeme dağılımı (madde 30) - tutar bazında, RestaurantPayments'tan (RetailSale'de yok),
         // artık HARD-CODE 3 yöntem değil, o dönemde GERÇEKTEN var olan tüm türlerden dinamik.
         // Ters kayıtlar (bkz. RestaurantPostingService.CancelRetailSaleAsync) DAHİL edilir ama
@@ -172,6 +159,27 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .Where(x => x.PaidAtUtc >= dayStartUtc && x.PaidAtUtc < dayEndUtc)
             .Select(x => new { x.PaymentMethod, Amount = x.IsReversal ? -x.Amount : x.Amount })
             .ToListAsync();
+
+        // Ödenmez iş kuralı (2026-09-06, Edip) - finansal karşılığı olmadığı için Net Ciro'ya
+        // dahil edilmez (İkram GrandTotal=0 olduğu için zaten hariç); ürün müşteriye çıktığı için
+        // fiş/Z bağlantısı ve stok hareketi korunur, PaymentBreakdown'da (aşağıda) kendi satırında
+        // ayrıca gösterilir. Aynı kural RestaurantDashboardController/RestaurantPostingService'te de
+        // (Z snapshot) uygulanır - tek ortak hesaplama.
+        var dayUnpaidTotal = periodPaymentsRaw.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Unpaid).Sum(x => x.Amount);
+
+        var vm = new RestaurantReportsViewModel
+        {
+            ActiveTab = tab,
+            SourceFilter = source,
+            ReportDate = reportDate,
+            PeriodFilter = period is "week" or "month" or "year" ? period : "day",
+            PeriodRangeLabel = periodRangeLabel,
+            NetRevenue = nonCancelled.Sum(x => x.GrandTotal) - dayUnpaidTotal,
+            ReceiptCount = nonCancelled.Count,
+            AverageReceipt = nonCancelled.Count == 0 ? 0 : nonCancelled.Sum(x => x.GrandTotal) / nonCancelled.Count,
+            CancelRatePercent = daySales.Count == 0 ? 0 : Math.Round(daySales.Count(x => x.Status == RetailSaleStatus.Cancelled) * 100m / daySales.Count, 1)
+        };
+
         (vm.PaymentBreakdown, vm.PaymentBreakdownTotal, vm.PaymentBreakdownConicGradient) =
             BuildPaymentBreakdown(periodPaymentsRaw.Select(x => (x.PaymentMethod, x.Amount)));
 
@@ -405,73 +413,89 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .OrderByDescending(x => x.OpenedAtUtc)
             .FirstOrDefaultAsync();
 
-        var lastClosedShift = await dbContext.RestaurantCashShifts
+        // Z Dönem Kapatma test talimatı (2026-09-06) - X/Z/Z Listesi artık RestaurantCashShift
+        // ZAMAN ARALIĞI TAHMİNİ yerine RestaurantZPeriod'un GERÇEK FK ilişkisini kullanıyor
+        // (bkz. RestaurantZPeriod.cs/GetOrCreateActiveZPeriodIdAsync yorumu). Vardiya (openShift,
+        // yukarıda) BİLEREK dokunulmadı - o hâlâ RestaurantCashShift/kasiyer kasa açılışı.
+        var lastClosedZPeriod = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .Where(x => x.Status == RestaurantCashShiftStatus.Closed)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Closed)
             .OrderByDescending(x => x.ClosedAtUtc)
             .FirstOrDefaultAsync();
+        var activeZPeriod = await dbContext.RestaurantZPeriods
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open);
 
         vm.IsShiftOpen = openShift is not null;
         vm.OpenShiftId = openShift?.Id;
         vm.ShiftOpenedAtUtc = openShift?.OpenedAtUtc;
         vm.FinancialAccountName = openShift?.FinancialAccount.Name;
-        vm.LastZNumber = lastClosedShift is null ? null : $"Z-{lastClosedShift.Id:D6}";
-        vm.LastZClosedAtUtc = lastClosedShift?.ClosedAtUtc;
+        vm.LastZNumber = lastClosedZPeriod is null ? null : $"Z-{lastClosedZPeriod.Id:D6}";
+        vm.LastZClosedAtUtc = lastClosedZPeriod?.ClosedAtUtc;
 
         // X Raporu artık AÇIK VARDİYA ŞART DEĞİL (Edip, 2026-09-03: "X ve Z raporu almak için
-        // vardiya girilmesi zorunlu değil") - Dashboard'daki AYNI dönem mantığı: bugün alınmış
-        // son Z'nin kapanışından beri (yoksa takvim gece yarısından beri) satılan her şey.
-        // Açık bir vardiya varsa onun açılış saati bilgi amaçlı gösterilir, dönemi BELİRLEMEZ.
-        var todayStartForXUtc = DateTime.Now.Date.ToUniversalTime();
-        var lastZClosedTodayForXUtc = await dbContext.RestaurantCashShifts
-            .Where(x => x.Status == RestaurantCashShiftStatus.Closed && x.ClosedAtUtc >= todayStartForXUtc && x.ClosedAtUtc < todayStartForXUtc.AddDays(1))
-            .OrderByDescending(x => x.ClosedAtUtc)
-            .Select(x => (DateTime?)x.ClosedAtUtc)
-            .FirstOrDefaultAsync();
-        var xPeriodStartUtc = lastZClosedTodayForXUtc ?? todayStartForXUtc;
+        // vardiya girilmesi zorunlu değil") - dönem sınırı artık aktif RestaurantZPeriod'un GERÇEK
+        // açılış zamanı (tahmin değil). Açık bir vardiya varsa onun açılış saati bilgi amaçlı
+        // gösterilir, dönemi BELİRLEMEZ.
+        var xPeriodStartUtc = activeZPeriod?.OpenedAtUtc ?? DateTime.Now.Date.ToUniversalTime();
 
-        var periodPayments = await dbContext.RestaurantPayments
+        var periodSalesForX = await dbContext.RetailSales
             .AsNoTracking()
-            .Where(x => x.PaidAtUtc >= xPeriodStartUtc)
+            .Where(x => activeZPeriod != null ? x.RestaurantZPeriodId == activeZPeriod.Id : x.IssuedAtUtc >= xPeriodStartUtc)
+            .Where(x => x.Status != RetailSaleStatus.Cancelled)
+            .Select(x => new { x.RestaurantCheckId })
             .ToListAsync();
-        var periodReceiptCount = await dbContext.RetailSales
-            .AsNoTracking()
-            .CountAsync(x => x.IssuedAtUtc >= xPeriodStartUtc && x.Status != RetailSaleStatus.Cancelled);
+        var periodCheckIdsForX = periodSalesForX.Select(x => x.RestaurantCheckId).ToList();
+        var periodPayments = periodCheckIdsForX.Count == 0
+            ? []
+            : await dbContext.RestaurantPayments
+                .AsNoTracking()
+                .Where(x => periodCheckIdsForX.Contains(x.RestaurantCheckId) && !x.IsReversal)
+                .ToListAsync();
+        var periodReceiptCount = periodSalesForX.Count;
 
-        var (xBreakdown, _, _) = BuildPaymentBreakdown(periodPayments.Select(x => (x.PaymentMethod, x.IsReversal ? -x.Amount : x.Amount)));
+        var (xBreakdown, _, _) = BuildPaymentBreakdown(periodPayments.Select(x => (x.PaymentMethod, x.Amount)));
+        // Ödenmez iş kuralı (2026-09-06, Edip) - finansal karşılığı olmadığı için Net Ciro'ya
+        // dahil edilmez, PaymentBreakdown'da (xBreakdown, üstte) kendi satırında ayrıca görünür.
         vm.XReport = new RestaurantXReportViewModel
         {
             OpenedAtUtc = openShift?.OpenedAtUtc ?? xPeriodStartUtc,
             ReceiptCount = periodReceiptCount,
-            NetRevenue = periodPayments.Sum(x => x.IsReversal ? -x.Amount : x.Amount),
+            NetRevenue = periodPayments.Where(x => x.PaymentMethod != RestaurantPaymentMethod.Unpaid).Sum(x => x.Amount),
             PaymentBreakdown = xBreakdown
         };
 
-        vm.ZList = await dbContext.RestaurantCashShifts
+        // Z Dönem Kapatma test talimatı (2026-09-06) - Z Listesi/Z Detay artık RestaurantZPeriod'un
+        // GERÇEK FK ilişkisinden (RetailSale.RestaurantZPeriodId) okunuyor, zaman aralığı TAHMİNİ
+        // değil. OpeningBalance/ExpectedBalance/CountedBalance (eski Vardiya-tabanlı kasa sayımı
+        // alanları) Z dönemi için ANLAMSIZ - null bırakılır, view artık Fiş Sayısı/Net Ciro/ödeme
+        // kırılımını (Summary) gösteriyor.
+        var closedPeriodsRaw = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .Include(x => x.FinancialAccount)
-            .Where(x => x.Status == RestaurantCashShiftStatus.Closed)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Closed)
             .OrderByDescending(x => x.ClosedAtUtc)
             .Take(30)
-            .Select(x => new RestaurantZListRowViewModel(
-                x.Id, $"Z-{x.Id:D6}", x.FinancialAccount.Name, x.OpenedAtUtc, x.ClosedAtUtc!.Value, x.OpeningBalance, x.ClosingBalanceExpected, x.ClosingBalanceCounted))
             .ToListAsync();
+        vm.ZList = closedPeriodsRaw.Select(p => new RestaurantZListRowViewModel(
+            p.Id, $"Z-{p.Id:D6}", "", p.OpenedAtUtc, p.ClosedAtUtc!.Value, 0, null, null,
+            new RestaurantZSummaryViewModel { ReceiptCount = p.ReceiptCount, GrossTotal = p.GrossTotal, DiscountTotal = p.DiscountTotal, NetTotal = p.NetTotal, TaxTotal = p.TaxTotal, ComplimentaryTotal = p.ComplimentaryTotal }))
+            .ToList();
 
-        // Z Listesi'nde bir Z'ye tıklanınca o vardiyanın (Açılış→Kapanış) satış hareketleri -
-        // Edip'in isteği (2026-09-03). Düzenleme/silme burada YOK - reversal muhasebe kuralına
-        // aykırı olur (bkz. [[feedback_sahinsoft_conventions]]), Edip'ten ayrıca netleştirme
-        // bekleniyor; şimdilik salt-okunur "Fişi Gör" ile aynı detay modalı.
+        // Z Listesi'nde bir Z'ye tıklanınca o dönemin GERÇEKTEN BAĞLI (FK) satış hareketleri -
+        // Edip'in isteği (2026-09-03), artık RestaurantZPeriodId ile. Düzenleme/silme burada YOK -
+        // reversal muhasebe kuralına aykırı olur; "Fişi Gör" modalındaki "Fişi Sil" (madde 10, Z
+        // dönem kapatma test talimatı) AYRI, kendi onayıyla çalışan bir akış.
         if (zShiftId is not null)
         {
-            var selectedShift = await dbContext.RestaurantCashShifts
+            var selectedPeriod = await dbContext.RestaurantZPeriods
                 .AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Id == zShiftId.Value && x.Status == RestaurantCashShiftStatus.Closed);
+                .SingleOrDefaultAsync(x => x.Id == zShiftId.Value && x.Status == RestaurantZPeriodStatus.Closed);
 
-            if (selectedShift is not null)
+            if (selectedPeriod is not null)
             {
                 var zSales = await dbContext.RetailSales
                     .AsNoTracking()
-                    .Where(x => x.IssuedAtUtc >= selectedShift.OpenedAtUtc && x.IssuedAtUtc < selectedShift.ClosedAtUtc!.Value)
+                    .Where(x => x.RestaurantZPeriodId == selectedPeriod.Id)
                     .Select(x => new
                     {
                         x.Id,
@@ -500,7 +524,20 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     .ToDictionaryAsync(x => x.RestaurantCheckId, x => new { x.PackageNumber, x.CustomerName });
 
                 vm.SelectedZShiftId = zShiftId;
-                vm.SelectedZNumber = $"Z-{selectedShift.Id:D6}";
+                vm.SelectedZNumber = $"Z-{selectedPeriod.Id:D6}";
+                vm.SelectedZSummary = new RestaurantZSummaryViewModel
+                {
+                    ReceiptCount = selectedPeriod.ReceiptCount,
+                    GrossTotal = selectedPeriod.GrossTotal,
+                    DiscountTotal = selectedPeriod.DiscountTotal,
+                    NetTotal = selectedPeriod.NetTotal,
+                    TaxTotal = selectedPeriod.TaxTotal,
+                    ComplimentaryTotal = selectedPeriod.ComplimentaryTotal
+                };
+                var zPaymentsForBreakdown = zCheckIds.Count == 0
+                    ? []
+                    : await dbContext.RestaurantPayments.AsNoTracking().Where(x => zCheckIds.Contains(x.RestaurantCheckId) && !x.IsReversal).Select(x => new { x.PaymentMethod, x.Amount }).ToListAsync();
+                (vm.SelectedZSummary.PaymentBreakdown, _, _) = BuildPaymentBreakdown(zPaymentsForBreakdown.Select(x => (x.PaymentMethod, x.Amount)));
                 vm.SelectedZReceipts = zSales
                     .OrderByDescending(x => x.IssuedAtUtc)
                     .Select(x =>
@@ -567,7 +604,13 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     TaxAmount = sale.TaxAmount,
                     GrandTotal = sale.GrandTotal,
                     Payments = sale.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => new RestaurantReceiptDetailPayment(
-                        p.PaymentMethod switch { RestaurantPaymentMethod.Cash => "Nakit", RestaurantPaymentMethod.CreditCard => "Kredi Kartı", _ => "Yemek Kartı" },
+                        // GERÇEK HATA (2026-09-06, Z düzeltme kabul testinde bulundu) - bu satır içi
+                        // switch yalnızca Nakit/Kredi Kartı'nı tanıyordu, geri kalan HER ödeme türünü
+                        // (Açık Hesap, Ödenmez, Yemek Kartı) "Yemek Kartı" olarak etiketliyordu - Fiş
+                        // Gör penceresinde bir Açık Hesap tahsilatı yanlışlıkla Yemek Kartı gösteriliyordu.
+                        // Dosyanın kendi PaymentMethodLabel() yardımcısı (satır 32) zaten TÜM türleri
+                        // doğru eşliyor, burada da o kullanılır.
+                        PaymentMethodLabel(p.PaymentMethod),
                         p.Amount)).ToList()
                 };
             }
@@ -618,14 +661,20 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 .Select(x => new { x.IsComplimentary, x.DiscountAmountSnapshot })
                 .ToListAsync();
 
+        // Ödenmez iş kuralı (2026-09-06, Edip) - finansal karşılığı olmadığı için Net Ciro'ya
+        // dahil edilmez ve "DİĞER TAHSİLATLAR" (Açık Hesap/Yemek Kartı) ile KARIŞTIRILMAZ, kendi
+        // alanında ayrıca gösterilir. Aynı kural Dashboard/X Raporu/Z snapshot'ta da uygulanır.
+        var kasiyerUnpaid = kasiyerPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Unpaid).Sum(x => x.Amount);
+
         vm.Kasiyer = new RestaurantKasiyerReportViewModel
         {
             DisplayName = string.IsNullOrEmpty(effectiveKasiyerUserId) ? "Tüm Kasiyerler" : openerNames.GetValueOrDefault(effectiveKasiyerUserId, "Kasiyer"),
-            NetRevenue = kasiyerNonCancelled.Sum(x => x.GrandTotal),
+            NetRevenue = kasiyerNonCancelled.Sum(x => x.GrandTotal) - kasiyerUnpaid,
             ReceiptCount = kasiyerNonCancelled.Count,
             Cash = kasiyerPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.Cash).Sum(x => x.Amount),
             Card = kasiyerPayments.Where(x => x.PaymentMethod == RestaurantPaymentMethod.CreditCard).Sum(x => x.Amount),
-            OtherCollections = kasiyerPayments.Where(x => x.PaymentMethod is not (RestaurantPaymentMethod.Cash or RestaurantPaymentMethod.CreditCard)).Sum(x => x.Amount),
+            Unpaid = kasiyerUnpaid,
+            OtherCollections = kasiyerPayments.Where(x => x.PaymentMethod is not (RestaurantPaymentMethod.Cash or RestaurantPaymentMethod.CreditCard or RestaurantPaymentMethod.Unpaid)).Sum(x => x.Amount),
             DiscountAmount = kasiyerLineAmounts.Where(x => !x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot),
             ComplimentaryAmount = kasiyerLineAmounts.Where(x => x.IsComplimentary).Sum(x => x.DiscountAmountSnapshot),
             CancelledCount = kasiyerSales.Count(x => x.Status == RetailSaleStatus.Cancelled)
@@ -656,15 +705,17 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
 
     // Vardiya açmadan doğrudan Z Raporu - Edip, 2026-09-03: "vardiya mantığı şu an kapalı olsun
     // Z raporunda direkt rapor alsın ve günü sıfırlasın herşeyi". Kasa sayımı YOK - bu "yumuşak"
-    // bir gün sonu, gerçek bir kasa mutabakatı değil (bkz. CreateDirectZReportAsync yorumu).
+    // bir gün sonu, gerçek bir kasa mutabakatı değil. 2026-09-06 Z Dönem Kapatma test talimatı:
+    // eski RestaurantCashShift/zaman-aralığı tahminli CreateDirectZReportAsync YERİNE artık
+    // RestaurantZPeriod'un GERÇEK FK ilişkisiyle çalışan CloseActiveZPeriodAsync çağrılıyor.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateDirectZReport()
     {
         try
         {
-            var shift = await postingService.CreateDirectZReportAsync(CurrentUserId);
-            TempData["Success"] = $"Z-{shift.Id:D6} raporu oluşturuldu, gün sıfırlandı.";
+            var period = await postingService.CloseActiveZPeriodAsync(CurrentUserId);
+            TempData["Success"] = $"Z-{period.Id:D6} raporu oluşturuldu, gün sıfırlandı.";
         }
         catch (InvalidOperationException ex)
         {

@@ -1,0 +1,197 @@
+@model SahinSoft.Web.Models.RestaurantDataHealthViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Veri Sağlığı / Mutabakat Merkezi";
+
+    static string StatusBadgeClass(string status) => status switch
+    {
+        "YESIL" => "background:#DFF5E7;color:#1f7a4d;",
+        "SARI" => "background:#FFF3D6;color:#8a6d1a;",
+        _ => "background:#FBE1E1;color:#8a2a2a;"
+    };
+
+    static string StatusLabel(string status) => status switch
+    {
+        "YESIL" => "● Tam",
+        "SARI" => "● Bekliyor",
+        _ => "● Hatalı"
+    };
+
+    static string CellBadgeClass(string value) => value switch
+    {
+        "Tam" or "Gerekmiyor" or "Kapalı" => "color:#1f7a4d;",
+        "Bekliyor" => "color:#8a6d1a;",
+        _ => "color:#8a2a2a;font-weight:700;"
+    };
+}
+
+<div class="rest-shell">
+    <div class="report-header">
+        <h2>Veri Sağlığı / Mutabakat Merkezi</h2>
+        <p class="sub">Günlük satışların Yerel / Merkez / Muhasebe karşılıklarını tek ekrandan takip edin.</p>
+    </div>
+
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="alert alert-success">@successMsg</div>
+    }
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="alert alert-danger">@errorMsg</div>
+    }
+
+    <form method="get" asp-action="Index" class="d-flex align-items-end gap-2 mb-3">
+        <div>
+            <label class="form-label small mb-1">Tarih</label>
+            <input type="date" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-erp-outline">Filtrele</button>
+        <form method="post" asp-action="Recheck" class="d-inline">
+            <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
+            <button type="submit" class="btn btn-erp-outline">↻ Tekrar Kontrol Et</button>
+        </form>
+        @if (!Model.MerkezSyncEnabled)
+        {
+            <span class="badge text-bg-secondary align-self-center">Merkez senkron kapalı - Merkez sütunu bilgi amaçlı "Kapalı" gösterir</span>
+        }
+    </form>
+
+    <div class="report-kpis2">
+        <div class="rcard report-kpi2" style="--soft:#EDF3F9"><small>TOPLAM FİŞ</small><strong>@Model.TotalCount</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#E8F6F3"><small>EŞLEŞEN</small><strong style="color:#1f7a4d">@Model.MatchedCount</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#FFF8E8"><small>BEKLEYEN</small><strong style="color:#8a6d1a">@Model.PendingCount</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>HATALI</small><strong style="color:#8a2a2a">@Model.ErrorCount</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>EKSİK MERKEZ</small><strong style="color:#8a2a2a">@Model.MissingCentralCount</strong></div>
+        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>EKSİK MUHASEBE</small><strong style="color:#8a2a2a">@Model.MissingAccountingCount</strong></div>
+    </div>
+
+    @if (Model.ZSummary.Count > 0)
+    {
+        <div class="rcard mb-3" style="padding:16px;">
+            <h4 class="mb-2">Z Bazında Karşılaştırma</h4>
+            <div class="report-table-wrap">
+                <div class="rthead" style="grid-template-columns: 140px 100px 100px 100px 100px;"><span>Z NO</span><span>ŞUBE</span><span>MERKEZ</span><span>MUHASEBE</span><span>DURUM</span></div>
+                @foreach (var z in Model.ZSummary)
+                {
+                    <div class="rrow2" style="grid-template-columns: 140px 100px 100px 100px 100px;">
+                        <span class="fw-semibold">@z.ZNo</span>
+                        <span>@z.BranchCount</span>
+                        <span style="@(z.CentralCount < z.BranchCount ? "color:#8a2a2a;font-weight:700;" : "")">@z.CentralCount</span>
+                        <span style="@(z.AccountingCount < z.BranchCount ? "color:#8a2a2a;font-weight:700;" : "")">@z.AccountingCount</span>
+                        <span>
+                            @if (z.IsMismatched)
+                            {
+                                <span class="badge" style="background:#FBE1E1;color:#8a2a2a;">KIRMIZI</span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background:#DFF5E7;color:#1f7a4d;">YEŞİL</span>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="rcard" style="padding:16px;">
+        <h4 class="mb-2">Fiş Bazında Mutabakat</h4>
+        <div class="report-table-wrap">
+            <div class="rthead" style="grid-template-columns: 90px 100px 90px 90px 90px 90px 90px 1fr 140px;">
+                <span>SAAT</span><span>ADS NO</span><span>Z NO</span><span>TUTAR</span><span>YEREL</span><span>MERKEZ</span><span>MUHASEBE</span><span>DURUM / NEDEN</span><span></span>
+            </div>
+            @if (Model.Rows.Count == 0)
+            {
+                <div class="p-3 text-secondary small">Bu tarihte fiş bulunamadı.</div>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <div class="rrow2" style="grid-template-columns: 90px 100px 90px 90px 90px 90px 90px 1fr 140px; @(Model.SelectedRow?.RetailSaleId == row.RetailSaleId ? "background:#FFF6DF;" : "")">
+                    <span>@row.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                    <span><span class="erp-code-badge">@row.CheckNumber</span></span>
+                    <span>@row.ZNo</span>
+                    <span>@row.GrandTotal.ToString("N2") ₺</span>
+                    <span style="@CellBadgeClass(row.LocalStatus)">@row.LocalStatus</span>
+                    <span style="@CellBadgeClass(row.CentralStatus)">@row.CentralStatus</span>
+                    <span style="@CellBadgeClass(row.AccountingStatus)">@row.AccountingStatus</span>
+                    <span>
+                        <span class="badge" style="@StatusBadgeClass(row.OverallStatus)">@StatusLabel(row.OverallStatus)</span>
+                        @if (row.ErrorReasons.Count > 0)
+                        {
+                            <small class="d-block text-secondary">@string.Join(" · ", row.ErrorReasons)</small>
+                        }
+                    </span>
+                    <span class="d-flex gap-1 flex-wrap">
+                        <a asp-action="Index" asp-route-date="@Model.FilterDate.ToString("yyyy-MM-dd")" asp-route-selected="@row.RetailSaleId" class="btn btn-sm btn-erp-outline">İncele</a>
+                        @if (row.CanRepairZReference)
+                        {
+                            <form method="post" asp-action="RepairZReference" class="d-inline">
+                                <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
+                                <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
+                                <button type="submit" class="btn btn-sm btn-erp">Eksikleri Onar</button>
+                            </form>
+                        }
+                        @if (row.CanRetransmitToCentral)
+                        {
+                            <form method="post" asp-action="RetransmitToCentral" class="d-inline">
+                                <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
+                                <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
+                                <button type="submit" class="btn btn-sm btn-erp-outline">Yeniden Aktar</button>
+                            </form>
+                        }
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (Model.SelectedRow is not null)
+    {
+        <!-- Talimat 1 madde 7 - "yan yana teşhis": bir tarafta sistemdeki kayıt, diğer tarafta
+             gerçek fiş önizlemesi (mevcut Fiş Gör akışına link - uydurma bir ikinci görünüm
+             İCAT EDİLMEDİ, tek gerçek kaynağa yönlendirilir). -->
+        <div class="rcard mt-3" style="padding:16px;">
+            <h4 class="mb-2">Yan Yana Teşhis — @Model.SelectedRow.CheckNumber</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-2">Sistemdeki Kayıt</div>
+                    <table class="table table-sm">
+                        <tr><td>Belge No</td><td>@Model.SelectedRow.DocumentNumber</td></tr>
+                        <tr><td>Adisyon No</td><td>@Model.SelectedRow.CheckNumber</td></tr>
+                        <tr><td>Z No</td><td>@(Model.SelectedRow.ZNo ?? "—")</td></tr>
+                        <tr><td>Tarih/Saat</td><td>@Model.SelectedRow.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td></tr>
+                        <tr><td>Tutar</td><td>@Model.SelectedRow.GrandTotal.ToString("N2") ₺</td></tr>
+                        <tr><td>Yerel</td><td>@Model.SelectedRow.LocalStatus</td></tr>
+                        <tr><td>Merkez</td><td>@Model.SelectedRow.CentralStatus</td></tr>
+                        <tr><td>Muhasebe</td><td>@Model.SelectedRow.AccountingStatus</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-2">Gerçek Fiş Kaynağı</div>
+                    <a asp-controller="Restaurant" asp-action="Receipt" asp-route-id="@Model.SelectedRow.RetailSaleId" target="_blank" class="btn btn-erp-outline">🔍 Fişi Gör (yeni sekmede)</a>
+                    <div class="form-text mt-2">Tutar/miktar/ürün gibi finansal alanlar yalnızca gerçek fiş kaynağından doğrulandıktan sonra elle düzeltilir - sistem bu alanları asla tahmin etmez.</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.RecentRepairs.Count > 0)
+    {
+        <div class="rcard mt-3" style="padding:16px;">
+            <h4 class="mb-2">Onarım Logu</h4>
+            <div class="report-table-wrap">
+                <div class="rthead" style="grid-template-columns: 140px 100px 100px 130px 1fr;"><span>Tarih/Saat</span><span>Kullanıcı</span><span>İşlem</span><span>Kayıt</span><span>Eski → Yeni</span></div>
+                @foreach (var log in Model.RecentRepairs)
+                {
+                    <div class="rrow2" style="grid-template-columns: 140px 100px 100px 130px 1fr;">
+                        <span>@log.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        <span>@log.UserId</span>
+                        <span>@log.Action</span>
+                        <span>@log.EntityName #@log.EntityId</span>
+                        <span class="small text-secondary text-truncate" style="max-width:400px;" title="@log.OldValuesJson → @log.NewValuesJson">@(log.OldValuesJson ?? "—") → @(log.NewValuesJson ?? "—")</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

@@ -313,11 +313,19 @@ public sealed class CustomersController(
             .ThenBy(x => x.Id)
             .ToListAsync();
 
+        var statementDocumentNumbers = transactions.Select(x => x.DocumentNumber).Distinct().ToList();
+        var statementRetailSaleLookup = await dbContext.RetailSales
+            .AsNoTracking()
+            .Where(x => statementDocumentNumbers.Contains(x.DocumentNumber))
+            .Select(x => new { x.DocumentNumber, x.Id, x.RestaurantZPeriodId })
+            .ToDictionaryAsync(x => x.DocumentNumber, x => new { x.Id, x.RestaurantZPeriodId });
+
         var runningBalance = openingBalance;
         var lines = new List<CustomerStatementLineViewModel>();
         foreach (var transaction in transactions)
         {
             runningBalance += transaction.Debit - transaction.Credit;
+            statementRetailSaleLookup.TryGetValue(transaction.DocumentNumber, out var retailSale);
             lines.Add(new CustomerStatementLineViewModel
             {
                 TransactionDateUtc = transaction.TransactionDateUtc,
@@ -326,7 +334,10 @@ public sealed class CustomersController(
                 Description = transaction.Description,
                 Debit = transaction.Debit,
                 Credit = transaction.Credit,
-                RunningBalance = runningBalance
+                RunningBalance = runningBalance,
+                RestaurantRetailSaleId = retailSale?.Id,
+                RestaurantZPeriodId = retailSale?.RestaurantZPeriodId,
+                RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
             });
         }
 
