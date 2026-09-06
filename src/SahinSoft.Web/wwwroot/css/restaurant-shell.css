@@ -173,6 +173,37 @@ html, body {
 .rest-shell .rbtn:hover { border-color: #D2DAE5; box-shadow: 0 4px 10px rgba(15,35,55,.06); }
 .rest-shell .rbtn.gold { background: linear-gradient(var(--rs-gold2), var(--rs-gold)); border-color: var(--rs-gold); color: #2A2000; }
 .rest-shell .rbtn:active { transform: scale(.985); }
+.rest-shell .rbtn.excel { background: #E9F9EF; border-color: #B7E9C6; color: #1F7A4D; }
+.rest-shell .rbtn.pdf { background: #FCEAEA; border-color: #F3BFBF; color: #A32A2A; }
+
+/* Tarih pili (2026-09-06, onaylı Raporlar mockup'ı) - ◁/▷ StepDate mekanizması aynı, sadece
+   görsel olarak tek bir pil haline getirildi. */
+.rest-shell .rdate-pill { display: flex; align-items: center; gap: 2px; border: 1px solid var(--rs-border); background: #fff; border-radius: 9px; padding: 3px; }
+.rest-shell .rdate-step { border: 0; background: transparent; padding: 7px 9px; border-radius: 7px; color: var(--rs-muted); text-decoration: none; font-weight: 700; }
+.rest-shell .rdate-step:hover { background: #F3F5F8; }
+.rest-shell .rdate-label { padding: 7px 6px; font-weight: 700; font-size: 13px; white-space: nowrap; }
+
+/* Rapor türü 2 satırlı ikon-kart sekme çubuğu (2026-09-06, onaylı mockup) - eski .rnav/.report-nav2
+   (dönem pilleri Günlük/Haftalık/Aylık/Yıllık için hâlâ kullanılıyor) ile KARIŞTIRILMASIN. */
+.rest-shell .report-tabgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 4px; }
+.rest-shell .rnavgrid { display: flex; align-items: center; gap: 9px; border: 1px solid var(--rs-border); background: #fff; border-radius: 10px; padding: 10px 12px; text-decoration: none; color: var(--rs-text); }
+.rest-shell .rnavgrid .ico { flex: none; width: 30px; height: 30px; border-radius: 50%; background: #F1F4F8; color: var(--rs-navy); display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; font-size: 14px; }
+.rest-shell .rnavgrid b { display: block; font-size: 12.5px; }
+.rest-shell .rnavgrid small { display: block; color: var(--rs-muted); font-size: 10px; }
+.rest-shell .rnavgrid.active { background: var(--rs-navy); border-color: var(--rs-navy); color: #fff; }
+.rest-shell .rnavgrid.active small { color: #B7C3D6; }
+.rest-shell .rnavgrid.active .ico { background: rgba(255,255,255,.14); color: #fff; }
+@media (max-width: 1400px) { .rest-shell .report-tabgrid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 900px) { .rest-shell .report-tabgrid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Günlük Fişler sekmesi - kompakt 5 kartlı KPI satırı (2026-09-06, onaylı mockup). */
+.rest-shell .report-kpis-compact { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 16px 0; }
+.rest-shell .rkpi-compact { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.rest-shell .rkpi-compact .ico { flex: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.rest-shell .rkpi-compact small { display: block; color: var(--rs-muted); font-size: 10.5px; }
+.rest-shell .rkpi-compact strong { display: block; font-size: 17px; margin-top: 2px; }
+@media (max-width: 1400px) { .rest-shell .report-kpis-compact { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .rest-shell .report-kpis-compact { grid-template-columns: repeat(2, 1fr); } }
 
 /* KPI kartları */
 .rest-shell .dashboard-kpi-grid, .rest-shell .report-kpi-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-top: 16px; }

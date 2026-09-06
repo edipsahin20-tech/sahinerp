@@ -40,9 +40,15 @@
         <div class="sub">Satış, ödeme, fiş ve vardiya kapanışlarını tek ekrandan takip edin.</div>
     </div>
     <div class="actions no-print">
-        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(-1).ToString("yyyy-MM-dd")">◁</a>
-        <span class="rbtn">@Model.PeriodRangeLabel</span>
-        <a class="rbtn" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(1).ToString("yyyy-MM-dd")">▷</a>
+        <!-- Tarih pili (2026-09-06, onaylı Raporlar mockup'ı "birebir uygulama") - altta yatan
+             mekanizma (◁/▷ ile StepDate, Model.PeriodRangeLabel) AYNEN korunuyor, sadece görsel
+             olarak tek bir takvim-ikonlu pil haline getirildi - mevcut Günlük/Haftalık/Aylık/Yıllık
+             gezinmesi bozulmadı. -->
+        <div class="rdate-pill">
+            <a class="rdate-step" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(-1).ToString("yyyy-MM-dd")">◁</a>
+            <span class="rdate-label">📅 @Model.PeriodRangeLabel</span>
+            <a class="rdate-step" asp-action="Index" asp-route-tab="@Model.ActiveTab" asp-route-source="@Model.SourceFilter" asp-route-period="@Model.PeriodFilter" asp-route-date="@StepDate(1).ToString("yyyy-MM-dd")">▷</a>
+        </div>
         <button type="button" class="rbtn gold" onclick="window.print()">▣ Yazdır</button>
         <!-- Onaylı mockup'taki Excel/PDF butonları (madde birebir-uygulama) - Excel GERÇEK bir
              .csv indirir (mevcut tablo görünür satırlarından, bkz. aşağıdaki inline script - site.js'teki
@@ -51,8 +57,8 @@
              bir sunucu tarafı üretim altyapısı YOK - tarayıcının kendi "Yazdır > PDF olarak kaydet"
              hedefi zaten gerçek bir PDF üretimi, o yüzden PDF de aynı yazdırma diyaloğunu açıyor -
              uydurma bir "PDF oluşturuldu" mesajı YOK. -->
-        <button type="button" class="rbtn" id="report-excel-btn">Excel</button>
-        <button type="button" class="rbtn" onclick="window.print()">PDF</button>
+        <button type="button" class="rbtn excel" id="report-excel-btn">📊 Excel</button>
+        <button type="button" class="rbtn pdf" onclick="window.print()">📄 PDF</button>
     </div>
 </div>
 
@@ -70,113 +76,110 @@
     </div>
 }
 
-<div class="report-hero">
-    <div class="rcard report-hero-main">
-        <div class="eyebrow">DÖNEM RAPOR ÖZETİ</div>
-        <h2 style="margin:6px 0;">@Model.PeriodRangeLabel satış özeti</h2>
-        <div class="report-hero-metrics">
-            <div><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N0") ₺</strong></div>
-            <div><small>FİŞ</small><strong>@Model.ReceiptCount</strong></div>
-            <div><small>ORT. FİŞ</small><strong>@Model.AverageReceipt.ToString("N0") ₺</strong></div>
-            <div><small>İPTAL ORANI</small><strong>%@Model.CancelRatePercent.ToString("0.0")</strong></div>
-        </div>
-    </div>
-    <div class="rcard report-close-card">
-        <div class="close-status">
-            <div><b>Vardiya Durumu</b><div class="sub">@(Model.IsShiftOpen ? $"{Model.ShiftOpenedAtUtc!.Value.ToLocalTime():HH:mm}'den beri açık ({Model.FinancialAccountName})" : "Vardiya kapalı")</div></div>
-            <span class="rest-pill @(Model.IsShiftOpen ? "green" : "")">@(Model.IsShiftOpen ? "● AÇIK" : "● KAPALI")</span>
-        </div>
-        <div class="close-grid">
-            <div class="close-mini"><small>Son Z No</small><b>@(Model.LastZNumber ?? "—")</b></div>
-            <div class="close-mini"><small>Son Z Kapanış</small><b>@(Model.LastZClosedAtUtc?.ToLocalTime().ToString("dd.MM HH:mm") ?? "—")</b></div>
-        </div>
-    </div>
-</div>
-
-<div class="report-kpis2">
-    <div class="rcard report-kpi2" style="--soft:#E8F6F3"><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N2") ₺</strong><em>@Model.ReceiptCount tamamlanan fiş</em></div>
-    @foreach (var item in Model.PaymentBreakdown)
-    {
-        <div class="rcard report-kpi2" style="--soft:#F2F2F2"><small>@item.Label.ToUpperInvariant()</small><strong>@item.Amount.ToString("N2") ₺</strong><em>%@(item.Percent.ToString("0.0")) pay</em></div>
-    }
-    <div class="rcard report-kpi2" style="--soft:#EDF3F9"><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong><em>Ort. @Model.AverageReceipt.ToString("N2") ₺</em></div>
-</div>
-
-<div class="report-analytics">
-    <div class="rcard analytics-card">
-        <div class="analytics-head">
-            <div><h3>Ciro Akışı</h3><small>@Model.PeriodRangeLabel satış ritmi</small></div>
-        </div>
-        @{ var maxHourly = Model.HourlyRevenue.Count > 0 ? Math.Max(Model.HourlyRevenue.Max(), 1) : 1; }
-        @if (Model.HourlyRevenue.Count == 0 || Model.HourlyRevenue.Sum() == 0)
-        {
-            <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
-        }
-        else
-        {
-            <div class="premium-chart">
-                @for (var i = 0; i < Model.HourlyRevenue.Count; i++)
-                {
-                    var v = Model.HourlyRevenue[i];
-                    var heightPct = Math.Max(2, (int)Math.Round(v / maxHourly * 100));
-                    var isPeak = v == Model.HourlyRevenue.Max() && v > 0;
-                    <div class="pc-col @(isPeak ? "hot" : "")">
-                        <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
-                        <div class="pc-bar" style="height:@(heightPct)%"></div>
-                        <div class="pc-label">@(i < Model.HourlyRevenueLabels.Count ? Model.HourlyRevenueLabels[i] : "")</div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-    <div class="rcard analytics-card">
-        <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Ödeme türlerine göre dağılım</small></div></div>
-        @if (Model.PaymentBreakdownTotal <= 0)
-        {
-            <div class="analytics-empty">Bu dönemde ödeme verisi yok.</div>
-        }
-        else
-        {
-            <!-- Ödenmez iş kuralı (2026-09-06, Edip): finansal karşılığı olmadığı için Net Ciro'ya
-                 dahil değildir - bu yüzden merkez etiket kasıtlı olarak "Net Ciro" DEĞİL, "Toplam
-                 Tahsilat/İşlem" (Ödenmez dahil TÜM ödeme türlerinin toplamı) olarak gösterilir; aksi
-                 halde bu donut'un merkezindeki rakam üstteki NET CİRO kutusuyla ÇELİŞİRDİ. -->
-            <div class="donut2-wrap">
-                <div class="donut2" style="background:@Model.PaymentBreakdownConicGradient">
-                    <div class="donut2-center"><strong>@Model.PaymentBreakdownTotal.ToString("N0") ₺</strong><small>Toplam İşlem</small></div>
-                </div>
-            </div>
-            <div class="payment-legend">
-                @foreach (var item in Model.PaymentBreakdown)
-                {
-                    <div class="legend-row"><span class="dot" style="background:@item.ColorVar"></span><span>@item.Label</span><b>%@(item.Percent.ToString("0.0"))</b></div>
-                }
-            </div>
-        }
-    </div>
-</div>
-
 <!-- Onaylı Restoran Raporları mockup'ının BİREBİR 2 satırlı rapor türü sekmesi (madde
-     birebir-uygulama, 2026-09-05). 1. satırdaki 6 rapor ortak dönem filtresini kullanır. -->
-<div class="report-nav2" style="margin-top:16px;">
-    <a class="rnav @(Model.ActiveTab == "overview" ? "active" : "")" asp-action="Index" asp-route-tab="overview" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◷ Günlük / Aylık</b><small>Dönem özeti</small></a>
-    <a class="rnav @(Model.ActiveTab == "payment" ? "active" : "")" asp-action="Index" asp-route-tab="payment" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◔ Ödeme Dağılımı</b><small>Ödeme türü kırılımı</small></a>
-    <a class="rnav @(Model.ActiveTab == "bestsellers" ? "active" : "")" asp-action="Index" asp-route-tab="bestsellers" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>♨ En Çok Satanlar</b><small>Ürün bazlı</small></a>
-    <a class="rnav @(Model.ActiveTab == "categories" ? "active" : "")" asp-action="Index" asp-route-tab="categories" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Kategori Satışları</b><small>Kategori bazlı</small></a>
-    <a class="rnav @(Model.ActiveTab == "vat" ? "active" : "")" asp-action="Index" asp-route-tab="vat" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>% KDV Dökümü</b><small>Oran bazlı</small></a>
-    <a class="rnav @(Model.ActiveTab == "discount" ? "active" : "")" asp-action="Index" asp-route-tab="discount" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◈ İndirim &amp; İkram</b><small>Fiş bazlı</small></a>
-</div>
-<div class="report-nav2" style="margin-top:8px;">
-    <a class="rnav @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▥ Günlük Fişler</b><small>Seçilen dönemin satışları</small></a>
-    <a class="rnav @(Model.ActiveTab == "kasiyer" ? "active" : "")" asp-action="Index" asp-route-tab="kasiyer" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>◈ Kasiyer Raporu</b><small>Kullanıcı bazlı</small></a>
-    <a class="rnav @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>X &nbsp; X Raporu</b><small>Anlık, vardiyayı kapatmaz</small></a>
-    <a class="rnav @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>Z &nbsp; Z Raporu</b><small>Gün sonu kapanışı</small></a>
-    <a class="rnav @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><b>▦ Z Listesi</b><small>Geçmiş kapanışlar</small></a>
+     birebir-uygulama, 2026-09-05; 2026-09-06'da sekme içeriğinden ÖNCE gelecek şekilde
+     taşındı - onaylı mockup'ta sekme çubuğu her zaman en üstte). -->
+<div class="report-tabgrid">
+    <a class="rnavgrid @(Model.ActiveTab == "overview" ? "active" : "")" asp-action="Index" asp-route-tab="overview" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">◷</i><span><b>Günlük / Aylık</b><small>Dönem özeti</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "payment" ? "active" : "")" asp-action="Index" asp-route-tab="payment" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">◔</i><span><b>Ödeme Dağılımı</b><small>Ödeme türü kırılımı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "bestsellers" ? "active" : "")" asp-action="Index" asp-route-tab="bestsellers" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">♨</i><span><b>En Çok Satanlar</b><small>Ürün bazlı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "categories" ? "active" : "")" asp-action="Index" asp-route-tab="categories" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">▦</i><span><b>Kategori Satışları</b><small>Kategori bazlı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "vat" ? "active" : "")" asp-action="Index" asp-route-tab="vat" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">%</i><span><b>KDV Dökümü</b><small>Oran bazlı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "discount" ? "active" : "")" asp-action="Index" asp-route-tab="discount" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">◈</i><span><b>İndirim &amp; İkram</b><small>Fiş bazlı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "kasiyer" ? "active" : "")" asp-action="Index" asp-route-tab="kasiyer" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">◈</i><span><b>Kasiyer Raporu</b><small>Kullanıcı bazlı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "daily" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">▥</i><span><b>Günlük Fişler</b><small>Seçilen dönemin satışları</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "x" ? "active" : "")" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">X</i><span><b>X Raporu</b><small>Anlık, vardiyayı kapatmaz</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "z" ? "active" : "")" asp-action="Index" asp-route-tab="z" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">Z</i><span><b>Z Raporu</b><small>Gün sonu kapanışı</small></span></a>
+    <a class="rnavgrid @(Model.ActiveTab == "zlist" ? "active" : "")" asp-action="Index" asp-route-tab="zlist" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")"><i class="ico">▦</i><span><b>Z Listesi</b><small>Geçmiş kapanışlar</small></span></a>
 </div>
 
 @if (Model.ActiveTab == "overview")
 {
-    <div class="znote sub" style="margin-top:12px;">Üstteki dönem özeti (Net Ciro/Fiş/Ödeme Dağılımı/Ciro Akışı) bu sekmenin kendisidir - ayrıca fiş listesi için "Günlük Fişler" sekmesine geçin.</div>
+    <div class="report-hero" style="margin-top:16px;">
+        <div class="rcard report-hero-main">
+            <div class="eyebrow">DÖNEM RAPOR ÖZETİ</div>
+            <h2 style="margin:6px 0;">@Model.PeriodRangeLabel satış özeti</h2>
+            <div class="report-hero-metrics">
+                <div><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N0") ₺</strong></div>
+                <div><small>FİŞ</small><strong>@Model.ReceiptCount</strong></div>
+                <div><small>ORT. FİŞ</small><strong>@Model.AverageReceipt.ToString("N0") ₺</strong></div>
+                <div><small>İPTAL ORANI</small><strong>%@Model.CancelRatePercent.ToString("0.0")</strong></div>
+            </div>
+        </div>
+        <div class="rcard report-close-card">
+            <div class="close-status">
+                <div><b>Vardiya Durumu</b><div class="sub">@(Model.IsShiftOpen ? $"{Model.ShiftOpenedAtUtc!.Value.ToLocalTime():HH:mm}'den beri açık ({Model.FinancialAccountName})" : "Vardiya kapalı")</div></div>
+                <span class="rest-pill @(Model.IsShiftOpen ? "green" : "")">@(Model.IsShiftOpen ? "● AÇIK" : "● KAPALI")</span>
+            </div>
+            <div class="close-grid">
+                <div class="close-mini"><small>Son Z No</small><b>@(Model.LastZNumber ?? "—")</b></div>
+                <div class="close-mini"><small>Son Z Kapanış</small><b>@(Model.LastZClosedAtUtc?.ToLocalTime().ToString("dd.MM HH:mm") ?? "—")</b></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-kpis2">
+        <div class="rcard report-kpi2" style="--soft:#E8F6F3"><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N2") ₺</strong><em>@Model.ReceiptCount tamamlanan fiş</em></div>
+        @foreach (var item in Model.PaymentBreakdown)
+        {
+            <div class="rcard report-kpi2" style="--soft:#F2F2F2"><small>@item.Label.ToUpperInvariant()</small><strong>@item.Amount.ToString("N2") ₺</strong><em>%@(item.Percent.ToString("0.0")) pay</em></div>
+        }
+        <div class="rcard report-kpi2" style="--soft:#EDF3F9"><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong><em>Ort. @Model.AverageReceipt.ToString("N2") ₺</em></div>
+    </div>
+
+    <div class="report-analytics">
+        <div class="rcard analytics-card">
+            <div class="analytics-head">
+                <div><h3>Ciro Akışı</h3><small>@Model.PeriodRangeLabel satış ritmi</small></div>
+            </div>
+            @{ var maxHourly = Model.HourlyRevenue.Count > 0 ? Math.Max(Model.HourlyRevenue.Max(), 1) : 1; }
+            @if (Model.HourlyRevenue.Count == 0 || Model.HourlyRevenue.Sum() == 0)
+            {
+                <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
+            }
+            else
+            {
+                <div class="premium-chart">
+                    @for (var i = 0; i < Model.HourlyRevenue.Count; i++)
+                    {
+                        var v = Model.HourlyRevenue[i];
+                        var heightPct = Math.Max(2, (int)Math.Round(v / maxHourly * 100));
+                        var isPeak = v == Model.HourlyRevenue.Max() && v > 0;
+                        <div class="pc-col @(isPeak ? "hot" : "")">
+                            <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
+                            <div class="pc-bar" style="height:@(heightPct)%"></div>
+                            <div class="pc-label">@(i < Model.HourlyRevenueLabels.Count ? Model.HourlyRevenueLabels[i] : "")</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="rcard analytics-card">
+            <div class="analytics-head"><div><h3>Ödeme Dağılımı</h3><small>Ödeme türlerine göre dağılım</small></div></div>
+            @if (Model.PaymentBreakdownTotal <= 0)
+            {
+                <div class="analytics-empty">Bu dönemde ödeme verisi yok.</div>
+            }
+            else
+            {
+                <!-- Ödenmez iş kuralı (2026-09-06, Edip): finansal karşılığı olmadığı için Net Ciro'ya
+                     dahil değildir - bu yüzden merkez etiket kasıtlı olarak "Net Ciro" DEĞİL, "Toplam
+                     Tahsilat/İşlem" (Ödenmez dahil TÜM ödeme türlerinin toplamı) olarak gösterilir; aksi
+                     halde bu donut'un merkezindeki rakam üstteki NET CİRO kutusuyla ÇELİŞİRDİ. -->
+                <div class="donut2-wrap">
+                    <div class="donut2" style="background:@Model.PaymentBreakdownConicGradient">
+                        <div class="donut2-center"><strong>@Model.PaymentBreakdownTotal.ToString("N0") ₺</strong><small>Toplam İşlem</small></div>
+                    </div>
+                </div>
+                <div class="payment-legend">
+                    @foreach (var item in Model.PaymentBreakdown)
+                    {
+                        <div class="legend-row"><span class="dot" style="background:@item.ColorVar"></span><span>@item.Label</span><b>%@(item.Percent.ToString("0.0"))</b></div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
 }
 else if (Model.ActiveTab == "payment")
 {
@@ -292,6 +295,18 @@ else if (Model.ActiveTab == "discount")
 
 @if (Model.ActiveTab == "daily")
 {
+    <!-- Kompakt 5 kartlı KPI satırı (2026-09-06, onaylı Raporlar mockup'ı) - Nakit/Kredi Kartı
+         Model.PaymentBreakdown'dan (o dönemde GERÇEKTEN var olan ödeme türlerinden, madde 30)
+         okunuyor, KDV Toplamı Model.VatBreakdown'ın (KDV Dökümü sekmesiyle AYNI kaynak) toplamı -
+         yeni bir hesap İCAT EDİLMEDİ, mevcut doğrulanmış verilerin yeniden düzenlenmiş görünümü. -->
+    <div class="report-kpis-compact">
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">▤</span><div><small>NET CİRO</small><strong>@Model.NetRevenue.ToString("N2") ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▥</span><div><small>FİŞ SAYISI</small><strong>@Model.ReceiptCount</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">₺</span><div><small>NAKİT</small><strong>@((Model.PaymentBreakdown.FirstOrDefault(x => x.Label == "Nakit")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FFF3E0;color:#C77700;">▣</span><div><small>KREDİ KARTI</small><strong>@((Model.PaymentBreakdown.FirstOrDefault(x => x.Label == "Kredi Kartı")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FDEDF0;color:#C22B57;">%</span><div><small>KDV TOPLAMI</small><strong>@(Model.VatBreakdown.Sum(x => x.VatAmount).ToString("N2")) ₺</strong></div></div>
+    </div>
+
     <div class="report-filter-row">
         <a class="rtab @(Model.SourceFilter == "all" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="all" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Tümü</a>
         <a class="rtab @(Model.SourceFilter == "table" ? "active" : "")" asp-action="Index" asp-route-tab="daily" asp-route-source="table" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-payment="@Model.PaymentFilter" asp-route-status="@Model.StatusFilter" asp-route-q="@Model.SearchTerm">Masa</a>
@@ -333,6 +348,7 @@ else if (Model.ActiveTab == "discount")
             <div><small>@sub.Label.ToUpperInvariant()</small><strong>@sub.Total.ToString("N2") ₺</strong></div>
         }
     </div>
+    <h4 style="margin:14px 0 8px;">Fiş Hareketleri</h4>
     <div class="report-table-wrap" id="dailyReceiptsTable">
         <!-- KASİYER ayrı kolon (2026-09-06, onaylı yeni Raporlar mockup'ı "birebir uygulama") -
              önceden MASA/KAYNAK hücresinin alt satırı (SourceSubtitle) olarak gösteriliyordu,
