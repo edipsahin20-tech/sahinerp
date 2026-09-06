@@ -1366,13 +1366,29 @@
             document.getElementById('discount-entry-label').textContent = mode === 'percent' ? 'GİRİLEN YÜZDE' : 'GİRİLEN TUTAR (₺)';
         }
 
+        // GERÇEK HATA (2026-09-06, kabul testinde bulundu, madde 3/4 "değiştir") - modal HER
+        // ZAMAN mode='percent'/digits='' ile sıfırdan açılıyordu; adisyonda/satırda ZATEN aktif
+        // bir indirim varken tekrar açılıp hiçbir şey girmeden "Uygula"ya basmak (ör. sadece
+        // mevcut tutarı görmek için) o indirimi SESSİZCE 0'a düşürüyordu. Artık mevcut indirim
+        // varsa ₺ Tutar modunda, tam o tutarla ÖN DOLU açılıyor - "değiştir" gerçekten mevcut
+        // değeri göstererek başlıyor, "Uygula" hiçbir şey değiştirmeden basılırsa aynı tutarı
+        // korur.
+        function presetMode(currentDiscount) {
+            if (currentDiscount > 0) {
+                mode = 'amount';
+                digits = String(Math.round(currentDiscount * 100) / 100);
+            } else {
+                mode = 'percent';
+                digits = '';
+            }
+        }
+
         window.openTicketDiscountModal = function (isFromPayment) {
             lineContext = null;
             if (modalTitleEl) modalTitleEl.textContent = 'İndirim';
             if (grossTotal() <= 0) { window.posAlert('Adisyonda ürün yok.'); return; }
             fromPayment = !!isFromPayment;
-            mode = 'percent';
-            digits = '';
+            presetMode(parseFloat(root.getAttribute('data-ticket-discount-amount')) || 0);
             modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
                 b.classList.toggle('active', b.getAttribute('data-discount-mode') === mode);
             });
@@ -1380,14 +1396,13 @@
             new bootstrap.Modal(modalEl).show();
         };
 
-        // Satır indirimi - ctx: { gross, kind: 'pending'|'sent', line? , lineId? }.
+        // Satır indirimi - ctx: { gross, kind: 'pending'|'sent', line? , lineId?, currentDiscount? }.
         window.openLineDiscountModal = function (ctx) {
             if (!ctx || ctx.gross <= 0) { window.posAlert('Bu satırın tutarı 0, indirim uygulanamaz.'); return; }
             lineContext = ctx;
             if (modalTitleEl) modalTitleEl.textContent = 'Satır İndirimi';
             fromPayment = false;
-            mode = 'percent';
-            digits = '';
+            presetMode(ctx.currentDiscount || 0);
             modalEl.querySelectorAll('[data-discount-mode]').forEach(function (b) {
                 b.classList.toggle('active', b.getAttribute('data-discount-mode') === mode);
             });
