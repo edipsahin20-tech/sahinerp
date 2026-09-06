@@ -334,16 +334,22 @@ else if (Model.ActiveTab == "discount")
         }
     </div>
     <div class="report-table-wrap" id="dailyReceiptsTable">
-        <div class="rthead"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
+        <!-- KASİYER ayrı kolon (2026-09-06, onaylı yeni Raporlar mockup'ı "birebir uygulama") -
+             önceden MASA/KAYNAK hücresinin alt satırı (SourceSubtitle) olarak gösteriliyordu,
+             mockup'ta ayrı bir sütun - grid-template-columns 7'den 8'e çıkarıldı (paylaşılan
+             .rthead/.rrow2 varsayılanı burada override ediliyor, aynı Z Listesi/Z Detay
+             satırlarındaki inline style deseni). -->
+        <div class="rthead" style="grid-template-columns: 90px 1.1fr 110px 80px 100px 90px 90px 80px;"><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KASİYER</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
         @if (Model.Receipts.Count == 0)
         {
             <div class="p-3 text-secondary small">Bu tarihte/filtrede fiş yok.</div>
         }
         @foreach (var r in Model.Receipts)
         {
-            <div class="rrow2">
+            <div class="rrow2" style="grid-template-columns: 90px 1.1fr 110px 80px 100px 90px 90px 80px;">
                 <div><b>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@r.DocumentNumber</small></div>
-                <div><b>@r.SourceLabel</b><small>@r.SourceSubtitle</small></div>
+                <div><b>@r.SourceLabel</b></div>
+                <span>@r.SourceSubtitle</span>
                 <span><i class="type-badge2 @r.SourceType">@SourceTypeLabel(r.SourceType)</i></span>
                 <span>@r.PaymentSummary</span>
                 <span class="@(r.IsCancelled ? "cancel-badge2" : "ok-badge2")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
