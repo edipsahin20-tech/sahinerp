@@ -81,6 +81,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -529,6 +530,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -560,6 +562,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -662,6 +665,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -737,6 +741,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -810,6 +815,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -887,6 +893,8 @@ public sealed class RestaurantPostingService(
         Guid? submissionKey,
         CancellationToken cancellationToken)
     {
+        dbContext.ChangeTracker.Clear();
+
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
@@ -1122,6 +1130,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 // Yetki Mimarisi (Edip, 2026-09-04, madde 9/21/25) - eski "satır kilidi" mantığı
                 // TAMAMEN KALDIRILDI, yerine yetki kontrolü geçti. Mutfağa gönderilmiş/gönderilmemiş
                 // ayrımı YOK - kullanıcının profilinde CanCancelOrderLine kapalıysa iptal edemez,
@@ -1240,6 +1249,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 if (!await permissionService.CanClearOrderAsync(performedByUserId, cancellationToken))
                 {
                     throw new InvalidOperationException("Siparişi silme yetkiniz yok.");
@@ -1350,6 +1360,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 // Madde 9/21/25 - satır kilidi kaldırıldı, yetki kontrolü geçti (bkz.
                 // CancelOrderLineAsync'teki AYNI not).
                 if (!await permissionService.CanEditKitchenSentLinesAsync(performedByUserId, cancellationToken))
@@ -1421,6 +1432,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 if (!await permissionService.CanApplyDiscountAsync(performedByUserId, cancellationToken))
                 {
                     throw new InvalidOperationException("İndirim uygulama yetkiniz yok.");
@@ -1483,6 +1495,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 // Madde 9/21/25 - satır kilidi kaldırıldı, yetki kontrolü geçti. İkram kendi
                 // başına ayrı bir kritik işlem (CanApplyComplimentary).
                 if (!await permissionService.CanApplyComplimentaryAsync(performedByUserId, cancellationToken))
@@ -1550,6 +1563,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -1606,6 +1620,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -1657,6 +1672,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -1764,6 +1780,22 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                // GERÇEK KÖK NEDEN (2026-09-07, Z Dönemi P0 eşzamanlılık testinde bulundu) -
+                // EnableRetryOnFailure (Program.cs) hem bu execution strategy'yi HEM DE
+                // ExecuteWithConcurrencyRetryAsync'in dış tekrar denemesini kullanıyor; her ikisi
+                // de AYNI dbContext örneğini tekrar dener. Bir önceki deneme transaction'ı SQL
+                // tarafında rollback olsa bile dbContext.ChangeTracker rollback ile OTOMATİK
+                // temizlenmez - yarım kalan Add()'lenmiş/Include ile yüklenmiş tracked entity'ler
+                // context'te asılı kalır. Sonraki deneme aynı check'i SingleOrDefaultAsync ile
+                // sorgularken, EF'in identity-map eşlemesi bu tutarsız tracked kaydı GERÇEK SQL
+                // sonucuyla birleştiremiyor ve "Sequence contains no elements" ile patlıyor (12
+                // eşzamanlı gerçek CloseCheckAsync çağrısıyla doğrulandı: 10/12 başarısız, tekrar
+                // deneme öncesi Clear() eklenince 12/12 başarılı - bkz. commit mesajı). Microsoft'un
+                // kendi Connection Resiliency dokümantasyonu da tam bunu öneriyor: "reset the state
+                // of the context before retrying". Clear() ucuzdur (yalnızca in-memory tracking'i
+                // sıfırlar, DB'ye dokunmaz) - her retry biriminin EN BAŞINDA çağrılmalı.
+                dbContext.ChangeTracker.Clear();
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -2161,6 +2193,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -2380,6 +2413,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -2513,6 +2547,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -2571,6 +2606,7 @@ public sealed class RestaurantPostingService(
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);

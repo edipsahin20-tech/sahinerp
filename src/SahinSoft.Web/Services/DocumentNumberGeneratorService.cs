@@ -25,6 +25,12 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
             var strategy = dbContext.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
+                // Bkz. RestaurantPostingService.CloseCheckAsync'teki AYNI kök neden yorumu
+                // (2026-09-07, Z Dönemi P0) - EnableRetryOnFailure'ın şeffaf iç tekrar denemesi
+                // bir önceki başarısız denemenin tracked entity'lerini context'te bırakır; her
+                // retry biriminin en başında Clear() ŞART.
+                dbContext.ChangeTracker.Clear();
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
@@ -180,6 +186,8 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
             var strategy = dbContext.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
             {
+                dbContext.ChangeTracker.Clear();
+
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
                     IsolationLevel.Serializable,
                     cancellationToken);
