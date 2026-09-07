@@ -99,7 +99,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             var g = grouped[i];
             var percent = total > 0 ? Math.Round(g.Amount / total * 100, 1) : 0;
             var color = PaymentBreakdownColors[i % PaymentBreakdownColors.Length];
-            items.Add(new RestaurantPaymentBreakdownItemViewModel(PaymentMethodLabel(g.Method), g.Amount, percent, color));
+            items.Add(new RestaurantPaymentBreakdownItemViewModel(PaymentMethodLabel(g.Method), g.Amount, percent, color, g.Method));
             var fromPct = total > 0 ? Math.Round(cumulative / total * 100, 2) : 0;
             cumulative += g.Amount;
             var toPct = total > 0 ? Math.Round(cumulative / total * 100, 2) : 0;
@@ -109,7 +109,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         return (items, total, conicGradient);
     }
 
-    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null, string? payment = null, string? status = null, string? q = null, string period = "day", string? kasiyerUserId = null)
+    public async Task<IActionResult> Index(string tab = "daily", string source = "all", DateOnly? date = null, int? selected = null, int? zShiftId = null, string? payment = null, string? status = null, string? q = null, string period = "day", string? kasiyerUserId = null, int? selectedProduct = null, RestaurantPaymentMethod? selectedPaymentMethod = null)
     {
         ActivePage = "reports";
 
@@ -245,14 +245,15 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             var periodLines = await dbContext.RetailSaleLines
                 .AsNoTracking()
                 .Where(x => periodSaleIds.Contains(x.RetailSaleId))
-                .Select(x => new { x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
+                .Select(x => new { x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
                 .ToListAsync();
 
             vm.BestSellers = periodLines
-                .GroupBy(x => x.ProductNameSnapshot)
-                .Select(g => new RestaurantBestSellerRowViewModel(g.Key, g.Sum(x => x.Quantity), g.Sum(x => x.LineTotal)))
+                .GroupBy(x => x.ProductId)
+                .Select(g => new { g.Key, Name = g.First().ProductNameSnapshot, Qty = g.Sum(x => x.Quantity), Total = g.Sum(x => x.LineTotal) })
                 .OrderByDescending(x => x.Total)
                 .Take(15)
+                .Select((x, i) => new RestaurantBestSellerRowViewModel(x.Key, x.Name, x.Qty, x.Total, i + 1))
                 .ToList();
 
             var categoryTotal = periodLines.Sum(x => x.LineTotal);
@@ -457,12 +458,93 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         var (xBreakdown, _, _) = BuildPaymentBreakdown(periodPayments.Select(x => (x.PaymentMethod, x.Amount)));
         // Ödenmez iş kuralı (2026-09-06, Edip) - finansal karşılığı olmadığı için Net Ciro'ya
         // dahil edilmez, PaymentBreakdown'da (xBreakdown, üstte) kendi satırında ayrıca görünür.
+
+        // X Raporu Özeti paneli (2026-09-07, onaylı referans görsel) - İndirim/İkram/saatlik/
+        // kategori/KDV, Z kapatmada kullanılan AYNI kaynak verilerden (RetailSaleLine/
+        // RestaurantOrderLine.IsComplimentary) hesaplanır - X anlık bir SNAPSHOT'tır, ayrı bir
+        // "X dönemi" tablosu İCAT EDİLMEDİ.
+        var xLines = periodCheckIdsForX.Count == 0
+            ? []
+            : await dbContext.RetailSaleLines
+                .AsNoTracking()
+                .Where(x => periodCheckIdsForX.Contains(x.RetailSale.RestaurantCheckId) && x.RetailSale.Status != RetailSaleStatus.Cancelled)
+                .Select(x => new { x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
+                .ToListAsync();
+
+        var xComplimentaryTotal = periodCheckIdsForX.Count == 0
+            ? 0m
+            : await dbContext.RestaurantOrderLines
+                .AsNoTracking()
+                .Where(x => periodCheckIdsForX.Contains(x.RestaurantOrder.RestaurantCheckId) && x.Status != RestaurantOrderLineStatus.Cancelled && x.IsComplimentary)
+                .SumAsync(x => x.DiscountAmountSnapshot);
+
+        var xSalesForDiscount = await dbContext.RetailSales
+            .AsNoTracking()
+            .Where(x => activeZPeriod != null ? x.RestaurantZPeriodId == activeZPeriod.Id : x.IssuedAtUtc >= xPeriodStartUtc)
+            .Where(x => x.Status != RetailSaleStatus.Cancelled)
+            .Select(x => new { x.DiscountAmount, x.GrandTotal, x.IssuedAtUtc })
+            .ToListAsync();
+
+        var xHourlyRevenueRaw = new decimal[24];
+        foreach (var s in xSalesForDiscount)
+        {
+            xHourlyRevenueRaw[s.IssuedAtUtc.ToLocalTime().Hour] += s.GrandTotal;
+        }
+        var xActiveHours = Enumerable.Range(0, 24).Where(h => xHourlyRevenueRaw[h] != 0).ToList();
+        var xHourFrom = xActiveHours.Count > 0 ? xActiveHours.Min() : 8;
+        var xHourTo = xActiveHours.Count > 0 ? Math.Max(xActiveHours.Max(), DateTime.Now.Hour) : DateTime.Now.Hour;
+
+        var xCategoryTotal = xLines.Sum(x => x.LineTotal);
+        var xCategorySales = xLines
+            .GroupBy(x => x.CategoryName)
+            .Select(g => new RestaurantCategorySalesRowViewModel(g.Key, g.Sum(x => x.Quantity), g.Sum(x => x.LineTotal), xCategoryTotal > 0 ? Math.Round(g.Sum(x => x.LineTotal) / xCategoryTotal * 100, 1) : 0))
+            .OrderByDescending(x => x.Total)
+            .ToList();
+
+        var xTop5 = xLines
+            .GroupBy(x => x.ProductId)
+            .Select(g => new { g.Key, Name = g.First().ProductNameSnapshot, Qty = g.Sum(x => x.Quantity), Total = g.Sum(x => x.LineTotal) })
+            .OrderByDescending(x => x.Total)
+            .Take(5)
+            .Select((x, i) => new RestaurantBestSellerRowViewModel(x.Key, x.Name, x.Qty, x.Total, i + 1))
+            .ToList();
+
+        var xVatBreakdown = xLines
+            .GroupBy(x => x.TaxRateSnapshot)
+            .Select(g =>
+            {
+                var gross = g.Sum(x => x.LineTotal);
+                var (matrah, vatAmount) = RestaurantPricingCalculator.ExtractTax(gross, g.Key);
+                return new RestaurantVatRowViewModel(g.Key, matrah, vatAmount, gross);
+            })
+            .OrderByDescending(x => x.TaxRate)
+            .ToList();
+
+        var hiddenSectionNames = new[] { RestaurantPostingService.SelfSaleSectionName, "Paket" };
+        var xActiveTableCount = await dbContext.RestaurantTableSessions
+            .AsNoTracking()
+            .Where(x => x.Status == RestaurantTableSessionStatus.Open && !hiddenSectionNames.Contains(x.RestaurantTable.RestaurantSection.Name))
+            .CountAsync();
+        var xActivePackageCount = await dbContext.PackageOrders
+            .AsNoTracking()
+            .Where(x => x.Status != PackageOrderStatus.Delivered && x.Status != PackageOrderStatus.Cancelled)
+            .CountAsync();
+
         vm.XReport = new RestaurantXReportViewModel
         {
             OpenedAtUtc = openShift?.OpenedAtUtc ?? xPeriodStartUtc,
             ReceiptCount = periodReceiptCount,
             NetRevenue = periodPayments.Where(x => x.PaymentMethod != RestaurantPaymentMethod.Unpaid).Sum(x => x.Amount),
-            PaymentBreakdown = xBreakdown
+            PaymentBreakdown = xBreakdown,
+            DiscountTotal = xSalesForDiscount.Sum(x => x.DiscountAmount) - xComplimentaryTotal,
+            ComplimentaryTotal = xComplimentaryTotal,
+            ActiveTableCount = xActiveTableCount,
+            ActivePackageCount = xActivePackageCount,
+            HourlyRevenue = Enumerable.Range(xHourFrom, xHourTo - xHourFrom + 1).Select(h => xHourlyRevenueRaw[h]).ToList(),
+            HourlyLabels = Enumerable.Range(xHourFrom, xHourTo - xHourFrom + 1).Select(h => $"{h:D2}:00").ToList(),
+            CategorySales = xCategorySales,
+            Top5Products = xTop5,
+            VatBreakdown = xVatBreakdown
         };
 
         // Z Dönem Kapatma test talimatı (2026-09-06) - Z Listesi/Z Detay artık RestaurantZPeriod'un
@@ -493,6 +575,8 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
 
             if (selectedPeriod is not null)
             {
+                var zBranch = await dbContext.Branches.AsNoTracking().Where(x => x.IsHeadOffice).FirstOrDefaultAsync();
+
                 var zSales = await dbContext.RetailSales
                     .AsNoTracking()
                     .Where(x => x.RestaurantZPeriodId == selectedPeriod.Id)
@@ -518,6 +602,12 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     .ToDictionaryAsync(x => x.Id, x => x.FullName);
 
                 var zCheckIds = zSales.Select(x => x.RestaurantCheckId).ToList();
+                // GERÇEK HATA (2026-09-07, Ödeme Türü Detayı kabul testinde AYNI kalıpla bulundu) -
+                // zCheckIds iptal edilmiş satışları da içeriyor (zSales hiç Status filtrelemiyor);
+                // aşağıdaki ödeme kırılımı "!IsReversal" ile filtrelenince iptal edilmiş fişin
+                // ORİJİNAL ödemesi ters kaydı hiç görmeden sayılıyor, Z'nin GERÇEK Net toplamından
+                // (selectedPeriod.NetTotal, doğru) FARKLI/ŞİŞKİN bir Ödeme Dağılımı çıkıyordu.
+                var zNonCancelledCheckIds = zSales.Where(x => x.Status != RetailSaleStatus.Cancelled).Select(x => x.RestaurantCheckId).ToHashSet();
                 var zPackageNumbers = await dbContext.PackageOrders
                     .AsNoTracking()
                     .Where(x => zCheckIds.Contains(x.RestaurantCheckId))
@@ -532,11 +622,27 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     DiscountTotal = selectedPeriod.DiscountTotal,
                     NetTotal = selectedPeriod.NetTotal,
                     TaxTotal = selectedPeriod.TaxTotal,
-                    ComplimentaryTotal = selectedPeriod.ComplimentaryTotal
+                    ComplimentaryTotal = selectedPeriod.ComplimentaryTotal,
+                    OpenedAtUtc = selectedPeriod.OpenedAtUtc,
+                    ClosedAtUtc = selectedPeriod.ClosedAtUtc!.Value,
+                    ClosedAutomatically = selectedPeriod.ClosedAutomatically,
+                    ClosedByName = selectedPeriod.ClosedAutomatically || selectedPeriod.ClosedByUserId is null
+                        ? "Otomatik"
+                        : (await dbContext.Users.AsNoTracking().Where(x => x.Id == selectedPeriod.ClosedByUserId).Select(x => x.FullName).SingleOrDefaultAsync()) ?? selectedPeriod.ClosedByUserId,
+                    BranchName = zBranch?.Name ?? "ŞahinSoft Restoran",
+                    BranchAddress = zBranch?.Address,
+                    BranchPhone = zBranch?.Phone,
+                    History = (await dbContext.AuditLogs.AsNoTracking()
+                        .Where(x => x.EntityName == "RestaurantZPeriod" && x.EntityId == selectedPeriod.Id.ToString())
+                        .OrderBy(x => x.CreatedAtUtc)
+                        .ToListAsync())
+                        .Select(a => new RestaurantAuditHistoryRowViewModel(a.CreatedAtUtc, a.Action, a.Action == "Added" ? "Z dönemi açıldı" : "Z dönemi kapatıldı"))
+                        .ToList()
                 };
                 var zPaymentsForBreakdown = zCheckIds.Count == 0
                     ? []
-                    : await dbContext.RestaurantPayments.AsNoTracking().Where(x => zCheckIds.Contains(x.RestaurantCheckId) && !x.IsReversal).Select(x => new { x.PaymentMethod, x.Amount }).ToListAsync();
+                    : (await dbContext.RestaurantPayments.AsNoTracking().Where(x => zCheckIds.Contains(x.RestaurantCheckId) && !x.IsReversal).Select(x => new { x.PaymentMethod, x.Amount, x.RestaurantCheckId }).ToListAsync())
+                        .Where(x => zNonCancelledCheckIds.Contains(x.RestaurantCheckId)).ToList();
                 (vm.SelectedZSummary.PaymentBreakdown, _, _) = BuildPaymentBreakdown(zPaymentsForBreakdown.Select(x => (x.PaymentMethod, x.Amount)));
                 vm.SelectedZReceipts = zSales
                     .OrderByDescending(x => x.IssuedAtUtc)
@@ -566,7 +672,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             var sale = await dbContext.RetailSales
                 .AsNoTracking()
                 .Include(x => x.Lines)
-                .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
+                .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments).ThenInclude(x => x.FinancialAccount)
                 .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
                 .SingleOrDefaultAsync(x => x.Id == selected.Value);
 
@@ -590,6 +696,23 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     sourceLabel = tableName;
                 }
 
+                // Fiş Detayı paneli (2026-09-07) - önceki/sonraki gezinme, o an ekranda GÖRÜNEN
+                // listeye göre (daily sekmesinde Model.Receipts, zlist drill-down'da
+                // Model.SelectedZReceipts) - "2/11" ibaresi kullanıcının geldiği listedeki
+                // konumu göstermeli, tüm veritabanındaki konumu değil.
+                var positionList = tab == "zlist" ? vm.SelectedZReceipts : vm.Receipts;
+                var positionIndex = positionList.FindIndex(x => x.RetailSaleId == sale.Id);
+                var cashierUserId = sale.RestaurantCheck.RestaurantTableSession.OpenedByUserId;
+                var financialAccount = sale.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => p.FinancialAccount).FirstOrDefault();
+
+                var branch = await dbContext.Branches.AsNoTracking().Where(x => x.IsHeadOffice).FirstOrDefaultAsync();
+
+                var historyAudits = await dbContext.AuditLogs
+                    .AsNoTracking()
+                    .Where(x => x.EntityName == "RetailSale" && x.EntityId == sale.Id.ToString())
+                    .OrderBy(x => x.CreatedAtUtc)
+                    .ToListAsync();
+
                 vm.SelectedReceiptId = sale.Id;
                 vm.SelectedReceipt = new RestaurantReceiptDetailViewModel
                 {
@@ -598,7 +721,7 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     SourceLabel = sourceLabel,
                     SourceType = sourceType,
                     IsCancelled = sale.Status == RetailSaleStatus.Cancelled,
-                    Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.LineTotal)).ToList(),
+                    Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.UnitPriceSnapshot, l.LineTotal)).ToList(),
                     SubtotalAmount = sale.SubtotalAmount,
                     DiscountAmount = sale.DiscountAmount,
                     TaxAmount = sale.TaxAmount,
@@ -611,7 +734,151 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                         // Dosyanın kendi PaymentMethodLabel() yardımcısı (satır 32) zaten TÜM türleri
                         // doğru eşliyor, burada da o kullanılır.
                         PaymentMethodLabel(p.PaymentMethod),
-                        p.Amount)).ToList()
+                        p.Amount)).ToList(),
+                    CashierName = openerNames.GetValueOrDefault(cashierUserId, cashierUserId),
+                    FinancialAccountLabel = financialAccount?.Code,
+                    BranchName = branch?.Name ?? "ŞahinSoft Restoran",
+                    BranchAddress = branch?.Address,
+                    BranchPhone = branch?.Phone,
+                    Note = sale.RestaurantCheck.Note,
+                    PositionIndex = positionIndex + 1,
+                    PositionCount = positionList.Count,
+                    PrevReceiptId = positionIndex > 0 ? positionList[positionIndex - 1].RetailSaleId : null,
+                    NextReceiptId = positionIndex >= 0 && positionIndex < positionList.Count - 1 ? positionList[positionIndex + 1].RetailSaleId : null,
+                    History = historyAudits.Select(a => new RestaurantAuditHistoryRowViewModel(
+                        a.CreatedAtUtc,
+                        a.Action,
+                        a.Action == "Added" ? "Fiş oluşturuldu" : a.NewValuesJson != null && a.NewValuesJson.Contains("\"Status\":2") ? "Fiş iptal edildi" : "Fiş güncellendi")).ToList()
+                };
+            }
+        }
+
+        if (selectedProduct is not null)
+        {
+            var product = await dbContext.Products
+                .AsNoTracking()
+                .Include(x => x.Category)
+                .SingleOrDefaultAsync(x => x.Id == selectedProduct.Value);
+
+            if (product is not null)
+            {
+                var bestSellerRow = vm.BestSellers.SingleOrDefault(x => x.ProductId == selectedProduct.Value);
+
+                var productPeriodLines = periodSaleIds.Count == 0
+                    ? []
+                    : await dbContext.RetailSaleLines
+                        .AsNoTracking()
+                        .Where(x => periodSaleIds.Contains(x.RetailSaleId) && x.ProductId == selectedProduct.Value)
+                        .Select(x => new { x.RetailSaleId, x.RetailSale.IssuedAtUtc, x.RetailSale.DocumentNumber, x.Quantity, x.LineTotal })
+                        .OrderByDescending(x => x.IssuedAtUtc)
+                        .ToListAsync();
+
+                // Son 7 takvim günü (madde birebir-uygulama, referans görsel: "Son 7 güne ait
+                // satış adetleri" - seçili dönem filtresinden BAĞIMSIZ, sabit bir pencere).
+                var todayLocal = DateOnly.FromDateTime(DateTime.Now);
+                var last7Start = todayLocal.AddDays(-6);
+                var last7StartUtc = last7Start.ToDateTime(TimeOnly.MinValue).ToUniversalTime();
+                var last7EndUtc = todayLocal.AddDays(1).ToDateTime(TimeOnly.MinValue).ToUniversalTime();
+                var last7Lines = await dbContext.RetailSaleLines
+                    .AsNoTracking()
+                    .Where(x => x.ProductId == selectedProduct.Value
+                        && x.RetailSale.Status != RetailSaleStatus.Cancelled
+                        && x.RetailSale.IssuedAtUtc >= last7StartUtc && x.RetailSale.IssuedAtUtc < last7EndUtc)
+                    .Select(x => new { x.RetailSale.IssuedAtUtc, x.Quantity })
+                    .ToListAsync();
+
+                var last7Totals = new decimal[7];
+                foreach (var l in last7Lines)
+                {
+                    var dayIndex = DateOnly.FromDateTime(l.IssuedAtUtc.ToLocalTime()).DayNumber - last7Start.DayNumber;
+                    if (dayIndex is >= 0 and < 7) { last7Totals[dayIndex] += l.Quantity; }
+                }
+
+                vm.SelectedProductId = product.Id;
+                vm.SelectedProduct = new RestaurantProductDetailViewModel
+                {
+                    ProductId = product.Id,
+                    ProductName = product.Name,
+                    CategoryName = product.Category?.Name ?? "-",
+                    StockCode = product.StockCode,
+                    Barcode = product.Barcode,
+                    ImagePath = product.ImagePath,
+                    SalePrice = product.SalePrice,
+                    Description = product.Description,
+                    Rank = bestSellerRow?.Rank ?? 0,
+                    PeriodQuantity = bestSellerRow?.Quantity ?? 0,
+                    PeriodRevenue = bestSellerRow?.Total ?? 0,
+                    PeriodSharePercent = vm.BestSellers.Sum(x => x.Total) > 0 ? Math.Round((bestSellerRow?.Total ?? 0) / vm.BestSellers.Sum(x => x.Total) * 100, 1) : 0,
+                    Last7DaysQuantity = last7Totals.ToList(),
+                    Last7DaysLabels = Enumerable.Range(0, 7).Select(i => last7Start.AddDays(i).ToString("dd.MM")).ToList(),
+                    PeriodSales = productPeriodLines.Select(x => new RestaurantProductSaleRowViewModel(x.IssuedAtUtc, x.DocumentNumber, x.Quantity, x.LineTotal)).ToList()
+                };
+            }
+        }
+
+        if (selectedPaymentMethod is not null)
+        {
+            var breakdownItem = vm.PaymentBreakdown.SingleOrDefault(x => x.Method == selectedPaymentMethod.Value);
+            if (breakdownItem is not null)
+            {
+                // GERÇEK HATA (2026-09-07, Ödeme Türü Detayı kabul testinde bulundu) - burada
+                // önceden sadece "!IsReversal" ile filtrelenip RetailSale.Status HİÇ kontrol
+                // edilmiyordu. İptal edilmiş bir satışın orijinal ödeme satırı ters kayıtla (ayrı,
+                // IsReversal=true bir satırla) netlenir - kendisi asla silinmez/IsReversal olmaz.
+                // Böylece Fiş Sayısı/Saatlik Dağılım/Kasiyer Bazlı, üstteki Ödeme Dağılımı'nın (NET,
+                // ters kayıt dahil hesaplayan BuildPaymentBreakdown) TUTARINDAN TAMAMEN FARKLI,
+                // iptal edilmiş fişleri de sayan şişkin bir rakam gösteriyordu (12 eşzamanlılık
+                // testinin 62 test/iptal kaydıyla bulundu: 72 fiş görünüyordu, gerçek sayı ~10).
+                // Düzeltme: nonCancelled'ın zaten kapsadığı checkId kümesine sıkı sıkıya bağlı
+                // kalınır - üstteki Ödeme Dağılımı ile AYNI "gerçek/iptal olmayan satış" kapsamı.
+                var nonCancelledCheckIds = nonCancelled.Select(x => x.RestaurantCheckId).ToHashSet();
+                var methodPayments = (await dbContext.RestaurantPayments
+                    .AsNoTracking()
+                    .Where(x => x.PaymentMethod == selectedPaymentMethod.Value && !x.IsReversal && x.PaidAtUtc >= dayStartUtc && x.PaidAtUtc < dayEndUtc)
+                    .Select(x => new { x.PaidAtUtc, x.Amount, x.RestaurantCheckId, OpenerId = x.RestaurantCheck.RestaurantTableSession.OpenedByUserId })
+                    .ToListAsync())
+                    .Where(x => nonCancelledCheckIds.Contains(x.RestaurantCheckId))
+                    .ToList();
+
+                var methodOpenerIds = methodPayments.Select(x => x.OpenerId).Distinct().ToList();
+                var methodOpenerNames = await dbContext.Users
+                    .AsNoTracking()
+                    .Where(x => methodOpenerIds.Contains(x.Id))
+                    .ToDictionaryAsync(x => x.Id, x => x.FullName);
+
+                var hourlyTotals = new decimal[24];
+                foreach (var p in methodPayments)
+                {
+                    hourlyTotals[p.PaidAtUtc.ToLocalTime().Hour] += p.Amount;
+                }
+                var activeHours = Enumerable.Range(0, 24).Where(h => hourlyTotals[h] != 0).ToList();
+                var hourFrom = activeHours.Count > 0 ? activeHours.Min() : 8;
+                var hourTo = activeHours.Count > 0 ? activeHours.Max() : 20;
+
+                // RestaurantReceiptRowViewModel CheckId taşımıyor (yalnızca RetailSaleId) - fiş
+                // listesi vm.Receipts'ten RetailSaleId eşleşmesiyle süzülüyor.
+                var methodCheckIds = methodPayments.Select(x => x.RestaurantCheckId).Distinct().ToList();
+                var methodSaleIds = await dbContext.RetailSales.AsNoTracking()
+                    .Where(x => methodCheckIds.Contains(x.RestaurantCheckId))
+                    .Select(x => x.Id).ToListAsync();
+                var methodReceipts = vm.Receipts.Where(x => methodSaleIds.Contains(x.RetailSaleId)).ToList();
+
+                vm.SelectedPaymentMethodValue = selectedPaymentMethod.Value;
+                vm.SelectedPaymentMethodDetail = new RestaurantPaymentMethodDetailViewModel
+                {
+                    Label = breakdownItem.Label,
+                    Amount = breakdownItem.Amount,
+                    Percent = breakdownItem.Percent,
+                    ReceiptCount = methodPayments.Select(x => x.RestaurantCheckId).Distinct().Count(),
+                    HourlyAmount = Enumerable.Range(hourFrom, hourTo - hourFrom + 1).Select(h => hourlyTotals[h]).ToList(),
+                    HourlyStartHour = hourFrom,
+                    HourlyLabels = Enumerable.Range(hourFrom, hourTo - hourFrom + 1).Select(h => $"{h:D2}:00").ToList(),
+                    Receipts = methodReceipts,
+                    CashierBreakdown = methodPayments
+                        .GroupBy(x => x.OpenerId)
+                        .Select(g => new RestaurantPaymentCashierRowViewModel(methodOpenerNames.GetValueOrDefault(g.Key, g.Key), g.Sum(x => x.Amount), g.Select(x => x.RestaurantCheckId).Distinct().Count()))
+                        .OrderByDescending(x => x.Amount)
+                        .ToList()
                 };
             }
         }

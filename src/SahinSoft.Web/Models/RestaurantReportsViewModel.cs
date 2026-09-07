@@ -78,6 +78,14 @@ public sealed class RestaurantReportsViewModel
     public int? SelectedReceiptId { get; set; }
     public RestaurantReceiptDetailViewModel? SelectedReceipt { get; set; }
 
+    // Ürün Detayı paneli (2026-09-07) - En Çok Satanlar drill-down.
+    public int? SelectedProductId { get; set; }
+    public RestaurantProductDetailViewModel? SelectedProduct { get; set; }
+
+    // Ödeme Türü Detayı paneli (2026-09-07) - Ödeme Dağılımı drill-down.
+    public SahinSoft.Domain.Enums.RestaurantPaymentMethod? SelectedPaymentMethodValue { get; set; }
+    public RestaurantPaymentMethodDetailViewModel? SelectedPaymentMethodDetail { get; set; }
+
     // Kasiyer Raporu (madde 31, 2026-09-05) - "normal kasiyer yalnızca kendi işlemlerini
     // görmelidir ... yetkili yönetici ise başka kasiyerleri veya tüm kasiyerleri seçebilmelidir".
     // Ortak dönem filtresi bu sekmede de geçerli (PeriodFilter/ReportDate).
@@ -96,12 +104,54 @@ public sealed class RestaurantReportsViewModel
     public List<RestaurantDiscountComplimentaryRowViewModel> DiscountComplimentaryRows { get; set; } = [];
 }
 
-public sealed record RestaurantBestSellerRowViewModel(string ProductName, decimal Quantity, decimal Total);
+public sealed record RestaurantBestSellerRowViewModel(int ProductId, string ProductName, decimal Quantity, decimal Total, int Rank);
+
+// Ürün Detayı paneli (2026-09-07, onaylı referans görsel) - En Çok Satanlar satırına tıklanınca
+// açılır. Grafik/satış hareketleri SEÇİLİ DÖNEME değil, HER ZAMAN son 7 takvim gününe göre
+// hesaplanır (referans görselin kendisi "Son 7 güne ait satış adetleri" diyor - dönem filtresinden
+// bağımsız, sabit bir pencere).
+public sealed class RestaurantProductDetailViewModel
+{
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
+    public string StockCode { get; set; } = string.Empty;
+    public string? Barcode { get; set; }
+    public string? ImagePath { get; set; }
+    public decimal SalePrice { get; set; }
+    public string? Description { get; set; }
+    public int Rank { get; set; }
+    public decimal PeriodQuantity { get; set; }
+    public decimal PeriodRevenue { get; set; }
+    public decimal PeriodSharePercent { get; set; }
+    public List<decimal> Last7DaysQuantity { get; set; } = [];
+    public List<string> Last7DaysLabels { get; set; } = [];
+    public List<RestaurantProductSaleRowViewModel> PeriodSales { get; set; } = [];
+}
+
+public sealed record RestaurantProductSaleRowViewModel(DateTime IssuedAtUtc, string DocumentNumber, decimal Quantity, decimal LineTotal);
 public sealed record RestaurantCategorySalesRowViewModel(string CategoryName, decimal Quantity, decimal Total, decimal Percent);
 public sealed record RestaurantVatRowViewModel(decimal TaxRate, decimal Matrah, decimal VatAmount, decimal Gross);
 public sealed record RestaurantDiscountComplimentaryRowViewModel(DateTime IssuedAtUtc, string DocumentNumber, string SourceLabel, bool IsComplimentary, string? Reason, decimal Amount);
 
-public sealed record RestaurantPaymentBreakdownItemViewModel(string Label, decimal Amount, decimal Percent, string ColorVar);
+public sealed record RestaurantPaymentBreakdownItemViewModel(string Label, decimal Amount, decimal Percent, string ColorVar, SahinSoft.Domain.Enums.RestaurantPaymentMethod? Method = null);
+
+// Ödeme Türü Detayı paneli (2026-09-07, onaylı referans görsel) - Ödeme Dağılımı satırına
+// tıklanınca açılır. Seçili dönem (PeriodFilter/ReportDate) için AYNI kapsam kullanılır.
+public sealed class RestaurantPaymentMethodDetailViewModel
+{
+    public string Label { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public decimal Percent { get; set; }
+    public int ReceiptCount { get; set; }
+    public List<decimal> HourlyAmount { get; set; } = [];
+    public int HourlyStartHour { get; set; }
+    public List<string> HourlyLabels { get; set; } = [];
+    public List<RestaurantReceiptRowViewModel> Receipts { get; set; } = [];
+    public List<RestaurantPaymentCashierRowViewModel> CashierBreakdown { get; set; } = [];
+}
+
+public sealed record RestaurantPaymentCashierRowViewModel(string CashierName, decimal Amount, int ReceiptCount);
 
 public sealed record RestaurantKasiyerOptionViewModel(string UserId, string FullName);
 
@@ -142,6 +192,17 @@ public sealed class RestaurantXReportViewModel
     public decimal NetRevenue { get; set; }
     // Madde 30/32 - "Nakit, kart ve bütün diğer tahsilatlar" - hard-code 3 yöntem DEĞİL.
     public List<RestaurantPaymentBreakdownItemViewModel> PaymentBreakdown { get; set; } = [];
+
+    // X Raporu Özeti paneli (2026-09-07, onaylı referans görsel "birebir uygula").
+    public decimal DiscountTotal { get; set; }
+    public decimal ComplimentaryTotal { get; set; }
+    public int ActiveTableCount { get; set; }
+    public int ActivePackageCount { get; set; }
+    public List<decimal> HourlyRevenue { get; set; } = [];
+    public List<string> HourlyLabels { get; set; } = [];
+    public List<RestaurantCategorySalesRowViewModel> CategorySales { get; set; } = [];
+    public List<RestaurantBestSellerRowViewModel> Top5Products { get; set; } = [];
+    public List<RestaurantVatRowViewModel> VatBreakdown { get; set; } = [];
 }
 
 public sealed record RestaurantZListRowViewModel(
@@ -166,6 +227,16 @@ public sealed class RestaurantZSummaryViewModel
     public decimal TaxTotal { get; set; }
     public decimal ComplimentaryTotal { get; set; }
     public List<RestaurantPaymentBreakdownItemViewModel> PaymentBreakdown { get; set; } = [];
+
+    // Z Raporu Detayı paneli (2026-09-07, onaylı referans görsel).
+    public DateTime OpenedAtUtc { get; set; }
+    public DateTime ClosedAtUtc { get; set; }
+    public string ClosedByName { get; set; } = string.Empty;
+    public bool ClosedAutomatically { get; set; }
+    public string BranchName { get; set; } = string.Empty;
+    public string? BranchAddress { get; set; }
+    public string? BranchPhone { get; set; }
+    public List<RestaurantAuditHistoryRowViewModel> History { get; set; } = [];
 }
 
 public sealed class RestaurantReceiptDetailViewModel
@@ -181,7 +252,24 @@ public sealed class RestaurantReceiptDetailViewModel
     public decimal TaxAmount { get; set; }
     public decimal GrandTotal { get; set; }
     public List<RestaurantReceiptDetailPayment> Payments { get; set; } = [];
+
+    // Fiş Detayı paneli (2026-09-07, onaylı referans görsel "birebir uygula") - Kasiyer/Kasa/
+    // önceki-sonraki gezinme/not/işlem geçmişi. Kasiyer, Kasiyer Raporu'nun KULLANDIĞI AYNI kavramı
+    // kullanır (adisyonu AÇAN kullanıcı - RestaurantTableSession.OpenedByUserId) - "kapatan"
+    // kullanıcı hiçbir yerde kalıcı tutulmuyor, yeni bir alan İCAT EDİLMEDİ.
+    public string CashierName { get; set; } = string.Empty;
+    public string? FinancialAccountLabel { get; set; }
+    public string BranchName { get; set; } = string.Empty;
+    public string? BranchAddress { get; set; }
+    public string? BranchPhone { get; set; }
+    public string? Note { get; set; }
+    public int? PrevReceiptId { get; set; }
+    public int? NextReceiptId { get; set; }
+    public int PositionIndex { get; set; }
+    public int PositionCount { get; set; }
+    public List<RestaurantAuditHistoryRowViewModel> History { get; set; } = [];
 }
 
-public sealed record RestaurantReceiptDetailLine(string ProductName, decimal Quantity, decimal LineTotal);
+public sealed record RestaurantReceiptDetailLine(string ProductName, decimal Quantity, decimal UnitPrice, decimal LineTotal);
 public sealed record RestaurantReceiptDetailPayment(string Method, decimal Amount);
+public sealed record RestaurantAuditHistoryRowViewModel(DateTime AtUtc, string Action, string Description);

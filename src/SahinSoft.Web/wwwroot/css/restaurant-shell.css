@@ -555,3 +555,75 @@ html, body {
     .rest-shell .dashboard-kpi-grid, .rest-shell .report-kpi-grid, .rest-shell .report-kpis2 { grid-template-columns: repeat(3,1fr); }
     .rest-shell .dashboard-main { grid-template-columns: 1fr; }
 }
+
+/* Detay Paneli (2026-09-07, Edip'in gönderdiği Z Raporu Detayı/Fiş Detayı/Ürün Detayı/Ödeme Türü
+   Detayı referans görselleri, "birebir uygula") - sağdan kayan sabit panel; Fiş/Z/Ürün/Ödeme
+   detayları AYNI kabuğu (başlık+sekme+gövde+alt buton çubuğu) paylaşır, sadece içerik partial'ı
+   değişir. Kapatma overlay tıklaması VEYA X ile - sayfa navigasyonu YOK (mevcut GET query-string
+   tabanlı Model.Selected* verisi zaten server-side hazır geliyor, panel yalnızca CSS ile açılır). */
+.rest-shell .detail-overlay {
+    position: fixed; inset: 0; background: rgba(11,34,57,.35); z-index: 40;
+    display: none;
+}
+.rest-shell .detail-overlay.open { display: block; }
+.rest-shell .detail-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 560px; max-width: 96vw;
+    background: var(--rs-bg); z-index: 41; box-shadow: -12px 0 32px rgba(15,35,55,.18);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .22s ease;
+}
+.rest-shell .detail-panel.open { transform: translateX(0); }
+.rest-shell .detail-head {
+    background: #fff; border-bottom: 1px solid var(--rs-border); padding: 16px 18px 0;
+    flex: 0 0 auto;
+}
+.rest-shell .detail-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.rest-shell .detail-title { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.rest-shell .detail-sub { color: var(--rs-muted); font-size: 12px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 10px; }
+.rest-shell .detail-close { border: none; background: transparent; font-size: 20px; color: var(--rs-muted); line-height: 1; padding: 2px 4px; }
+.rest-shell .detail-close:hover { color: var(--rs-text); }
+.rest-shell .detail-nav { display: flex; align-items: center; gap: 8px; color: var(--rs-muted); font-size: 12px; white-space: nowrap; }
+.rest-shell .detail-nav a { color: var(--rs-text); text-decoration: none; font-weight: 800; padding: 3px 7px; border: 1px solid var(--rs-border); border-radius: 7px; }
+.rest-shell .detail-nav a.disabled { opacity: .35; pointer-events: none; }
+.rest-shell .detail-tabs { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
+.rest-shell .detail-tab { border: none; background: transparent; padding: 9px 12px; font-size: 12.5px; font-weight: 700; color: var(--rs-muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.rest-shell .detail-tab.active { color: var(--rs-navy); border-bottom-color: var(--rs-gold); }
+.rest-shell .detail-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; }
+.rest-shell .detail-pane { display: none; }
+.rest-shell .detail-pane.active { display: block; }
+.rest-shell .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.rest-shell .detail-foot { flex: 0 0 auto; display: flex; gap: 8px; padding: 12px 18px; background: #fff; border-top: 1px solid var(--rs-border); }
+.rest-shell .detail-foot .rbtn { flex: 1; justify-content: center; }
+.rest-shell .detail-badge { font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.rest-shell .detail-badge.ok { background: #E8F6EE; color: #1F9D55; }
+.rest-shell .detail-badge.warn { background: #FDEDF0; color: #C22B57; }
+.rest-shell .detail-badge.info { background: #EAF3FF; color: #2563EB; }
+
+/* Fiş/Z print önizlemesi - gerçek termal fiş görünümü taklidi, monospace, dar sütun. */
+.rest-shell .receipt-preview {
+    background: #fff; border: 1px solid var(--rs-border); border-radius: 8px; padding: 16px;
+    font-family: "SF Mono", Consolas, monospace; font-size: 11.5px; line-height: 1.55; color: #222;
+}
+.rest-shell .receipt-preview .rp-center { text-align: center; }
+.rest-shell .receipt-preview .rp-brand { font-weight: 800; font-size: 13px; }
+.rest-shell .receipt-preview hr { border: none; border-top: 1px dashed #bbb; margin: 8px 0; }
+.rest-shell .receipt-preview .rp-row { display: flex; justify-content: space-between; gap: 8px; }
+.rest-shell .receipt-preview .rp-kv { display: flex; justify-content: space-between; }
+.rest-shell .receipt-preview .rp-grand { font-weight: 800; font-size: 12.5px; }
+.rest-shell .receipt-preview .rp-barcode { font-family: "Libre Barcode 39", monospace; font-size: 30px; letter-spacing: 2px; margin-top: 4px; }
+
+.rest-shell .detail-info-list { display: flex; flex-direction: column; gap: 8px; }
+.rest-shell .detail-info-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--rs-border); border-radius: 9px; padding: 9px 10px; }
+.rest-shell .detail-info-row .ico { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; flex: 0 0 auto; }
+.rest-shell .detail-info-row small { display: block; color: var(--rs-muted); font-size: 10px; }
+.rest-shell .detail-info-row strong { font-size: 13px; }
+
+.rest-shell .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rest-shell .detail-table th { text-align: left; color: var(--rs-muted); font-size: 10.5px; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--rs-border); }
+.rest-shell .detail-table td { padding: 7px 8px; border-bottom: 1px solid #F0F3F7; }
+.rest-shell .detail-table tr:last-child td { border-bottom: none; }
+
+@media (max-width: 900px) {
+    .rest-shell .detail-panel { width: 100vw; }
+    .rest-shell .detail-cols { grid-template-columns: 1fr; }
+}

@@ -199,10 +199,12 @@ else if (Model.ActiveTab == "payment")
         else
         {
             <div class="report-table-wrap" id="paymentBreakdownTable" style="border-top:1px solid var(--rs-border); border-radius:10px;">
-                <div class="rthead"><span>ÖDEME TÜRÜ</span><span>TUTAR</span><span>PAY</span></div>
+                <div class="rthead"><span>ÖDEME TÜRÜ</span><span>TUTAR</span><span>PAY</span><span></span></div>
                 @foreach (var item in Model.PaymentBreakdown)
                 {
-                    <div class="rrow2"><span><b>@item.Label</b></span><span>@item.Amount.ToString("N2") ₺</span><span>%@(item.Percent.ToString("0.0"))</span></div>
+                    <a class="rrow2" style="grid-template-columns:1fr 1fr 1fr auto;text-decoration:none;color:inherit;" asp-action="Index" asp-route-tab="payment" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-selectedPaymentMethod="@item.Method">
+                        <span><b>@item.Label</b></span><span>@item.Amount.ToString("N2") ₺</span><span>%@(item.Percent.ToString("0.0"))</span><span>Detay ▷</span>
+                    </a>
                 }
             </div>
         }
@@ -219,10 +221,12 @@ else if (Model.ActiveTab == "bestsellers")
         else
         {
             <div class="report-table-wrap" id="bestSellersTable">
-                <div class="rthead"><span>ÜRÜN</span><span>MİKTAR</span><span>TUTAR</span></div>
+                <div class="rthead"><span>ÜRÜN</span><span>MİKTAR</span><span>TUTAR</span><span></span></div>
                 @foreach (var row in Model.BestSellers)
                 {
-                    <div class="rrow2"><span><b>@row.ProductName</b></span><span>@row.Quantity.ToString("N0")</span><span>@row.Total.ToString("N2") ₺</span></div>
+                    <a class="rrow2" style="grid-template-columns:1fr 1fr 1fr auto;text-decoration:none;color:inherit;" asp-action="Index" asp-route-tab="bestsellers" asp-route-period="@Model.PeriodFilter" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" asp-route-selectedProduct="@row.ProductId">
+                        <span><b>@row.ProductName</b></span><span>@row.Quantity.ToString("N0")</span><span>@row.Total.ToString("N2") ₺</span><span>Detay ▷</span>
+                    </a>
                 }
             </div>
         }
@@ -422,21 +426,94 @@ else if (Model.ActiveTab == "kasiyer")
 }
 else if (Model.ActiveTab == "x")
 {
-    <div class="rcard x-report-card">
-        <h4>X Raporu</h4>
-        <p class="sub">Anlık durum raporu — vardiyayı KAPATMAZ, istediğiniz kadar tekrar alabilirsiniz.</p>
-        <!-- X Raporu artık açık vardiya ŞART DEĞİL - dönem başlangıcı bugün alınmış son Z'nin
-             kapanışı (yoksa gece yarısı), açık bir vardiya varsa o da bilgi amaçlı gösterilir
-             (Edip, 2026-09-03: "X ve Z raporu almak için vardiya girilmesi zorunlu değil"). -->
-        <div class="sub">@(Model.IsShiftOpen ? "Vardiya açılışı" : "Dönem başlangıcı"): @Model.XReport!.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
-        <div class="x-report-grid">
-            <div><small>NET CİRO</small><strong>@Model.XReport.NetRevenue.ToString("N2") ₺</strong></div>
-            <div><small>FİŞ SAYISI</small><strong>@Model.XReport.ReceiptCount</strong></div>
-            @foreach (var item in Model.XReport.PaymentBreakdown)
+    var xr = Model.XReport!;
+    var xMaxHourly = xr.HourlyRevenue.Count > 0 ? Math.Max(xr.HourlyRevenue.Max(), 1) : 1;
+    <div class="detail-head-row" style="padding:0 0 10px;">
+        <div>
+            <span class="detail-badge @(Model.IsShiftOpen ? "ok" : "warn")">@(Model.IsShiftOpen ? "● Vardiya Açık" : "● Vardiya Kapalı")</span>
+            <span class="detail-sub" style="display:inline;">@(Model.IsShiftOpen ? "Vardiya açılışı" : "Dönem başlangıcı"): @xr.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        </div>
+        <a class="rbtn" style="text-decoration:none;" asp-action="Index" asp-route-tab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")">↻ Yenile</a>
+    </div>
+    <div class="report-kpis-compact" style="grid-template-columns:repeat(5,1fr);">
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">🛍</span><div><small>TOPLAM CİRO</small><strong>@xr.NetRevenue.ToString("N2") ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▥</span><div><small>TOPLAM FİŞ</small><strong>@xr.ReceiptCount</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">₺</span><div><small>NAKİT</small><strong>@((xr.PaymentBreakdown.FirstOrDefault(x => x.Label == "Nakit")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FFF3E0;color:#C77700;">▣</span><div><small>KREDİ KARTI</small><strong>@((xr.PaymentBreakdown.FirstOrDefault(x => x.Label == "Kredi Kartı")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FDEDF0;color:#C22B57;">◔</span><div><small>AÇIK HESAP</small><strong>@((xr.PaymentBreakdown.FirstOrDefault(x => x.Label == "Açık Hesap")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FFF3E0;color:#C77700;">🎁</span><div><small>İKRAM</small><strong>@xr.ComplimentaryTotal.ToString("N2") ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FDEDF0;color:#C22B57;">%</span><div><small>İNDİRİM</small><strong>@xr.DiscountTotal.ToString("N2") ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">💳</span><div><small>DİĞER TAHSİLAT</small><strong>@(xr.PaymentBreakdown.Where(x => x.Label != "Nakit" && x.Label != "Kredi Kartı" && x.Label != "Açık Hesap" && x.Label != "Ödenmez").Sum(x => x.Amount).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">🍽</span><div><small>AKTİF MASA</small><strong>@xr.ActiveTableCount</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">🛵</span><div><small>AKTİF PAKET</small><strong>@xr.ActivePackageCount</strong></div></div>
+    </div>
+    <div class="report-analytics" style="margin-top:14px;">
+        <div class="rcard analytics-card">
+            <div class="analytics-head"><div><h3>Saatlik Ciro Grafiği</h3></div></div>
+            @if (xr.HourlyRevenue.Sum() == 0)
             {
-                <div><small>@item.Label.ToUpperInvariant()</small><strong>@item.Amount.ToString("N2") ₺</strong></div>
+                <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
+            }
+            else
+            {
+                <div class="premium-chart">
+                    @for (var i = 0; i < xr.HourlyRevenue.Count; i++)
+                    {
+                        var v = xr.HourlyRevenue[i];
+                        var heightPct = Math.Max(2, (int)Math.Round(v / xMaxHourly * 100));
+                        <div class="pc-col @(v == xr.HourlyRevenue.Max() && v > 0 ? "hot" : "")">
+                            <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
+                            <div class="pc-bar" style="height:@(heightPct)%"></div>
+                            <div class="pc-label">@xr.HourlyLabels[i]</div>
+                        </div>
+                    }
+                </div>
             }
         </div>
+        <div class="rcard analytics-card">
+            <div class="analytics-head"><div><h3>KDV Oranlarına Göre Dağılım</h3></div></div>
+            @if (xr.VatBreakdown.Count == 0)
+            {
+                <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
+            }
+            else
+            {
+                <table class="detail-table">
+                    <tr><th>ORAN</th><th>TUTAR</th><th>PAY</th></tr>
+                    @foreach (var v in xr.VatBreakdown)
+                    {
+                        <tr><td>%@v.TaxRate.ToString("0.##")</td><td>@v.Gross.ToString("N2") ₺</td><td>%@(xr.VatBreakdown.Sum(x => x.Gross) is var vatTotal2 && vatTotal2 > 0 ? Math.Round(v.Gross / vatTotal2 * 100, 1) : 0)</td></tr>
+                    }
+                </table>
+            }
+        </div>
+    </div>
+    <div class="detail-cols" style="margin-top:14px;">
+        <div>
+            <h6 style="margin:0 0 6px;font-size:12px;color:var(--rs-muted);">KATEGORİ BAZLI SATIŞLAR</h6>
+            <table class="detail-table">
+                <tr><th>KATEGORİ</th><th>TUTAR</th><th>PAY</th></tr>
+                @foreach (var c in xr.CategorySales)
+                {
+                    <tr><td>@c.CategoryName</td><td>@c.Total.ToString("N2") ₺</td><td>%@c.Percent.ToString("0.0")</td></tr>
+                }
+            </table>
+        </div>
+        <div>
+            <h6 style="margin:0 0 6px;font-size:12px;color:var(--rs-muted);">EN ÇOK SATAN 5 ÜRÜN</h6>
+            <table class="detail-table">
+                <tr><th>#</th><th>ÜRÜN ADI</th><th>ADET</th><th>TUTAR</th></tr>
+                @foreach (var p in xr.Top5Products)
+                {
+                    <tr><td>@p.Rank</td><td>@p.ProductName</td><td>@p.Quantity.ToString("N0")</td><td>@p.Total.ToString("N2") ₺</td></tr>
+                }
+            </table>
+        </div>
+    </div>
+    <div class="znote sub" style="margin-top:12px;">X Raporu anlık durum raporudur. Vardiyayı kapatmaz, istediğiniz zaman tekrar alabilirsiniz.</div>
+    <div class="actions no-print" style="margin-top:10px;">
+        <button type="button" class="rbtn gold" onclick="window.print()">🖨 X Raporu Yazdır</button>
+        <button type="button" class="rbtn pdf" onclick="window.print()">📄 PDF İndir</button>
     </div>
 }
 else if (Model.ActiveTab == "z")
@@ -503,109 +580,450 @@ else if (Model.ActiveTab == "zlist")
         }
     </div>
 
-    @if (Model.SelectedZShiftId is not null)
-    {
-        <div class="rcard" style="margin-top:12px; padding:0;">
-            <div style="padding:14px 16px; border-bottom:1px solid var(--rs-border); display:flex; justify-content:space-between; align-items:center;">
-                <div><b>@Model.SelectedZNumber</b> <span class="sub">satış hareketleri</span></div>
-                <span class="sub">@Model.SelectedZReceipts.Count fiş</span>
-            </div>
-            @if (Model.SelectedZSummary is not null)
-            {
-                <div style="padding:14px 16px; border-bottom:1px solid var(--rs-border); display:flex; flex-wrap:wrap; gap:18px;">
-                    <div><small>BRÜT</small><br /><b>@Model.SelectedZSummary.GrossTotal.ToString("N2") ₺</b></div>
-                    <div><small>İNDİRİM</small><br /><b>@Model.SelectedZSummary.DiscountTotal.ToString("N2") ₺</b></div>
-                    <div><small>NET CİRO</small><br /><b>@Model.SelectedZSummary.NetTotal.ToString("N2") ₺</b></div>
-                    <div><small>KDV</small><br /><b>@Model.SelectedZSummary.TaxTotal.ToString("N2") ₺</b></div>
-                    <div><small>İKRAM</small><br /><b>@Model.SelectedZSummary.ComplimentaryTotal.ToString("N2") ₺</b></div>
-                    @foreach (var item in Model.SelectedZSummary.PaymentBreakdown)
-                    {
-                        <div><small>@item.Label.ToUpperInvariant()</small><br /><b>@item.Amount.ToString("N2") ₺</b></div>
-                    }
-                </div>
-            }
-            <div class="report-table-wrap">
-                <!-- Sipariş/Fiş Sıra Numarası (2026-09-06 ek talimat) - muhasebesel belge kimliği
-                     DEĞİLDİR (o DocumentNumber/PSF.xxxxx'tir, hiç değişmez), sadece restoran
-                     tarafında bilgi amaçlı DÖNEM İÇİ sıra - her yeni Z'de 1'den başlar. Liste en
-                     yeni fiş üstte (IssuedAtUtc DESC) geldiği için sıra numarası ters çevrilir: en
-                     ESKİ fiş "1", en YENİ fiş Count olur (dönem içindeki gerçek kronolojik sıra). -->
-                @{ const string zDetayCols = "grid-template-columns: 70px 110px 1.3fr 90px 110px 100px 100px 90px;"; }
-                <div class="rthead" style="@zDetayCols"><span>SİPARİŞ NO</span><span>SAAT / FİŞ NO</span><span>MASA / KAYNAK</span><span>KANAL</span><span>ÖDEME</span><span>DURUM</span><span>TUTAR</span><span></span></div>
-                @if (Model.SelectedZReceipts.Count == 0)
-                {
-                    <div class="p-3 text-secondary small">Bu Z'de fiş yok.</div>
-                }
-                @{ var zReceiptCount = Model.SelectedZReceipts.Count; }
-                @for (var zi = 0; zi < zReceiptCount; zi++)
-                {
-                    var r = Model.SelectedZReceipts[zi];
-                    <div class="rrow2" style="@zDetayCols">
-                        <span class="text-secondary">@(zReceiptCount - zi)</span>
-                        <div><b>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</b><small>@r.DocumentNumber</small></div>
-                        <div><b>@r.SourceLabel</b><small>@r.SourceSubtitle</small></div>
-                        <span><i class="type-badge2 @r.SourceType">@SourceTypeLabel(r.SourceType)</i></span>
-                        <span>@r.PaymentSummary</span>
-                        <span class="@(r.IsCancelled ? "cancel-badge2" : "ok-badge2")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
-                        <b>@r.GrandTotal.ToString("N2") ₺</b>
-                        <a class="view-btn no-print" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@Model.SelectedZShiftId" asp-route-selected="@r.RetailSaleId">Fişi Gör</a>
-                    </div>
-                }
-            </div>
-        </div>
-        <div class="znote sub" style="margin-top:8px;">Bir fişi silmek için "Fişi Gör" ile açıp altındaki "Fişi Sil" butonunu kullanın (yalnızca yönetici).</div>
-    }
 }
 
 <div class="znote sub" style="margin-top:12px;">X Raporu vardiyayı kapatmaz. Z Raporu gün sonu kapanışıdır. Z Listesi geçmiş Z kapanışlarını gösterir.</div>
 </div>
 </div>
 
-@if (Model.SelectedReceipt is not null)
+@if (Model.SelectedZShiftId is not null && Model.SelectedZSummary is not null)
 {
-    <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Fiş — @Model.SelectedReceipt.DocumentNumber</h5>
-                    <button type="button" class="btn-close no-print" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="sub">@Model.SelectedReceipt.SourceLabel · @Model.SelectedReceipt.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
-                    <div style="@(Model.SelectedReceipt.IsCancelled ? "" : "display:none")" class="alert alert-danger py-1 mt-2">İptal edilmiş fiş</div>
-                    <div style="margin-top:12px;">
-                        @foreach (var line in Model.SelectedReceipt.Lines)
-                        {
-                            <div class="receipt-line-row"><span>@line.Quantity.ToString("0.##") × @line.ProductName</span><b>@line.LineTotal.ToString("N2") ₺</b></div>
-                        }
+    var zs = Model.SelectedZSummary;
+    var closeZUrl = Url.Action("Index", new { tab = "zlist", date = Model.ReportDate.ToString("yyyy-MM-dd") });
+    var zDuration = zs.ClosedAtUtc - zs.OpenedAtUtc;
+    <div class="detail-overlay open no-print" id="z-detail-overlay"></div>
+    <div class="detail-panel open no-print" id="z-detail-panel">
+        <div class="detail-head">
+            <div class="detail-head-row">
+                <div>
+                    <div class="detail-title">@Model.SelectedZNumber
+                        <span class="detail-badge ok">Tamamlandı</span>
                     </div>
-                    <div style="margin-top:10px;">
-                        <div class="receipt-total-row"><span>Ara Toplam</span><span>@Model.SelectedReceipt.SubtotalAmount.ToString("N2") ₺</span></div>
-                        <div class="receipt-total-row"><span>İndirim</span><span>@Model.SelectedReceipt.DiscountAmount.ToString("N2") ₺</span></div>
-                        <div class="receipt-total-row"><span>KDV</span><span>@Model.SelectedReceipt.TaxAmount.ToString("N2") ₺</span></div>
-                        <div class="receipt-total-row grand"><span>Genel Toplam</span><span>@Model.SelectedReceipt.GrandTotal.ToString("N2") ₺</span></div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        @foreach (var p in Model.SelectedReceipt.Payments)
-                        {
-                            <div class="receipt-line-row"><span>@p.Method</span><b>@p.Amount.ToString("N2") ₺</b></div>
-                        }
+                    <div class="detail-sub">
+                        <span>📅 @zs.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        <span>@zs.ReceiptCount Fiş</span>
+                        <span>@((int)zDuration.TotalHours) sa @(zDuration.Minutes) dk</span>
                     </div>
                 </div>
-                <div class="modal-footer no-print">
-                    <form method="post" asp-action="CancelReceipt" id="cancel-receipt-form" style="@(!Model.SelectedReceipt.IsCancelled && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator) ? "margin-right:auto;" : "display:none")">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="retailSaleId" value="@Model.SelectedReceiptId" />
-                        <input type="hidden" name="returnTab" value="@Model.ActiveTab" />
-                        <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
-                        <input type="hidden" name="zShiftId" value="@Model.SelectedZShiftId" />
-                        <input type="hidden" name="reason" id="cancel-receipt-reason" />
-                        <button type="button" class="btn btn-danger" onclick="submitCancelReceipt()">Fişi Sil</button>
-                    </form>
-                    <button type="button" class="btn btn-erp-outline" data-bs-dismiss="modal">Kapat</button>
-                    <button type="button" class="btn btn-erp-primary" onclick="window.print()">Yazdır</button>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button type="button" class="rbtn gold" onclick="window.print()" style="white-space:nowrap;">🖨 Z Raporu Tekrar Yazdır</button>
+                    <a href="@closeZUrl" class="detail-close">✕</a>
                 </div>
             </div>
+            <div class="detail-tabs">
+                <button type="button" class="detail-tab active" data-pane="genel">Genel Özet</button>
+                <button type="button" class="detail-tab" data-pane="odeme">Ödeme Dağılımı</button>
+                <button type="button" class="detail-tab" data-pane="hareketler">Satış Hareketleri (@Model.SelectedZReceipts.Count)</button>
+                <button type="button" class="detail-tab" data-pane="gecmis">İşlem Geçmişi</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <div class="detail-pane active" data-pane="genel">
+                <div class="detail-cols">
+                    <div class="receipt-preview">
+                        <div class="rp-center rp-brand">@zs.BranchName</div>
+                        @if (zs.BranchAddress is not null) { <div class="rp-center">@zs.BranchAddress</div> }
+                        @if (zs.BranchPhone is not null) { <div class="rp-center">@zs.BranchPhone</div> }
+                        <hr />
+                        <div class="rp-center rp-brand">Z RAPORU</div>
+                        <div class="rp-kv"><span>Z NO</span><span>@Model.SelectedZNumber</span></div>
+                        <div class="rp-kv"><span>AÇILIŞ</span><span>@zs.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+                        <div class="rp-kv"><span>KAPANIŞ</span><span>@zs.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+                        <div class="rp-kv"><span>SÜRE</span><span>@((int)zDuration.TotalHours) sa @(zDuration.Minutes) dk</span></div>
+                        <div class="rp-kv"><span>KASİYER</span><span>@zs.ClosedByName</span></div>
+                        <hr />
+                        <div class="rp-kv"><span>BRÜT</span><span>@zs.GrossTotal.ToString("N2") ₺</span></div>
+                        <div class="rp-kv"><span>İNDİRİM</span><span>@zs.DiscountTotal.ToString("N2") ₺</span></div>
+                        <div class="rp-kv"><span>İKRAM</span><span>@zs.ComplimentaryTotal.ToString("N2") ₺</span></div>
+                        <div class="rp-kv"><span>KDV</span><span>@zs.TaxTotal.ToString("N2") ₺</span></div>
+                        <div class="rp-row rp-grand"><span>NET</span><span>@zs.NetTotal.ToString("N2") ₺</span></div>
+                        <hr />
+                        <div class="rp-center">Teşekkür Ederiz<br />Yine Bekleriz</div>
+                    </div>
+                    <div>
+                        <h6 style="margin:0 0 6px;font-size:12px;color:var(--rs-muted);">FİNANSAL ÖZET</h6>
+                        <div class="detail-info-list">
+                            <div class="detail-info-row"><span class="ico" style="background:#EAF3FF;color:#2563EB;">🎁</span><div><small>BRÜT TUTAR</small><strong>@zs.GrossTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">◔</span><div><small>NET TUTAR</small><strong>@zs.NetTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#FDEDF0;color:#C22B57;">%</span><div><small>TOPLAM İNDİRİM</small><strong>@zs.DiscountTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#FFF3E0;color:#C77700;">🎁</span><div><small>TOPLAM İKRAM</small><strong>@zs.ComplimentaryTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">▤</span><div><small>KDV TUTARI</small><strong>@zs.TaxTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#EAF3FF;color:#2563EB;">▥</span><div><small>FİŞ SAYISI</small><strong>@zs.ReceiptCount</strong></div></div>
+                        </div>
+                        <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">ÖDEME DAĞILIMI</h6>
+                        <table class="detail-table">
+                            <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th><th>ORAN</th></tr>
+                            @foreach (var item in zs.PaymentBreakdown)
+                            {
+                                <tr><td>@item.Label</td><td>@item.Amount.ToString("N2") ₺</td><td>%@item.Percent.ToString("0.0")</td></tr>
+                            }
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-pane" data-pane="odeme">
+                <table class="detail-table">
+                    <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th><th>ORAN</th></tr>
+                    @foreach (var item in zs.PaymentBreakdown)
+                    {
+                        <tr><td>@item.Label</td><td>@item.Amount.ToString("N2") ₺</td><td>%@item.Percent.ToString("0.0")</td></tr>
+                    }
+                </table>
+            </div>
+            <div class="detail-pane" data-pane="hareketler">
+                <table class="detail-table">
+                    <tr><th>SAAT</th><th>FİŞ NO</th><th>MASA/KAYNAK</th><th>ÖDEME</th><th>DURUM</th><th>TUTAR</th><th></th></tr>
+                    @foreach (var r in Model.SelectedZReceipts)
+                    {
+                        <tr>
+                            <td>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</td>
+                            <td>@r.DocumentNumber</td>
+                            <td>@r.SourceLabel</td>
+                            <td>@r.PaymentSummary</td>
+                            <td>@(r.IsCancelled ? "İptal" : "Tamamlandı")</td>
+                            <td>@r.GrandTotal.ToString("N2") ₺</td>
+                            <td><a class="view-btn no-print" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@Model.SelectedZShiftId" asp-route-selected="@r.RetailSaleId">Fişi Gör</a></td>
+                        </tr>
+                    }
+                </table>
+            </div>
+            <div class="detail-pane" data-pane="gecmis">
+                <table class="detail-table">
+                    <tr><th>TARİH/SAAT</th><th>İŞLEM</th></tr>
+                    @foreach (var h in zs.History)
+                    {
+                        <tr><td>@h.AtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td><td>@h.Description</td></tr>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="detail-foot">
+            <button type="button" class="rbtn" onclick="window.print()">🖨 Yazdır</button>
+            <a href="@closeZUrl" class="rbtn gold" style="text-align:center;text-decoration:none;">Kapat</a>
+        </div>
+    </div>
+}
+@if (Model.SelectedReceipt is not null)
+{
+    var r = Model.SelectedReceipt;
+    var closeUrl = Url.Action("Index", new { tab = Model.ActiveTab, source = Model.SourceFilter, period = Model.PeriodFilter, date = Model.ReportDate.ToString("yyyy-MM-dd"), zShiftId = Model.SelectedZShiftId, payment = Model.PaymentFilter, status = Model.StatusFilter, q = Model.SearchTerm, kasiyerUserId = Model.SelectedKasiyerUserId });
+    <div class="detail-overlay open no-print" id="receipt-detail-overlay"></div>
+    <div class="detail-panel open no-print" id="receipt-detail-panel">
+        <div class="detail-head">
+            <div class="detail-head-row">
+                <div>
+                    <div class="detail-title">@r.DocumentNumber
+                        <span class="detail-badge @(r.IsCancelled ? "warn" : "ok")">@(r.IsCancelled ? "İptal" : "Tamamlandı")</span>
+                    </div>
+                    <div class="detail-sub">
+                        <span>📅 @r.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        <span>Kasiyer: @r.CashierName</span>
+                        @if (r.FinancialAccountLabel is not null)
+                        {
+                            <span>Kasa: @r.FinancialAccountLabel</span>
+                        }
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="detail-nav">
+                        <a class="@(r.PrevReceiptId is null ? "disabled" : "")" href="@(r.PrevReceiptId is null ? "#" : Url.Action("Index", new { tab = Model.ActiveTab, source = Model.SourceFilter, period = Model.PeriodFilter, date = Model.ReportDate.ToString("yyyy-MM-dd"), zShiftId = Model.SelectedZShiftId, payment = Model.PaymentFilter, status = Model.StatusFilter, q = Model.SearchTerm, kasiyerUserId = Model.SelectedKasiyerUserId, selected = r.PrevReceiptId }))">◁</a>
+                        <span>@r.PositionIndex / @r.PositionCount</span>
+                        <a class="@(r.NextReceiptId is null ? "disabled" : "")" href="@(r.NextReceiptId is null ? "#" : Url.Action("Index", new { tab = Model.ActiveTab, source = Model.SourceFilter, period = Model.PeriodFilter, date = Model.ReportDate.ToString("yyyy-MM-dd"), zShiftId = Model.SelectedZShiftId, payment = Model.PaymentFilter, status = Model.StatusFilter, q = Model.SearchTerm, kasiyerUserId = Model.SelectedKasiyerUserId, selected = r.NextReceiptId }))">▷</a>
+                    </div>
+                    <a href="@closeUrl" class="detail-close">✕</a>
+                </div>
+            </div>
+            <div class="detail-tabs">
+                <button type="button" class="detail-tab active" data-pane="preview">Fiş Önizleme</button>
+                <button type="button" class="detail-tab" data-pane="genel">Genel Bilgi</button>
+                <button type="button" class="detail-tab" data-pane="urunler">Ürünler (@r.Lines.Count)</button>
+                <button type="button" class="detail-tab" data-pane="odeme">Ödeme Bilgileri</button>
+                <button type="button" class="detail-tab" data-pane="gecmis">İşlem Geçmişi</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <div class="detail-pane active" data-pane="preview">
+                <div class="detail-cols">
+                    <div class="receipt-preview">
+                        <div class="rp-center rp-brand">@r.BranchName</div>
+                        @if (r.BranchAddress is not null) { <div class="rp-center">@r.BranchAddress</div> }
+                        @if (r.BranchPhone is not null) { <div class="rp-center">@r.BranchPhone</div> }
+                        <hr />
+                        <div class="rp-kv"><span>TARİH</span><span>@r.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</span></div>
+                        <div class="rp-kv"><span>SAAT</span><span>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</span></div>
+                        <div class="rp-kv"><span>FİŞ NO</span><span>@r.DocumentNumber</span></div>
+                        <div class="rp-kv"><span>MASA</span><span>@r.SourceLabel</span></div>
+                        <div class="rp-kv"><span>KASİYER</span><span>@r.CashierName</span></div>
+                        <hr />
+                        @foreach (var line in r.Lines)
+                        {
+                            <div class="rp-row"><span>@line.ProductName</span><span></span></div>
+                            <div class="rp-kv"><span>@line.Quantity.ToString("0.##") x @line.UnitPrice.ToString("N2") ₺</span><span>@line.LineTotal.ToString("N2") ₺</span></div>
+                        }
+                        <hr />
+                        <div class="rp-row rp-grand"><span>TOPLAM</span><span>@r.GrandTotal.ToString("N2") ₺</span></div>
+                        <hr />
+                        @foreach (var p in r.Payments)
+                        {
+                            <div class="rp-kv"><span>@p.Method</span><span>@p.Amount.ToString("N2") ₺</span></div>
+                        }
+                        <div class="rp-center" style="margin-top:8px;">Teşekkür Ederiz<br />Yine Bekleriz</div>
+                    </div>
+                    <div>
+                        <div class="detail-info-list">
+                            <div class="detail-info-row"><span class="ico" style="background:#EAF3FF;color:#2563EB;">₺</span><div><small>TUTAR</small><strong>@r.GrandTotal.ToString("N2") ₺</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▤</span><div><small>MASA / KAYNAK</small><strong>@r.SourceLabel</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">◔</span><div><small>ÖDEME TÜRÜ</small><strong>@(r.Payments.Count == 1 ? r.Payments[0].Method : (r.Payments.Count == 0 ? "-" : "Karma"))</strong></div></div>
+                            <div class="detail-info-row"><span class="ico" style="background:@(r.IsCancelled ? "#FDEDF0" : "#E8F6EE");color:@(r.IsCancelled ? "#C22B57" : "#1F9D55");">●</span><div><small>DURUM</small><strong>@(r.IsCancelled ? "İptal" : "Tamamlandı")</strong></div></div>
+                        </div>
+                        <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">ÜRÜN DETAYLARI (@r.Lines.Count)</h6>
+                        <table class="detail-table">
+                            <tr><th>ÜRÜN ADI</th><th>ADET</th><th>B. FİYAT</th><th>TUTAR</th></tr>
+                            @foreach (var line in r.Lines)
+                            {
+                                <tr><td>@line.ProductName</td><td>@line.Quantity.ToString("0.##")</td><td>@line.UnitPrice.ToString("N2") ₺</td><td>@line.LineTotal.ToString("N2") ₺</td></tr>
+                            }
+                        </table>
+                        <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">ÖDEME BİLGİLERİ</h6>
+                        <table class="detail-table">
+                            <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th></tr>
+                            @foreach (var p in r.Payments)
+                            {
+                                <tr><td>@p.Method</td><td>@p.Amount.ToString("N2") ₺</td></tr>
+                            }
+                        </table>
+                        <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">NOTLAR</h6>
+                        <div style="border:1px solid var(--rs-border);border-radius:8px;padding:8px;font-size:12px;min-height:40px;color:@(string.IsNullOrWhiteSpace(r.Note) ? "var(--rs-muted)" : "var(--rs-text)");">@(string.IsNullOrWhiteSpace(r.Note) ? "Bu fişe ait not yok." : r.Note)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-pane" data-pane="genel">
+                <div class="detail-info-list">
+                    <div class="detail-info-row"><span class="ico" style="background:#EAF3FF;color:#2563EB;">₺</span><div><small>TUTAR</small><strong>@r.GrandTotal.ToString("N2") ₺</strong></div></div>
+                    <div class="detail-info-row"><span class="ico" style="background:#FFF3E0;color:#C77700;">📅</span><div><small>TARİH / SAAT</small><strong>@r.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div></div>
+                    <div class="detail-info-row"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▤</span><div><small>MASA / KAYNAK</small><strong>@r.SourceLabel</strong></div></div>
+                    <div class="detail-info-row"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">◔</span><div><small>ÖDEME TÜRÜ</small><strong>@(r.Payments.Count == 1 ? r.Payments[0].Method : (r.Payments.Count == 0 ? "-" : "Karma"))</strong></div></div>
+                    <div class="detail-info-row"><span class="ico" style="background:@(r.IsCancelled ? "#FDEDF0" : "#E8F6EE");color:@(r.IsCancelled ? "#C22B57" : "#1F9D55");">●</span><div><small>DURUM</small><strong>@(r.IsCancelled ? "İptal" : "Tamamlandı")</strong></div></div>
+                </div>
+            </div>
+            <div class="detail-pane" data-pane="urunler">
+                <table class="detail-table">
+                    <tr><th>ÜRÜN ADI</th><th>ADET</th><th>B. FİYAT</th><th>TUTAR</th></tr>
+                    @foreach (var line in r.Lines)
+                    {
+                        <tr><td>@line.ProductName</td><td>@line.Quantity.ToString("0.##")</td><td>@line.UnitPrice.ToString("N2") ₺</td><td>@line.LineTotal.ToString("N2") ₺</td></tr>
+                    }
+                </table>
+            </div>
+            <div class="detail-pane" data-pane="odeme">
+                <table class="detail-table">
+                    <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th></tr>
+                    @foreach (var p in r.Payments)
+                    {
+                        <tr><td>@p.Method</td><td>@p.Amount.ToString("N2") ₺</td></tr>
+                    }
+                    <tr><td><b>Toplam</b></td><td><b>@r.GrandTotal.ToString("N2") ₺</b></td></tr>
+                </table>
+            </div>
+            <div class="detail-pane" data-pane="gecmis">
+                <table class="detail-table">
+                    <tr><th>TARİH/SAAT</th><th>İŞLEM</th></tr>
+                    @foreach (var h in r.History)
+                    {
+                        <tr><td>@h.AtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td><td>@h.Description</td></tr>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="detail-foot">
+            <a class="rbtn" style="text-align:center;text-decoration:none;" href="@Url.Action("Receipt", "Restaurant", new { id = Model.SelectedReceiptId })" target="_blank">🖥 Fişi Ekrana Al</a>
+            <button type="button" class="rbtn" id="copy-receipt-btn">📋 Fişi Kopyala</button>
+            <button type="button" class="rbtn" onclick="window.print()">🖨 Yazdır</button>
+            @if (!r.IsCancelled && User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+            {
+                <form method="post" asp-action="CancelReceipt" id="cancel-receipt-form" style="display:contents;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="retailSaleId" value="@Model.SelectedReceiptId" />
+                    <input type="hidden" name="returnTab" value="@Model.ActiveTab" />
+                    <input type="hidden" name="date" value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="zShiftId" value="@Model.SelectedZShiftId" />
+                    <input type="hidden" name="reason" id="cancel-receipt-reason" />
+                    <button type="button" class="rbtn" style="color:var(--rs-red);" onclick="submitCancelReceipt()">✕ Fişi İptal Et</button>
+                </form>
+            }
+            <a href="@closeUrl" class="rbtn gold" style="text-align:center;text-decoration:none;">Kapat</a>
+        </div>
+    </div>
+}
+@if (Model.SelectedProduct is not null)
+{
+    var pr = Model.SelectedProduct;
+    var closeProductUrl = Url.Action("Index", new { tab = Model.ActiveTab, period = Model.PeriodFilter, date = Model.ReportDate.ToString("yyyy-MM-dd") });
+    var maxDayQty = pr.Last7DaysQuantity.Count > 0 ? Math.Max(pr.Last7DaysQuantity.Max(), 1) : 1;
+    <div class="detail-overlay open no-print" id="product-detail-overlay"></div>
+    <div class="detail-panel open no-print" id="product-detail-panel">
+        <div class="detail-head">
+            <div class="detail-head-row">
+                <div>
+                    <div class="detail-title">@pr.ProductName
+                        @if (pr.Rank > 0)
+                        {
+                            <span class="detail-badge info">◔ En Çok Satan #@pr.Rank</span>
+                        }
+                    </div>
+                    <div class="detail-sub">
+                        <span>Kategori: @pr.CategoryName</span>
+                        <span>Stok Kodu: @pr.StockCode</span>
+                        @if (!string.IsNullOrWhiteSpace(pr.Barcode))
+                        {
+                            <span>Barkod: @pr.Barcode</span>
+                        }
+                    </div>
+                </div>
+                <a href="@closeProductUrl" class="detail-close">✕</a>
+            </div>
+            <div class="detail-tabs">
+                <button type="button" class="detail-tab active" data-pane="genel">Genel Bilgi</button>
+                <button type="button" class="detail-tab" data-pane="grafik">Satış Grafiği</button>
+                <button type="button" class="detail-tab" data-pane="hareketler">Satış Hareketleri (@pr.PeriodSales.Count)</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <div class="detail-pane active" data-pane="genel">
+                <div class="report-kpis-compact" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">🛒</span><div><small>TOPLAM SATIŞ ADEDİ</small><strong>@pr.PeriodQuantity.ToString("N0")</strong></div></div>
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">₺</span><div><small>TOPLAM CİRO</small><strong>@pr.PeriodRevenue.ToString("N2") ₺</strong></div></div>
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#FFF3E0;color:#C77700;">🏷</span><div><small>ORTALAMA FİYAT</small><strong>@(pr.PeriodQuantity > 0 ? (pr.PeriodRevenue / pr.PeriodQuantity).ToString("N2") : "0,00") ₺</strong></div></div>
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">%</span><div><small>CİRO PAYI</small><strong>%@pr.PeriodSharePercent.ToString("0.0")</strong></div></div>
+                </div>
+                <div class="detail-cols" style="margin-top:14px;grid-template-columns:1fr;">
+                    <div class="detail-info-list">
+                        <div class="detail-info-row"><span class="ico" style="background:#EAF3FF;color:#2563EB;">🏷</span><div><small>BİRİM FİYAT</small><strong>@pr.SalePrice.ToString("N2") ₺</strong></div></div>
+                        <div class="detail-info-row"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▦</span><div><small>KATEGORİ</small><strong>@pr.CategoryName</strong></div></div>
+                        @if (!string.IsNullOrWhiteSpace(pr.Description))
+                        {
+                            <div class="detail-info-row"><span class="ico" style="background:#FFF3E0;color:#C77700;">📝</span><div><small>AÇIKLAMA</small><strong>@pr.Description</strong></div></div>
+                        }
+                    </div>
+                </div>
+                <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">HIZLI İŞLEMLER</h6>
+                <a class="rbtn" style="display:inline-block;text-decoration:none;text-align:center;" asp-controller="Products" asp-action="Edit" asp-route-id="@pr.ProductId" target="_blank">✎ Ürünü Düzenle</a>
+            </div>
+            <div class="detail-pane" data-pane="grafik">
+                <h6 style="margin:0 0 8px;font-size:12px;color:var(--rs-muted);">Son 7 Güne Ait Satış Adedi</h6>
+                @if (pr.Last7DaysQuantity.Sum() == 0)
+                {
+                    <div class="analytics-empty">Son 7 günde satış yok.</div>
+                }
+                else
+                {
+                    <div class="premium-chart">
+                        @for (var i = 0; i < pr.Last7DaysQuantity.Count; i++)
+                        {
+                            var v = pr.Last7DaysQuantity[i];
+                            var heightPct = Math.Max(2, (int)Math.Round(v / maxDayQty * 100));
+                            <div class="pc-col @(v == pr.Last7DaysQuantity.Max() && v > 0 ? "hot" : "")">
+                                <div class="pc-value">@(v > 0 ? v.ToString("N0") : "")</div>
+                                <div class="pc-bar" style="height:@(heightPct)%"></div>
+                                <div class="pc-label">@pr.Last7DaysLabels[i]</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="detail-pane" data-pane="hareketler">
+                <table class="detail-table">
+                    <tr><th>TARİH/SAAT</th><th>FİŞ NO</th><th>ADET</th><th>TUTAR</th></tr>
+                    @foreach (var s in pr.PeriodSales)
+                    {
+                        <tr><td>@s.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td><td>@s.DocumentNumber</td><td>@s.Quantity.ToString("0.##")</td><td>@s.LineTotal.ToString("N2") ₺</td></tr>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="detail-foot">
+            <a href="@closeProductUrl" class="rbtn gold" style="text-align:center;text-decoration:none;">Kapat</a>
+        </div>
+    </div>
+}
+@if (Model.SelectedPaymentMethodDetail is not null)
+{
+    var pd = Model.SelectedPaymentMethodDetail;
+    var closePaymentUrl = Url.Action("Index", new { tab = Model.ActiveTab, period = Model.PeriodFilter, date = Model.ReportDate.ToString("yyyy-MM-dd") });
+    var maxHourlyPay = pd.HourlyAmount.Count > 0 ? Math.Max(pd.HourlyAmount.Max(), 1) : 1;
+    <div class="detail-overlay open no-print" id="payment-detail-overlay"></div>
+    <div class="detail-panel open no-print" id="payment-detail-panel">
+        <div class="detail-head">
+            <div class="detail-head-row">
+                <div>
+                    <div class="detail-title">@pd.Label</div>
+                    <div class="detail-sub">
+                        <span>@pd.Amount.ToString("N2") ₺</span>
+                        <span>%@(pd.Percent.ToString("0.0")) genel ciro içindeki payı</span>
+                        <span>@pd.ReceiptCount Fiş Sayısı</span>
+                    </div>
+                </div>
+                <a href="@closePaymentUrl" class="detail-close">✕</a>
+            </div>
+            <div class="detail-tabs">
+                <button type="button" class="detail-tab active" data-pane="genel">Genel Bakış</button>
+                <button type="button" class="detail-tab" data-pane="fisler">Fiş Listesi (@pd.Receipts.Count)</button>
+                <button type="button" class="detail-tab" data-pane="saatlik">Saatlik Dağılım</button>
+                <button type="button" class="detail-tab" data-pane="kasiyer">Kasiyer Bazlı</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <div class="detail-pane active" data-pane="genel">
+                <div class="report-kpis-compact" style="grid-template-columns:repeat(3,1fr);">
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">₺</span><div><small>TOPLAM TUTAR</small><strong>@pd.Amount.ToString("N2") ₺</strong></div></div>
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▥</span><div><small>FİŞ SAYISI</small><strong>@pd.ReceiptCount</strong></div></div>
+                    <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">%</span><div><small>GENEL CİRO PAYI</small><strong>%@(pd.Percent.ToString("0.0"))</strong></div></div>
+                </div>
+            </div>
+            <div class="detail-pane" data-pane="fisler">
+                <table class="detail-table">
+                    <tr><th>SAAT</th><th>FİŞ NO</th><th>MASA/KAYNAK</th><th>TUTAR</th></tr>
+                    @foreach (var r in pd.Receipts)
+                    {
+                        <tr><td>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</td><td>@r.DocumentNumber</td><td>@r.SourceLabel</td><td>@r.GrandTotal.ToString("N2") ₺</td></tr>
+                    }
+                </table>
+            </div>
+            <div class="detail-pane" data-pane="saatlik">
+                <h6 style="margin:0 0 8px;font-size:12px;color:var(--rs-muted);">Saatlik Satış Dağılımı (@pd.Label)</h6>
+                @if (pd.HourlyAmount.Sum() == 0)
+                {
+                    <div class="analytics-empty">Bu dönemde veri yok.</div>
+                }
+                else
+                {
+                    <div class="premium-chart">
+                        @for (var i = 0; i < pd.HourlyAmount.Count; i++)
+                        {
+                            var v = pd.HourlyAmount[i];
+                            var heightPct = Math.Max(2, (int)Math.Round(v / maxHourlyPay * 100));
+                            <div class="pc-col @(v == pd.HourlyAmount.Max() && v > 0 ? "hot" : "")">
+                                <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
+                                <div class="pc-bar" style="height:@(heightPct)%"></div>
+                                <div class="pc-label">@pd.HourlyLabels[i]</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="detail-pane" data-pane="kasiyer">
+                <table class="detail-table">
+                    <tr><th>KASİYER</th><th>FİŞ SAYISI</th><th>TUTAR</th></tr>
+                    @foreach (var c in pd.CashierBreakdown)
+                    {
+                        <tr><td>@c.CashierName</td><td>@c.ReceiptCount</td><td>@c.Amount.ToString("N2") ₺</td></tr>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="detail-foot">
+            <button type="button" class="rbtn" onclick="window.print()">🖨 Yazdır</button>
+            <a href="@closePaymentUrl" class="rbtn gold" style="text-align:center;text-decoration:none;">Kapat</a>
         </div>
     </div>
 }
@@ -664,10 +1082,57 @@ else if (Model.ActiveTab == "zlist")
             });
         })();
     </script>
+    <script>
+        // Detay Paneli sekme geçişi (2026-09-07) - Fiş/Ürün/Z/Ödeme Türü detay panellerinin
+        // TÜMÜ aynı .detail-tab/.detail-pane işaretlemesini paylaşır, tek bir genel fonksiyon.
+        function wireDetailPanelTabs(panelId) {
+            var panel = document.getElementById(panelId);
+            if (!panel) return;
+            var tabs = panel.querySelectorAll('.detail-tab');
+            var panes = panel.querySelectorAll('.detail-pane');
+            tabs.forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    tabs.forEach(function (t) { t.classList.remove('active'); });
+                    panes.forEach(function (p) { p.classList.remove('active'); });
+                    tab.classList.add('active');
+                    panel.querySelector('.detail-pane[data-pane="' + tab.dataset.pane + '"]').classList.add('active');
+                });
+            });
+        }
+    </script>
     @if (Model.SelectedReceipt is not null)
     {
         <script>
-            new bootstrap.Modal(document.getElementById('receiptModal')).show();
+            wireDetailPanelTabs('receipt-detail-panel');
+            (function () {
+                var copyBtn = document.getElementById('copy-receipt-btn');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', function () {
+                        var text = document.querySelector('#receipt-detail-panel .receipt-preview').innerText;
+                        navigator.clipboard.writeText(text).then(function () {
+                            window.posAlert ? window.posAlert('Fiş içeriği kopyalandı.') : alert('Fiş içeriği kopyalandı.');
+                        });
+                    });
+                }
+            })();
+        </script>
+    }
+    @if (Model.SelectedProduct is not null)
+    {
+        <script>
+            wireDetailPanelTabs('product-detail-panel');
+        </script>
+    }
+    @if (Model.SelectedPaymentMethodDetail is not null)
+    {
+        <script>
+            wireDetailPanelTabs('payment-detail-panel');
+        </script>
+    }
+    @if (Model.SelectedZShiftId is not null && Model.SelectedZSummary is not null)
+    {
+        <script>
+            wireDetailPanelTabs('z-detail-panel');
         </script>
     }
     <script>

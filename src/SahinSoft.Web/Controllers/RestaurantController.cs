@@ -893,7 +893,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             SourceLabel = "Self Satış",
             SourceType = "self",
             IsCancelled = sale.Status == RetailSaleStatus.Cancelled,
-            Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.LineTotal)).ToList(),
+            Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.UnitPriceSnapshot, l.LineTotal)).ToList(),
             SubtotalAmount = sale.SubtotalAmount,
             DiscountAmount = sale.DiscountAmount,
             TaxAmount = sale.TaxAmount,
