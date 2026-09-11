@@ -518,6 +518,75 @@ else if (Model.ActiveTab == "x")
 }
 else if (Model.ActiveTab == "z")
 {
+    <!-- Z Raporu ÖNİZLEMESİ (2026-09-11, onaylı referans görsel "birebir uygula") - Z HENÜZ
+         ALINMADI, bu yalnızca "şu an Z alırsan ne çıkar" önizlemesidir. AYNI XReport verisini
+         kullanır (X zaten "aktif dönemin anlık, henüz kapanmamış durumu" - ayrı bir "Z önizleme"
+         sorgusu İCAT EDİLMEDİ). Aşağıdaki gerçek "Z Raporu Al" formuna/butonuna HİÇ DOKUNULMADI -
+         bu yalnızca bilgilendirici bir özet, kapanışı tetiklemez. -->
+    var zr = Model.XReport!;
+    var zMaxHourly = zr.HourlyRevenue.Count > 0 ? Math.Max(zr.HourlyRevenue.Max(), 1) : 1;
+    <div class="detail-head-row" style="padding:0 0 10px;">
+        <div>
+            <span class="detail-badge @(Model.IsShiftOpen ? "ok" : "warn")">@(Model.IsShiftOpen ? "● Vardiya Açık" : "● Vardiya Kapalı")</span>
+            <span class="detail-sub" style="display:inline;">Önizleme — dönem başlangıcı: @zr.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        </div>
+    </div>
+    <div class="report-kpis-compact" style="grid-template-columns:repeat(5,1fr);">
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#EAF3FF;color:#2563EB;">🛍</span><div><small>TOPLAM CİRO</small><strong>@zr.NetRevenue.ToString("N2") ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#F1EEFF;color:#6D5AE0;">▥</span><div><small>TOPLAM FİŞ</small><strong>@zr.ReceiptCount</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#E8F6EE;color:#1F9D55;">₺</span><div><small>NAKİT</small><strong>@((zr.PaymentBreakdown.FirstOrDefault(x => x.Label == "Nakit")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FFF3E0;color:#C77700;">▣</span><div><small>KREDİ KARTI</small><strong>@((zr.PaymentBreakdown.FirstOrDefault(x => x.Label == "Kredi Kartı")?.Amount ?? 0m).ToString("N2")) ₺</strong></div></div>
+        <div class="rcard rkpi-compact"><span class="ico" style="background:#FDEDF0;color:#C22B57;">%</span><div><small>KDV TOPLAMI</small><strong>@zr.VatBreakdown.Sum(x => x.VatAmount).ToString("N2") ₺</strong></div></div>
+    </div>
+    <div class="report-analytics" style="margin-top:14px;">
+        <div class="rcard analytics-card">
+            <div class="analytics-head"><div><h3>Saatlik Satış Grafiği</h3></div></div>
+            @if (zr.HourlyRevenue.Sum() == 0)
+            {
+                <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
+            }
+            else
+            {
+                <div class="premium-chart">
+                    @for (var i = 0; i < zr.HourlyRevenue.Count; i++)
+                    {
+                        var v = zr.HourlyRevenue[i];
+                        var heightPct = Math.Max(2, (int)Math.Round(v / zMaxHourly * 100));
+                        <div class="pc-col @(v == zr.HourlyRevenue.Max() && v > 0 ? "hot" : "")">
+                            <div class="pc-value">@(v > 0 ? v.ToString("N0") + " ₺" : "")</div>
+                            <div class="pc-bar" style="height:@(heightPct)%"></div>
+                            <div class="pc-label">@zr.HourlyLabels[i]</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="rcard analytics-card">
+            <div class="analytics-head"><div><h3>Kategori Bazlı Satışlar</h3></div></div>
+            @if (zr.CategorySales.Count == 0)
+            {
+                <div class="analytics-empty">Bu dönemde satış verisi yok.</div>
+            }
+            else
+            {
+                <table class="detail-table">
+                    <tr><th>KATEGORİ</th><th>TUTAR</th><th>PAY</th></tr>
+                    @foreach (var c in zr.CategorySales)
+                    {
+                        <tr><td>@c.CategoryName</td><td>@c.Total.ToString("N2") ₺</td><td>%@c.Percent.ToString("0.0")</td></tr>
+                    }
+                </table>
+            }
+        </div>
+    </div>
+    <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">EN ÇOK SATAN 5 ÜRÜN</h6>
+    <table class="detail-table" style="margin-bottom:14px;">
+        <tr><th>#</th><th>ÜRÜN ADI</th><th>ADET</th><th>TUTAR</th></tr>
+        @foreach (var p in zr.Top5Products)
+        {
+            <tr><td>@p.Rank</td><td>@p.ProductName</td><td>@p.Quantity.ToString("N0")</td><td>@p.Total.ToString("N2") ₺</td></tr>
+        }
+    </table>
     <div class="rcard z-report-card">
         <h4>Z Raporu</h4>
         @if (Model.IsShiftOpen)
