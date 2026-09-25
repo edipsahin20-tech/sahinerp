@@ -924,7 +924,7 @@ public sealed class RestaurantPostingService(
         }
 
         var check = await dbContext.RestaurantChecks
-            .Include(x => x.RestaurantTableSession)
+            .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
             .SingleOrDefaultAsync(x => x.Id == restaurantCheckId, cancellationToken)
             ?? throw new InvalidOperationException("Adisyon bulunamadı.");
 
@@ -932,6 +932,17 @@ public sealed class RestaurantPostingService(
         {
             throw new InvalidOperationException("Yalnızca açık adisyonlara sipariş eklenebilir.");
         }
+
+        // GERÇEK HATA (2026-09-25, Edip: "self satış mutfakta bir işi yok hangi bölümde olursa
+        // olsun mutfağa gönder demediği sürece") - Self Satış'ın etiketli "Mutfağa Gönder" butonu
+        // ve yan "Mutfak" ikonu UI'da zaten gizli, ama bu metot flushCartToKitchen üzerinden HIZLI
+        // ÖDEME/ADİSYON butonlarından da (satır/sipariş kaydı için) çağrılıyor - kanal farkı
+        // gözetmeden KDS açıkken istasyonu olan her ürün gerçek bir KitchenTicket'a giriyordu.
+        // Sunucu tarafında KESİN bir kural olarak sabitlendi: Self Satış kanalı asla gerçek mutfak
+        // fişi üretmez - sipariş satırları yine de normal şekilde kaydedilir (stok/muhasebe için
+        // gerekli), yalnızca aşağıdaki istasyon yönlendirme/KitchenTicket bloğu bu kanal için
+        // atlanır.
+        var isSelfSaleChannel = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName;
 
         var order = new RestaurantOrder
         {
@@ -1023,7 +1034,7 @@ public sealed class RestaurantPostingService(
             .Select(x => x.IsKitchenTrackingEnabled)
             .SingleOrDefaultAsync(cancellationToken);
 
-        if (!isKitchenTrackingEnabled)
+        if (!isKitchenTrackingEnabled || isSelfSaleChannel)
         {
             foreach (var line in orderLines)
             {

@@ -248,8 +248,20 @@
                                     }
                                     <!-- Mutfağa gönderildi işareti - satırı SOLUKLAŞTIRMAK yerine
                                          (Edip, 2026-09-05: "pasif görünüm oluşmasın") küçük bir
-                                         metin etiketiyle belirtilir. -->
-                                    <span class="cart-line-sent-badge">✓ Mutfağa gönderildi</span>
+                                         metin etiketiyle belirtilir. GERÇEK HATA (2026-09-25, Edip
+                                         bildirdi: "self satışta hala ödeme alındıktan sonra
+                                         ürünlerin altında mutfağa gönderildi yazısı çıkıyor") -
+                                         Self Satış'ta ürünler gerçek bir mutfak fişine HİÇ
+                                         girmiyor olabilir bile (bkz. SendOrderToKitchenCoreAsync -
+                                         KDS açıksa istasyonuna göre yönlenir, ama Self Satış'ın
+                                         mutfakla hiç işi yok) - bu etiket her koşulda "satır zaten
+                                         sunucuya kaydedildi" anlamına geliyordu, "gerçekten mutfağa
+                                         gitti" anlamına DEĞİL. Self Satış'ta yanıltıcı olduğu için
+                                         gösterilmiyor. -->
+                                    @if (!Model.IsSelfSaleCheck)
+                                    {
+                                        <span class="cart-line-sent-badge">✓ Mutfağa gönderildi</span>
+                                    }
                                     @if (!string.IsNullOrEmpty(line.KitchenNote))
                                     {
                                         <div class="small text-secondary">Not: @line.KitchenNote</div>
@@ -382,9 +394,18 @@
                     <i class="fa-solid fa-right-left pos-side-icon-glyph"></i>Masa<br />Transfer
                 </button>
             }
-            <button type="button" class="pos-side-icon" id="side-kitchen-btn">
-                <i class="fa-solid fa-hat-chef pos-side-icon-glyph"></i>Mutfak
-            </button>
+            @if (!Model.IsSelfSaleCheck)
+            {
+                <!-- GERÇEK HATA (2026-09-25, Edip: "self satış mutfakta bir işi yok") - etiketli
+                     "Mutfağa Gönder" butonu Self Satış'ta zaten gizleniyordu (ShowSendToKitchenButton),
+                     ama bu yan ikon aynı şekilde gizlenmemişti - #send-kitchen-btn DOM'da hâlâ var
+                     (sadece görsel olarak "hidden") olduğundan bu ikon onu tıklatıp aynı sonuca
+                     (gerçek mutfak fişi) varan bir arka kapı oluyordu. Etiketli butonla AYNI koşulla
+                     gizlendi. -->
+                <button type="button" class="pos-side-icon" id="side-kitchen-btn">
+                    <i class="fa-solid fa-hat-chef pos-side-icon-glyph"></i>Mutfak
+                </button>
+            }
             @if (Model.ShowPriceCheckButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#priceCheckModal">
