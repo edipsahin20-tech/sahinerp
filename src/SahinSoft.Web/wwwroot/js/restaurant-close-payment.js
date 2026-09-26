@@ -274,6 +274,17 @@
     }
 
     openBtn.addEventListener('click', openPaymentModal);
+    window.RestaurantOpenPaymentModal = openPaymentModal;
+
+    // Sepet mutfağa/sipariş satırına gönderildikten sonra (flushCartToKitchen) sunucudan taze
+    // dönen tutarla payableTotal'ı günceller - restaurant-pos.js artık ?quickpay=.../
+    // ?openPayment=1 ile SAYFA YENİLEMEDEN (Edip, 2026-09-26: "ödeme alındıktan sonra akışı
+    // hızlansın") doğrudan RestaurantQuickPay/RestaurantOpenPaymentModal'ı çağırabiliyor.
+    window.RestaurantSetPayableTotal = function (newTotal) {
+        if (typeof newTotal === 'number' && !isNaN(newTotal)) {
+            payableTotal = newTotal;
+        }
+    };
 
     // Self Satış hızlı ödeme kısayolları (MASTER tasarım, Edip 2026-09-03) - ürün panelinin
     // altındaki Nakit/Kredi Kartı/Yemek Çeki butonları restaurant-pos.js'ten burayı çağırır.

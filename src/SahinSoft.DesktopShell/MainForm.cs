@@ -10,58 +10,26 @@ namespace SahinSoft.DesktopShell;
 /// adrese baktığı web uygulamasıyla AYNI appsettings.json'daki "RestaurantShell"
 /// bölümünden okunur (bkz. ShellConfig) - Edip'in isteği (2026-09-03): ayrı bir
 /// ayar dosyası/penceresi yok, tek kaynak.
+///
+/// GERÇEK HATA (2026-09-26, Edip: "burası bir web tarayıcı gibi değil bir masaüstü
+/// uygulama ekranı gibi gözüksün") - önceden üstte ◀/▶/⟳ gezinme butonları ve
+/// bağlanılan URL'i gösteren bir durum etiketi (bir tarayıcı adres çubuğu gibi)
+/// vardı. Web uygulamasının KENDİ üst çubuğu zaten var (RestaurantShell/Ayarlar
+/// vb. içeriyor) - bu ikinci, WinForms tarafındaki çubuk sadece "bu bir tarayıcı"
+/// izlenimi veriyordu. Artık pencere SADECE WebView2'yi doldurur, gezinme
+/// kaldırıldı; bağlantı hatası artık kalıcı bir bar yerine tek seferlik bir
+/// MessageBox ile bildirilir.
 /// </summary>
 public sealed class MainForm : Form
 {
-    // Marka renkleri - web uygulamasındaki --rs-navy/--rs-gold ile aynı (Edip, 2026-09-03:
-    // "üst bar daha düzgün gözüksün karanlık ve ne olduğu belli değil" - jenerik koyu gri yerine
-    // uygulamanın kendi lacivert/altın kimliği, artı ne olduğu belli olsun diye bir uygulama adı).
-    private static readonly Color NavyBg = Color.FromArgb(11, 34, 57);
-    private static readonly Color GoldAccent = Color.FromArgb(226, 164, 0);
-
     private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
-    private readonly Button _backButton = NavButton("◀");
-    private readonly Button _forwardButton = NavButton("▶");
-    private readonly Button _refreshButton = NavButton("⟳");
-    private readonly Label _titleLabel = new()
-    {
-        AutoSize = true,
-        ForeColor = GoldAccent,
-        Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
-        TextAlign = ContentAlignment.MiddleLeft,
-        Margin = new Padding(10, 11, 16, 0)
-    };
-    private readonly Label _statusLabel = new()
-    {
-        AutoSize = true,
-        ForeColor = Color.FromArgb(180, 195, 210),
-        Font = new Font("Segoe UI", 8.5F),
-        TextAlign = ContentAlignment.MiddleLeft,
-        Margin = new Padding(0, 13, 0, 0)
-    };
-
     private readonly ShellConfig _config;
-
-    private static Button NavButton(string text) => new()
-    {
-        Text = text,
-        Width = 34,
-        Height = 30,
-        Margin = new Padding(2, 4, 2, 4),
-        FlatStyle = FlatStyle.Flat,
-        BackColor = Color.FromArgb(22, 50, 78),
-        ForeColor = Color.White,
-        Font = new Font("Segoe UI", 10F),
-        Cursor = Cursors.Hand,
-        FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.FromArgb(34, 66, 99) }
-    };
 
     public MainForm()
     {
         _config = ShellConfig.Load();
 
         Text = _config.Title;
-        _titleLabel.Text = _config.Title;
         try
         {
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -76,27 +44,7 @@ public sealed class MainForm : Form
         WindowState = FormWindowState.Maximized;
         Font = new Font("Segoe UI", 9F);
 
-        var toolbar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            Height = 40,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(6, 4, 6, 4),
-            BackColor = NavyBg
-        };
-
-        _backButton.Click += (_, _) => { if (_webView.CanGoBack) _webView.GoBack(); };
-        _forwardButton.Click += (_, _) => { if (_webView.CanGoForward) _webView.GoForward(); };
-        _refreshButton.Click += (_, _) => _webView.Reload();
-
-        toolbar.Controls.Add(_backButton);
-        toolbar.Controls.Add(_forwardButton);
-        toolbar.Controls.Add(_refreshButton);
-        toolbar.Controls.Add(_titleLabel);
-        toolbar.Controls.Add(_statusLabel);
-
         Controls.Add(_webView);
-        Controls.Add(toolbar);
 
         Load += MainForm_Load;
     }
@@ -110,11 +58,18 @@ public sealed class MainForm : Form
     {
         try
         {
-            SetStatus($"Bağlanılıyor: {_config.Url}");
             await _webView.EnsureCoreWebView2Async(null);
             _webView.CoreWebView2.NavigationCompleted += (_, args) =>
             {
-                SetStatus(args.IsSuccess ? _config.Url : "Sayfa yüklenemedi - bağlantıyı kontrol edin.");
+                if (!args.IsSuccess)
+                {
+                    MessageBox.Show(
+                        this,
+                        "Sayfa yüklenemedi - bağlantıyı kontrol edin.",
+                        _config.Title,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
             };
             _webView.Source = new Uri(_config.Url);
         }
@@ -138,17 +93,7 @@ public sealed class MainForm : Form
         }
         catch (Exception ex)
         {
-            SetStatus($"Bağlantı hatası: {ex.Message}");
+            MessageBox.Show(this, $"Bağlantı hatası: {ex.Message}", _config.Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-    }
-
-    private void SetStatus(string message)
-    {
-        if (InvokeRequired)
-        {
-            BeginInvoke(() => _statusLabel.Text = message);
-            return;
-        }
-        _statusLabel.Text = message;
     }
 }

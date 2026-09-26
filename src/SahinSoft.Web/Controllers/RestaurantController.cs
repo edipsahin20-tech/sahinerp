@@ -934,11 +934,18 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
             var result = await postingService.SendOrderToKitchenAsync(request.CheckId, lines, userId, request.SubmissionKey);
 
+            // Hızlı ödeme/Ödemeyi Al akışının sayfa yenilemeden (2026-09-26, Edip: "ödeme
+            // alındıktan sonra akışı hızlansın") devam edebilmesi için - istemci artık bu tutarı
+            // kullanarak RestaurantQuickPay/openPaymentModal'ı DOĞRUDAN çağırıyor, aradaki
+            // "?quickpay=.../?openPayment=1 ile sayfayı yenile" adımı kaldırıldı.
+            var payableTotal = ComputeCheckRunningTotal(request.CheckId);
+
             return Json(new
             {
                 success = true,
                 orderId = result.Order.Id,
-                unroutedProductNames = result.UnroutedProductNames
+                unroutedProductNames = result.UnroutedProductNames,
+                payableTotal
             });
         }
         catch (InvalidOperationException ex)

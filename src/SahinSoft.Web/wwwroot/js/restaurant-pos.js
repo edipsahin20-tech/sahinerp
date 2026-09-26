@@ -562,7 +562,7 @@
     // "Masaya Aktar" akışı (aktarımdan önce sepet boş kalmasın diye) BU fonksiyonu kullanır,
     // aynı gönderim isteği iki yerde ayrı ayrı yazılmaz.
     function flushCartToKitchen(onDone, onError) {
-        if (cart.length === 0) { onDone(); return; }
+        if (cart.length === 0) { onDone(null); return; }
 
         var payload = {
             checkId: checkId,
@@ -602,7 +602,7 @@
                     // olmayan ürünleri kullanıcıya AÇIKÇA bildir (sessizce atlanmaz).
                     window.posAlert('Şu ürünler mutfak istasyonuna sahip değil, mutfağa gönderilmedi:\n' + result.data.unroutedProductNames.join('\n'));
                 }
-                onDone();
+                onDone(result.data);
             })
             .catch(function () {
                 window.posAlert('Sipariş gönderilirken bir bağlantı hatası oluştu.');
@@ -649,10 +649,14 @@
     }
 
     // Self Satış hızlı ödeme kısayolları (MASTER tasarım) - sepette bekleyen ürün varsa önce
-    // mutfağa gönderilir (Self Satış'ta da ürünler normal sipariş satırı olarak işlenir), sonra
-    // ?quickpay=<method> ile SAYFA YENİDEN YÜKLENİR ki PayableTotal sunucuda güncel hesaplansın;
-    // asıl ödeme modalını açıp ön dolduran kısım restaurant-close-payment.js'teki
-    // window.RestaurantQuickPay'dedir - burada sadece tetikleniyor.
+    // mutfağa gönderilir (Self Satış'ta da ürünler normal sipariş satırı olarak işlenir).
+    // GERÇEK HATA (2026-09-26, Edip: "ödeme alındıktan sonra akışı hızlansın, yeni adisyona
+    // hemen geçsin") - önceden bu noktada ?quickpay=<method> ile SAYFA YENİDEN YÜKLENİYORDU
+    // (PayableTotal'ı sunucudan taze almak için), bu da kısa süreliğine eski "gönderildi"
+    // durumundaki sepet ekranının görünmesine (görünür bir kapanma/yeniden açılma hissine) yol
+    // açıyordu. Artık flushCartToKitchen'ın kendi yanıtındaki taze payableTotal doğrudan
+    // kullanılıp window.RestaurantQuickPay SAYFA YENİLEMEDEN çağrılıyor - tek görünür geçiş,
+    // ödeme başarıyla tamamlanıp yeni boş adisyona yönlendiğinde oluyor.
     var quickPayButtons = document.querySelectorAll('.self-quickpay [data-quick-method]');
     quickPayButtons.forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -668,10 +672,10 @@
             }
 
             flushCartToKitchen(
-                function () {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('quickpay', method);
-                    window.location.href = url.toString();
+                function (data) {
+                    if (data && window.RestaurantSetPayableTotal) { window.RestaurantSetPayableTotal(data.payableTotal); }
+                    if (window.RestaurantQuickPay) { window.RestaurantQuickPay(method); }
+                    quickPayButtons.forEach(function (b) { b.disabled = false; });
                 },
                 function () { quickPayButtons.forEach(function (b) { b.disabled = false; }); });
         });
@@ -679,10 +683,11 @@
 
     // "Ödemeyi Al" - mutfağa hiç gönderilmeden de tahsilat alınabilsin diye, tıklanınca sepette
     // bekleyen (henüz gönderilmemiş) ürün varsa ÖNCE onlar sunucuya yazılır (KDS kapalıyken
-    // doğrudan Servis Edildi olur, mutfak fişi açılmaz), SONRA sayfa ?openPayment=1 ile yeniden
-    // yüklenir ki ödeme modalı güncel (yeni eklenenleri de içeren) tutarla açılsın - aksi halde
-    // restaurant-close-payment.js sayfa yüklendiğindeki ESKİ PayableTotal'ı kullanırdı (Edip,
-    // 2026-09-03: "masa siparişi giriyorum mutfağa göndermeden de tahsilat alabileyim"). Bu
+    // doğrudan Servis Edildi olur, mutfak fişi açılmaz). GERÇEK HATA (2026-09-26, Edip: "akış
+    // hızlansın") - önceden burada sayfa ?openPayment=1 ile yeniden yükleniyordu ki ödeme modalı
+    // güncel (yeni eklenenleri de içeren) tutarla açılsın (Edip, 2026-09-03: "masa siparişi
+    // giriyorum mutfağa göndermeden de tahsilat alabileyim") - artık flushCartToKitchen'ın kendi
+    // yanıtındaki taze payableTotal kullanılıp modal SAYFA YENİLEMEDEN doğrudan açılıyor. Bu
     // listener restaurant-close-payment.js'in kendi tıklama dinleyicisinden ÖNCE eklenir (script
     // sırası) - sepette bir şey varsa stopImmediatePropagation ile o dinleyiciyi (eski tutarla
     // modalı direkt açardı) devre dışı bırakır; sepet boşsa dokunmadan geçer.
@@ -693,10 +698,10 @@
             e.stopImmediatePropagation();
             selfPayBtn.disabled = true;
             flushCartToKitchen(
-                function () {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('openPayment', '1');
-                    window.location.href = url.toString();
+                function (data) {
+                    if (data && window.RestaurantSetPayableTotal) { window.RestaurantSetPayableTotal(data.payableTotal); }
+                    if (window.RestaurantOpenPaymentModal) { window.RestaurantOpenPaymentModal(); }
+                    selfPayBtn.disabled = false;
                 },
                 function () { selfPayBtn.disabled = false; });
         });
@@ -1302,7 +1307,13 @@
             if (payBtn && payBtn.disabled) {
                 document.getElementById('void-empty-check-form').submit();
             } else {
-                window.location.href = root.getAttribute('data-back-url');
+                // GERÇEK HATA (2026-09-26, Edip: "satış ekranında ürünler varken kapat tuşuna
+                // bastığında satış işlemini tamamlayınız desin ve kapatamasın") - adisyonda
+                // ödenecek bir tutar varken (self-pay-btn aktifken) "Kapat" sessizce Self Satış
+                // listesine dönüyordu, adisyon açık/ödenmemiş kalıyordu. Artık bu durumda kapatma
+                // engellenir, kullanıcı ya ödemeyi tamamlamalı ya da (varsa) Sipariş Sil ile
+                // adisyonu boşaltmalıdır.
+                window.posAlert('Satış işlemini tamamlayınız.');
             }
         });
     })();

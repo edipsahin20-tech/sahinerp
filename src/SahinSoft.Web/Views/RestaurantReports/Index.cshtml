@@ -498,6 +498,17 @@ else if (Model.ActiveTab == "x")
                     <tr><td>@c.CategoryName</td><td>@c.Total.ToString("N2") ₺</td><td>%@c.Percent.ToString("0.0")</td></tr>
                 }
             </table>
+            @if (xr.PaymentBreakdown.Count > 0)
+            {
+                <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">ÖDEME TÜRÜNE GÖRE SATIŞLAR</h6>
+                <table class="detail-table">
+                    <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th><th>PAY</th></tr>
+                    @foreach (var pb in xr.PaymentBreakdown)
+                    {
+                        <tr><td>@pb.Label</td><td>@pb.Amount.ToString("N2") ₺</td><td>%@pb.Percent.ToString("0.0")</td></tr>
+                    }
+                </table>
+            }
         </div>
         <div>
             <h6 style="margin:0 0 6px;font-size:12px;color:var(--rs-muted);">EN ÇOK SATAN 5 ÜRÜN</h6>
@@ -574,6 +585,25 @@ else if (Model.ActiveTab == "z")
                     @foreach (var c in zr.CategorySales)
                     {
                         <tr><td>@c.CategoryName</td><td>@c.Total.ToString("N2") ₺</td><td>%@c.Percent.ToString("0.0")</td></tr>
+                    }
+                </table>
+            }
+            <!-- Ödeme türüne göre satış toplamları (2026-09-26, Edip: "kategori bazlı satışlar
+                 altına ödeme tiplerine göre nakit/kredi kartı/açık hesap/fatura toplamları da
+                 gelsin") - AYNI zr.PaymentBreakdown (üstte Genel Özet/Ödeme Dağılımı sekmesinde
+                 kullanılan) veriden, ikinci bir hesaplama İCAT EDİLMEDİ. Uygulamada gerçek ödeme
+                 yöntemleri Nakit/Kredi Kartı/Yemek Çeki/Ödenmez/Açık Hesap'tır - ayrı bir "Fatura"
+                 ödeme türü YOK (fatura, RetailSale'den bağımsız bir belge akışı); bu yüzden liste
+                 o an GERÇEKTEN kullanılmış olan yöntemleri (dinamik) gösterir, sahte bir satır
+                 eklenmez. -->
+            @if (zr.PaymentBreakdown.Count > 0)
+            {
+                <h6 style="margin:14px 0 6px;font-size:12px;color:var(--rs-muted);">ÖDEME TÜRÜNE GÖRE SATIŞLAR</h6>
+                <table class="detail-table">
+                    <tr><th>ÖDEME TÜRÜ</th><th>TUTAR</th><th>PAY</th></tr>
+                    @foreach (var pb in zr.PaymentBreakdown)
+                    {
+                        <tr><td>@pb.Label</td><td>@pb.Amount.ToString("N2") ₺</td><td>%@pb.Percent.ToString("0.0")</td></tr>
                     }
                 </table>
             }
