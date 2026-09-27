@@ -110,6 +110,16 @@
         .admin-login a { color: var(--pn-text-2); font-size: 12px; text-decoration: none; }
         .admin-login a:hover { text-decoration: underline; }
 
+        /* Çıkış/Ayarlar (Edip, 2026-09-27: "giriş sayfasına 2 tane buton istiyorum çıkış kırmızı
+           buton ve ayarlar bölümü") - kiosk/masaüstü uygulama hissini tamamlayan iki alt buton.
+           Ayarlar, mevcut Identity admin girişini (zaten [Authorize] ile korunuyor) kullanır - ayrı
+           bir PIN/parola İCAT EDİLMEDİ. */
+        .login-bottom-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .login-bottom-btn { flex: 1; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; text-decoration: none; border: 1px solid var(--pn-border); background: #fff; color: var(--pn-text); }
+        .login-bottom-btn.settings:hover { border-color: var(--pn-gold); color: var(--pn-gold); }
+        .login-bottom-btn.exit { background: var(--pn-danger); border-color: var(--pn-danger); color: #fff; }
+        .login-bottom-btn.exit:hover { opacity: .92; }
+
         @@media (max-width: 860px) {
             .login-left { display: none; }
             .login-right { width: 100%; }
@@ -156,6 +166,10 @@
                 <button type="button" id="pin-back">⌫</button>
             </div>
             <button type="button" class="login-btn" id="pin-confirm">Giriş Yap →</button>
+            <div class="login-bottom-actions">
+                <a class="login-bottom-btn settings" href="@Url.Action("Index", "RestaurantTerminalSettings")">⚙ Ayarlar</a>
+                <button type="button" class="login-bottom-btn exit" id="app-exit-btn">⏻ Çıkış</button>
+            </div>
         </div>
 
         <div class="login-footer-block">
@@ -224,6 +238,21 @@
             });
 
             document.getElementById('pin-confirm').addEventListener('click', submitPin);
+
+            // Çıkış (2026-09-27, Edip: "çıkış kırmızı buton") - masaüstü kabuk (SahinSoft.exe,
+            // WebView2) çalışıyorsa window.chrome.webview.postMessage ile GERÇEKTEN pencereyi/
+            // programı kapatır (bkz. SahinSoft.DesktopShell/MainForm.cs WebMessageReceived).
+            // Sıradan bir tarayıcıda (ör. bu sayfa geliştirme/test için Chrome'da açıldıysa)
+            // window.chrome.webview YOKTUR - o durumda sekmeyi kapatmaya çalışır, olmazsa
+            // kullanıcıya açıkça söyler (sessizce hiçbir şey yapmaz diye).
+            document.getElementById('app-exit-btn').addEventListener('click', function () {
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage('exit-app');
+                    return;
+                }
+                window.close();
+                setTimeout(function () { alert('Programı kapatmak için pencereyi kapatın.'); }, 300);
+            });
         })();
     </script>
 </body>

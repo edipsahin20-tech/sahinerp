@@ -767,7 +767,11 @@
     margin-bottom: 0.15rem;
 }
 
-/* Bekleyen Fişler (madde 18, 2026-09-04) - sidebar rozeti + profesyonel kart tasarımı. */
+/* Bekleyen Fişler (madde 18, 2026-09-04) - sidebar rozeti + profesyonel kart tasarımı.
+   GERÇEK HATA (2026-09-27, Edip: "bekleyen işlem sayısı gözükmüyor") - rozet üstteki
+   .pos-side-icon butonunun köşesinden taşacak şekilde (top:-6px;right:-6px) konumlanıyor,
+   ama .pos-side-icon'un kendisi overflow:hidden - rozetin büyük kısmı (içindeki sayı dahil)
+   butonun kenarında KIRPILIYORDU, geriye sadece küçük kırmızı bir kavis görünüyordu. */
 .held-receipts-count-badge {
     position: absolute;
     top: -6px;
@@ -783,6 +787,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
+}
+.restaurant-pos #held-receipts-btn {
+    overflow: visible;
 }
 .held-receipts-grid {
     display: grid;

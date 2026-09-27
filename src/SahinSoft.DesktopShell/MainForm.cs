@@ -71,6 +71,16 @@ public sealed class MainForm : Form
                         MessageBoxIcon.Warning);
                 }
             };
+            // Çıkış butonu (2026-09-27, Edip: "giriş sayfasına... çıkış kırmızı buton") - PIN giriş
+            // sayfasının kendisi bir Windows penceresini kapatamaz, bu yüzden web tarafı
+            // window.chrome.webview.postMessage('exit-app') ile bu kabuğa haber verir.
+            _webView.CoreWebView2.WebMessageReceived += (_, args) =>
+            {
+                if (args.TryGetWebMessageAsString() == "exit-app")
+                {
+                    Close();
+                }
+            };
             _webView.Source = new Uri(_config.Url);
         }
         catch (WebView2RuntimeNotFoundException)
