@@ -59,6 +59,7 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
         var overrideExists = System.IO.File.Exists(LocalOverridePath);
         JsonObject? root = null;
         string? overrideConnString = null;
+        string? savedMode = null;
 
         if (overrideExists)
         {
@@ -69,6 +70,7 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
                 {
                     vm.HasLocalOverrideFile = true;
                     overrideConnString = root["ConnectionStrings"]?["DefaultConnection"]?.GetValue<string>();
+                    savedMode = root["TerminalConnectionMode"]?.GetValue<string>();
 
                     var merkez = root["MerkezSync"];
                     if (merkez is not null)
@@ -88,20 +90,30 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(overrideConnString))
+        // "TerminalConnectionMode" işareti VARSA ona güvenilir (Bulut sekmesi de artık kendi özel
+        // sunucusunu yazabildiği için "ConnectionStrings var mı" tek başına hangi sekmenin aktif
+        // olduğunu AYIRT EDEMEZ). İşaret YOKSA (eski/elle oluşturulmuş bir dosya) eski davranışa -
+        // ConnectionStrings varlığına bakmaya - geri düşülür.
+        var isLocal = savedMode is not null
+            ? savedMode == "Local"
+            : !string.IsNullOrWhiteSpace(overrideConnString);
+
+        vm.IsLocalMode = isLocal;
+        if (isLocal && !string.IsNullOrWhiteSpace(overrideConnString))
         {
-            // appsettings.Local.json KENDİ bağlantı dizesini yazmış - bu, kullanıcının en son
-            // hangi modu seçtiğidir (Yerel VEYA özel bir Bulut sunucusu).
-            vm.IsLocalMode = true;
             ParseConnectionString(overrideConnString, vm, isLocal: true);
         }
-        else
+        else if (!isLocal && !string.IsNullOrWhiteSpace(overrideConnString))
         {
-            // Override yok - uygulama şu an appsettings.json'daki paylaşımlı bulut bağlantısını
+            // Bulut sekmesinden özel bir sunucu kaydedilmiş - o değerleri Cloud* alanlarına yükle.
+            ParseConnectionString(overrideConnString, vm, isLocal: false);
+        }
+        else if (!isLocal)
+        {
+            // Hiç override yok - uygulama şu an appsettings.json'daki paylaşımlı bulut bağlantısını
             // KULLANIYOR (Edip, 2026-09-27: "bulut dediğim buluttaki sql bağlantı ayarlarını
             // girebilmek için bide") - Bulut sekmesi boş görünmesin diye GERÇEKTEN aktif olan bu
             // bağlantıyı IConfiguration üzerinden okuyup Cloud* alanlarına dolduruyoruz.
-            vm.IsLocalMode = false;
             var effectiveConnString = configuration.GetConnectionString("DefaultConnection");
             if (!string.IsNullOrWhiteSpace(effectiveConnString))
             {
@@ -297,6 +309,13 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             };
         }
 
+        // "TerminalConnectionMode" işareti (2026-09-27 hata düzeltmesi) - Bulut sekmesi de artık
+        // (kullanıcı özel bir sunucu girdiyse) bir ConnectionStrings override'ı yazabildiği için,
+        // sayfa bir sonraki açılışta hangi sekmenin aktif gösterileceğine SADECE "ConnectionStrings
+        // var mı yok mu" bakarak karar veremez (ikisi de yazabiliyor artık) - bu yüzden hangi
+        // sekmenin GERÇEKTEN seçildiği ayrıca, açıkça kaydediliyor.
+        root["TerminalConnectionMode"] = isLocalMode ? "Local" : "Cloud";
+
         root["MerkezSync"] = new JsonObject
         {
             ["Enabled"] = isLocalMode && merkezSyncEnabled,
@@ -306,7 +325,20 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             ["PollIntervalSeconds"] = merkezPollIntervalSeconds > 0 ? merkezPollIntervalSeconds : 120
         };
 
-        System.IO.File.WriteAllText(LocalOverridePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        // Dosya yazımı (2026-09-27, Edip: "kaydet dediğimde hata verdi") - gerçek Windows kurulum
+        // klasöründe yazma izni olmayabilir (ör. korumalı bir klasöre kurulmuşsa); ÖNCEDEN bu
+        // satırın etrafında hiç try/catch YOKTU, bir IOException/UnauthorizedAccessException
+        // doğrudan işlenmemiş istisna olarak genel "Bir hata oluştu" sayfasına düşüyordu. Artık
+        // yakalanıp kullanıcıya Türkçe, anlaşılır bir mesajla gösteriliyor.
+        try
+        {
+            System.IO.File.WriteAllText(LocalOverridePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TempData["Error"] = "Ayar dosyasına yazılamadı - programın kurulu olduğu klasörde yazma izni olmayabilir. (" + ex.Message + ")";
+            return RedirectToAction(nameof(Index));
+        }
 
         TempData["Success"] = "Bağlantı ayarları kaydedildi. DEĞİŞİKLİKLERİN ETKİLİ OLMASI İÇİN PROGRAMI YENİDEN BAŞLATMANIZ GEREKİYOR.";
         return RedirectToAction(nameof(Index));
