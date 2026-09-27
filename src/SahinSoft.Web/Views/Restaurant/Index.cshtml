@@ -327,16 +327,22 @@
             });
         });
 
-        // Salon filtresi ("Tümü"/"BAHÇE"/...) + "Açık Masalar" filtresi BİRLİKTE çalışır - ikisi
-        // de bağımsız katmanlar, applyFloorFilters ikisini birden her seferinde uygular (Edip,
-        // 2026-09-28: "üst taraflar masa bölümlerinin olduğu yere açık masalar diye bir buton koy").
+        // Salon sekmeleri (Tümü/BAHÇE/...) + "Açık Masalar" - Edip, 2026-09-28: "açık masalara
+        // tıkladığımda kırmızı oluyor ama başka bölüme geçmeme izin vermiyor, ılla tekrar açık
+        // masalara tıklamam gerekiyor, öyle değil direkt masa bölümleri gibi çalışsın" - GERÇEK
+        // HATA: "Açık Masalar" AYRI/bağımsız bir AÇ-KAPA anahtardı (salon filtresiyle "VE" olarak
+        // birleşiyordu), diğer sekmelerle AYNI grupta DEĞİLDİ - bu yüzden bir salon sekmesine
+        // basmak "Açık Masalar" hâlâ açıkken o salondaki BOŞ masaları gizlemeye devam ediyordu,
+        // sanki tıklama işe yaramıyormuş gibi görünüyordu. Artık "Açık Masalar" da TÜMÜ/BAHÇE/...
+        // ile AYNI, birbirini DIŞLAYAN tek bir sekme grubunun üyesi - herhangi bir sekmeye
+        // basmak diğerini otomatik kapatır, tıpkı normal bir sekme gibi.
         var sectionTabs = document.getElementById('sectionTabs');
         var activeSectionFilter = 'all';
-        var occupiedOnly = false;
 
         function applyFloorFilters() {
+            var occupiedOnly = activeSectionFilter === 'occupied';
             document.querySelectorAll('.floor-section').forEach(function (section) {
-                var sectionMatches = activeSectionFilter === 'all' || section.getAttribute('data-section-id') === activeSectionFilter;
+                var sectionMatches = activeSectionFilter === 'all' || occupiedOnly || section.getAttribute('data-section-id') === activeSectionFilter;
                 var visibleTileCount = 0;
                 section.querySelectorAll('.table-tile-wrap').forEach(function (wrap) {
                     var tile = wrap.querySelector('.table-tile');
@@ -350,22 +356,14 @@
         }
 
         if (sectionTabs) {
-            sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (tab) {
+            var allTopTabs = sectionTabs.querySelectorAll('[data-section-filter], #occupiedOnlyTab');
+            allTopTabs.forEach(function (tab) {
                 tab.addEventListener('click', function () {
-                    sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (t) { t.classList.remove('active'); });
+                    allTopTabs.forEach(function (t) { t.classList.remove('active'); });
                     tab.classList.add('active');
-                    activeSectionFilter = tab.getAttribute('data-section-filter');
+                    activeSectionFilter = tab.id === 'occupiedOnlyTab' ? 'occupied' : tab.getAttribute('data-section-filter');
                     applyFloorFilters();
                 });
-            });
-        }
-
-        var occupiedOnlyTab = document.getElementById('occupiedOnlyTab');
-        if (occupiedOnlyTab) {
-            occupiedOnlyTab.addEventListener('click', function () {
-                occupiedOnly = !occupiedOnly;
-                occupiedOnlyTab.classList.toggle('active', occupiedOnly);
-                applyFloorFilters();
             });
         }
 
