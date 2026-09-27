@@ -721,8 +721,14 @@ else if (Model.ActiveTab == "zlist")
                 <div class="detail-cols">
                     <div class="receipt-preview">
                         <div class="rp-center rp-brand">@zs.BranchName</div>
-                        @if (zs.BranchAddress is not null) { <div class="rp-center">@zs.BranchAddress</div> }
-                        @if (zs.BranchPhone is not null) { <div class="rp-center">@zs.BranchPhone</div> }
+                        @if (zs.BranchAddress is not null)
+                        {
+                            <div class="rp-center">@zs.BranchAddress</div>
+                        }
+                        @if (zs.BranchPhone is not null)
+                        {
+                            <div class="rp-center">@zs.BranchPhone</div>
+                        }
                         <hr />
                         <div class="rp-center rp-brand">Z RAPORU</div>
                         <div class="rp-kv"><span>Z NO</span><span>@Model.SelectedZNumber</span></div>
@@ -845,8 +851,14 @@ else if (Model.ActiveTab == "zlist")
                 <div class="detail-cols">
                     <div class="receipt-preview">
                         <div class="rp-center rp-brand">@r.BranchName</div>
-                        @if (r.BranchAddress is not null) { <div class="rp-center">@r.BranchAddress</div> }
-                        @if (r.BranchPhone is not null) { <div class="rp-center">@r.BranchPhone</div> }
+                        @if (r.BranchAddress is not null)
+                        {
+                            <div class="rp-center">@r.BranchAddress</div>
+                        }
+                        @if (r.BranchPhone is not null)
+                        {
+                            <div class="rp-center">@r.BranchPhone</div>
+                        }
                         <hr />
                         <div class="rp-kv"><span>TARİH</span><span>@r.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</span></div>
                         <div class="rp-kv"><span>SAAT</span><span>@r.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</span></div>
