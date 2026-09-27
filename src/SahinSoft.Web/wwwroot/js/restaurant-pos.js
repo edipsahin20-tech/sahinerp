@@ -336,7 +336,11 @@
         if (cart.length === 0) {
             linesEl.innerHTML = '<p class="text-secondary small p-2">Ürün eklemek için soldan seçim yapın.</p>';
             syncRunningTotals(sentLinesTotal, sentLinesDiscountTotal);
-            sendBtn.disabled = true;
+            // Edip, 2026-09-27: "masa satış ve paket satıştan girdiğimde mutfağa gönder butonu
+            // aktif olsun" - ÖNCEDEN sepet (henüz gönderilmemiş yeni satırlar) boşken bu buton
+            // disabled yapılıyordu; artık her zaman tıklanabilir - tıklama zaten kendi içinde
+            // (aşağıdaki click handler'da "if (cart.length === 0) return;") boş sepette hiçbir şey
+            // yapmıyor, bu yüzden devre dışı bırakmaya GEREK yok, sadece kafa karıştırıyordu.
             // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - NET (indirim/ikram
             // düşülmüş) tutar kullanılıyordu: tam İkram edilmiş bir adisyonda (satırlar hâlâ VAR
             // ama net=0) bu buton kalıcı olarak disabled kalıyor, sunucunun (Model.AraToplam

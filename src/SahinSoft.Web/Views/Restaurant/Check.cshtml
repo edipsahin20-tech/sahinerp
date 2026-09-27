@@ -333,7 +333,12 @@
                              basılıyordu (tarayıcı geçersiz style'ı yok sayıp butonu GÖRÜNÜR
                              bırakıyordu) - ShowSendToKitchenButton hep true olduğu için şimdiye
                              kadar hiç fark edilmemişti. Native "hidden" özniteliği ile düzeltildi. -->
-                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" disabled @(Model.ShowSendToKitchenButton ? "" : "hidden")>♨ Mutfağa Gönder</button>
+                        <!-- Edip, 2026-09-27: "masa satış ve paket satıştan girdiğimde mutfağa gönder
+                             butonu aktif olsun, sadece self satışta kapalı olucak" - artık başlangıçta
+                             disabled DEĞİL (eskiden sepet boşken JS bunu her zaman disabled yapıyordu,
+                             bkz. restaurant-pos.js renderCart) - görünürlük hâlâ ShowSendToKitchenButton
+                             ile kontrol ediliyor (Self Satış'ta zaten "hidden" kalıyor, bu değişmedi). -->
+                        <button type="button" class="self-payrow-kitchen" id="send-kitchen-btn" @(Model.ShowSendToKitchenButton ? "" : "hidden")>♨ Mutfağa Gönder</button>
                         <!-- GERÇEK HATA (2026-09-06, kapsamlı kabul testinde bulundu, Fiş İkram testi) -
                              önceden Model.PayableTotal > 0 kullanılıyordu: adisyon TAM İKRAM edilince
                              (tüm satırlar %100 indirimli, PayableTotal=0 ama gerçek/aktif ürünler VAR)
