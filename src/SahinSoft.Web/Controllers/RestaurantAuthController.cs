@@ -87,7 +87,27 @@ public sealed class RestaurantAuthController(
 
         // PasswordSignInAsync değil - PIN zaten yukarıda doğrulandı, burada doğrudan cookie
         // oluşturuluyor (Identity'nin normal e-posta/şifre kontrolünü tekrar tetiklemeye gerek yok).
-        await signInManager.SignInAsync(matched, isPersistent: true);
+        //
+        // isPersistent: false (2026-09-27, Edip: "program nasıl kapattıysam kapatsın, şifre giriş
+        // ekranı gelsin") - ÖNCEDEN true idi, bu yüzden WebView2'nin kalıcı çerez deposu programı
+        // kapatıp AÇTIKTAN SONRA BİLE eski oturumu canlı tutuyordu (PIN ekranı hiç görünmüyordu).
+        // false ile çerez bir "oturum çerezi" olur - kabuk (SahinSoft.DesktopShell) kapanınca
+        // WebView2'nin oturumu sona erer, bir sonraki açılışta PIN ekranı HER ZAMAN gelir.
+        await signInManager.SignInAsync(matched, isPersistent: false);
         return LocalRedirect(returnUrl);
+    }
+
+    // Ayarlar bölümüne giriş kapısı (2026-09-27, Edip: "ayarlar bölümüne tıkladığımda bir giriş
+    // şifresi sorsun, 66 yetkili şifre ile giriş yapabilirsin") - kasiyer POS ekranında mevcut bir
+    // oturum açıksa bile Ayarlar'a girmeden ÖNCE bilinçli olarak signOut yapılır, böylece
+    // [Authorize(Roles=Administrator,RestaurantManager)] HER ZAMAN yeniden PIN sorar - düşük
+    // yetkili bir kasiyerin oturumu açıkken sessizce içeri girilmesi engellenir.
+    public async Task<IActionResult> SettingsGate()
+    {
+        await signInManager.SignOutAsync();
+        return RedirectToAction(nameof(Login), new
+        {
+            returnUrl = Url.Action("Index", "RestaurantTerminalSettings")
+        });
     }
 }

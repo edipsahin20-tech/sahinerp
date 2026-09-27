@@ -111,7 +111,7 @@
         <!-- Kasa Ayarları -->
         <div class="ts-card">
             <h2>🧾 Kasa Ayarları</h2>
-            <p class="ts-card-sub">Kasa numarası ve her kasanın hangi Nakit/Kredi Kartı hesabına bağlı olduğu.</p>
+            <p class="ts-card-sub">Kasa numarası ve her kasanın hangi Nakit/Kredi Kartı hesabına bağlı olduğu. <b>Yukarıda seçili şubenin</b> kasaları listelenir.</p>
             @if (Model.CashRegisters.Count > 0)
             {
                 <div class="ts-register-row ts-register-head">
@@ -119,16 +119,27 @@
                 </div>
                 @foreach (var r in Model.CashRegisters)
                 {
-                    <div class="ts-register-row">
+                    <div class="ts-register-row" data-register-branch="@r.BranchId"
+                         data-reg-id="@r.Id" data-reg-branch="@r.BranchId" data-reg-name="@r.Name"
+                         data-reg-cash="@r.CashFinancialAccountId" data-reg-credit="@r.CreditCardFinancialAccountId"
+                         data-reg-meal="@r.MealCardFinancialAccountId">
                         <span>@r.Name</span>
                         <span>@r.Branch.Name</span>
                         <span>@r.CashFinancialAccount.Name</span>
                         <span>@r.CreditCardFinancialAccount.Name</span>
-                        <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@r.Id" />
-                            <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Pasif Yap</button>
-                        </form>
+                        <span style="display:flex;gap:6px;">
+                            <button type="button" class="ts-btn outline reg-edit-btn" style="padding:6px 10px;">Düzenle</button>
+                            <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Pasif Yap</button>
+                            </form>
+                            <form method="post" asp-action="DeleteCashRegister" onsubmit="return confirm('Bu kasa KALICI OLARAK silinsin mi? Bu işlem geri alınamaz.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Sil</button>
+                            </form>
+                        </span>
                     </div>
                 }
             }
@@ -136,18 +147,18 @@
             {
                 <div class="ts-empty">Henüz kasa tanımı yok.</div>
             }
-            <h3 style="font-size:13px;margin:18px 0 10px;">Yeni Kasa Ekle / Güncelle</h3>
-            <form method="post" asp-action="SaveCashRegister">
+            <h3 style="font-size:13px;margin:18px 0 10px;" id="reg-form-title">Yeni Kasa Ekle</h3>
+            <form method="post" asp-action="SaveCashRegister" id="cash-register-form">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="0" />
+                <input type="hidden" name="id" id="reg-id-input" value="0" />
                 <div class="ts-grid3">
                     <div class="ts-field">
                         <label>Kasa Numarası / Adı</label>
-                        <input name="name" placeholder="Kasa 1" required />
+                        <input name="name" id="reg-name-input" placeholder="Kasa 1" required />
                     </div>
                     <div class="ts-field">
                         <label>Şube</label>
-                        <select name="branchId" required>
+                        <select name="branchId" id="reg-branch-select" required>
                             @foreach (var b in Model.Branches)
                             {
                                 <option value="@b.Id">@b.Name</option>
@@ -157,7 +168,7 @@
                     <div></div>
                     <div class="ts-field">
                         <label>Nakit Kasası (Hesap)</label>
-                        <select name="cashFinancialAccountId" required>
+                        <select name="cashFinancialAccountId" id="reg-cash-select" required>
                             @foreach (var a in Model.FinancialAccounts)
                             {
                                 <option value="@a.Id">@a.Name</option>
@@ -166,7 +177,7 @@
                     </div>
                     <div class="ts-field">
                         <label>Kredi Kartı Kasası (Hesap)</label>
-                        <select name="creditCardFinancialAccountId" required>
+                        <select name="creditCardFinancialAccountId" id="reg-credit-select" required>
                             @foreach (var a in Model.FinancialAccounts)
                             {
                                 <option value="@a.Id">@a.Name</option>
@@ -175,7 +186,7 @@
                     </div>
                     <div class="ts-field">
                         <label>Yemek Kartı Hesabı (opsiyonel)</label>
-                        <select name="mealCardFinancialAccountId">
+                        <select name="mealCardFinancialAccountId" id="reg-meal-select">
                             <option value="">— Kredi kartı hesabı kullanılsın —</option>
                             @foreach (var a in Model.FinancialAccounts)
                             {
@@ -185,6 +196,7 @@
                     </div>
                 </div>
                 <button type="submit" class="ts-btn">Kasayı Kaydet</button>
+                <button type="button" class="ts-btn outline" id="reg-cancel-edit-btn" style="display:none;">Vazgeç / Yeni Ekle</button>
             </form>
         </div>
 
@@ -212,16 +224,123 @@
                 <button type="submit" class="ts-btn">Yazar Kasa Ayarlarını Kaydet</button>
             </form>
         </div>
+
+        <!-- Bağlantı Modu (Edip, 2026-09-27: "kendi lokalinde çalışacaksa kendi veritabanını,
+             buluttan çalışacaksa bulut ayarlarını yapabileceği bir bölüm... normal ana program
+             buluttan çalışacak, satış programı localden de çalışmaya devam edecek, bağlantı gidip
+             gelse de") - hibrit yerel/bulut mimarisi. Bulut = varsayılan, bu terminal ana ERP'yle
+             AYNI paylaşımlı bulut veritabanına doğrudan bağlanır. Yerel = bu terminal KENDİ yerel
+             SQL Server'ına bağlanır (internet kesilse de satış durmaz) ve zaten inşa edilmiş
+             MerkezSync/BranchSyncBackgroundService ile arka planda merkezle senkronize olur. -->
+        <div class="ts-card" style="border-color:#F0C040;">
+            <h2>🔌 Bağlantı Modu</h2>
+            <p class="ts-card-sub">Bu terminal bulut veritabanına mı, yoksa kendi yerel veritabanına mı bağlanacak? <b>Kaydettikten sonra programı yeniden başlatmanız gerekir.</b></p>
+            <form method="post" asp-action="SaveConnectionMode" id="connection-mode-form">
+                @Html.AntiForgeryToken()
+                <div class="ts-branch-tabs">
+                    <button type="button" class="ts-branch-tab @(!Model.IsLocalMode ? "active" : "")" data-mode-tab="cloud">☁ Bulut</button>
+                    <button type="button" class="ts-branch-tab @(Model.IsLocalMode ? "active" : "")" data-mode-tab="local">💻 Yerel</button>
+                </div>
+                <input type="hidden" name="isLocalMode" id="is-local-mode-input" value="@(Model.IsLocalMode ? "true" : "false")" />
+
+                <div data-mode-panel="cloud" style="@(Model.IsLocalMode ? "display:none;" : "")">
+                    <div class="ts-empty">Bu terminal, ana ERP ile aynı paylaşımlı bulut veritabanına doğrudan bağlanır. Ek bir ayar gerekmez.</div>
+                </div>
+
+                <div data-mode-panel="local" style="@(Model.IsLocalMode ? "" : "display:none;")">
+                    <h3 style="font-size:13px;margin:14px 0 8px;">Yerel Veritabanı</h3>
+                    <div class="ts-grid3">
+                        <div class="ts-field"><label>Sunucu</label><input name="localServer" value="@Model.LocalServer" placeholder=".\SQLEXPRESS veya localhost" /></div>
+                        <div class="ts-field"><label>Veritabanı Adı</label><input name="localDatabase" value="@Model.LocalDatabase" /></div>
+                        <div class="ts-field">
+                            <label>Kimlik Doğrulama</label>
+                            <select id="local-auth-select">
+                                <option value="true" selected="@Model.LocalUseWindowsAuth">Windows Kimlik Doğrulama</option>
+                                <option value="false" selected="@(!Model.LocalUseWindowsAuth)">SQL Server (Kullanıcı/Şifre)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ts-grid2" id="local-sql-auth-fields" style="@(Model.LocalUseWindowsAuth ? "display:none;" : "")">
+                        <div class="ts-field"><label>Kullanıcı Adı</label><input name="localUserId" value="@Model.LocalUserId" /></div>
+                        <div class="ts-field"><label>Şifre</label><input type="password" name="localPassword" value="@Model.LocalPassword" /></div>
+                    </div>
+                    <input type="hidden" name="localUseWindowsAuth" id="local-use-windows-auth-hidden" value="@(Model.LocalUseWindowsAuth ? "true" : "false")" />
+
+                    <h3 style="font-size:13px;margin:18px 0 8px;">Merkezle Senkronizasyon</h3>
+                    <p class="ts-card-sub" style="margin-top:-4px;">Bu şube, bağlantısı olduğunda satışlarını otomatik olarak merkez (bulut) sunucuyla senkronize eder.</p>
+                    <div class="ts-grid2">
+                        <div class="ts-field"><label>Merkez Sunucu Adresi (URL)</label><input name="merkezBaseUrl" value="@Model.MerkezBaseUrl" placeholder="https://merkez.sahinbilisim.com.tr" /></div>
+                        <div class="ts-field"><label>Şube Kodu</label><input name="merkezBranchCode" value="@Model.MerkezBranchCode" /></div>
+                    </div>
+                    <div class="ts-grid2">
+                        <div class="ts-field"><label>API Anahtarı</label><input name="merkezApiKey" value="@Model.MerkezApiKey" /></div>
+                        <div class="ts-field"><label>Senkron Aralığı (saniye)</label><input type="number" name="merkezPollIntervalSeconds" value="@Model.MerkezPollIntervalSeconds" min="10" /></div>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+                        <input type="checkbox" name="merkezSyncEnabled" value="true" style="width:auto;" checked="@Model.MerkezSyncEnabled" /> Merkez senkronizasyonu aktif
+                    </label>
+                </div>
+
+                <button type="submit" class="ts-btn">Bağlantı Ayarlarını Kaydet</button>
+            </form>
+        </div>
     </div>
     <script>
+        // Kasa Ayarları listesini yukarıdaki Şube sekmesine göre filtreler (Edip, 2026-09-27:
+        // "hangi şubeyi seçtiysem o şube tanımladığım kasa... kasaları gelsin").
+        function filterRegistersByBranch(branchId) {
+            document.querySelectorAll('[data-register-branch]').forEach(function (row) {
+                row.style.display = row.getAttribute('data-register-branch') === String(branchId) ? '' : 'none';
+            });
+            var branchSelect = document.getElementById('reg-branch-select');
+            if (branchSelect) { branchSelect.value = String(branchId); }
+        }
+
         document.querySelectorAll('[data-branch-tab]').forEach(function (tab) {
             tab.addEventListener('click', function () {
                 document.querySelectorAll('[data-branch-tab]').forEach(function (t) { t.classList.remove('active'); });
                 document.querySelectorAll('[data-branch-panel]').forEach(function (p) { p.classList.remove('active'); });
                 tab.classList.add('active');
                 document.querySelector('[data-branch-panel="' + tab.getAttribute('data-branch-tab') + '"]').classList.add('active');
+                filterRegistersByBranch(tab.getAttribute('data-branch-tab'));
             });
         });
+        (function () {
+            var firstTab = document.querySelector('[data-branch-tab]');
+            if (firstTab) { filterRegistersByBranch(firstTab.getAttribute('data-branch-tab')); }
+        })();
+
+        // Kasa "Düzenle" - satırdaki data-reg-* alanlarını forma doldurur, kaydet aynı forma POST
+        // eder ama artık id=0 yerine gerçek id ile (controller SaveCashRegister'da id>0 ise
+        // güncelleme, id=0 ise ekleme yapıyor).
+        var regForm = document.getElementById('cash-register-form');
+        var regIdInput = document.getElementById('reg-id-input');
+        var regFormTitle = document.getElementById('reg-form-title');
+        var regCancelBtn = document.getElementById('reg-cancel-edit-btn');
+        document.querySelectorAll('.reg-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var row = btn.closest('[data-reg-id]');
+                regIdInput.value = row.getAttribute('data-reg-id');
+                document.getElementById('reg-name-input').value = row.getAttribute('data-reg-name') || '';
+                document.getElementById('reg-branch-select').value = row.getAttribute('data-reg-branch') || '';
+                document.getElementById('reg-cash-select').value = row.getAttribute('data-reg-cash') || '';
+                document.getElementById('reg-credit-select').value = row.getAttribute('data-reg-credit') || '';
+                document.getElementById('reg-meal-select').value = row.getAttribute('data-reg-meal') || '';
+                regFormTitle.textContent = 'Kasayı Düzenle';
+                regCancelBtn.style.display = '';
+                regForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        });
+        if (regCancelBtn) {
+            regCancelBtn.addEventListener('click', function () {
+                regForm.reset();
+                regIdInput.value = '0';
+                regFormTitle.textContent = 'Yeni Kasa Ekle';
+                regCancelBtn.style.display = 'none';
+                var activeTab = document.querySelector('[data-branch-tab].active');
+                if (activeTab) { document.getElementById('reg-branch-select').value = activeTab.getAttribute('data-branch-tab'); }
+            });
+        }
         var fiscalSelect = document.getElementById('fiscal-device-select');
         var fiscalUrlInput = document.getElementById('fiscal-url-input');
         if (fiscalSelect && fiscalUrlInput) {
@@ -229,6 +348,33 @@
                 fiscalUrlInput.disabled = fiscalSelect.value === 'None';
             });
         }
+
+        // Bağlantı Modu - Bulut/Yerel sekmeleri + Windows/SQL kimlik doğrulama alan gizleme.
+        (function () {
+            var isLocalInput = document.getElementById('is-local-mode-input');
+            document.querySelectorAll('[data-mode-tab]').forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    var mode = tab.getAttribute('data-mode-tab');
+                    document.querySelectorAll('[data-mode-tab]').forEach(function (t) { t.classList.remove('active'); });
+                    tab.classList.add('active');
+                    document.querySelectorAll('[data-mode-panel]').forEach(function (p) {
+                        p.style.display = p.getAttribute('data-mode-panel') === mode ? '' : 'none';
+                    });
+                    if (isLocalInput) { isLocalInput.value = mode === 'local' ? 'true' : 'false'; }
+                });
+            });
+
+            var authSelect = document.getElementById('local-auth-select');
+            var authHidden = document.getElementById('local-use-windows-auth-hidden');
+            var sqlAuthFields = document.getElementById('local-sql-auth-fields');
+            if (authSelect) {
+                authSelect.addEventListener('change', function () {
+                    var isWindows = authSelect.value === 'true';
+                    if (authHidden) { authHidden.value = isWindows ? 'true' : 'false'; }
+                    if (sqlAuthFields) { sqlAuthFields.style.display = isWindows ? 'none' : ''; }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
