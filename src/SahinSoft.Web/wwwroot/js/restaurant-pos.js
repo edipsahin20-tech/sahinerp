@@ -625,13 +625,15 @@
             var btn = this;
             btn.disabled = true;
             btn.textContent = 'Gönderiliyor...';
-            // GERÇEK HATA (2026-09-05, Edip bildirdi) - burada data-back-url'e (Masa Durumu'na)
-            // yönlendiriyordu, yani "Mutfağa Gönder" adisyon ekranından TAMAMEN çıkarıyordu; bu
-            // yüzden alt ödeme butonları/ürün başlıkları "kayboluyor" gibi görünüyordu (aslında
-            // farklı bir sayfaya geçilmiş oluyordu). Mutfağa gönderim adisyon ekranında KALMALI,
-            // sadece sepeti temizleyip gönderilmiş satırları göstermek için sayfa yenilenmeli.
+            // Edip, 2026-09-27: "mutfağa gönder dedim, gönderildi dedi, ekranı kapatıp masalara
+            // dönmesi lazım" - 2026-09-05'teki KARARIN TAM TERSİ isteniyor (o zaman adisyon
+            // ekranında kalınması istenmişti). Self Satış'ta bu buton zaten hiç gösterilmiyor
+            // (ShowSendToKitchenButton), yine de tutarlılık için isSelfSale kontrolü eklendi.
             flushCartToKitchen(
-                function () { window.location.reload(); },
+                function () {
+                    if (!isSelfSale) { window.location.href = root.getAttribute('data-back-url'); return; }
+                    window.location.reload();
+                },
                 function () { btn.disabled = false; btn.textContent = 'Mutfağa Gönder'; });
         });
     }
@@ -1310,13 +1312,22 @@
             var payBtn = document.getElementById('self-pay-btn');
             if (payBtn && payBtn.disabled) {
                 document.getElementById('void-empty-check-form').submit();
+            } else if (!isSelfSale) {
+                // Edip, 2026-09-27: "self satış hariç, masa ve paket satışlarda kapat dediğimde
+                // ekranı kapatabilir, çünkü sipariş var masada ürünler var daha işlem yapabilir,
+                // tekrar ürün ekleyebilir ya da düzeltebilir ya da ürün kontrolü yapabilir" - açık
+                // bir masada/pakette ödenmemiş bir bakiye bırakmak NORMAL bir durum (bir masa
+                // hesabı gibi), 2026-09-26'daki "tamamlayınız" engeli SADECE Self Satış'a özgüydü
+                // (orada her işlem anında kapanmalı) - Masa/Paket için engel kaldırıldı, Kapat
+                // sadece Masa Durumu'na döner, adisyon açık/ürünler dokunulmadan kalır.
+                window.location.href = root.getAttribute('data-back-url');
             } else {
                 // GERÇEK HATA (2026-09-26, Edip: "satış ekranında ürünler varken kapat tuşuna
                 // bastığında satış işlemini tamamlayınız desin ve kapatamasın") - adisyonda
                 // ödenecek bir tutar varken (self-pay-btn aktifken) "Kapat" sessizce Self Satış
                 // listesine dönüyordu, adisyon açık/ödenmemiş kalıyordu. Artık bu durumda kapatma
                 // engellenir, kullanıcı ya ödemeyi tamamlamalı ya da (varsa) Sipariş Sil ile
-                // adisyonu boşaltmalıdır.
+                // adisyonu boşaltmalıdır. (Bu davranış SADECE Self Satış için geçerli.)
                 window.posAlert('Satış işlemini tamamlayınız.');
             }
         });
