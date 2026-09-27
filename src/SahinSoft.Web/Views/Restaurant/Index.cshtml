@@ -5,6 +5,7 @@
     var allTables = Model.Sections.SelectMany(s => s.Tables).ToList();
     var occupiedCount = allTables.Count(t => t.IsOccupied);
     var totalGuestCount = allTables.Where(t => t.IsOccupied).Sum(t => t.GuestCount ?? 0);
+    var openTablesTotal = allTables.Where(t => t.IsOccupied).Sum(t => t.RunningTotal);
 
     // Süre "kalan dakika" değil, masanın AÇIK KALDIĞI SÜRE (Edip, 2026-09-27: referans tasarımda
     // saat değil "32 dk"/"1 sa 12 dk" gibi geçen süre gösteriliyor) - server-render anında hesaplanır.
@@ -33,11 +34,22 @@
         <div class="ms-sub">Açık masaları yönetin, masa taşıyın, birleştirin ve siparişleri hızlıca oluşturun.</div>
     </div>
     <div class="ms-toolbar-actions">
-        <button type="button" class="ms-action-btn orange" id="move-table-btn" disabled>⇄ Masa Taşı</button>
-        <button type="button" class="ms-action-btn purple" id="merge-table-btn" disabled>⇄ Masa Birleştir</button>
+        <!-- Edip, 2026-09-28: "masa taşı ve birleştir tuşunu aktif et" - eskiden bu iki buton
+             önce bir masa "seçilmesini" bekliyordu (disabled), ama masa kutucuklarının kendisi
+             data-open-check/data-open-table ile ZATEN başka bir yere tıklanır tıklanmaz
+             yönlendiriyordu - "seçim" hiç kalıcı olamıyordu, butonlar fiilen hiç aktifleşmiyordu.
+             Artık akış TERSİNE: önce bu butona basılır (mod açılır), SONRA masalara tıklanır -
+             bkz. aşağıdaki transfer-mode JS. -->
+        <button type="button" class="ms-action-btn orange" id="move-table-btn">⇄ Masa Taşı</button>
+        <button type="button" class="ms-action-btn purple" id="merge-table-btn">⇄ Masa Birleştir</button>
         <div class="ms-stat-card">
             <span class="ms-stat-icon green">▤</span>
             <div><strong>@occupiedCount</strong><small>Açık Masa</small></div>
+        </div>
+        <!-- Edip, 2026-09-28: "orta açık masa toplam tutarı da göstersin" - üçüncü kart. -->
+        <div class="ms-stat-card">
+            <span class="ms-stat-icon orange">₺</span>
+            <div><strong>@openTablesTotal.ToString("N0")</strong><small>Açık Masa Tutarı</small></div>
         </div>
         <div class="ms-stat-card">
             <span class="ms-stat-icon blue">👤</span>
@@ -47,16 +59,25 @@
 </div>
 
 <div class="restaurant-pos">
-    @if (Model.Sections.Count > 1)
-    {
-        <div class="ms-salon-tabs" id="sectionTabs">
+    <div class="ms-salon-tabs" id="sectionTabs">
+        @if (Model.Sections.Count > 1)
+        {
             <button type="button" class="ms-salon-tab active" data-section-filter="all">Tümü <span>@allTables.Count</span></button>
-            @foreach (var floorSection in Model.Sections)
+            foreach (var floorSection in Model.Sections)
             {
                 <button type="button" class="ms-salon-tab" data-section-filter="@floorSection.Name">@floorSection.Name <span>@floorSection.Tables.Count</span></button>
             }
-        </div>
-    }
+        }
+        <!-- Edip, 2026-09-28: "üst taraflar masa bölümlerinin olduğu yere açık masalar diye bir
+             buton koy, tıkladığımda sadece açık masaları göstersin" - salon filtresinden BAĞIMSIZ,
+             ek bir katman: aktifken sadece dolu (occupied/bill-requested) masalar görünür, hangi
+             salon sekmesi seçili olursa olsun. -->
+        <button type="button" class="ms-salon-tab occupied-filter" id="occupiedOnlyTab">🔴 Açık Masalar <span>@occupiedCount</span></button>
+    </div>
+
+    <!-- Masa Taşı/Birleştir mod bandı - Edip, 2026-09-28: butona basınca "aktif" olsun, sonra
+         sırayla iki masaya tıklanır. Varsayılan olarak gizli, sadece bir mod açıkken görünür. -->
+    <div class="ms-transfer-banner" id="transferBanner" style="display:none;"></div>
 
     @for (var sectionIndex = 0; sectionIndex < Model.Sections.Count; sectionIndex++)
     {
@@ -306,18 +327,45 @@
             });
         });
 
+        // Salon filtresi ("Tümü"/"BAHÇE"/...) + "Açık Masalar" filtresi BİRLİKTE çalışır - ikisi
+        // de bağımsız katmanlar, applyFloorFilters ikisini birden her seferinde uygular (Edip,
+        // 2026-09-28: "üst taraflar masa bölümlerinin olduğu yere açık masalar diye bir buton koy").
         var sectionTabs = document.getElementById('sectionTabs');
+        var activeSectionFilter = 'all';
+        var occupiedOnly = false;
+
+        function applyFloorFilters() {
+            document.querySelectorAll('.floor-section').forEach(function (section) {
+                var sectionMatches = activeSectionFilter === 'all' || section.getAttribute('data-section-id') === activeSectionFilter;
+                var visibleTileCount = 0;
+                section.querySelectorAll('.table-tile-wrap').forEach(function (wrap) {
+                    var tile = wrap.querySelector('.table-tile');
+                    var isOccupied = tile.classList.contains('occupied') || tile.classList.contains('bill-requested');
+                    var show = sectionMatches && (!occupiedOnly || isOccupied);
+                    wrap.style.display = show ? '' : 'none';
+                    if (show) visibleTileCount++;
+                });
+                section.style.display = (sectionMatches && (!occupiedOnly || visibleTileCount > 0)) ? '' : 'none';
+            });
+        }
+
         if (sectionTabs) {
             sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (tab) {
                 tab.addEventListener('click', function () {
-                    sectionTabs.querySelectorAll('.rtab').forEach(function (t) { t.classList.remove('active'); });
+                    sectionTabs.querySelectorAll('[data-section-filter]').forEach(function (t) { t.classList.remove('active'); });
                     tab.classList.add('active');
-                    var filter = tab.getAttribute('data-section-filter');
-                    document.querySelectorAll('.floor-section').forEach(function (section) {
-                        var show = filter === 'all' || section.getAttribute('data-section-id') === filter;
-                        section.style.display = show ? '' : 'none';
-                    });
+                    activeSectionFilter = tab.getAttribute('data-section-filter');
+                    applyFloorFilters();
                 });
+            });
+        }
+
+        var occupiedOnlyTab = document.getElementById('occupiedOnlyTab');
+        if (occupiedOnlyTab) {
+            occupiedOnlyTab.addEventListener('click', function () {
+                occupiedOnly = !occupiedOnly;
+                occupiedOnlyTab.classList.toggle('active', occupiedOnly);
+                applyFloorFilters();
             });
         }
 
@@ -332,20 +380,6 @@
                 var pad = function (n) { return String(n).padStart(2, '0'); };
                 document.getElementById('reserveDateTime').value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':00';
                 new bootstrap.Modal(document.getElementById('reserveTableModal')).show();
-            });
-        });
-
-        var selectedTableId = null;
-        var selectedSessionId = null;
-
-        document.querySelectorAll('[data-select-table]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.table-tile').forEach(function (t) { t.style.outline = ''; });
-                selectedTableId = btn.getAttribute('data-select-table');
-                selectedSessionId = btn.getAttribute('data-session-id') || null;
-                btn.style.outline = '2px solid var(--pos-navy, #0B2239)';
-                document.getElementById('move-table-btn').disabled = !selectedSessionId;
-                document.getElementById('merge-table-btn').disabled = !selectedSessionId;
             });
         });
 
@@ -401,23 +435,83 @@
             });
         });
 
-        document.getElementById('move-table-btn').addEventListener('click', function () {
-            if (!selectedSessionId) { return; }
-            document.getElementById('moveSessionId').value = selectedSessionId;
-            document.getElementById('moveFromName').textContent = document.querySelector('[data-select-table="' + selectedTableId + '"] .table-name').textContent;
-            new bootstrap.Modal(document.getElementById('moveTableModal')).show();
-        });
+        // --- Masa Taşı / Masa Birleştir (Edip, 2026-09-28: "masa taşı ve birleştir tuşunu aktif
+        // et, önce taşınacak masaya tıkladığımda rengi sarı olsun, sonra 2. masaya tıkladığımda o
+        // masanın içine taşısın; birleştir aynı mantıkta") - ESKİDEN bir masaya tıklamak (seçmek
+        // için) ZATEN data-open-check/data-open-table ile başka bir sayfaya yönlendiriyordu, "seçim"
+        // hiç kalıcı olamıyordu - butonlar fiilen hiç kullanılamıyordu. Artık akış TERSİNE: önce
+        // Masa Taşı/Birleştir butonuna basılır (mod açılır), SONRA sırayla iki masaya tıklanır;
+        // mod açıkken masa tıklamaları normal navigasyonu (yakalama/capture fazında,
+        // stopImmediatePropagation ile) TAMAMEN engeller.
+        var transferMode = null; // 'move' | 'merge' | null
+        var transferSource = null; // { tableId, sessionId, tileEl }
+        var moveBtn = document.getElementById('move-table-btn');
+        var mergeBtn = document.getElementById('merge-table-btn');
+        var transferBanner = document.getElementById('transferBanner');
 
-        document.getElementById('merge-table-btn').addEventListener('click', function () {
-            if (!selectedSessionId) { return; }
-            document.getElementById('mergeFromSessionId').value = selectedSessionId;
-            document.getElementById('mergeFromName').textContent = document.querySelector('[data-select-table="' + selectedTableId + '"] .table-name').textContent;
-            // Hedef listeden kendi masasını çıkar - bir masa kendisiyle birleştirilemez.
-            var select = document.getElementById('mergeIntoSessionId');
-            Array.from(select.options).forEach(function (opt) {
-                opt.hidden = opt.getAttribute('data-table-id') === selectedTableId;
-            });
-            new bootstrap.Modal(document.getElementById('mergeTableModal')).show();
+        function showTransferBanner(text) {
+            transferBanner.textContent = text;
+            transferBanner.style.display = '';
+        }
+        function resetTransferMode() {
+            if (transferSource && transferSource.tileEl) { transferSource.tileEl.classList.remove('transfer-source'); }
+            transferMode = null;
+            transferSource = null;
+            moveBtn.classList.remove('active');
+            mergeBtn.classList.remove('active');
+            transferBanner.style.display = 'none';
+        }
+        function startTransferMode(mode) {
+            if (transferMode === mode) { resetTransferMode(); return; }
+            resetTransferMode();
+            transferMode = mode;
+            (mode === 'move' ? moveBtn : mergeBtn).classList.add('active');
+            showTransferBanner(mode === 'move' ? '⇄ Taşınacak (dolu) masayı seçin' : '⇄ Birleştirilecek ilk (dolu) masayı seçin');
+        }
+        moveBtn.addEventListener('click', function () { startTransferMode('move'); });
+        mergeBtn.addEventListener('click', function () { startTransferMode('merge'); });
+
+        document.querySelectorAll('.floor-grid').forEach(function (grid) {
+            grid.addEventListener('click', function (e) {
+                if (!transferMode) { return; }
+                var tile = e.target.closest('.table-tile');
+                if (!tile) { return; }
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                var tableId = tile.getAttribute('data-select-table');
+                var sessionId = tile.getAttribute('data-session-id') || null;
+                var isOccupied = tile.classList.contains('occupied') || tile.classList.contains('bill-requested');
+
+                if (!transferSource) {
+                    if (!isOccupied) {
+                        (window.posAlert || alert)('Lütfen dolu bir masa seçin.');
+                        return;
+                    }
+                    transferSource = { tableId: tableId, sessionId: sessionId, tileEl: tile };
+                    tile.classList.add('transfer-source');
+                    showTransferBanner(transferMode === 'move'
+                        ? '⇄ Şimdi taşınacak BOŞ masaya tıklayın (vazgeçmek için aynı masaya tekrar tıklayın)'
+                        : '⇄ Şimdi birleştirilecek DOLU masaya tıklayın (vazgeçmek için aynı masaya tekrar tıklayın)');
+                    return;
+                }
+
+                if (tableId === transferSource.tableId) { resetTransferMode(); return; }
+
+                if (transferMode === 'move') {
+                    if (isOccupied) { (window.posAlert || alert)('Hedef masa boş olmalı.'); return; }
+                    document.getElementById('moveSessionId').value = transferSource.sessionId;
+                    document.getElementById('moveToTableId').value = tableId;
+                    resetTransferMode();
+                    document.getElementById('moveTableModal').querySelector('form').submit();
+                } else {
+                    if (!isOccupied) { (window.posAlert || alert)('Hedef masa dolu olmalı.'); return; }
+                    document.getElementById('mergeFromSessionId').value = transferSource.sessionId;
+                    document.getElementById('mergeIntoSessionId').value = sessionId;
+                    resetTransferMode();
+                    document.getElementById('mergeTableModal').querySelector('form').submit();
+                }
+            }, true);
         });
     </script>
 }

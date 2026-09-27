@@ -169,6 +169,12 @@
 .ms-action-btn.orange { background: #E2A400; }
 .ms-action-btn.purple { background: #6946C4; }
 
+/* Taşıma/Birleştirme MODU aktifken buton "basılı" görünür (Edip, 2026-09-28) - beyaz iç halka +
+   koyu gölge, mod açık olduğunu net gösterir. */
+.ms-action-btn.active {
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .65), 0 0 0 2px var(--pos-navy, #132238);
+}
+
 .ms-stat-card {
     display: flex;
     align-items: center;
@@ -207,6 +213,7 @@
 
 .ms-stat-icon.green { background: #E8F8F0; color: #1E9E5A; }
 .ms-stat-icon.blue { background: #EAF3FF; color: #1760B4; }
+.ms-stat-icon.orange { background: #FFF1D5; color: #A16C00; }
 
 .ms-salon-tabs {
     display: flex;
@@ -245,6 +252,38 @@
 .ms-salon-tab.active span {
     background: rgba(255, 255, 255, .22);
     color: #fff;
+}
+
+/* "Açık Masalar" filtresi (Edip, 2026-09-28) - salon sekmelerinden bağımsız, kendi rengiyle
+   (kırmızı, lejanttaki 🔴 ile tutarlı) ayrışsın diye salon sekmesi mavisinden FARKLI. */
+.ms-salon-tab.occupied-filter.active {
+    background: #D94A4A;
+    border-color: #D94A4A;
+    color: #fff;
+}
+
+.ms-salon-tab.occupied-filter.active span {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+/* Masa Taşı/Birleştir mod bandı + seçili (sarı) masa (Edip, 2026-09-28: "önce taşınacak masaya
+   tıkladığımda rengi sarı olsun"). */
+.ms-transfer-banner {
+    background: #FFF8E1;
+    border: 1px solid #F0C040;
+    color: #8A6200;
+    font-weight: 800;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 1rem;
+}
+
+.restaurant-pos .table-tile.transfer-source {
+    background: #FFF3B0 !important;
+    border-left-color: #E2A400 !important;
+    box-shadow: 0 0 0 3px #E2A400;
 }
 
 .ms-section-header {
