@@ -1,0 +1,84 @@
+@model SahinSoft.Web.Models.RetailSaleDetailViewModel
+@{
+    ViewData["Title"] = "Fiş " + Model.DocumentNumber;
+}
+
+<div class="erp-breadcrumb-v2">Raporlar <span>/</span> <a asp-action="Index">Perakende Fiş Listesi</a> <span>/</span> @Model.DocumentNumber</div>
+
+<div class="erp-page-head">
+    <div>
+        <h1>Fiş @Model.DocumentNumber</h1>
+        <p>@Model.Channel — @Model.SourceLabel — @Model.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+    </div>
+    <div class="erp-page-head-actions">
+        <button type="button" class="btn-erp-outline-secondary" onclick="window.print()">
+            <i class="fa-solid fa-print"></i> Yazdır / PDF Olarak Kaydet
+        </button>
+    </div>
+</div>
+
+<style>
+    .retail-receipt { max-width: 420px; margin: 0 auto; background: #fff; border: 1px solid #E3E8EF; border-radius: 12px; padding: 24px; font-family: "Courier New", monospace; }
+    .retail-receipt .rp-center { text-align: center; }
+    .retail-receipt .rp-brand { font-weight: 800; font-size: 1.1rem; }
+    .retail-receipt hr { border-top: 1px dashed #999; }
+    .retail-receipt .rp-kv { display: flex; justify-content: space-between; font-size: 0.85rem; }
+    .retail-receipt .rp-line { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+    @@media print {
+        .erp-breadcrumb-v2, .erp-page-head { display: none; }
+        .retail-receipt { border: none; }
+    }
+</style>
+
+<div class="retail-receipt">
+    <div class="rp-center rp-brand">@Model.BranchName</div>
+    @if (Model.BranchAddress is not null)
+    {
+        <div class="rp-center">@Model.BranchAddress</div>
+    }
+    @if (Model.BranchPhone is not null)
+    {
+        <div class="rp-center">@Model.BranchPhone</div>
+    }
+    <hr />
+    <div class="rp-center rp-brand">PERAKENDE SATIŞ FİŞİ</div>
+    <div class="rp-kv"><span>FİŞ NO</span><span>@Model.DocumentNumber</span></div>
+    <div class="rp-kv"><span>TARİH</span><span>@Model.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+    <div class="rp-kv"><span>KANAL</span><span>@Model.Channel — @Model.SourceLabel</span></div>
+    @if (Model.CustomerName is not null)
+    {
+        <div class="rp-kv"><span>CARİ</span><span>@Model.CustomerName</span></div>
+    }
+    <hr />
+    @foreach (var line in Model.Lines)
+    {
+        <div class="rp-line">
+            <span>@line.Quantity.ToString("0.##") x @line.ProductName</span>
+            <span>@line.LineTotal.ToString("N2") ₺</span>
+        </div>
+    }
+    <hr />
+    <div class="rp-kv"><span>ARA TOPLAM</span><span>@Model.SubtotalAmount.ToString("N2") ₺</span></div>
+    @if (Model.DiscountAmount > 0)
+    {
+        <div class="rp-kv"><span>İNDİRİM</span><span>-@Model.DiscountAmount.ToString("N2") ₺</span></div>
+    }
+    <div class="rp-kv"><span>KDV</span><span>@Model.TaxAmount.ToString("N2") ₺</span></div>
+    <div class="rp-kv rp-brand"><span>GENEL TOPLAM</span><span>@Model.GrandTotal.ToString("N2") ₺</span></div>
+    <hr />
+    @foreach (var p in Model.Payments)
+    {
+        <div class="rp-kv"><span>@p.Method</span><span>@p.Amount.ToString("N2") ₺</span></div>
+    }
+    <hr />
+    <div class="rp-center">
+        @if (Model.Status == "İptal Edildi")
+        {
+            <b>İPTAL EDİLDİ</b>
+        }
+        else
+        {
+            <span>Bu fiş Dahili Perakende Satış Fişidir — Resmî Mali Belge Değildir.</span>
+        }
+    </div>
+</div>

@@ -1,0 +1,107 @@
+@model SahinSoft.Web.Models.RetailSaleListViewModel
+@using SahinSoft.Domain.Enums
+@{
+    ViewData["Title"] = "Perakende Fiş Listesi";
+    var totalPages = (int)Math.Ceiling(Model.TotalCount / (double)Model.PageSize);
+}
+
+<div class="erp-breadcrumb-v2">Raporlar <span>/</span> Perakende Fiş Listesi</div>
+
+<div class="erp-page-head">
+    <div>
+        <h1>Perakende Fiş Listesi</h1>
+        <p>Restoran modülünün ürettiği perakende satış fişleri — şube, tarih, kanal ve ödeme türüne göre süzülebilir.</p>
+    </div>
+    <div class="erp-page-head-actions">
+        <a class="btn-erp-outline-secondary" asp-action="ExportExcel" asp-route-branchId="@Model.BranchId" asp-route-dateFrom="@Model.DateFrom" asp-route-dateTo="@Model.DateTo" asp-route-channel="@Model.Channel" asp-route-paymentMethod="@Model.PaymentMethod">
+            <i class="fa-solid fa-file-arrow-down"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="erp-list-card">
+    <form method="get" class="erp-list-card-toolbar" style="flex-wrap:wrap; gap:10px;">
+        <select name="branchId">
+            <option value="">Tüm Şubeler</option>
+            @foreach (var b in Model.Branches)
+            {
+                <option value="@b.Id" selected="@(Model.BranchId == b.Id)">@b.Name</option>
+            }
+        </select>
+        <input type="date" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+        <input type="date" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+        <select name="channel">
+            <option value="">Tüm Kanallar</option>
+            <option value="Masa" selected="@(Model.Channel == "Masa")">Masa Satış</option>
+            <option value="Paket" selected="@(Model.Channel == "Paket")">Paket</option>
+            <option value="SelfSatis" selected="@(Model.Channel == "SelfSatis")">Self Satış</option>
+        </select>
+        <select name="paymentMethod">
+            <option value="">Tüm Ödeme Türleri</option>
+            <option value="@((int)RestaurantPaymentMethod.Cash)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.Cash)">Nakit</option>
+            <option value="@((int)RestaurantPaymentMethod.CreditCard)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.CreditCard)">Kredi Kartı</option>
+            <option value="@((int)RestaurantPaymentMethod.MealCard)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.MealCard)">Yemek Kartı</option>
+        </select>
+        <button type="submit" class="btn-erp-list-new" style="padding:8px 16px;">Filtrele</button>
+        <a asp-action="Index" class="btn-erp-outline-secondary" style="padding:8px 16px;">Temizle</a>
+    </form>
+
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Fiş No</th>
+                    <th>Tarih</th>
+                    <th>Şube</th>
+                    <th>Kanal</th>
+                    <th>Masa/Kaynak</th>
+                    <th>Cari</th>
+                    <th>Ödeme Türü</th>
+                    <th class="text-end">Tutar</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-secondary text-center py-4">Filtreye uyan fiş bulunamadı.</td></tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr style="cursor:pointer;" onclick="window.location='@Url.Action("Detail", new { id = item.RetailSaleId })'">
+                        <td>@item.DocumentNumber</td>
+                        <td>@item.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@item.BranchName</td>
+                        <td>@item.Channel</td>
+                        <td>@item.SourceLabel</td>
+                        <td>@(item.CustomerName ?? "-")</td>
+                        <td>@item.PaymentMethodsSummary</td>
+                        <td class="text-end">@item.GrandTotal.ToString("N2") ₺</td>
+                        <td>
+                            @if (item.Status == "İptal Edildi")
+                            {
+                                <span class="badge text-bg-danger-subtle text-danger-emphasis">İptal Edildi</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-success-subtle text-success-emphasis">Tamamlandı</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            @for (var p = 1; p <= totalPages; p++)
+            {
+                <a class="btn-erp-outline-secondary @(p == Model.Page ? "active" : "")" style="padding:4px 12px;"
+                   asp-action="Index" asp-route-page="@p" asp-route-branchId="@Model.BranchId" asp-route-dateFrom="@Model.DateFrom" asp-route-dateTo="@Model.DateTo" asp-route-channel="@Model.Channel" asp-route-paymentMethod="@Model.PaymentMethod">@p</a>
+            }
+        </div>
+    }
+    <p class="text-secondary small mt-2">Toplam @Model.TotalCount kayıt.</p>
+</div>

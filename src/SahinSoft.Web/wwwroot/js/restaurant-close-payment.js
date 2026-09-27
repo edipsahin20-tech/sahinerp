@@ -259,6 +259,23 @@
     // ekranda da görünür") - modal hiç açılmadan bile Ödenen/Kalan görünsün.
     updateMainScreenSummary();
 
+    // GERÇEK HATA (2026-09-28, Edip: "ödeme kalmadıysa toplam tutar 0 geldiyse otomatik arka
+    // plan kaydını yapıp ekranı temizle masayı kapat, 0 ile kalmasın") - ürün bazlı tahsilatla
+    // TÜM ürünlerin parası ayrı ayrı alınabildiği için (bkz. Çoklu Seçim), bir adisyon "Kalan: 0"
+    // durumuna gelip AÇIK/temizlenmemiş kalabiliyordu. Sayfa her yüklendiğinde bu durum kontrol
+    // edilir - gerçek bir sipariş VE en az bir ödeme varken kalan<=0 ise, "Siparişi Tamamla" ile
+    // AYNI kapanış çağrısı (submitClosePayment) otomatik yapılır, sonra Masa Durumu'na dönülür
+    // (Self Satış'ta eski davranış - Self Satış listesine dönme - korunur).
+    if (payableTotal > 0 && paymentLines.length > 0 && remaining() <= 0) {
+        var isSelfSaleCheck = root.getAttribute('data-is-self-sale') === 'true';
+        submitClosePayment(paymentLines.slice(), function () {
+            window.location.href = isSelfSaleCheck ? selfSaleUrl : root.getAttribute('data-back-url');
+        }, function () {
+            // Otomatik kapanış başarısız olursa sessizce mevcut ekranda kalınır - kasiyer
+            // "Siparişi Tamamla" ile elle deneyebilir.
+        });
+    }
+
     function openPaymentModal() {
         errorEl.style.display = 'none';
         totalEl.textContent = money(payableTotal);
