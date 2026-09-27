@@ -73,10 +73,24 @@ public sealed class MainForm : Form
             };
             // Çıkış butonu (2026-09-27, Edip: "giriş sayfasına... çıkış kırmızı buton") - PIN giriş
             // sayfasının kendisi bir Windows penceresini kapatamaz, bu yüzden web tarafı
-            // window.chrome.webview.postMessage('exit-app') ile bu kabuğa haber verir.
+            // window.chrome.webview.postMessage('exit-app') ile bu kabuğa haber verir. Onay sorusu
+            // BİLEREK burada, native MessageBox ile soruluyor - eskiden web tarafında JS confirm()
+            // kullanılıyordu, Edip: "çıkış için web tarayıcı sorusu değil masaüstü program gibi
+            // sorsun" - WebView2'nin kendi JS confirm() kutusu bir tarayıcı iletişim kutusu gibi
+            // görünüyordu, gerçek Windows programlarındaki MessageBox gibi değildi.
             _webView.CoreWebView2.WebMessageReceived += (_, args) =>
             {
-                if (args.TryGetWebMessageAsString() == "exit-app")
+                if (args.TryGetWebMessageAsString() != "exit-app")
+                {
+                    return;
+                }
+                var result = MessageBox.Show(
+                    this,
+                    "Programdan çıkmak istediğinize emin misiniz?",
+                    _config.Title,
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
                 {
                     Close();
                 }

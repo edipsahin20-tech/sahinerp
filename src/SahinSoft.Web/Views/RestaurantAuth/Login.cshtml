@@ -246,11 +246,18 @@
             // window.chrome.webview YOKTUR - o durumda sekmeyi kapatmaya çalışır, olmazsa
             // kullanıcıya açıkça söyler (sessizce hiçbir şey yapmaz diye).
             document.getElementById('app-exit-btn').addEventListener('click', function () {
-                if (!confirm('Programdan çıkmak istediğinize emin misiniz?')) {
-                    return;
-                }
+                // Onay artık BURADA (JS confirm()) DEĞİL - masaüstü kabuktayken (WebView2) bu bir
+                // tarayıcı iletişim kutusu gibi görünüyordu (Edip, 2026-09-27: "web tarayıcı
+                // sorusu değil masaüstü program gibi sorsun"). Şimdi onay sorusu gerçek Windows
+                // penceresinde, native MessageBox ile soruluyor (bkz. MainForm.cs
+                // WebMessageReceived) - "Evet" derse Close(), "Hayır" derse hiçbir şey olmaz.
                 if (window.chrome && window.chrome.webview) {
                     window.chrome.webview.postMessage('exit-app');
+                    return;
+                }
+                // Sıradan bir tarayıcıda (geliştirme/test) native bir kabuk yok - burada confirm()
+                // hâlâ makul, çünkü zaten bir web sayfasında olduğumuzu biliyoruz.
+                if (!confirm('Programdan çıkmak istediğinize emin misiniz?')) {
                     return;
                 }
                 window.close();
