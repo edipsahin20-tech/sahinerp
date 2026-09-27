@@ -728,7 +728,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                     KitchenNote = line.KitchenNote,
                     Status = line.Status.ToString(),
                     SentToKitchen = line.KitchenTicketLines.Count > 0,
-                    CanCancel = line.Status != RestaurantOrderLineStatus.Cancelled
+                    CanCancel = line.Status != RestaurantOrderLineStatus.Cancelled,
+                    IsSettled = line.SettledByPendingPaymentId != null
                 }).ToList()
             }).ToList(),
             Catalog = categories
@@ -848,7 +849,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 (RestaurantPaymentMethod)request.Method,
                 request.Amount,
                 request.FinancialAccountId,
-                userId);
+                userId,
+                request.OrderLineIds);
 
             return Ok(new { pendingPaymentId = pending.Id });
         }

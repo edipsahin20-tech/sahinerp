@@ -190,6 +190,15 @@
                     <button type="button" id="line-act-discount">✏ İndirim</button>
                     <button type="button" id="line-act-comp">★ İkram</button>
                     <button type="button" id="line-act-remove" class="danger">⊘ Sil</button>
+                    @if (!Model.IsSelfSaleCheck)
+                    {
+                        <!-- Edip, 2026-09-28: "sil butonunun yanına çok seçim butonu aktif et,
+                             ona tıkladığımda birden fazla ürünü işaretleyebileyim, her tıkladığım
+                             rengi sarı yapsın... sadece seçtiklerimi masa transfer yapabileyim
+                             veya tahsilat yapabileyim" - hem Masa Transfer hem ürün bazlı tahsilat
+                             AYNI çoklu seçimi kullanır (bkz. restaurant-pos.js transferSelectMode). -->
+                        <button type="button" id="multi-select-toggle-btn">☑ Çoklu Seçim</button>
+                    }
                 </div>
                 <!-- Gönderilmiş (kalıcı) satırlar - "sepet"le AYNI yerde, ödeme ekranında
                      görünür, ayrı bir "mutfak" paneline hapsedilmez (Edip, 2026-09-03: "masa
@@ -231,7 +240,11 @@
                                  #line-act-remove) mekanizmasını kullanıyor - AYNI sunucu uçları
                                  (adjust-line-qty-form/toggle-line-comp-form/cancel-line-btn akışı,
                                  PIN onayı dahil), sadece tetikleme yeri değişti. -->
-                            <div class="cart-line sent@(line.CanCancel ? " selectable" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-unit-price="@line.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            <!-- Ürün bazlı tahsilat (Edip, 2026-09-28: "ödemesi alınan ürünleri
+                                 ekranda üzerine çizgi çeksin ve bir daha işlem yaptırmasın") -
+                                 IsSettled=true ise "selectable" HİÇ eklenmez (ne tek-seçim ne çok-
+                                 seçim tıklanabilir), ayrıca .settled class'ı üzeri çizili gösterir. -->
+                            <div class="cart-line sent@(line.CanCancel && !line.IsSettled ? " selectable" : "")@(line.IsSettled ? " settled" : "")" data-line-id="@line.LineId" data-qty="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@line.DiscountAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-unit-price="@line.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                 <div class="cart-line-col-no">@(sentIdx + 1)</div>
                                 <div class="cart-line-col-name">
                                     <span class="cart-line-name-text">@line.ProductName@(!string.IsNullOrEmpty(line.PortionName) ? $" ({line.PortionName})" : "")</span>

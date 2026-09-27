@@ -145,6 +145,10 @@ public sealed class RestaurantSentOrderLineViewModel
     public string Status { get; set; } = string.Empty;
     public bool SentToKitchen { get; set; }
     public bool CanCancel { get; set; }
+
+    // Ürün bazlı tahsilat (Edip, 2026-09-28) - true ise bu ürünün parası zaten alınmış, ekranda
+    // üzeri çizili gösterilir ve bir daha seçilip işlem yapılamaz.
+    public bool IsSettled { get; set; }
 }
 
 public sealed class RestaurantCatalogCategoryViewModel
@@ -245,6 +249,9 @@ public sealed class RestaurantPendingPaymentRequest
     public int Method { get; set; }
     public int? FinancialAccountId { get; set; }
     public decimal Amount { get; set; }
+
+    // Ürün bazlı tahsilat (Edip, 2026-09-28) - sadece ürün seçilerek tetiklenen ödemede dolu gelir.
+    public List<int>? OrderLineIds { get; set; }
 }
 
 public sealed class RestaurantCollectionCariViewModel

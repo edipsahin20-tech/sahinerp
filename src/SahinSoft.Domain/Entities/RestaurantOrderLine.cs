@@ -30,6 +30,14 @@ public sealed class RestaurantOrderLine : EntityBase
     public DateTime? CancelledAtUtc { get; set; }
     public string? CancellationReason { get; set; }
 
+    // Ürün bazlı tahsilat (Edip, 2026-09-28: "ödemesi alınan ürünleri ekranda üzerine çizgi
+    // çeksin ve bir daha işlem yaptırmasın") - bir RestaurantCheckPendingPayment'a bağlanınca bu
+    // satır "ödendi" sayılır (adisyon henüz KAPANMADI, sadece bu ürün(ler)in parası şimdiden
+    // alındı). O ödeme satırı silinirse (Ödeme İptal/✕) BU ALAN DE null'a döner - bkz.
+    // RestaurantPostingService.RemovePendingPaymentAsync/CancelPendingPaymentsAsync.
+    public int? SettledByPendingPaymentId { get; set; }
+    public RestaurantCheckPendingPayment? SettledByPendingPayment { get; set; }
+
     public int RestaurantOrderId { get; set; }
     public RestaurantOrder RestaurantOrder { get; set; } = null!;
     public int ProductId { get; set; }

@@ -429,6 +429,7 @@
     var transferSelectMode = false;
     var transferSelectedLineIds = new Set();
     var transferSideBtn = document.getElementById('side-transfer-btn');
+    var multiSelectToggleBtn = document.getElementById('multi-select-toggle-btn');
     var transferFooter = document.getElementById('productTransferFooter');
     var transferFooterCount = document.getElementById('productTransferCount');
     var transferFooterAmount = document.getElementById('productTransferAmount');
@@ -459,17 +460,30 @@
     function exitTransferSelectMode() {
         transferSelectMode = false;
         transferSelectedLineIds.clear();
-        if (transferSideBtn) transferSideBtn.classList.remove('active');
+        if (multiSelectToggleBtn) multiSelectToggleBtn.classList.remove('active');
         document.querySelectorAll('.cart-line.sent.transfer-selected').forEach(function (r) { r.classList.remove('transfer-selected'); });
         if (transferFooter) transferFooter.style.display = 'none';
     }
 
-    if (transferSideBtn) {
-        transferSideBtn.addEventListener('click', function () {
+    // Edip, 2026-09-28: "sil butonunun yanına çok seçim butonu aktif et" - ÇOK SEÇİM modunu AÇAN/
+    // KAPATAN TEK yer artık bu buton (üst araç çubuğu). "Masa Transfer" (sağ ikon) artık modu
+    // KENDİSİ açmıyor - sadece o an seçili olan ürünleri hedef masaya göndermek için kullanılıyor
+    // ("hem masa transferde hem de ürün bazlı tahsilatta... sadece seçtiklerimi").
+    if (multiSelectToggleBtn) {
+        multiSelectToggleBtn.addEventListener('click', function () {
             if (transferSelectMode) { exitTransferSelectMode(); return; }
             transferSelectMode = true;
-            transferSideBtn.classList.add('active');
-            (window.posAlert || alert)('Transfer/tahsilat edilecek ürünleri seçin (birden fazla seçebilirsiniz).');
+            multiSelectToggleBtn.classList.add('active');
+        });
+    }
+
+    if (transferSideBtn) {
+        transferSideBtn.addEventListener('click', function () {
+            if (transferSelectedLineIds.size === 0) {
+                (window.posAlert || alert)('Önce "☑ Çoklu Seçim" ile transfer edilecek ürünleri seçin.');
+                return;
+            }
+            document.getElementById('tableTransferOverlay').style.display = 'flex';
         });
     }
 
@@ -530,15 +544,19 @@
         });
     });
 
-    // Seçilenler için tahsilat al - mevcut Ödemeyi Al penceresini seçilen ürünlerin toplamıyla açar.
+    // Seçilenler için tahsilat al - mevcut Ödemeyi Al penceresini seçilen ürünlerin toplamıyla
+    // açar. window.RestaurantPendingSettleLineIds (restaurant-close-payment.js'in okuduğu) bu
+    // ödeme kaydedilince HANGİ satırların "ödendi" işaretleneceğini taşır.
     var transferPayBtn = document.getElementById('productTransferPayBtn');
     if (transferPayBtn) {
         transferPayBtn.addEventListener('click', function () {
             var total = 0;
-            transferSelectedLineIds.forEach(function (lineId) {
+            var lineIds = Array.from(transferSelectedLineIds);
+            lineIds.forEach(function (lineId) {
                 var row = document.querySelector('.cart-line.sent[data-line-id="' + lineId + '"]');
                 if (row) total += lineAmount(row);
             });
+            window.RestaurantPendingSettleLineIds = lineIds;
             exitTransferSelectMode();
             if (window.RestaurantOpenPaymentModalWithAmount) window.RestaurantOpenPaymentModalWithAmount(total);
         });

@@ -2339,6 +2339,7 @@ public sealed class RestaurantPostingService(
         decimal amount,
         int? financialAccountId,
         string recordedByUserId,
+        IReadOnlyCollection<int>? settleOrderLineIds = null,
         CancellationToken cancellationToken = default)
     {
         if (amount <= 0)
@@ -2364,6 +2365,26 @@ public sealed class RestaurantPostingService(
         };
         dbContext.RestaurantCheckPendingPayments.Add(pending);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Ürün bazlı tahsilat (Edip, 2026-09-28: "ödemesi alınan ürünleri ekranda üzerine çizgi
+        // çeksin ve bir daha işlem yaptırmasın") - bu ödeme seçilen ürünler için alındıysa, o
+        // satırlar bu ödeme kaydına bağlanır. Sıradan (ürün seçilmemiş) bir kısmi ödemede bu
+        // parametre boş gelir, HİÇBİR satır etkilenmez - mevcut yazma mantığı AYNEN kalır.
+        if (settleOrderLineIds is { Count: > 0 })
+        {
+            var linesToSettle = await dbContext.RestaurantOrderLines
+                .Where(x => settleOrderLineIds.Contains(x.Id)
+                    && x.RestaurantOrder.RestaurantCheckId == checkId
+                    && x.SettledByPendingPaymentId == null)
+                .ToListAsync(cancellationToken);
+            foreach (var line in linesToSettle)
+            {
+                line.SettledByPendingPaymentId = pending.Id;
+                line.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         return pending;
     }
 
@@ -2371,6 +2392,18 @@ public sealed class RestaurantPostingService(
     {
         var pending = await dbContext.RestaurantCheckPendingPayments.SingleOrDefaultAsync(x => x.Id == pendingPaymentId, cancellationToken)
             ?? throw new InvalidOperationException("Ödeme satırı bulunamadı.");
+
+        // Bu ödemenin "ödendi" işaretlediği ürünler varsa (ürün bazlı tahsilat), ödeme geri
+        // alınınca onlar da tekrar normale döner (üzeri çizili kalmaz, tekrar işlem yapılabilir).
+        var settledLines = await dbContext.RestaurantOrderLines
+            .Where(x => x.SettledByPendingPaymentId == pendingPaymentId)
+            .ToListAsync(cancellationToken);
+        foreach (var line in settledLines)
+        {
+            line.SettledByPendingPaymentId = null;
+            line.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
         dbContext.RestaurantCheckPendingPayments.Remove(pending);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -2383,6 +2416,19 @@ public sealed class RestaurantPostingService(
         var pendingPayments = await dbContext.RestaurantCheckPendingPayments
             .Where(x => x.RestaurantCheckId == checkId)
             .ToListAsync(cancellationToken);
+
+        // RemovePendingPaymentAsync'teki AYNI kural - toplu iptalde de ürün bazlı tahsilatla
+        // "ödendi" işaretlenmiş satırlar tekrar normale döner.
+        var pendingIds = pendingPayments.Select(x => x.Id).ToList();
+        var settledLines = await dbContext.RestaurantOrderLines
+            .Where(x => x.SettledByPendingPaymentId != null && pendingIds.Contains(x.SettledByPendingPaymentId!.Value))
+            .ToListAsync(cancellationToken);
+        foreach (var line in settledLines)
+        {
+            line.SettledByPendingPaymentId = null;
+            line.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
         dbContext.RestaurantCheckPendingPayments.RemoveRange(pendingPayments);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -2736,12 +2782,16 @@ public sealed class RestaurantPostingService(
                     .Include(x => x.RestaurantOrder)
                     .Where(x => orderLineIds.Contains(x.Id)
                         && x.RestaurantOrder.RestaurantCheckId == fromCheckId
-                        && x.Status != RestaurantOrderLineStatus.Cancelled)
+                        && x.Status != RestaurantOrderLineStatus.Cancelled
+                        && x.SettledByPendingPaymentId == null)
                     .ToListAsync(cancellationToken);
 
                 if (lines.Count != orderLineIds.Count)
                 {
-                    throw new InvalidOperationException("Seçilen ürünlerden bazıları bu adisyonda bulunamadı.");
+                    // Ürün bazlı tahsilat (Edip, 2026-09-28: "ödemesi alınan ürünler... bir daha
+                    // işlem yaptırmasın") - ön yüz zaten bu satırları tıklanamaz yapıyor, bu sadece
+                    // ikinci bir güvenlik katmanı (ör. eski/önbelleğe alınmış bir sayfadan gönderim).
+                    throw new InvalidOperationException("Seçilen ürünlerden bazıları bu adisyonda bulunamadı ya da zaten ödemesi alınmış.");
                 }
 
                 var remainingLineCount = await dbContext.RestaurantOrderLines

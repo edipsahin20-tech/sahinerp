@@ -417,10 +417,16 @@
 
             function addPending() {
                 btn.disabled = true;
+                // Ürün bazlı tahsilat (Edip, 2026-09-28: "ödemesi alınan ürünleri... üzerine
+                // çizgi çeksin ve bir daha işlem yaptırmasın") - restaurant-pos.js'teki çoklu ürün
+                // seçiminden geldiyse window.RestaurantPendingSettleLineIds doludur; TEK SEFERLİK
+                // okunup hemen temizlenir ki bir sonraki (ürünsüz/normal) ödeme bundan etkilenmesin.
+                var settleLineIds = window.RestaurantPendingSettleLineIds || null;
+                window.RestaurantPendingSettleLineIds = null;
                 fetch(addPendingPaymentUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ checkId: checkId, method: method, financialAccountId: financialAccountId, amount: amount })
+                    body: JSON.stringify({ checkId: checkId, method: method, financialAccountId: financialAccountId, amount: amount, orderLineIds: settleLineIds })
                 })
                     .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                     .then(function (result) {
@@ -428,6 +434,14 @@
                         if (!result.ok) {
                             errorEl.textContent = result.data.error || 'Ödeme kaydedilemedi.';
                             errorEl.style.display = 'block';
+                            return;
+                        }
+                        // Ürün bazlı tahsilatta sayfa HEMEN yenilenir - hem "ödendi" satırların
+                        // üzeri çizili görünmesi hem de Kalan'ın sunucu gerçeğiyle senkron kalması
+                        // için. Normal (ürün seçilmemiş) ödemede eski davranış AYNEN korunur -
+                        // modal açık kalır, kasiyer arka arkaya birden fazla yöntem ekleyebilir.
+                        if (settleLineIds && settleLineIds.length > 0) {
+                            window.location.reload();
                             return;
                         }
                         paymentLines.push({

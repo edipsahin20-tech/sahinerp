@@ -902,6 +902,25 @@
     border-color: rgba(217, 74, 74, .35);
 }
 
+/* Çok Seçim aktifken (Edip, 2026-09-28) - basılı görünsün. */
+.restaurant-pos .cart-line-toolbar > button#multi-select-toggle-btn.active {
+    background: var(--pos-gold, #E2A400);
+    border-color: var(--pos-gold, #E2A400);
+    color: #fff;
+}
+
+/* Ürün bazlı tahsilat - ödemesi alınmış satır (Edip, 2026-09-28: "üzerine çizgi çeksin ve bir
+   daha işlem yaptırmasın") - hem görsel olarak (üstü çizili, soluk) hem işlevsel olarak (tıklama/
+   seçim devre dışı, .selectable class'ı zaten HTML'de hiç eklenmiyor, pointer-events ekstra bir
+   güvenlik katmanı) kilitlenir. */
+.restaurant-pos .cart-line.sent.settled {
+    opacity: .55;
+    text-decoration: line-through;
+    cursor: default;
+    pointer-events: none;
+    background: #F4F6F9;
+}
+
 .restaurant-pos .cart-line-toolbar > button:disabled,
 .restaurant-pos .cart-qty-stepper button:disabled {
     opacity: 0.4;
