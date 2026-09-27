@@ -2688,4 +2688,126 @@ public sealed class RestaurantPostingService(
                 return true;
             });
         }, cancellationToken);
+
+    // Ürün bazlı masa transferi (Edip, 2026-09-28: "ürün bazlı masa transfer yapabileyim, ekranda
+    // ürünleri tıkladığımda sarı olsun, seçtiğim ürünleri o masaya transfer etsin, ekran kalan
+    // ürünlerle devam etsin") - MoveTableSessionAsync/MergeTableSessionsAsync'in TAMAMINI (bütün
+    // adisyonu) taşıdığı yerde, bu SADECE seçilen RestaurantOrderLine'ları taşır. Hedef masa
+    // boşsa TransferSelfSaleToTableAsync'teki AYNI "yeni oturum/adisyon aç" deseniyle otomatik
+    // açılır; doluysa mevcut açık adisyonuna eklenir. Seçilen satırlar YENİ bir RestaurantOrder
+    // altında hedef adisyona bağlanır (RestaurantOrderLine.RestaurantOrderId güncellenir) - ürünün
+    // kendisi/KitchenTicketLine geçmişi bozulmaz, sadece hangi adisyona ait olduğu değişir.
+    public Task TransferOrderLinesAsync(
+        int fromCheckId,
+        IReadOnlyCollection<int> orderLineIds,
+        int targetTableId,
+        string userId,
+        CancellationToken cancellationToken = default) =>
+        DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return strategy.ExecuteAsync(async () =>
+            {
+                dbContext.ChangeTracker.Clear();
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                if (orderLineIds.Count == 0)
+                {
+                    throw new InvalidOperationException("Aktarılacak ürün seçilmedi.");
+                }
+
+                var fromCheck = await dbContext.RestaurantChecks
+                    .Include(x => x.RestaurantTableSession)
+                    .SingleOrDefaultAsync(x => x.Id == fromCheckId && x.Status == RestaurantCheckStatus.Open, cancellationToken)
+                    ?? throw new InvalidOperationException("Kaynak adisyon bulunamadı ya da açık değil.");
+
+                var targetTable = await dbContext.RestaurantTables
+                    .SingleOrDefaultAsync(x => x.Id == targetTableId && x.IsActive, cancellationToken)
+                    ?? throw new InvalidOperationException("Hedef masa bulunamadı veya pasif.");
+
+                if (targetTable.Id == fromCheck.RestaurantTableSession.RestaurantTableId)
+                {
+                    throw new InvalidOperationException("Hedef masa mevcut masayla aynı olamaz.");
+                }
+
+                var lines = await dbContext.RestaurantOrderLines
+                    .Include(x => x.RestaurantOrder)
+                    .Where(x => orderLineIds.Contains(x.Id)
+                        && x.RestaurantOrder.RestaurantCheckId == fromCheckId
+                        && x.Status != RestaurantOrderLineStatus.Cancelled)
+                    .ToListAsync(cancellationToken);
+
+                if (lines.Count != orderLineIds.Count)
+                {
+                    throw new InvalidOperationException("Seçilen ürünlerden bazıları bu adisyonda bulunamadı.");
+                }
+
+                var remainingLineCount = await dbContext.RestaurantOrderLines
+                    .CountAsync(x => x.RestaurantOrder.RestaurantCheckId == fromCheckId
+                        && x.Status != RestaurantOrderLineStatus.Cancelled
+                        && !orderLineIds.Contains(x.Id), cancellationToken);
+                if (remainingLineCount == 0)
+                {
+                    throw new InvalidOperationException("Adisyondaki TÜM ürünler seçildi - bunun için Masa Taşı'yı kullanın.");
+                }
+
+                var targetSession = await dbContext.RestaurantTableSessions
+                    .Include(x => x.Checks)
+                    .SingleOrDefaultAsync(x => x.RestaurantTableId == targetTableId && x.Status == RestaurantTableSessionStatus.Open, cancellationToken);
+
+                RestaurantCheck targetCheck;
+                if (targetSession is not null)
+                {
+                    targetCheck = targetSession.Checks.SingleOrDefault(x => x.Status == RestaurantCheckStatus.Open)
+                        ?? throw new InvalidOperationException("Hedef masada açık adisyon bulunamadı.");
+                }
+                else
+                {
+                    // Masa boşsa mevcut masa açma kurallarıyla (OpenTableSessionAsync/
+                    // TransferSelfSaleToTableAsync'teki AYNI adımlar) yeni oturum/adisyon açılır.
+                    var newSession = new RestaurantTableSession
+                    {
+                        RestaurantTableId = targetTable.Id,
+                        Status = RestaurantTableSessionStatus.Open,
+                        OpenedAtUtc = DateTime.UtcNow,
+                        OpenedByUserId = userId,
+                        GuestCount = 1
+                    };
+                    dbContext.RestaurantTableSessions.Add(newSession);
+
+                    var newCheckNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("RESTAURANT_CHECK", cancellationToken);
+                    var newCheck = new RestaurantCheck
+                    {
+                        CheckNumber = newCheckNumber,
+                        Status = RestaurantCheckStatus.Open,
+                        OpenedAtUtc = DateTime.UtcNow,
+                        RestaurantTableSession = newSession
+                    };
+                    dbContext.RestaurantChecks.Add(newCheck);
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    targetCheck = newCheck;
+                }
+
+                var transferOrder = new RestaurantOrder
+                {
+                    OrderedAtUtc = DateTime.UtcNow,
+                    OrderedByUserId = userId,
+                    RestaurantCheckId = targetCheck.Id
+                };
+                dbContext.RestaurantOrders.Add(transferOrder);
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                foreach (var line in lines)
+                {
+                    line.RestaurantOrderId = transferOrder.Id;
+                    line.UpdatedAtUtc = DateTime.UtcNow;
+                }
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }, cancellationToken);
 }

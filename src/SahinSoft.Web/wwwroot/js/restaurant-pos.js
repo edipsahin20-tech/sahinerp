@@ -420,15 +420,129 @@
         return document.querySelector('.cart-line.sent[data-line-id="' + selectedSentLineId + '"]');
     }
 
+    // Ürün bazlı masa transferi / tahsilat (Edip, 2026-09-28: "ürünleri tıkladığımda sarı olsun,
+    // birden fazla ürün seçmeyi aktif et, seçtiğim ürünleri o masaya transfer etsin, ekran aynı
+    // zamanda ürün bazlı tahsilat özelliği de aktif olsun") - "Masa Transfer" (sağ ikon şeridi)
+    // butonuna basınca AYRI bir çoklu-seçim modu açılır; bu moddayken satıra tıklamak üstteki
+    // TEK satır seçimini (Not/İndirim/İkram/Sil araç çubuğu için) DEĞİL, transferProductSelection
+    // Set'ini günceller - ikisi birbirine karışmaz.
+    var transferSelectMode = false;
+    var transferSelectedLineIds = new Set();
+    var transferSideBtn = document.getElementById('side-transfer-btn');
+    var transferFooter = document.getElementById('productTransferFooter');
+    var transferFooterCount = document.getElementById('productTransferCount');
+    var transferFooterAmount = document.getElementById('productTransferAmount');
+
+    function lineAmount(row) {
+        var qty = parseFloat(row.getAttribute('data-qty')) || 0;
+        var unitPrice = parseFloat(row.getAttribute('data-unit-price')) || 0;
+        var discount = parseFloat(row.getAttribute('data-discount')) || 0;
+        return qty * unitPrice - discount;
+    }
+
+    function updateTransferFooter() {
+        if (!transferFooter) return;
+        if (transferSelectedLineIds.size === 0) {
+            transferFooter.style.display = 'none';
+            return;
+        }
+        var total = 0;
+        transferSelectedLineIds.forEach(function (lineId) {
+            var row = document.querySelector('.cart-line.sent[data-line-id="' + lineId + '"]');
+            if (row) total += lineAmount(row);
+        });
+        transferFooterCount.textContent = transferSelectedLineIds.size;
+        transferFooterAmount.textContent = money(total);
+        transferFooter.style.display = 'flex';
+    }
+
+    function exitTransferSelectMode() {
+        transferSelectMode = false;
+        transferSelectedLineIds.clear();
+        if (transferSideBtn) transferSideBtn.classList.remove('active');
+        document.querySelectorAll('.cart-line.sent.transfer-selected').forEach(function (r) { r.classList.remove('transfer-selected'); });
+        if (transferFooter) transferFooter.style.display = 'none';
+    }
+
+    if (transferSideBtn) {
+        transferSideBtn.addEventListener('click', function () {
+            if (transferSelectMode) { exitTransferSelectMode(); return; }
+            transferSelectMode = true;
+            transferSideBtn.classList.add('active');
+            (window.posAlert || alert)('Transfer/tahsilat edilecek ürünleri seçin (birden fazla seçebilirsiniz).');
+        });
+    }
+
     document.querySelectorAll('.cart-line.sent.selectable').forEach(function (row) {
         row.addEventListener('click', function () {
+            var lineId = parseInt(row.getAttribute('data-line-id'), 10);
+
+            if (transferSelectMode) {
+                if (transferSelectedLineIds.has(lineId)) {
+                    transferSelectedLineIds.delete(lineId);
+                    row.classList.remove('transfer-selected');
+                } else {
+                    transferSelectedLineIds.add(lineId);
+                    row.classList.add('transfer-selected');
+                }
+                updateTransferFooter();
+                return;
+            }
+
             selectedCartId = null;
-            selectedSentLineId = selectedSentLineId === parseInt(row.getAttribute('data-line-id'), 10) ? null : parseInt(row.getAttribute('data-line-id'), 10);
+            selectedSentLineId = selectedSentLineId === lineId ? null : lineId;
             document.querySelectorAll('.cart-line.sent').forEach(function (r) { r.classList.remove('selected'); });
             if (selectedSentLineId !== null) row.classList.add('selected');
             renderCart();
         });
     });
+
+    // Seçilenleri transfer et - masa/salon seçici overlay'i açar.
+    var transferPickBtn = document.getElementById('productTransferPickBtn');
+    if (transferPickBtn) {
+        transferPickBtn.addEventListener('click', function () {
+            document.getElementById('tableTransferOverlay').style.display = 'flex';
+        });
+    }
+    document.getElementById('tableTransferCancelBtn')?.addEventListener('click', function () {
+        document.getElementById('tableTransferOverlay').style.display = 'none';
+    });
+    document.querySelectorAll('[data-transfer-target-table]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var targetTableId = parseInt(btn.getAttribute('data-transfer-target-table'), 10);
+            var lineIds = Array.from(transferSelectedLineIds);
+            fetch(root.getAttribute('data-transfer-lines-url'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ checkId: checkId, orderLineIds: lineIds, targetTableId: targetTableId })
+            })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        (window.posAlert || alert)('Hata: ' + (result.data.error || 'Transfer başarısız.'));
+                        return;
+                    }
+                    window.location.reload();
+                })
+                .catch(function () {
+                    (window.posAlert || alert)('Transfer sırasında bağlantı hatası oluştu.');
+                });
+        });
+    });
+
+    // Seçilenler için tahsilat al - mevcut Ödemeyi Al penceresini seçilen ürünlerin toplamıyla açar.
+    var transferPayBtn = document.getElementById('productTransferPayBtn');
+    if (transferPayBtn) {
+        transferPayBtn.addEventListener('click', function () {
+            var total = 0;
+            transferSelectedLineIds.forEach(function (lineId) {
+                var row = document.querySelector('.cart-line.sent[data-line-id="' + lineId + '"]');
+                if (row) total += lineAmount(row);
+            });
+            exitTransferSelectMode();
+            if (window.RestaurantOpenPaymentModalWithAmount) window.RestaurantOpenPaymentModalWithAmount(total);
+        });
+    }
 
     function submitSentLineQtyChange(lineId, newQty) {
         if (newQty <= 0) { window.posAlert('Geçersiz miktar.'); return; }

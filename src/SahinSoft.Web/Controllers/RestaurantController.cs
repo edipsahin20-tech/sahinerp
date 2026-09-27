@@ -639,19 +639,21 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .SingleOrDefaultAsync();
 
         var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
-        var availableTables = isSelfSaleCheck
-            ? await dbContext.RestaurantTables
-                .AsNoTracking()
-                .Where(x => x.IsActive && x.RestaurantSection.IsActive)
-                .Include(x => x.RestaurantSection)
-                .OrderBy(x => x.RestaurantSection.DisplayOrder).ThenBy(x => x.Name)
-                .Select(x => new RestaurantTransferTableOptionViewModel(
-                    x.Id,
-                    x.RestaurantSection.Name,
-                    x.Name,
-                    x.Sessions.Any(s => s.Status == RestaurantTableSessionStatus.Open)))
-                .ToListAsync()
-            : [];
+        // Edip, 2026-09-28: "ürün bazlı masa transfer... sağ tarafa bir buton ekle, masa
+        // bölümleri açılsın" - eskiden bu liste SADECE Self Satış'ın "Masaya Aktar" özelliği için
+        // dolduruluyordu; artık Masa/Paket'teki yeni ürün-bazlı transfer de AYNI listeyi kullanıyor,
+        // bu yüzden self satış olup olmadığına bakılmadan HER ZAMAN dolduruluyor (kendi masası hariç).
+        var availableTables = await dbContext.RestaurantTables
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.RestaurantSection.IsActive && x.Id != check.RestaurantTableSession.RestaurantTableId)
+            .Include(x => x.RestaurantSection)
+            .OrderBy(x => x.RestaurantSection.DisplayOrder).ThenBy(x => x.Name)
+            .Select(x => new RestaurantTransferTableOptionViewModel(
+                x.Id,
+                x.RestaurantSection.Name,
+                x.Name,
+                x.Sessions.Any(s => s.Status == RestaurantTableSessionStatus.Open)))
+            .ToListAsync();
 
         var model = new RestaurantCheckViewModel
         {
@@ -960,6 +962,25 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 unroutedProductNames = result.UnroutedProductNames,
                 payableTotal
             });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    // Ürün bazlı masa transferi (Edip, 2026-09-28: "ürünleri tıkladığımda sarı olsun, seçtiğim
+    // ürünleri o masaya transfer etsin, ekran kalan ürünlerle devam etsin") - MoveTable/MergeTables
+    // BÜTÜN adisyonu taşırken, bu SADECE seçilen satırları taşır (bkz. TransferOrderLinesAsync).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TransferOrderLines([FromBody] RestaurantTransferOrderLinesRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        try
+        {
+            await postingService.TransferOrderLinesAsync(request.CheckId, request.OrderLineIds, request.TargetTableId, userId);
+            return Json(new { success = true });
         }
         catch (InvalidOperationException ex)
         {

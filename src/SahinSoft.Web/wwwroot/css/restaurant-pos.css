@@ -927,6 +927,88 @@
     box-shadow: inset 3px 0 0 var(--pos-gold);
 }
 
+/* Ürün bazlı masa transferi/tahsilat - çoklu seçim (Edip, 2026-09-28: "ürünleri tıkladığımda
+   rengi sarı olsun"). AYNI satırın normal .selected (Not/İndirim/İkram/Sil araç çubuğu) rengiyle
+   KARIŞMASIN diye belirgin biçimde farklı - tam sarı dolgu. */
+.restaurant-pos .cart-line.transfer-selected {
+    background: #FFF3B0 !important;
+    box-shadow: inset 3px 0 0 #E2A400;
+}
+
+.restaurant-pos .pos-side-icon.active {
+    border-color: var(--pos-gold);
+    background: #FFF8E1;
+    box-shadow: inset 0 0 0 2px var(--pos-gold);
+}
+
+.ms-product-transfer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FFF8E1;
+    border: 1px solid #F0C040;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #8A6200;
+}
+
+.ms-product-transfer-footer > div {
+    display: flex;
+    gap: 8px;
+}
+
+/* Ürün transferi hedef masa seçici (Edip, 2026-09-28: "sağ tarafa bir buton ekle masa transfer
+   diye, masa bölümleri açılsın"). */
+.ms-transfer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 34, 57, .55);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.ms-transfer-overlay-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    width: 90%;
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+}
+
+.ms-transfer-overlay-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 14px 0;
+}
+
+.ms-transfer-target-btn {
+    border: 1px solid var(--pos-border, #E3E8EF);
+    background: #E8F8F0;
+    border-radius: 10px;
+    padding: 10px 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+}
+
+.ms-transfer-target-btn b { font-size: 0.85rem; }
+.ms-transfer-target-btn span { font-size: 0.8rem; font-weight: 700; }
+.ms-transfer-target-btn small { font-size: 0.7rem; color: var(--pos-text-2, #6F7F92); }
+
+.ms-transfer-target-btn.occupied {
+    background: #FFF1D5;
+}
+
 /* Sağdaki sabit ikon şeridi (Edip, 2026-09-03: "sağ taraftaki sabit alanlar bizde de olsun"). */
 .restaurant-pos .pos-side-icons {
     display: flex;

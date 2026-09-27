@@ -276,6 +276,16 @@
     openBtn.addEventListener('click', openPaymentModal);
     window.RestaurantOpenPaymentModal = openPaymentModal;
 
+    // Ürün bazlı tahsilat (Edip, 2026-09-28: "ekran aynı zamanda ürün bazlı tahsilat özelliği de
+    // aktif olsun") - restaurant-pos.js'teki ürün çoklu-seçiminden çağrılır: pencereyi normal
+    // şekilde açar (kısmi ödemeler korunur), SONRA "ALINACAK TUTAR"ı seçilen ürünlerin toplamıyla
+    // doldurur - yeni bir ödeme/veri modeli İCAT EDİLMEDİ, sadece mevcut tutar girişini otomatik
+    // dolduruyor.
+    window.RestaurantOpenPaymentModalWithAmount = function (amount) {
+        openPaymentModal();
+        setEntryFromNumber(Math.max(amount, 0));
+    };
+
     // Sepet mutfağa/sipariş satırına gönderildikten sonra (flushCartToKitchen) sunucudan taze
     // dönen tutarla payableTotal'ı günceller - restaurant-pos.js artık ?quickpay=.../
     // ?openPayment=1 ile SAYFA YENİLEMEDEN (Edip, 2026-09-26: "ödeme alındıktan sonra akışı

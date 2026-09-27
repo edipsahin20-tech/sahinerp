@@ -41,6 +41,7 @@
      data-search-products-url="@Url.Action("SearchProducts")"
      data-product-catalog-list-url="@Url.Action("ProductCatalogList")"
      data-cancel-receipt-url="@Url.Action("CancelReceiptForEdit")"
+     data-transfer-lines-url="@Url.Action("TransferOrderLines")"
      data-apply-discount-url="@Url.Action("ApplyDiscount")"
      data-apply-receipt-comp-url="@Url.Action("ApplyReceiptComplimentary")"
      data-is-admin="@User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator).ToString().ToLowerInvariant()"
@@ -320,6 +321,15 @@
                         <span>Toplam</span>
                         <span class="cart-total" id="cart-total">@Model.PayableTotal.ToString("N2") ₺</span>
                     </div>
+                    <!-- Ürün bazlı transfer/tahsilat seçim çubuğu (Edip, 2026-09-28) - sadece
+                         "Masa Transfer" ikonuyla seçim modu açıkken, en az bir ürün seçiliyken görünür. -->
+                    <div class="ms-product-transfer-footer" id="productTransferFooter" style="display:none;">
+                        <span><b id="productTransferCount">0</b> ürün seçildi · <b id="productTransferAmount">0,00 ₺</b></span>
+                        <div>
+                            <button type="button" class="ms-action-btn orange" id="productTransferPickBtn" style="padding:0 12px;height:34px;">⇄ Transfer Et</button>
+                            <button type="button" class="ms-action-btn purple" id="productTransferPayBtn" style="padding:0 12px;height:34px;">₺ Tahsilat Al</button>
+                        </div>
+                    </div>
                     <!-- Self satış ve masa satışta AYNI ödeme mantığı - "Kapat/Öde" ayrı bir buton
                          olarak kaldırıldı, tek "Ödemeyi Al" akışı ikisinde de burada
                          (Edip, 2026-09-03). -->
@@ -396,6 +406,15 @@
             @if (Model.IsSelfSaleCheck && Model.ShowTableTransferButton)
             {
                 <button type="button" class="pos-side-icon" data-bs-toggle="modal" data-bs-target="#transferToTableModal">
+                    <i class="fa-solid fa-right-left pos-side-icon-glyph"></i>Masa<br />Transfer
+                </button>
+            }
+            @if (!Model.IsSelfSaleCheck && Model.ShowTableTransferButton)
+            {
+                <!-- Edip, 2026-09-28: "ürün bazlı masa transfer... sağ tarafa bir buton ekle masa
+                     transfer diye" - Self Satış'takinin (bütün sepeti taşıyan) AKSİNE, bu SADECE
+                     seçilen ürünleri taşır - bkz. restaurant-pos.js transferSelectMode. -->
+                <button type="button" class="pos-side-icon" id="side-transfer-btn">
                     <i class="fa-solid fa-right-left pos-side-icon-glyph"></i>Masa<br />Transfer
                 </button>
             }
@@ -1009,6 +1028,26 @@
         </div>
     </div>
 }
+
+<!-- Ürün bazlı masa transferi - hedef masa seçici (Edip, 2026-09-28: "sağ tarafa bir buton ekle
+     masa transfer diye, masa bölümleri açılsın") - AvailableTables ARTIK her check türünde
+     doluyor (Self Satış'a özel değil), tek tıkla hedefe gönderir - dropdown+form yerine
+     restaurant-pos.js'teki fetch tabanlı akış (aynı sayfada kalıp reload eder). -->
+<div class="ms-transfer-overlay" id="tableTransferOverlay" style="display:none;">
+    <div class="ms-transfer-overlay-card">
+        <h5>Ürünleri Hangi Masaya Transfer Edelim?</h5>
+        <p class="text-secondary small">Seçtiğiniz ürünler, tıkladığınız masanın açık adisyonuna eklenir (boşsa yeni açılır).</p>
+        <div class="ms-transfer-overlay-tables">
+            @foreach (var table in Model.AvailableTables)
+            {
+                <button type="button" class="ms-transfer-target-btn@(table.IsOccupied ? " occupied" : "")" data-transfer-target-table="@table.TableId">
+                    <b>@table.SectionName</b><span>@table.TableName</span><small>@(table.IsOccupied ? "dolu" : "boş")</small>
+                </button>
+            }
+        </div>
+        <button type="button" class="btn btn-erp-outline mt-2" id="tableTransferCancelBtn">Vazgeç</button>
+    </div>
+</div>
 
 <!-- İndirim modalı - "İndirim" butonu artık window.prompt yerine bunu açar, yüzdesel/tutarsal
      seçim + numpad + canlı önizleme (Edip, 2026-09-03: referans görsel, "indirim butonuna

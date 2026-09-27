@@ -189,6 +189,15 @@ public sealed class RestaurantSendToKitchenRequest
     public List<RestaurantSendToKitchenLineRequest> Lines { get; set; } = [];
 }
 
+// Ürün bazlı masa transferi (Edip, 2026-09-28) - RestaurantController.TransferOrderLines'a
+// gönderilen AJAX gövdesi.
+public sealed class RestaurantTransferOrderLinesRequest
+{
+    public int CheckId { get; set; }
+    public List<int> OrderLineIds { get; set; } = [];
+    public int TargetTableId { get; set; }
+}
+
 public sealed class RestaurantSendToKitchenLineRequest
 {
     public int ProductId { get; set; }
