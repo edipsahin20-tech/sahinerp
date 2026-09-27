@@ -246,6 +246,9 @@
             // window.chrome.webview YOKTUR - o durumda sekmeyi kapatmaya çalışır, olmazsa
             // kullanıcıya açıkça söyler (sessizce hiçbir şey yapmaz diye).
             document.getElementById('app-exit-btn').addEventListener('click', function () {
+                if (!confirm('Programdan çıkmak istediğinize emin misiniz?')) {
+                    return;
+                }
                 if (window.chrome && window.chrome.webview) {
                     window.chrome.webview.postMessage('exit-app');
                     return;

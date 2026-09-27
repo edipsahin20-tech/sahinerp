@@ -244,7 +244,24 @@
                 <input type="hidden" name="isLocalMode" id="is-local-mode-input" value="@(Model.IsLocalMode ? "true" : "false")" />
 
                 <div data-mode-panel="cloud" style="@(Model.IsLocalMode ? "display:none;" : "")">
-                    <div class="ts-empty">Bu terminal, ana ERP ile aynı paylaşımlı bulut veritabanına doğrudan bağlanır. Ek bir ayar gerekmez.</div>
+                    <h3 style="font-size:13px;margin:14px 0 8px;">Bulut Veritabanı</h3>
+                    <p class="ts-card-sub" style="margin-top:-4px;">Boş bırakılırsa ana ERP'nin varsayılan paylaşımlı bulut bağlantısı kullanılır. Doldurursanız bu terminal BURADA girdiğiniz bulut sunucusuna/kullanıcısına bağlanır.</p>
+                    <div class="ts-grid3">
+                        <div class="ts-field"><label>Sunucu</label><input name="cloudServer" value="@Model.CloudServer" placeholder="141.98.114.2,4634" /></div>
+                        <div class="ts-field"><label>Veritabanı Adı</label><input name="cloudDatabase" value="@Model.CloudDatabase" /></div>
+                        <div class="ts-field">
+                            <label>Kimlik Doğrulama</label>
+                            <select id="cloud-auth-select">
+                                <option value="true" selected="@Model.CloudUseWindowsAuth">Windows Kimlik Doğrulama</option>
+                                <option value="false" selected="@(!Model.CloudUseWindowsAuth)">SQL Server (Kullanıcı/Şifre)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ts-grid2" id="cloud-sql-auth-fields" style="@(Model.CloudUseWindowsAuth ? "display:none;" : "")">
+                        <div class="ts-field"><label>Kullanıcı Adı</label><input name="cloudUserId" value="@Model.CloudUserId" /></div>
+                        <div class="ts-field"><label>Şifre</label><input type="password" name="cloudPassword" value="@Model.CloudPassword" /></div>
+                    </div>
+                    <input type="hidden" name="cloudUseWindowsAuth" id="cloud-use-windows-auth-hidden" value="@(Model.CloudUseWindowsAuth ? "true" : "false")" />
                 </div>
 
                 <div data-mode-panel="local" style="@(Model.IsLocalMode ? "" : "display:none;")">
@@ -364,16 +381,20 @@
                 });
             });
 
-            var authSelect = document.getElementById('local-auth-select');
-            var authHidden = document.getElementById('local-use-windows-auth-hidden');
-            var sqlAuthFields = document.getElementById('local-sql-auth-fields');
-            if (authSelect) {
-                authSelect.addEventListener('change', function () {
-                    var isWindows = authSelect.value === 'true';
-                    if (authHidden) { authHidden.value = isWindows ? 'true' : 'false'; }
-                    if (sqlAuthFields) { sqlAuthFields.style.display = isWindows ? 'none' : ''; }
-                });
+            function wireAuthToggle(selectId, hiddenId, fieldsId) {
+                var authSelect = document.getElementById(selectId);
+                var authHidden = document.getElementById(hiddenId);
+                var sqlAuthFields = document.getElementById(fieldsId);
+                if (authSelect) {
+                    authSelect.addEventListener('change', function () {
+                        var isWindows = authSelect.value === 'true';
+                        if (authHidden) { authHidden.value = isWindows ? 'true' : 'false'; }
+                        if (sqlAuthFields) { sqlAuthFields.style.display = isWindows ? 'none' : ''; }
+                    });
+                }
             }
+            wireAuthToggle('local-auth-select', 'local-use-windows-auth-hidden', 'local-sql-auth-fields');
+            wireAuthToggle('cloud-auth-select', 'cloud-use-windows-auth-hidden', 'cloud-sql-auth-fields');
         })();
     </script>
 </body>

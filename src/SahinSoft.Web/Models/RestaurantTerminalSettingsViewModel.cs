@@ -34,6 +34,18 @@ public sealed class RestaurantTerminalSettingsViewModel
     public bool LocalUseWindowsAuth { get; set; } = true;
     public string? LocalUserId { get; set; }
     public string? LocalPassword { get; set; }
+
+    // Bulut SQL bağlantı alanları (Edip, 2026-09-27: "bulut dediğim buluttaki sql bağlantı
+    // ayarlarını girebilmek için bide") - Yerel'in AYNI şekli, ama şu an FİİLEN etkili olan
+    // bağlantıyı (appsettings.Local.json override'ı varsa o, yoksa appsettings.json'daki paylaşılan
+    // bulut bağlantısı) gösterir/düzenlenebilir yapar - böylece bu terminal ihtiyaç halinde farklı
+    // bir bulut SQL sunucusuna/kullanıcısına da yönlendirilebilir.
+    public string CloudServer { get; set; } = string.Empty;
+    public string CloudDatabase { get; set; } = "SahinSoftDb";
+    public bool CloudUseWindowsAuth { get; set; }
+    public string? CloudUserId { get; set; }
+    public string? CloudPassword { get; set; }
+
     public bool MerkezSyncEnabled { get; set; }
     public string MerkezBaseUrl { get; set; } = string.Empty;
     public string MerkezBranchCode { get; set; } = string.Empty;
