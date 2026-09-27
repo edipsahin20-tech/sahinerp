@@ -11,7 +11,16 @@ using SahinSoft.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+// appsettings.Local.json ARTIK uygulamanın kendi kurulum klasöründe DEĞİL, %ProgramData%\SahinSoft
+// altında (Edip, 2026-09-27, gerçek hata: "appsettings.Local.json dosyasına yazılamadı - Access to
+// the path 'C:\SitesSahinSoft\appsettings.Local.json' is denied") - IIS altında çalışan bir site
+// klasörü genellikle SADECE OKUNABİLİR (app pool kimliğinin yazma izni yoktur, hatta her
+// publish'te üzerine yazılır); ProgramData ise TAM BUNUN İÇİN VAR OLAN, standart, her zaman
+// yazılabilir bir Windows makine-geneli ayar konumu. RestaurantTerminalSettingsController'daki
+// LocalOverridePath AYNI formülü kullanıyor - tek kaynak burada, path'i DEĞİŞTİRMEK isterseniz
+// SADECE burayı ve o controller'ı güncelleyin.
+var localOverridePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SahinSoft", "appsettings.Local.json");
+builder.Configuration.AddJsonFile(localOverridePath, optional: true, reloadOnChange: true);
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

@@ -19,13 +19,20 @@ namespace SahinSoft.Web.Controllers;
 // (BranchesController/RestaurantCashRegistersController/SettingsController'ın genel çok-sekmeli
 // ERP ekranlarına yönlendirmez).
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
-public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, IWebHostEnvironment env, IConfiguration configuration) : Controller
+public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, IConfiguration configuration) : Controller
 {
-    // Bu makineye özel katman (Program.cs: "AddJsonFile(appsettings.Local.json, optional:true,
-    // reloadOnChange:true)") - GİT'e HİÇ girmez (.gitignore), her terminal kendi kopyasını tutar.
-    // Bağlantı dizesi/senkron ayarları BİLEREK buraya yazılır, ana appsettings.json'a DEĞİL - o
-    // dosya paylaşımlı/varsayılan (bulut) yapılandırmayı taşır ve asla bu ekrandan değiştirilmez.
-    private string LocalOverridePath => Path.Combine(env.ContentRootPath, "appsettings.Local.json");
+    // Bu makineye özel katman (Program.cs: "AddJsonFile(...)") - GİT'e HİÇ girmez. Bağlantı
+    // dizesi/senkron ayarları BİLEREK buraya yazılır, ana appsettings.json'a DEĞİL - o dosya
+    // paylaşımlı/varsayılan (bulut) yapılandırmayı taşır ve asla bu ekrandan değiştirilmez.
+    //
+    // %ProgramData%\SahinSoft altında, UYGULAMANIN KENDİ KURULUM KLASÖRÜNDE DEĞİL (Edip,
+    // 2026-09-27, gerçek hata: "appsettings.Local.json dosyasına yazılamadı - Access to the path
+    // 'C:\SitesSahinSoft\appsettings.Local.json' is denied") - IIS altındaki bir site klasörü
+    // genellikle SADECE OKUNABİLİR (app pool kimliğinin yazma izni yoktur, her publish'te de
+    // üzerine yazılır); ProgramData ise TAM BUNUN İÇİN VAR OLAN, standart, her zaman yazılabilir
+    // makine-geneli ayar konumu. Program.cs'teki AddJsonFile AYNI formülü kullanıyor - path'i
+    // değiştirmek isterseniz İKİSİNİ BİRDEN güncelleyin.
+    private string LocalOverridePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SahinSoft", "appsettings.Local.json");
 
     public async Task<IActionResult> Index()
     {
@@ -325,18 +332,25 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             ["PollIntervalSeconds"] = merkezPollIntervalSeconds > 0 ? merkezPollIntervalSeconds : 120
         };
 
-        // Dosya yazımı (2026-09-27, Edip: "kaydet dediğimde hata verdi") - gerçek Windows kurulum
-        // klasöründe yazma izni olmayabilir (ör. korumalı bir klasöre kurulmuşsa); ÖNCEDEN bu
-        // satırın etrafında hiç try/catch YOKTU, bir IOException/UnauthorizedAccessException
-        // doğrudan işlenmemiş istisna olarak genel "Bir hata oluştu" sayfasına düşüyordu. Artık
-        // yakalanıp kullanıcıya Türkçe, anlaşılır bir mesajla gösteriliyor.
+        // Dosya yazımı (2026-09-27, Edip: "kaydet dediğimde hata verdi" - gerçek hata:
+        // appsettings.Local.json'ın eski konumu, C:\SitesSahinSoft, IIS altında SADECE OKUNABİLİRDİ)
+        // - ÖNCEDEN bu satırın etrafında hiç try/catch YOKTU, bir IOException/
+        // UnauthorizedAccessException doğrudan işlenmemiş istisna olarak genel "Bir hata oluştu"
+        // sayfasına düşüyordu. Artık yakalanıp kullanıcıya Türkçe, anlaşılır bir mesajla
+        // gösteriliyor - konum da %ProgramData%\SahinSoft'a taşındığı için ZATEN oluşmaması
+        // beklenen bir durum, ama ekstra bir güvenlik ağı olarak kalıyor.
         try
         {
+            var directory = Path.GetDirectoryName(LocalOverridePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
             System.IO.File.WriteAllText(LocalOverridePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            TempData["Error"] = "Ayar dosyasına yazılamadı - programın kurulu olduğu klasörde yazma izni olmayabilir. (" + ex.Message + ")";
+            TempData["Error"] = $"Ayar dosyasına yazılamadı - '{LocalOverridePath}' klasörüne yazma izni verilmesi gerekebilir. (" + ex.Message + ")";
             return RedirectToAction(nameof(Index));
         }
 
