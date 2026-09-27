@@ -97,17 +97,56 @@ public sealed class RestaurantAuthController(
         return LocalRedirect(returnUrl);
     }
 
-    // Ayarlar bölümüne giriş kapısı (2026-09-27, Edip: "ayarlar bölümüne tıkladığımda bir giriş
-    // şifresi sorsun, 66 yetkili şifre ile giriş yapabilirsin") - kasiyer POS ekranında mevcut bir
-    // oturum açıksa bile Ayarlar'a girmeden ÖNCE bilinçli olarak signOut yapılır, böylece
-    // [Authorize(Roles=Administrator,RestaurantManager)] HER ZAMAN yeniden PIN sorar - düşük
-    // yetkili bir kasiyerin oturumu açıkken sessizce içeri girilmesi engellenir.
-    public async Task<IActionResult> SettingsGate()
+    // Ayarlar için küçük PIN-pad açılır penceresi (Edip, 2026-09-27: "ayarlara tıkladığımda küçük
+    // bir pinpad açılsın, ayrı, oraya şifre girdiğimde açılsın" - ÖNCEDEN tam sayfa Login ekranına
+    // yönlendirip oradan giriş yaptırıyorduk (SettingsGate), Edip bunu istemedi: "ekrandaki PIN
+    // bölümünden şifre girdiğimde ayarlar açılıyor öyle olsun istemiyorum" - artık tam sayfa
+    // yönlendirme YOK, AJAX ile küçük bir modal üzerinden doğrudan doğrulanıyor.
+    [HttpPost]
+    public async Task<IActionResult> VerifySettingsPin(string pin)
     {
-        await signInManager.SignOutAsync();
-        return RedirectToAction(nameof(Login), new
+        try
         {
-            returnUrl = Url.Action("Index", "RestaurantTerminalSettings")
-        });
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return Json(new { success = false, error = "Oturum süresi doldu, sayfayı yenileyip tekrar deneyin." });
+        }
+
+        if (string.IsNullOrWhiteSpace(pin))
+        {
+            return Json(new { success = false, error = "PIN hatalı." });
+        }
+
+        var candidates = await userManager.Users
+            .Where(x => x.IsActive && x.RestaurantPinHash != null)
+            .ToListAsync();
+
+        ApplicationUser? matched = null;
+        foreach (var candidate in candidates)
+        {
+            var result = passwordHasher.VerifyHashedPassword(candidate, candidate.RestaurantPinHash!, pin.Trim());
+            if (result != PasswordVerificationResult.Failed)
+            {
+                matched = candidate;
+                break;
+            }
+        }
+
+        if (matched is null)
+        {
+            return Json(new { success = false, error = "PIN hatalı." });
+        }
+
+        var isAuthorized = await userManager.IsInRoleAsync(matched, SahinSoft.Domain.Constants.AppRoles.Administrator)
+            || await userManager.IsInRoleAsync(matched, SahinSoft.Domain.Constants.AppRoles.RestaurantManager);
+        if (!isAuthorized)
+        {
+            return Json(new { success = false, error = "Bu işlem için yetkiniz yok." });
+        }
+
+        await signInManager.SignInAsync(matched, isPersistent: false);
+        return Json(new { success = true, redirectUrl = Url.Action("Index", "RestaurantTerminalSettings") });
     }
 }

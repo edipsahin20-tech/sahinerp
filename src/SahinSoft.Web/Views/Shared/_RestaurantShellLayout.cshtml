@@ -74,13 +74,14 @@
                 @* Edip, 2026-09-27: "ayarlar bölümü de giriş tekiyle aynı açılsın, muhasebe
                    programının ayarlar bölümü gelmesin" - eskiden buradan ana ERP'nin
                    RestaurantSettings hub'ına (BranchesController/RestaurantCashRegistersController
-                   gibi genel çok-sekmeli ekranlara köprü) gidiyordu; artık giriş ekranındaki
-                   Ayarlar butonuyla AYNI kiosk'a-özel RestaurantTerminalSettings ekranına gider.
-                   Görünürlük ZATEN sadece Administrator/RestaurantManager rolüyle sınırlıydı - bu
-                   kısım değişmedi, "yetkisiz PIN'de görünmesin" isteği zaten karşılanıyordu. *@
+                   gibi genel çok-sekmeli ekranlara köprü) gidiyordu. Sonra: "ayarlara tıklayınca
+                   küçük bir pinpad açılsın, ayrı" - artık tam sayfa yönlendirme YOK,
+                   data-settings-pin-trigger ile _SettingsPinModal.cshtml'deki küçük AJAX pinpad'i
+                   açar (Login.cshtml'deki Ayarlar butonuyla AYNI ortak partial). Görünürlük ZATEN
+                   sadece Administrator/RestaurantManager rolüyle sınırlıydı - bu kısım değişmedi. *@
                 @if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator) || User.IsInRole(SahinSoft.Domain.Constants.AppRoles.RestaurantManager))
                 {
-                    <a class="rest-nav-simple" href="@Url.Action("Index", "RestaurantTerminalSettings")"><span>⚙</span><div><b>Ayarlar</b></div></a>
+                    <a class="rest-nav-simple" href="#" data-settings-pin-trigger><span>⚙</span><div><b>Ayarlar</b></div></a>
                 }
                 @if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
                 {
@@ -138,6 +139,7 @@
          altyapısı - restoran kabuğunda daha önce hiç kullanılmıyordu, ilk kez burada ekleniyor. -->
     <partial name="_LookupModal" />
     <script src="~/js/lookup-picker.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_SettingsPinModal")
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

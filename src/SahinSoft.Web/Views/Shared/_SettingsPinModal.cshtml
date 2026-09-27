@@ -1,0 +1,120 @@
+<!-- Ayarlar için küçük PIN-pad açılır penceresi (Edip, 2026-09-27: "ayarlara tıkladığımda küçük
+     bir pinpad açılsın, ayrı, oraya şifre girdiğimde açılsın") - Login.cshtml (giriş ekranındaki
+     Ayarlar butonu) VE _RestaurantShellLayout.cshtml (POS içindeki sidebar Ayarlar'ı) TARAFINDAN
+     ORTAK kullanılır - tek kaynak, iki yerde kopya kod yok. Tetikleyici öğeye
+     `data-settings-pin-trigger` ekleyip bu partial'ı sayfaya dahil etmek yeterli;
+     RestaurantAuthController.VerifySettingsPin'e AJAX ile POST eder, başarılıysa
+     window.location'ı Terminal Ayarları'na yönlendirir - tam sayfa Login ekranına ASLA gitmez. -->
+<div id="settings-pin-overlay" style="display:none; position:fixed; inset:0; background:rgba(11,21,36,.55); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:18px; padding:28px 26px; width:280px; box-shadow:0 20px 60px rgba(0,0,0,.35); font-family:Inter,'Segoe UI',system-ui,sans-serif; text-align:center;">
+        <div style="font-size:32px; margin-bottom:6px;">🔒</div>
+        <div style="font-weight:800; font-size:15px; color:#132238;">Yetkili Şifresi</div>
+        <div id="settings-pin-error" style="min-height:16px; color:#D94A4A; font-size:12px; font-weight:700; margin:6px 0 4px;"></div>
+        <div id="settings-pin-dots" style="display:flex; gap:6px; justify-content:center; margin:10px 0 14px;">
+            @for (var i = 0; i < 6; i++)
+            {
+                <span class="spm-dot" style="width:9px;height:9px;border-radius:50%;border:1.5px solid #132238;"></span>
+            }
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+            @for (var i = 1; i <= 9; i++)
+            {
+                <button type="button" class="spm-key" data-key="@i" style="padding:12px 0; border:1px solid #E3E8EF; border-radius:10px; background:#fff; font-weight:700; font-size:15px; cursor:pointer;">@i</button>
+            }
+            <button type="button" class="spm-key" data-key="C" style="padding:12px 0; border:1px solid #E3E8EF; border-radius:10px; background:#fff; font-weight:700; font-size:13px; cursor:pointer;">C</button>
+            <button type="button" class="spm-key" data-key="0" style="padding:12px 0; border:1px solid #E3E8EF; border-radius:10px; background:#fff; font-weight:700; font-size:15px; cursor:pointer;">0</button>
+            <button type="button" class="spm-key" data-key="back" style="padding:12px 0; border:1px solid #E3E8EF; border-radius:10px; background:#fff; font-weight:700; font-size:13px; cursor:pointer;">⌫</button>
+        </div>
+        <button type="button" id="settings-pin-submit" style="margin-top:14px; width:100%; padding:10px; border:0; border-radius:10px; background:linear-gradient(90deg,#f0cf73,#e9bd46); font-weight:800; font-size:13px; cursor:pointer;">Giriş Yap</button>
+        <button type="button" id="settings-pin-cancel" style="margin-top:8px; width:100%; padding:10px; border:1px solid #E3E8EF; border-radius:10px; background:#fff; font-weight:700; font-size:13px; cursor:pointer; color:#6F7F92;">İptal</button>
+    </div>
+</div>
+<form id="settings-pin-form" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+<script>
+    (function () {
+        var overlay = document.getElementById('settings-pin-overlay');
+        var errorEl = document.getElementById('settings-pin-error');
+        var dots = document.querySelectorAll('#settings-pin-dots .spm-dot');
+        var pinValue = '';
+
+        function renderDots() {
+            dots.forEach(function (dot, i) {
+                dot.style.background = i < pinValue.length ? '#E2A400' : 'transparent';
+            });
+        }
+
+        function openModal() {
+            pinValue = '';
+            errorEl.textContent = '';
+            renderDots();
+            overlay.style.display = 'flex';
+        }
+
+        function closeModal() {
+            overlay.style.display = 'none';
+        }
+
+        function submitPin() {
+            var tokenInput = document.querySelector('#settings-pin-form input[name="__RequestVerificationToken"]');
+            var body = new URLSearchParams();
+            body.set('pin', pinValue);
+            if (tokenInput) { body.set('__RequestVerificationToken', tokenInput.value); }
+
+            fetch('/RestaurantAuth/VerifySettingsPin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        window.location.href = data.redirectUrl;
+                        return;
+                    }
+                    errorEl.textContent = data.error || 'PIN hatalı.';
+                    pinValue = '';
+                    renderDots();
+                })
+                .catch(function () {
+                    errorEl.textContent = 'Bağlantı hatası, tekrar deneyin.';
+                    pinValue = '';
+                    renderDots();
+                });
+        }
+
+        document.querySelectorAll('.spm-key').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var key = btn.getAttribute('data-key');
+                if (key === 'C') { pinValue = ''; }
+                else if (key === 'back') { pinValue = pinValue.slice(0, -1); }
+                else if (pinValue.length < 6) { pinValue += key; }
+                renderDots();
+                // PIN'ler farklı uzunlukta olabilir (Personnel formunda maxlength=6, sabit 4 hane
+                // DEĞİL - Edip'in "66" gibi 2 haneli PIN'i de geçerli) - bu yüzden otomatik
+                // gönderim SADECE azami uzunlukta (6) bir kolaylık, asıl gönderim "Giriş Yap"
+                // butonuyla (herhangi bir uzunlukta).
+                if (pinValue.length === 6) { submitPin(); }
+            });
+        });
+
+        var submitBtn = document.getElementById('settings-pin-submit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function () {
+                if (pinValue.length > 0) { submitPin(); }
+            });
+        }
+
+        var cancelBtn = document.getElementById('settings-pin-cancel');
+        if (cancelBtn) { cancelBtn.addEventListener('click', closeModal); }
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) { closeModal(); } });
+
+        document.querySelectorAll('[data-settings-pin-trigger]').forEach(function (trigger) {
+            trigger.addEventListener('click', function (e) {
+                e.preventDefault();
+                openModal();
+            });
+        });
+    })();
+</script>
