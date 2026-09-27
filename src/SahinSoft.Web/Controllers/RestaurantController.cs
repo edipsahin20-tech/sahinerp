@@ -38,6 +38,17 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Where(x => x.IsActive)
             .ToListAsync();
 
+        // Edip, 2026-09-28: "masa 2'den 20 TL tahsilat aldım, ana ekran 400 göstermesi lazım hala
+        // 420 gösteriyor" - kısmi tahsilatlar (RestaurantCheckPendingPayments, adisyon TAM
+        // kapanana kadar bekleyen) Masa Satış ızgarasındaki RunningTotal'a hiç yansıtılmıyordu;
+        // Check.cshtml (Adisyon ekranı) zaten PayableTotal - PaidTotal ile doğru gösteriyordu, ama
+        // ana ızgara ComputeCheckRunningTotal'ı DOĞRUDAN (ödemeler düşülmeden) kullanıyordu.
+        var pendingPaymentTotalsByCheckId = await dbContext.RestaurantCheckPendingPayments
+            .AsNoTracking()
+            .GroupBy(x => x.RestaurantCheckId)
+            .Select(g => new { CheckId = g.Key, Total = g.Sum(x => x.Amount) })
+            .ToDictionaryAsync(x => x.CheckId, x => x.Total);
+
         var askGuestCount = await dbContext.InventorySettings
             .AsNoTracking()
             .Where(x => x.Id == 1)
@@ -65,7 +76,9 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                         CheckId = check?.Id,
                         GuestCount = session?.GuestCount,
                         OpenedAtUtc = session?.OpenedAtUtc,
-                        RunningTotal = check is null ? 0 : ComputeCheckRunningTotal(check.Id),
+                        RunningTotal = check is null
+                            ? 0
+                            : Math.Max(ComputeCheckRunningTotal(check.Id) - pendingPaymentTotalsByCheckId.GetValueOrDefault(check.Id), 0),
                         BillRequested = check?.BillRequestedAtUtc is not null,
                         IsReserved = reservation is not null,
                         ReservationId = reservation?.Id,
