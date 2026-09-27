@@ -3,85 +3,79 @@
     Layout = "_RestaurantShellLayout";
     ViewData["Title"] = "Masa Satış";
     var allTables = Model.Sections.SelectMany(s => s.Tables).ToList();
-    var emptyCount = allTables.Count(t => !t.IsOccupied);
     var occupiedCount = allTables.Count(t => t.IsOccupied);
-    var billRequestedCount = allTables.Count(t => t.BillRequested);
-    var reservedCount = allTables.Count(t => t.IsReserved);
-    var openTotal = allTables.Where(t => t.IsOccupied).Sum(t => t.RunningTotal);
+    var totalGuestCount = allTables.Where(t => t.IsOccupied).Sum(t => t.GuestCount ?? 0);
+
+    // Süre "kalan dakika" değil, masanın AÇIK KALDIĞI SÜRE (Edip, 2026-09-27: referans tasarımda
+    // saat değil "32 dk"/"1 sa 12 dk" gibi geçen süre gösteriliyor) - server-render anında hesaplanır.
+    static string FormatElapsed(DateTime? openedAtUtc)
+    {
+        if (!openedAtUtc.HasValue) { return "-"; }
+        var elapsed = DateTime.UtcNow - openedAtUtc.Value;
+        if (elapsed.TotalMinutes < 0) { elapsed = TimeSpan.Zero; }
+        var totalMinutes = (int)elapsed.TotalMinutes;
+        return totalMinutes >= 60 ? $"{totalMinutes / 60} sa {totalMinutes % 60} dk" : $"{totalMinutes} dk";
+    }
+
+    // Bölüm başlık şeridi renkleri (Edip'in referans görselindeki gibi her salon farklı pastel
+    // tonda) - RestaurantSection'da bir Color alanı YOK, yeni bir alan/özellik İCAT EDİLMEDİ,
+    // sadece görünüm için sabit bir palet sırayla döndürülüyor.
+    string[] sectionPalette = ["blue", "orange", "green", "purple"];
 }
 
 @section Head {
     <link rel="stylesheet" href="~/css/restaurant-pos.css" asp-append-version="true" />
 }
 
-<div class="toolbar">
+<div class="ms-toolbar">
     <div>
-        <div class="eyebrow">RESTORAN OPERASYONU</div>
-        <div class="h1">Masa Satış</div>
-        <div class="sub">Salonları ve açık adisyonları tek ekrandan yönetin.</div>
+        <div class="ms-h1">Masa Satış</div>
+        <div class="ms-sub">Açık masaları yönetin, masa taşıyın, birleştirin ve siparişleri hızlıca oluşturun.</div>
     </div>
-    <div class="actions">
-        <button type="button" class="rbtn" id="move-table-btn" disabled>⇄ Masa Taşı</button>
-        <button type="button" class="rbtn" id="merge-table-btn" disabled>⇄ Birleştir</button>
+    <div class="ms-toolbar-actions">
+        <button type="button" class="ms-action-btn orange" id="move-table-btn" disabled>⇄ Masa Taşı</button>
+        <button type="button" class="ms-action-btn purple" id="merge-table-btn" disabled>⇄ Masa Birleştir</button>
+        <div class="ms-stat-card">
+            <span class="ms-stat-icon green">▤</span>
+            <div><strong>@occupiedCount</strong><small>Açık Masa</small></div>
+        </div>
+        <div class="ms-stat-card">
+            <span class="ms-stat-icon blue">👤</span>
+            <div><strong>@totalGuestCount</strong><small>Toplam Kişi</small></div>
+        </div>
     </div>
-</div>
-
-<div class="rcard summary">
-    <div><small>Boş</small><strong>@emptyCount</strong></div>
-    <div><small>Dolu</small><strong>@occupiedCount</strong></div>
-    <div><small>Hesap İstendi</small><strong>@billRequestedCount</strong></div>
-    <div><small>Rezerve</small><strong>@reservedCount</strong></div>
-    <div style="margin-left:auto"><small>Açık Adisyon</small><strong>@openTotal.ToString("N2") ₺</strong></div>
 </div>
 
 <div class="restaurant-pos">
-    <div class="floor-tabs-row">
-        @if (Model.Sections.Count > 1)
-        {
-            <div class="rtabs" id="sectionTabs">
-                <button type="button" class="rtab active" data-section-filter="all">Tümü <small>@allTables.Count</small></button>
-                @foreach (var floorSection in Model.Sections)
-                {
-                    <button type="button" class="rtab" data-section-filter="@floorSection.Name">@floorSection.Name <small>@floorSection.Tables.Count</small></button>
-                }
-            </div>
-        }
-        <!-- Onaylı Masa Satış mockup'ındaki durum lejantı (madde birebir-uygulama, 2026-09-05) -
-             status-badge renkleriyle AYNI (empty/busy/bill/res), sadece görsel bir açıklama. -->
-        <div class="floor-legend">
-            <span><i class="dot empty"></i>BOŞ</span>
-            <span><i class="dot busy"></i>DOLU</span>
-            <span><i class="dot bill"></i>HESAP İSTENDİ</span>
-            <span><i class="dot res"></i>REZERVE</span>
-        </div>
-    </div>
-
-    @foreach (var floorSection in Model.Sections)
+    @if (Model.Sections.Count > 1)
     {
+        <div class="ms-salon-tabs" id="sectionTabs">
+            <button type="button" class="ms-salon-tab active" data-section-filter="all">Tümü <span>@allTables.Count</span></button>
+            @foreach (var floorSection in Model.Sections)
+            {
+                <button type="button" class="ms-salon-tab" data-section-filter="@floorSection.Name">@floorSection.Name <span>@floorSection.Tables.Count</span></button>
+            }
+        </div>
+    }
+
+    @for (var sectionIndex = 0; sectionIndex < Model.Sections.Count; sectionIndex++)
+    {
+        var floorSection = Model.Sections[sectionIndex];
+        var paletteColor = sectionPalette[sectionIndex % sectionPalette.Length];
         <div class="floor-section" data-section-id="@floorSection.Name">
-            <h2>@floorSection.Name</h2>
+            <div class="ms-section-header @paletteColor">@floorSection.Name <span>@floorSection.Tables.Count</span></div>
             <div class="floor-grid">
                 @foreach (var table in floorSection.Tables)
                 {
                     if (table.IsOccupied)
                     {
                         <div class="table-tile-wrap">
-                            <button type="button" class="table-tile occupied@(table.BillRequested ? " bill-requested" : "")" data-open-check="@table.CheckId"
+                            <button type="button" class="table-tile @(table.BillRequested ? "bill-requested" : "occupied")" data-open-check="@table.CheckId"
                                     data-select-table="@table.TableId" data-session-id="@table.SessionId" data-table-name="@table.Name">
-                                @if (table.BillRequested)
-                                {
-                                    <span class="status-badge bill">HESAP İSTENDİ</span>
-                                }
-                                else
-                                {
-                                    <span class="status-badge busy">DOLU</span>
-                                }
-                                <span class="table-name">@table.Name</span>
-                                <span class="table-meta">
-                                    @table.GuestCount kişi ·
-                                    @(table.OpenedAtUtc.HasValue ? table.OpenedAtUtc.Value.ToLocalTime().ToString("HH:mm") : "")
-                                </span>
-                                <span class="amt">@table.RunningTotal.ToString("N2") ₺</span>
+                                <span class="ms-tile-num">@table.Name</span>
+                                <span class="ms-tile-row">👤 @table.GuestCount</span>
+                                <span class="ms-tile-row">🕐 @FormatElapsed(table.OpenedAtUtc)</span>
+                                <span class="ms-tile-amt">@table.RunningTotal.ToString("N0") ₺</span>
                             </button>
                         </div>
                     }
@@ -91,13 +85,10 @@
                             <button type="button" class="table-tile reserved" data-open-table="@table.TableId" data-table-name="@table.Name"
                                     data-capacity="@(table.ReservationGuestCount ?? table.Capacity)"
                                     data-select-table="@table.TableId" data-session-id="">
-                                <span class="status-badge res">REZERVE</span>
-                                <span class="table-name">@table.Name</span>
-                                <span class="table-meta">
-                                    @table.ReservationGuestCount kişi ·
-                                    @(table.ReservedForUtc.HasValue ? table.ReservedForUtc.Value.ToLocalTime().ToString("HH:mm") : "")
-                                    @(string.IsNullOrWhiteSpace(table.ReservationNote) ? "" : " · " + table.ReservationNote)
-                                </span>
+                                <span class="ms-tile-num">@table.Name</span>
+                                <span class="ms-tile-row">👤 @table.ReservationGuestCount</span>
+                                <span class="ms-tile-row">🕐 @(table.ReservedForUtc.HasValue ? table.ReservedForUtc.Value.ToLocalTime().ToString("HH:mm") : "-")</span>
+                                <span class="ms-tile-tag">REZERVE@(string.IsNullOrWhiteSpace(table.ReservationNote) ? "" : " · " + table.ReservationNote)</span>
                             </button>
                             <form method="post" asp-action="CancelReservation" class="table-cancel-reservation"
                                   data-confirm-cancel-reservation="@table.Name">
@@ -112,9 +103,9 @@
                         <div class="table-tile-wrap">
                             <button type="button" class="table-tile" data-open-table="@table.TableId" data-table-name="@table.Name" data-capacity="@table.Capacity"
                                     data-select-table="@table.TableId" data-session-id="">
-                                <span class="status-badge empty">BOŞ</span>
-                                <span class="table-name">@table.Name</span>
-                                <span class="table-meta">@table.Capacity kişilik</span>
+                                <span class="ms-tile-num">@table.Name</span>
+                                <span class="ms-tile-row">👤 -</span>
+                                <span class="ms-tile-row">🕐 -</span>
                             </button>
                             <button type="button" class="table-reserve-btn" data-reserve-table="@table.TableId" data-table-name="@table.Name" title="Rezerve Et">▤</button>
                         </div>
@@ -132,6 +123,14 @@
     {
         <div class="erp-panel"><div class="erp-panel-body">Henüz salon/masa tanımlanmamış. <a asp-controller="RestaurantSections" asp-action="Create">Salon ekle</a></div></div>
     }
+
+    <!-- Durum lejantı (Edip'in referans tasarımındaki gibi) - status-badge renkleriyle AYNI. -->
+    <div class="floor-legend">
+        <span><i class="dot empty"></i>BOŞ</span>
+        <span><i class="dot busy"></i>DOLU</span>
+        <span><i class="dot bill"></i>HESAP İSTENDİ</span>
+        <span><i class="dot res"></i>REZERVE</span>
+    </div>
 </div>
 
 <!-- Masa açma modalı - dokunmatik numpad ile kişi sayısı (2026-09-05 teknik doküman madde 13).

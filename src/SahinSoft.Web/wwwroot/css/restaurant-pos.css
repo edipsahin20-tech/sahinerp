@@ -53,7 +53,9 @@
     border: 1px solid var(--pos-border);
     border-left: 3px solid var(--pos-free);
     border-radius: var(--pos-radius-card);
-    padding: 1.9rem 0.9rem 1rem;
+    /* 2026-09-27 redesign - üstte artık absolute konumlu bir rozet YOK (ms-tile-num normal akışta,
+       en üstte), bu yüzden eski büyük üst dolgu (1.9rem, rozete yer açmak içindi) küçültüldü. */
+    padding: 0.75rem 0.9rem 0.7rem;
     min-height: 108px;
     color: var(--pos-text);
     text-align: left;
@@ -61,7 +63,7 @@
     background: var(--pos-surface);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 2px;
     box-shadow: var(--pos-shadow);
     transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
@@ -100,15 +102,198 @@
     color: #6946C4;
 }
 
-/* Masa Satış durum lejantı (mockup birebir-uygulama, 2026-09-05). */
+/* Masa Satış durum lejantı (mockup birebir-uygulama, 2026-09-05; renk şeması 2026-09-27'de
+   Edip'in yeni referans görseline göre güncellendi - bkz. aşağıdaki ms-* blokları). */
 .floor-tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.floor-legend { display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700; color: var(--pos-navy, #1c2b3a); margin-left: auto; }
+.floor-legend { display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700; color: var(--pos-navy, #1c2b3a); justify-content: center; padding-top: 4px; }
 .floor-legend span { display: flex; align-items: center; gap: 5px; }
 .floor-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.floor-legend .dot.empty { background: #188354; }
-.floor-legend .dot.busy { background: #1760B4; }
-.floor-legend .dot.bill { background: #A16C00; }
+.floor-legend .dot.empty { background: #94A3B8; }
+.floor-legend .dot.busy { background: #1E9E5A; }
+.floor-legend .dot.bill { background: #E39A00; }
 .floor-legend .dot.res { background: #6946C4; }
+
+/* ============================================================================================
+   Masa Satış - Edip'in referans görseline göre yeniden tasarım (2026-09-27). Sadece GÖRÜNÜM -
+   data-select-table/data-open-table/data-open-check/data-reserve-table gibi hiçbir attribute ya
+   da restaurant-pos.js'in okuduğu HİÇBİR class/ID DOKUNULMADI, sadece yeni ms-* class'ları eklendi
+   ve .table-tile'ın arka plan renklerine tam ton (öncesinde sadece sol kenarlık rengiydi) eklendi.
+   ============================================================================================ */
+.ms-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.ms-h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--pos-navy, #132238);
+    letter-spacing: -.01em;
+}
+
+.ms-sub {
+    font-size: 0.85rem;
+    color: var(--pos-text-2, #6F7F92);
+    margin-top: 2px;
+}
+
+.ms-toolbar-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ms-action-btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 0 18px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ms-action-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.ms-action-btn.orange { background: #E2A400; }
+.ms-action-btn.purple { background: #6946C4; }
+
+.ms-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--pos-surface, #fff);
+    border: 1px solid var(--pos-border, #E3E8EF);
+    border-radius: 12px;
+    padding: 8px 16px;
+    box-shadow: var(--pos-shadow);
+}
+
+.ms-stat-card strong {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--pos-navy, #132238);
+}
+
+.ms-stat-card small {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--pos-text-2, #6F7F92);
+    font-weight: 700;
+}
+
+.ms-stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.ms-stat-icon.green { background: #E8F8F0; color: #1E9E5A; }
+.ms-stat-icon.blue { background: #EAF3FF; color: #1760B4; }
+
+.ms-salon-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.ms-salon-tab {
+    border: 1px solid var(--pos-border, #E3E8EF);
+    background: var(--pos-surface, #fff);
+    color: var(--pos-text, #132238);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ms-salon-tab span {
+    background: rgba(19, 34, 56, .08);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+}
+
+.ms-salon-tab.active {
+    background: #1760B4;
+    border-color: #1760B4;
+    color: #fff;
+}
+
+.ms-salon-tab.active span {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+.ms-section-header {
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ms-section-header span {
+    background: rgba(255, 255, 255, .55);
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+}
+
+.ms-section-header.blue { background: #EAF3FF; color: #1760B4; }
+.ms-section-header.orange { background: #FFF1D5; color: #A16C00; }
+.ms-section-header.green { background: #E8F8F0; color: #188354; }
+.ms-section-header.purple { background: #EFEAFF; color: #6946C4; }
+
+.restaurant-pos .table-tile .ms-tile-num {
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.restaurant-pos .table-tile .ms-tile-row {
+    font-size: 0.8rem;
+    color: var(--pos-text-2, #6F7F92);
+    font-variant-numeric: tabular-nums;
+}
+
+.restaurant-pos .table-tile .ms-tile-amt {
+    font-weight: 800;
+    font-size: 0.95rem;
+    margin-top: auto;
+    padding-top: 6px;
+}
+
+.restaurant-pos .table-tile .ms-tile-tag {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+    color: #6946C4;
+}
 
 .restaurant-pos .table-tile .amt {
     position: absolute;
@@ -174,17 +359,23 @@
     transform: scale(.99);
 }
 
+/* Tam ton arka planlar (2026-09-27, Edip'in referans görseli: "kartlar/renkler/düzen") - önceden
+   sadece sol kenarlık renkliydi (beyaz kart + ince renkli çizgi), şimdi tüm kart o durumun rengine
+   boyanıyor. NOT: bill-requested artık occupied class'ını TAŞIMIYOR (Index.cshtml'de ikisi
+   birbirini dışlıyor, tek class atanıyor) - bu yüzden selector'lar ayrı ayrı yazıldı. */
 .restaurant-pos .table-tile.occupied {
-    border-left-color: var(--pos-occupied);
-    background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFF 100%);
+    border-left-color: #1E9E5A;
+    background: #E8F8F0;
 }
 
-.restaurant-pos .table-tile.occupied.bill-requested {
+.restaurant-pos .table-tile.bill-requested {
     border-left-color: #E39A00;
+    background: #FFF1D5;
 }
 
 .restaurant-pos .table-tile.reserved {
-    border-left-color: #7755D9;
+    border-left-color: #6946C4;
+    background: #EFEAFF;
 }
 
 .restaurant-pos .table-tile .table-name {
