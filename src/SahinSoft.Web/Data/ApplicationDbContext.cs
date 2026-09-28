@@ -1286,6 +1286,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(x => x.Sessions)
                 .HasForeignKey(x => x.RestaurantTableId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.MergedIntoSession)
                 .WithMany()
                 .HasForeignKey(x => x.MergedIntoSessionId)

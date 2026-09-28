@@ -15,13 +15,10 @@ namespace SahinSoft.Web.Controllers;
 [Authorize]
 public sealed class RetailSaleCancellationsController(ApplicationDbContext dbContext) : Controller
 {
-    private const string SelfSaleSectionName = "Self Satış";
-    private const string PackageSectionName = "Paket";
-
-    private static string ResolveChannel(RestaurantSection section) => section.Name switch
+    private static string ResolveChannel(RestaurantSaleChannel channel) => channel switch
     {
-        SelfSaleSectionName => "Self Satış",
-        PackageSectionName => "Paket",
+        RestaurantSaleChannel.SelfSatis => "Self Satış",
+        RestaurantSaleChannel.Paket => "Paket",
         _ => "Masa"
     };
 
@@ -31,13 +28,13 @@ public sealed class RetailSaleCancellationsController(ApplicationDbContext dbCon
         var query = dbContext.RetailSales
             .AsNoTracking()
             .Include(x => x.Customer)
-            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
             .Where(x => x.Status == RetailSaleStatus.Cancelled)
             .AsQueryable();
 
         if (branchId.HasValue)
         {
-            query = query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId == branchId.Value);
+            query = query.Where(x => x.RestaurantCheck.RestaurantTableSession.BranchId == branchId.Value);
         }
         if (dateFrom.HasValue)
         {
@@ -52,10 +49,9 @@ public sealed class RetailSaleCancellationsController(ApplicationDbContext dbCon
         {
             query = channel switch
             {
-                "SelfSatis" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName),
-                "Paket" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == PackageSectionName),
-                "Masa" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name != SelfSaleSectionName
-                    && x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name != PackageSectionName),
+                "SelfSatis" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis),
+                "Paket" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.Paket),
+                "Masa" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.Masa),
                 _ => query
             };
         }
@@ -71,6 +67,11 @@ public sealed class RetailSaleCancellationsController(ApplicationDbContext dbCon
         var userNamesById = await dbContext.Users.AsNoTracking()
             .Where(x => cancelledByUserIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, x => x.FullName);
+        var checkIds = sales.Select(x => x.RestaurantCheckId).ToList();
+        var packageNumbersByCheckId = await dbContext.PackageOrders
+            .AsNoTracking()
+            .Where(x => checkIds.Contains(x.RestaurantCheckId))
+            .ToDictionaryAsync(x => x.RestaurantCheckId, x => x.PackageNumber);
 
         var model = new CancelledSaleListViewModel
         {
@@ -84,15 +85,20 @@ public sealed class RetailSaleCancellationsController(ApplicationDbContext dbCon
             PageSize = pageSize,
             Items = sales.Select(x =>
             {
-                var section = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
+                var saleChannel = x.RestaurantCheck.RestaurantTableSession.Channel;
                 return new CancelledSaleListItemViewModel
                 {
                     RetailSaleId = x.Id,
                     DocumentNumber = x.DocumentNumber,
                     IssuedAtUtc = x.IssuedAtUtc,
-                    BranchName = branchNamesById.GetValueOrDefault(section.BranchId, ""),
-                    Channel = ResolveChannel(section),
-                    SourceLabel = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+                    BranchName = branchNamesById.GetValueOrDefault(x.RestaurantCheck.RestaurantTableSession.BranchId, ""),
+                    Channel = ResolveChannel(saleChannel),
+                    SourceLabel = saleChannel switch
+                    {
+                        RestaurantSaleChannel.SelfSatis => "Self Satış",
+                        RestaurantSaleChannel.Paket => packageNumbersByCheckId.GetValueOrDefault(x.RestaurantCheckId, "Paket"),
+                        _ => x.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? ""
+                    },
                     GrandTotal = x.GrandTotal,
                     CustomerName = x.Customer?.Name,
                     CancelledAtUtc = x.CancelledAtUtc,

@@ -83,7 +83,8 @@ public sealed class ZPeriodsController(ApplicationDbContext dbContext, SahinSoft
             return NotFound();
         }
 
-        var branchName = await dbContext.Branches.AsNoTracking().Where(x => x.Id == period.BranchId).Select(x => x.Name).SingleOrDefaultAsync() ?? "";
+        var branch = await dbContext.Branches.AsNoTracking().SingleOrDefaultAsync(x => x.Id == period.BranchId);
+        var branchName = branch?.Name ?? "";
         var closedByName = period.ClosedAutomatically || period.ClosedByUserId is null
             ? "Otomatik"
             : (await dbContext.Users.AsNoTracking().Where(x => x.Id == period.ClosedByUserId).Select(x => x.FullName).SingleOrDefaultAsync()) ?? period.ClosedByUserId;
@@ -101,6 +102,21 @@ public sealed class ZPeriodsController(ApplicationDbContext dbContext, SahinSoft
             .GroupBy(p => p.PaymentMethod)
             .Select(g => new { Method = g.Key, Total = g.Sum(p => p.Amount) })
             .ToDictionaryAsync(x => x.Method, x => x.Total);
+
+        // İptaller (bilgi amaçlı - Edip, 2026-09-28: "sadece iptalleri ciro hesabına dahil
+        // etme") - PrintDataProvider.FillBreakdownsAsync ile AYNI mantık: satır iptalleri
+        // (fiş içinde tek ürün iptali) + fiş iptalleri (RetailSaleStatus.Cancelled) ayrı ayrı.
+        var cancelledSaleIds = await dbContext.RetailSales
+            .AsNoTracking()
+            .Where(x => x.RestaurantZPeriodId == id && x.Status == RetailSaleStatus.Cancelled)
+            .Select(x => new { x.RestaurantCheckId, x.GrandTotal })
+            .ToListAsync();
+        var allCheckIdsForCancel = checkIds.Concat(cancelledSaleIds.Select(x => x.RestaurantCheckId)).Distinct().ToList();
+        var cancelledLines = await dbContext.RestaurantOrderLines
+            .AsNoTracking()
+            .Where(x => x.CancelledAtUtc != null && allCheckIdsForCancel.Contains(x.RestaurantOrder.RestaurantCheckId))
+            .Select(x => new { x.Quantity, x.UnitPriceSnapshot })
+            .ToListAsync();
 
         var model = new ZPeriodDetailViewModel
         {
@@ -120,7 +136,13 @@ public sealed class ZPeriodsController(ApplicationDbContext dbContext, SahinSoft
             CreditCardTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.CreditCard),
             MealCardTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.MealCard),
             UnpaidTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.Unpaid),
-            OpenAccountTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.OpenAccount)
+            OpenAccountTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.OpenAccount),
+            LineCancellationCount = cancelledLines.Count,
+            LineCancellationTotal = cancelledLines.Sum(x => x.Quantity * x.UnitPriceSnapshot),
+            ReceiptCancellationCount = cancelledSaleIds.Count,
+            ReceiptCancellationTotal = cancelledSaleIds.Sum(x => x.GrandTotal),
+            BranchAddress = branch?.Address,
+            BranchPhone = branch?.Phone
         };
 
         return View(model);

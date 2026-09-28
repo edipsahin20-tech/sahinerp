@@ -27,7 +27,8 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Lines)
-            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.Branch)
             .SingleAsync(x => x.Id == retailSaleId, cancellationToken);
 
         var payments = await dbContext.RestaurantPayments
@@ -35,25 +36,37 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
             .Where(x => x.RestaurantCheckId == sale.RestaurantCheckId && !x.IsReversal)
             .ToListAsync(cancellationToken);
 
-        var section = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
-        var branch = await dbContext.Branches.AsNoTracking().SingleOrDefaultAsync(x => x.Id == section.BranchId, cancellationToken);
+        var branch = sale.RestaurantCheck.RestaurantTableSession.Branch;
         var company = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
         var cashierUserId = sale.RestaurantCheck.RestaurantTableSession.OpenedByUserId;
         var cashierName = await dbContext.Users.AsNoTracking().Where(x => x.Id == cashierUserId).Select(x => x.FullName).SingleOrDefaultAsync(cancellationToken) ?? cashierUserId;
 
-        var saleType = section.Name switch
+        var channel = sale.RestaurantCheck.RestaurantTableSession.Channel;
+        var saleType = channel switch
         {
-            "Self Satış" => "Self Satış",
-            "Paket" => "Paket",
+            RestaurantSaleChannel.SelfSatis => "Self Satış",
+            RestaurantSaleChannel.Paket => "Paket",
             _ => "Masa"
         };
 
+        // GERÇEK HATA düzeltmesi (Edip, 2026-09-29: "Self/Paket'te masa alanı yoksa sahte masa
+        // adı basmamalı, satış tipi/fiş no gösterilmeli") - önceden bu ikisi HER ZAMAN gerçek bir
+        // RestaurantTable/RestaurantSection'a bağlıydı (Self/Paket için de sahte, tek kullanımlık
+        // bir masa/salon üretiliyordu). Artık masasız kanallarda gerçek bir masa/bölüm YOK -
+        // Masa'da gerçek isimler, Self/Paket'te satış tipi/fiş no gösterilir.
+        var tableNameForPrint = channel == RestaurantSaleChannel.Masa
+            ? sale.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? ""
+            : channel == RestaurantSaleChannel.Paket
+                ? (await dbContext.PackageOrders.AsNoTracking().Where(x => x.RestaurantCheckId == sale.RestaurantCheckId).Select(x => x.PackageNumber).SingleOrDefaultAsync(cancellationToken)) ?? sale.DocumentNumber
+                : sale.DocumentNumber;
+        var sectionNameForPrint = saleType;
+
         var ctx = new PrintDataContext();
-        FillCommonHeader(ctx, company, branch?.Name ?? "", branch?.Address, branch?.Phone);
+        FillCommonHeader(ctx, company, branch.Name, branch.Address, branch.Phone);
         ctx.Texts["adisyon.checkNumber"] = sale.DocumentNumber;
         ctx.Texts["common.dateTime"] = sale.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
-        ctx.Texts["adisyon.tableName"] = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
-        ctx.Texts["adisyon.sectionName"] = section.Name;
+        ctx.Texts["adisyon.tableName"] = tableNameForPrint;
+        ctx.Texts["adisyon.sectionName"] = sectionNameForPrint;
         ctx.Texts["adisyon.guestCount"] = sale.RestaurantCheck.RestaurantTableSession.GuestCount.ToString();
         ctx.Texts["adisyon.cashierName"] = cashierName;
         ctx.Texts["adisyon.saleType"] = saleType;
@@ -90,16 +103,31 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
         var ticket = await dbContext.KitchenTickets
             .AsNoTracking()
             .Include(x => x.Lines).ThenInclude(x => x.RestaurantOrderLine)
-            .Include(x => x.RestaurantOrder).ThenInclude(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantOrder).ThenInclude(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable).ThenInclude(x => x.RestaurantSection)
             .SingleAsync(x => x.Id == kitchenTicketId, cancellationToken);
 
         var check = ticket.RestaurantOrder.RestaurantCheck;
         var cashierUserId = check.RestaurantTableSession.OpenedByUserId;
         var cashierName = await dbContext.Users.AsNoTracking().Where(x => x.Id == cashierUserId).Select(x => x.FullName).SingleOrDefaultAsync(cancellationToken) ?? cashierUserId;
 
+        // Mutfak fişi Paket siparişlerinde de basılabilir (sadece Self Satış mutfağa hiç
+        // gitmiyor) - masasız kanallarda sahte masa adı basılmaz, satış tipi/fiş no gösterilir.
+        var ticketChannel = check.RestaurantTableSession.Channel;
+        var mutfakTableName = ticketChannel == RestaurantSaleChannel.Masa
+            ? check.RestaurantTableSession.RestaurantTable?.Name ?? ""
+            : ticketChannel == RestaurantSaleChannel.Paket
+                ? (await dbContext.PackageOrders.AsNoTracking().Where(x => x.RestaurantCheckId == check.Id).Select(x => x.PackageNumber).SingleOrDefaultAsync(cancellationToken)) ?? check.CheckNumber
+                : check.CheckNumber;
+        var mutfakSectionName = ticketChannel switch
+        {
+            RestaurantSaleChannel.Paket => "Paket",
+            RestaurantSaleChannel.SelfSatis => "Self Satış",
+            _ => check.RestaurantTableSession.RestaurantTable?.RestaurantSection.Name ?? ""
+        };
+
         var ctx = new PrintDataContext();
-        ctx.Texts["mutfak.tableName"] = check.RestaurantTableSession.RestaurantTable.Name;
-        ctx.Texts["mutfak.sectionName"] = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name;
+        ctx.Texts["mutfak.tableName"] = mutfakTableName;
+        ctx.Texts["mutfak.sectionName"] = mutfakSectionName;
         ctx.Texts["mutfak.orderNumber"] = ticket.TicketNumber ?? ("#" + ticket.Id);
         ctx.Texts["mutfak.dateTime"] = ticket.SentAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
         ctx.Texts["mutfak.cashierName"] = cashierName;
@@ -170,9 +198,25 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
         ctx.Texts["common.dateTime"] = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
         ctx.Texts["report.openedAt"] = period?.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-";
         ctx.Texts["report.receiptCount"] = activeSales.Count.ToString();
-        var grossTotal = activeSales.Sum(x => x.GrandTotal);
-        ctx.Texts["report.grossTotal"] = grossTotal.ToString("N2") + " ₺";
-        ctx.Texts["report.totalSalesRow"] = activeSales.Count + " fiş / " + grossTotal.ToString("N2") + " ₺";
+
+        // GERÇEK HATA (2026-09-28, Edip: "X,Z raporlarında ödeme tiplerinde herşey KDV dahil
+        // gözüksün, ekstra KDV hesabı yapma, herşey net olacak") - burada TOPLAM SATIŞ daha önce
+        // activeSales.Sum(GrandTotal) idi, yani ÖDENMEZ tutarını da ciroya dahil ediyordu; web
+        // tarafındaki AYNI rapor (RestaurantReportsController.XReport.NetRevenue) zaten doğru
+        // şekilde SADECE gerçek tahsil edilen ödeme yöntemlerini (Nakit+Kredi Kartı+Açık Hesap+
+        // Yemek Çeki - Ödenmez HARİÇ) topluyordu - ikisi arasında fark vardı. Z Raporu'nun
+        // (RestaurantPostingService.CloseActiveZPeriodAsync) NetTotal'ı zaten bu şekilde doğru
+        // hesaplanıyor, X Raporu'nu da AYNI mantığa (Ödenmez hariç ödeme toplamı) getiriyoruz -
+        // KDV hiçbir yerde ayrıca eklenmiyor/çıkarılmıyor, GrandTotal zaten KDV dahil.
+        var checkIds = activeSales.Select(x => x.RestaurantCheckId).ToList();
+        var netTotal = checkIds.Count == 0
+            ? 0m
+            : await dbContext.RestaurantPayments
+                .AsNoTracking()
+                .Where(p => !p.IsReversal && checkIds.Contains(p.RestaurantCheckId) && p.PaymentMethod != RestaurantPaymentMethod.Unpaid)
+                .SumAsync(p => p.Amount, cancellationToken);
+        ctx.Texts["report.grossTotal"] = netTotal.ToString("N2") + " ₺";
+        ctx.Texts["report.totalSalesRow"] = activeSales.Count + " fiş / " + netTotal.ToString("N2") + " ₺";
 
         await FillBreakdownsAsync(ctx, saleIds, cancellationToken);
 

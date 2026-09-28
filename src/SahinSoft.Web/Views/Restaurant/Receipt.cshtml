@@ -6,44 +6,78 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
-    <title>Fiş — @Model.DocumentNumber</title>
+    <title>Adisyon — @Model.DocumentNumber</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 380px; margin: 0 auto; padding: 16px; color: #1c2430; }
-        .sub { color: #8793a3; font-size: 12.5px; }
-        .receipt-line-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #F0F3F7; font-size: 13.5px; }
-        .receipt-total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #8793a3; }
-        .receipt-total-row.grand { font-size: 18px; font-weight: 800; color: #1c2430; border-top: 1px solid #dfe4ea; margin-top: 6px; padding-top: 8px; }
+        body { font-family: "Courier New", monospace; max-width: 380px; margin: 0 auto; padding: 20px; color: #1c2430; }
+        .tr-center { text-align: center; }
+        .tr-brand { font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px; color: #b8860b; }
+        .tr-sub { font-size: 0.78rem; color: #6c7a89; }
+        hr { border: none; border-top: 1px dashed #999; margin: 8px 0; }
+        .tr-kv { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+        .tr-items { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 4px; }
+        .tr-items th { text-align: left; font-weight: 700; font-size: 0.75rem; padding-bottom: 4px; }
+        .tr-items th:last-child, .tr-items td:last-child { text-align: right; }
+        .tr-items td { padding: 2px 0; }
+        .tr-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+        .tr-total-row.grand { font-weight: 800; font-size: 1rem; }
+        .tr-footer { font-size: 0.78rem; }
         .no-print { margin-top: 16px; text-align: center; }
         .no-print button { padding: 10px 20px; border: 0; border-radius: 8px; background: #1c2430; color: #fff; font-weight: 700; cursor: pointer; }
-        h5 { margin: 0 0 4px; }
         @@media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
-    <h5>Fiş — @Model.DocumentNumber</h5>
-    <div class="sub">@Model.SourceLabel · @Model.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+    <div class="tr-center tr-brand">ŞAHİNSOFT</div>
+    <div class="tr-center tr-sub">@Model.BranchName</div>
+    @if (!string.IsNullOrWhiteSpace(Model.BranchAddress))
+    {
+        <div class="tr-center tr-sub">@Model.BranchAddress</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.BranchPhone))
+    {
+        <div class="tr-center tr-sub">Tel: @Model.BranchPhone</div>
+    }
+    <hr />
+    <div class="tr-center" style="font-weight:800;">ADİSYON</div>
     @if (Model.IsCancelled)
     {
-        <div style="color:#c0392b; margin-top:8px;">İptal edilmiş fiş</div>
+        <div class="tr-center" style="color:#c0392b; font-weight:700;">İPTAL EDİLMİŞ FİŞ</div>
     }
-    <div style="margin-top:12px;">
-        @foreach (var line in Model.Lines)
-        {
-            <div class="receipt-line-row"><span>@line.Quantity.ToString("0.##") × @line.ProductName</span><b>@line.LineTotal.ToString("N2") ₺</b></div>
-        }
-    </div>
-    <div style="margin-top:10px;">
-        <div class="receipt-total-row"><span>Ara Toplam</span><span>@Model.SubtotalAmount.ToString("N2") ₺</span></div>
-        <div class="receipt-total-row"><span>İndirim</span><span>@Model.DiscountAmount.ToString("N2") ₺</span></div>
-        <div class="receipt-total-row"><span>KDV</span><span>@Model.TaxAmount.ToString("N2") ₺</span></div>
-        <div class="receipt-total-row grand"><span>Genel Toplam</span><span>@Model.GrandTotal.ToString("N2") ₺</span></div>
-    </div>
-    <div style="margin-top:10px;">
-        @foreach (var p in Model.Payments)
-        {
-            <div class="receipt-line-row"><span>@p.Method</span><b>@p.Amount.ToString("N2") ₺</b></div>
-        }
-    </div>
+    <hr />
+    <div class="tr-kv"><span>Tarih</span><span>@Model.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+    <div class="tr-kv"><span>Fiş No</span><span>@Model.DocumentNumber</span></div>
+    <div class="tr-kv"><span>@Model.SourceType</span><span>@Model.SourceLabel</span></div>
+    @if (!string.IsNullOrWhiteSpace(Model.CashierName))
+    {
+        <div class="tr-kv"><span>Kasiyer</span><span>@Model.CashierName</span></div>
+    }
+    <hr />
+    <table class="tr-items">
+        <thead>
+            <tr><th>Adet</th><th>Ürün</th><th>Tutar</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr>
+                    <td>@line.Quantity.ToString("0.##")</td>
+                    <td>@line.ProductName</td>
+                    <td>@line.LineTotal.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <hr />
+    <div class="tr-total-row"><span>ARA TOPLAM</span><span>@Model.SubtotalAmount.ToString("N2") ₺</span></div>
+    <div class="tr-total-row"><span>İNDİRİM</span><span>@Model.DiscountAmount.ToString("N2") ₺</span></div>
+    <div class="tr-total-row grand"><span>GENEL TOPLAM</span><span>@Model.GrandTotal.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="tr-center tr-footer">Teşekkür Ederiz</div>
+    <div class="tr-center tr-footer">Yine Bekleriz...</div>
+    <hr />
+    <div class="tr-center tr-brand" style="font-size:1rem;">ŞAHİNSOFT</div>
+    <div class="tr-center tr-sub">Restoran Çözümleri</div>
+
     <div class="no-print">
         <button type="button" onclick="window.print()">Yazdır</button>
     </div>

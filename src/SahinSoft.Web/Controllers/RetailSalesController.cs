@@ -16,20 +16,17 @@ namespace SahinSoft.Web.Controllers;
 [Authorize]
 public sealed class RetailSalesController(ApplicationDbContext dbContext) : Controller
 {
-    private const string SelfSaleSectionName = "Self Satış";
-    private const string PackageSectionName = "Paket";
-
     private async Task<IQueryable<RetailSale>> BuildFilteredQueryAsync(int? branchId, DateTime? dateFrom, DateTime? dateTo, string? channel, int? paymentMethod)
     {
         var query = dbContext.RetailSales
             .AsNoTracking()
             .Include(x => x.Customer)
-            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
             .AsQueryable();
 
         if (branchId.HasValue)
         {
-            query = query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId == branchId.Value);
+            query = query.Where(x => x.RestaurantCheck.RestaurantTableSession.BranchId == branchId.Value);
         }
         if (dateFrom.HasValue)
         {
@@ -44,10 +41,9 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
         {
             query = channel switch
             {
-                "SelfSatis" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName),
-                "Paket" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == PackageSectionName),
-                "Masa" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name != SelfSaleSectionName
-                    && x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name != PackageSectionName),
+                "SelfSatis" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis),
+                "Paket" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.Paket),
+                "Masa" => query.Where(x => x.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.Masa),
                 _ => query
             };
         }
@@ -60,10 +56,10 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
         return query.OrderByDescending(x => x.IssuedAtUtc);
     }
 
-    private static string ResolveChannel(RestaurantSection section) => section.Name switch
+    private static string ResolveChannel(RestaurantSaleChannel channel) => channel switch
     {
-        SelfSaleSectionName => "Self Satış",
-        PackageSectionName => "Paket",
+        RestaurantSaleChannel.SelfSatis => "Self Satış",
+        RestaurantSaleChannel.Paket => "Paket",
         _ => "Masa"
     };
 
@@ -100,6 +96,10 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             .ToDictionaryAsync(x => x.Method, x => x.Total);
         var discountTotal = await query.SumAsync(x => x.DiscountAmount);
         var grandTotalAll = await query.SumAsync(x => x.GrandTotal);
+        var packageNumbersByCheckId = await dbContext.PackageOrders
+            .AsNoTracking()
+            .Where(x => checkIds.Contains(x.RestaurantCheckId))
+            .ToDictionaryAsync(x => x.RestaurantCheckId, x => x.PackageNumber);
 
         var model = new RetailSaleListViewModel
         {
@@ -124,7 +124,7 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             },
             Items = sales.Select(x =>
             {
-                var section = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
+                var saleChannel = x.RestaurantCheck.RestaurantTableSession.Channel;
                 var amounts = paymentsLookup.GetValueOrDefault(x.RestaurantCheckId, []);
                 return new RetailSaleListItemViewModel
                 {
@@ -132,8 +132,13 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
                     DocumentNumber = x.DocumentNumber,
                     IssuedAtUtc = x.IssuedAtUtc,
                     BranchName = "", // aşağıda toplu doldurulur
-                    Channel = ResolveChannel(section),
-                    SourceLabel = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+                    Channel = ResolveChannel(saleChannel),
+                    SourceLabel = saleChannel switch
+                    {
+                        RestaurantSaleChannel.SelfSatis => "Self Satış",
+                        RestaurantSaleChannel.Paket => packageNumbersByCheckId.GetValueOrDefault(x.RestaurantCheckId, "Paket"),
+                        _ => x.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? ""
+                    },
                     GrandTotal = x.GrandTotal,
                     CashAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.Cash),
                     CreditCardAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.CreditCard),
@@ -147,16 +152,15 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             }).ToList()
         };
 
-        // Şube adı ayrı doldurulur - branch bilgisi RestaurantSection.BranchId üzerinden ayrı bir
-        // sorguya ihtiyaç duyuyor (yukarıdaki projeksiyon zaten RestaurantSection nesnesine kadar
-        // Include ile geldi, burada tek seferde toplu eşleniyor).
+        // Şube adı ayrı doldurulur - artık RestaurantTableSession.BranchId'den DOĞRUDAN (masa
+        // zincirinden BAĞIMSIZ, 2026-09-29 mimari karar - masasız satışlarda da her zaman dolu).
         var branchNamesById = model.Branches.ToDictionary(x => x.Id, x => x.Name);
-        var sectionBranchByCheckId = sales.ToDictionary(
+        var branchNameByCheckId = sales.ToDictionary(
             x => x.Id,
-            x => branchNamesById.GetValueOrDefault(x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId, ""));
+            x => branchNamesById.GetValueOrDefault(x.RestaurantCheck.RestaurantTableSession.BranchId, ""));
         foreach (var item in model.Items)
         {
-            item.BranchName = sectionBranchByCheckId.GetValueOrDefault(item.RetailSaleId, "");
+            item.BranchName = branchNameByCheckId.GetValueOrDefault(item.RetailSaleId, "");
         }
 
         return View(model);
@@ -168,29 +172,38 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Lines)
-            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection).ThenInclude(x => x.Branch)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.Branch)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (sale is null)
         {
             return NotFound();
         }
 
-        var section = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
+        var channel = sale.RestaurantCheck.RestaurantTableSession.Channel;
+        var branch = sale.RestaurantCheck.RestaurantTableSession.Branch;
         var payments = await dbContext.RestaurantPayments
             .AsNoTracking()
             .Where(x => x.RestaurantCheckId == sale.RestaurantCheckId && !x.IsReversal)
             .ToListAsync();
+
+        var sourceLabel = channel switch
+        {
+            RestaurantSaleChannel.SelfSatis => "Self Satış",
+            RestaurantSaleChannel.Paket => await dbContext.PackageOrders.AsNoTracking().Where(x => x.RestaurantCheckId == sale.RestaurantCheckId).Select(x => x.PackageNumber).SingleOrDefaultAsync() ?? "Paket",
+            _ => sale.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? ""
+        };
 
         var model = new RetailSaleDetailViewModel
         {
             RetailSaleId = sale.Id,
             DocumentNumber = sale.DocumentNumber,
             IssuedAtUtc = sale.IssuedAtUtc,
-            BranchName = section.Branch.Name,
-            BranchAddress = section.Branch.Address,
-            BranchPhone = section.Branch.Phone,
-            Channel = ResolveChannel(section),
-            SourceLabel = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+            BranchName = branch.Name,
+            BranchAddress = branch.Address,
+            BranchPhone = branch.Phone,
+            Channel = ResolveChannel(channel),
+            SourceLabel = sourceLabel,
             CustomerName = sale.Customer?.Name,
             SubtotalAmount = sale.SubtotalAmount,
             DiscountAmount = sale.DiscountAmount,
@@ -244,6 +257,10 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             .GroupBy(x => x.RestaurantCheckId)
             .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.PaymentMethod, x => x.Amount));
         var branchNamesById = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
+        var packageNumbersByCheckId = await dbContext.PackageOrders
+            .AsNoTracking()
+            .Where(x => checkIds.Contains(x.RestaurantCheckId))
+            .ToDictionaryAsync(x => x.RestaurantCheckId, x => x.PackageNumber);
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Perakende Fiş Listesi");
@@ -258,7 +275,7 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
         decimal cashTotal = 0, creditCardTotal = 0, mealCardTotal = 0, unpaidTotal = 0, openAccountTotal = 0, discountTotal = 0, grandTotal = 0;
         foreach (var sale in sales)
         {
-            var section = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
+            var saleChannel = sale.RestaurantCheck.RestaurantTableSession.Channel;
             var amounts = paymentsLookup.GetValueOrDefault(sale.RestaurantCheckId, []);
             var cash = amounts.GetValueOrDefault(RestaurantPaymentMethod.Cash);
             var creditCard = amounts.GetValueOrDefault(RestaurantPaymentMethod.CreditCard);
@@ -268,9 +285,14 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             sheet.Cell(row, 1).Value = sale.DocumentNumber;
             sheet.Cell(row, 2).Value = sale.IssuedAtUtc.ToLocalTime();
             sheet.Cell(row, 2).Style.DateFormat.Format = "dd.MM.yyyy HH:mm";
-            sheet.Cell(row, 3).Value = branchNamesById.GetValueOrDefault(section.BranchId, "");
-            sheet.Cell(row, 4).Value = ResolveChannel(section);
-            sheet.Cell(row, 5).Value = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
+            sheet.Cell(row, 3).Value = branchNamesById.GetValueOrDefault(sale.RestaurantCheck.RestaurantTableSession.BranchId, "");
+            sheet.Cell(row, 4).Value = ResolveChannel(saleChannel);
+            sheet.Cell(row, 5).Value = saleChannel switch
+            {
+                RestaurantSaleChannel.SelfSatis => "Self Satış",
+                RestaurantSaleChannel.Paket => packageNumbersByCheckId.GetValueOrDefault(sale.RestaurantCheckId, "Paket"),
+                _ => sale.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? ""
+            };
             sheet.Cell(row, 6).Value = sale.Customer?.Name ?? "";
             sheet.Cell(row, 7).Value = cash;
             sheet.Cell(row, 8).Value = creditCard;

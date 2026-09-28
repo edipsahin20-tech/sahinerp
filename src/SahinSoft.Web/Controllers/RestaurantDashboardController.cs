@@ -67,7 +67,13 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         var pendingTickets = await dbContext.KitchenTicketLines
             .AsNoTracking()
             .Where(x => x.Status == KitchenTicketLineStatus.Sent || x.Status == KitchenTicketLineStatus.InProgress)
-            .Select(x => new { x.KitchenTicket.SentAtUtc, x.KitchenTicket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name })
+            .Select(x => new
+            {
+                x.KitchenTicket.SentAtUtc,
+                Name = x.KitchenTicket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable != null
+                    ? x.KitchenTicket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name
+                    : "Paket"
+            })
             .ToListAsync();
 
         var recentClosedChecks = await dbContext.RetailSales
@@ -79,7 +85,8 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             {
                 x.IssuedAtUtc,
                 x.GrandTotal,
-                TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+                TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable != null ? x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name : null,
+                x.RestaurantCheck.RestaurantTableSession.Channel,
                 Payments = x.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => p.PaymentMethod).Distinct().ToList()
             })
             .ToListAsync();
@@ -115,12 +122,13 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             hourlyRevenue.Add(hourTotal);
         }
 
-        // Ortalama masa devir süresi - bugün kapanan (RetailSale'e dönüşmüş) adisyonların
-        // masa açılış → kapanış süresi.
+        // Ortalama masa devir süresi - SADECE gerçek Masa Satış oturumları (Edip, 2026-09-29:
+        // "masa doluluk, açık masa gibi masa istatistiklerine Self/Paket/Gel-Al dahil edilmemeli").
         var closedSessionsToday = await dbContext.RestaurantChecks
             .AsNoTracking()
             .Where(x => x.Status == RestaurantCheckStatus.Closed && x.ClosedAtUtc != null
-                     && x.ClosedAtUtc >= periodStartUtc && x.ClosedAtUtc < todayEndUtc)
+                     && x.ClosedAtUtc >= periodStartUtc && x.ClosedAtUtc < todayEndUtc
+                     && x.RestaurantTableSession.Channel == RestaurantSaleChannel.Masa)
             .Select(x => new { x.RestaurantTableSession.OpenedAtUtc, x.ClosedAtUtc, x.BillRequestedAtUtc })
             .ToListAsync();
         var avgTableTurnMinutes = closedSessionsToday.Count == 0
@@ -149,7 +157,7 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         var billRequestedOpenChecks = await dbContext.RestaurantChecks
             .AsNoTracking()
             .Where(x => x.Status == RestaurantCheckStatus.Open && x.BillRequestedAtUtc != null)
-            .Select(x => new { x.BillRequestedAtUtc, TableName = x.RestaurantTableSession.RestaurantTable.Name, x.GrandTotal })
+            .Select(x => new { x.BillRequestedAtUtc, TableName = x.RestaurantTableSession.RestaurantTable != null ? x.RestaurantTableSession.RestaurantTable.Name : "Self Satış", x.GrandTotal })
             .ToListAsync();
 
         var activePackages = await dbContext.PackageOrders
@@ -233,7 +241,7 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
             RecentMovements = recentClosedChecks.Select(x => new RestaurantDashboardMovement
             {
                 AtUtc = x.IssuedAtUtc,
-                Title = $"{x.TableName} kapatıldı",
+                Title = $"{x.TableName ?? (x.Channel == RestaurantSaleChannel.Paket ? "Paket" : "Self Satış")} kapatıldı",
                 Subtitle = PaymentSummary(x.Payments),
                 Amount = x.GrandTotal
             }).ToList()

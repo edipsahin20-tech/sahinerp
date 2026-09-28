@@ -21,7 +21,7 @@ public sealed class ProductSalesReportController(ApplicationDbContext dbContext)
 
         if (branchId.HasValue)
         {
-            query = query.Where(l => l.RetailSale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId == branchId.Value);
+            query = query.Where(l => l.RetailSale.RestaurantCheck.RestaurantTableSession.BranchId == branchId.Value);
         }
         if (dateFrom.HasValue)
         {

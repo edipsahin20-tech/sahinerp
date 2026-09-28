@@ -21,7 +21,9 @@
     .retail-receipt { max-width: 420px; margin: 0 auto; background: #fff; border: 1px solid #E3E8EF; border-radius: 12px; padding: 24px; font-family: "Courier New", monospace; }
     .retail-receipt .rp-center { text-align: center; }
     .retail-receipt .rp-brand { font-weight: 800; font-size: 1.1rem; }
-    .retail-receipt hr { border-top: 1px dashed #999; }
+    .retail-receipt .rp-shop-brand { font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px; color: #b8860b; }
+    .retail-receipt .rp-sub { font-size: 0.78rem; color: #6c7a89; }
+    .retail-receipt hr { border: none; border-top: 1px dashed #999; margin: 8px 0; }
     .retail-receipt .rp-kv { display: flex; justify-content: space-between; font-size: 0.85rem; }
     .retail-receipt .rp-line { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
     @@media print {
@@ -31,14 +33,15 @@
 </style>
 
 <div class="retail-receipt">
-    <div class="rp-center rp-brand">@Model.BranchName</div>
+    <div class="rp-center rp-shop-brand">ŞAHİNSOFT</div>
+    <div class="rp-center rp-sub">@Model.BranchName</div>
     @if (Model.BranchAddress is not null)
     {
-        <div class="rp-center">@Model.BranchAddress</div>
+        <div class="rp-center rp-sub">@Model.BranchAddress</div>
     }
     @if (Model.BranchPhone is not null)
     {
-        <div class="rp-center">@Model.BranchPhone</div>
+        <div class="rp-center rp-sub">Tel: @Model.BranchPhone</div>
     }
     <hr />
     <div class="rp-center rp-brand">PERAKENDE SATIŞ FİŞİ</div>

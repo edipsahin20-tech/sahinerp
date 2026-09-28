@@ -4,7 +4,7 @@ public sealed class RestaurantCheckViewModel
 {
     public int CheckId { get; set; }
     public string CheckNumber { get; set; } = string.Empty;
-    public int TableId { get; set; }
+    public int? TableId { get; set; }
     public string TableName { get; set; } = string.Empty;
     public string SectionName { get; set; } = string.Empty;
     public int GuestCount { get; set; }

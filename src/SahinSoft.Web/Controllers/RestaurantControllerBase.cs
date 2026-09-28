@@ -58,8 +58,15 @@ public abstract class RestaurantControllerBase(ApplicationDbContext dbContext) :
             .Where(x => x.Status == KitchenTicketLineStatus.Sent || x.Status == KitchenTicketLineStatus.InProgress)
             .CountAsync();
 
-        var totalTableCount = await dbContext.RestaurantTables.CountAsync(x => x.IsActive);
-        var activeTableCount = await dbContext.RestaurantTableSessions.CountAsync(x => x.Status == RestaurantTableSessionStatus.Open);
+        // Masa doluluk/aktif masa istatistiklerine Self Satış/Paket dahil edilmez (Edip,
+        // 2026-09-29: "masa doluluk, açık masa gibi masa istatistiklerine Self/Paket/Gel-Al
+        // dahil edilmemeli") - RestaurantSection'ı Self Satış/Paket olan tablolar zaten gizli
+        // (IsActive=false) ama eski (2026-09-29 öncesi) kayıtlarda IsActive=true olarak
+        // üretilmişti, bu yüzden bölüm adına göre de AYRICA filtreleniyor.
+        var totalTableCount = await dbContext.RestaurantTables
+            .CountAsync(x => x.IsActive && x.RestaurantSection.Name != "Self Satış" && x.RestaurantSection.Name != "Paket");
+        var activeTableCount = await dbContext.RestaurantTableSessions
+            .CountAsync(x => x.Status == RestaurantTableSessionStatus.Open && x.Channel == RestaurantSaleChannel.Masa);
 
         var openCheckTotal = await dbContext.RestaurantOrderLines
             .Where(x => x.RestaurantOrder.RestaurantCheck.Status == RestaurantCheckStatus.Open && x.Status != RestaurantOrderLineStatus.Cancelled)

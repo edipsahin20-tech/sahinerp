@@ -103,6 +103,7 @@ public sealed class RestaurantPostingService(
                 await EnsureShiftOpenIfRequiredAsync(cancellationToken);
 
                 var table = await dbContext.RestaurantTables
+                    .Include(x => x.RestaurantSection)
                     .SingleOrDefaultAsync(x => x.Id == restaurantTableId, cancellationToken)
                     ?? throw new InvalidOperationException("Masa bulunamadı.");
 
@@ -128,6 +129,8 @@ public sealed class RestaurantPostingService(
                 var session = new RestaurantTableSession
                 {
                     RestaurantTableId = restaurantTableId,
+                    Channel = RestaurantSaleChannel.Masa,
+                    BranchId = table.RestaurantSection.BranchId,
                     Status = RestaurantTableSessionStatus.Open,
                     OpenedAtUtc = DateTime.UtcNow,
                     OpenedByUserId = openedByUserId,
@@ -449,48 +452,28 @@ public sealed class RestaurantPostingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    // Self Satış ve Paket/Gel-Al'ın ORTAK deseni: gerçek bir masaya değil, sistemin gizli
-    // (IsActive=false, Masa Satış salon listesinde hiç görünmeyen) bir salonu altında talep
-    // üzerine oluşturulan TEK KULLANIMLIK sanal bir masa/oturum/adisyona bağlanırlar - fiyat/
-    // ürün/mutfak/ödeme mantığının TAMAMI mevcut RestaurantCheck/RestaurantOrder/KitchenTicket/
-    // RestaurantPayment zincirinden değişmeden gelir. ÇAĞIRAN zaten açık bir transaction
-    // içinde olmalı - bu yardımcı kendi transaction'ını AÇMAZ.
-    private async Task<(RestaurantTableSession Session, RestaurantCheck Check)> CreateHiddenVirtualCheckAsync(
-        string hiddenSectionName,
-        string tableName,
+    // Self Satış ve Paket'in ORTAK deseni: GERÇEKTEN masasız (Edip, 2026-09-29 mimari karar -
+    // "market yüz binlerce satış yapabilir, bunların hiçbiri masa üretmemeli veya masa tablosuna
+    // bağımlı olmamalı"). Daha önce burada her çağrıda gizli bir RestaurantSection + tek
+    // kullanımlık bir RestaurantTable satırı yaratılıyordu - GERÇEK HATA (2026-09-28, Edip:
+    // Masa Tanımla ekranında yüzlerce anlamsız "Self Satış" satırı birikmişti). Artık
+    // RestaurantTableSession.RestaurantTableId hiç doldurulmuyor (null kalır), hangi kanaldan
+    // geldiği Channel alanında AÇIKÇA tutuluyor - hiçbir RestaurantTable/RestaurantSection
+    // satırı üretilmez. Fiyat/ürün/mutfak/ödeme mantığının TAMAMI mevcut RestaurantCheck/
+    // RestaurantOrder/KitchenTicket/RestaurantPayment zincirinden DEĞİŞMEDEN gelir. ÇAĞIRAN
+    // zaten açık bir transaction içinde olmalı - bu yardımcı kendi transaction'ını AÇMAZ.
+    private async Task<(RestaurantTableSession Session, RestaurantCheck Check)> CreateTablelessCheckAsync(
+        RestaurantSaleChannel channel,
         int branchId,
         string openedByUserId,
         Guid? submissionKey,
         CancellationToken cancellationToken)
     {
-        var section = await dbContext.RestaurantSections
-            .SingleOrDefaultAsync(x => x.Name == hiddenSectionName && x.BranchId == branchId, cancellationToken);
-        if (section is null)
-        {
-            section = new RestaurantSection
-            {
-                Name = hiddenSectionName,
-                DisplayOrder = 999,
-                IsActive = false, // Masa Satış salon listesinde görünmesin.
-                BranchId = branchId
-            };
-            dbContext.RestaurantSections.Add(section);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        var table = new RestaurantTable
-        {
-            Name = tableName,
-            Capacity = 1,
-            IsActive = true,
-            RestaurantSectionId = section.Id
-        };
-        dbContext.RestaurantTables.Add(table);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
         var session = new RestaurantTableSession
         {
-            RestaurantTableId = table.Id,
+            RestaurantTableId = null,
+            Channel = channel,
+            BranchId = branchId,
             Status = RestaurantTableSessionStatus.Open,
             OpenedAtUtc = DateTime.UtcNow,
             OpenedByUserId = openedByUserId,
@@ -513,15 +496,17 @@ public sealed class RestaurantPostingService(
         return (session, check);
     }
 
+    // 2026-09-29 mimari karar öncesi bu iki sabit gerçek RestaurantSection.Name karşılaştırması
+    // içindi (bkz. git geçmişi) - artık SADECE görüntüleme etiketi olarak kalıyor, gerçek ayrım
+    // RestaurantTableSession.Channel (RestaurantSaleChannel enum) üzerinden yapılıyor.
     public const string SelfSaleSectionName = "Self Satış";
-    private const string PackageSectionName = "Paket";
+    public const string PackageSectionName = "Paket";
 
-    // Self Satış varsayılan akışı MASASIZ hızlı satıştır (Edip'in onayı, 2026-08-09: "bir market
-    // gibi düşün... normal bir satış masasız"). Kalıcı/paylaşılan TEK bir masa YOKTUR - her satış
-    // kendi tek-kullanımlık gizli sanal masasını alır, bu yüzden aynı anda birden çok kasiyer/
-    // kiosk çakışmadan çalışabilir. "Benim açık satışım" kavramı kullanıcı bazlı sorgulanır (bkz.
-    // RestaurantSelfSaleController) - masa adı sabit "Self Satış" olarak tekrar eder (tekillik
-    // şart değil, bkz. RestaurantTable Name index'i unique değil).
+    // Self Satış varsayılan akışı GERÇEKTEN MASASIZDIR (Edip'in onayı, 2026-08-09: "bir market
+    // gibi düşün... normal bir satış masasız"; 2026-09-29: "market yüz binlerce satış yapabilir,
+    // bunların hiçbiri masa üretmemeli"). RestaurantTableId hiç doldurulmaz, hiçbir RestaurantTable
+    // satırı oluşturulmaz - "Benim açık satışım" kavramı kullanıcı bazlı sorgulanır (bkz.
+    // RestaurantSelfSaleController).
     public Task<RestaurantCheck> CreateSelfSaleCheckAsync(
         int branchId,
         string userId,
@@ -538,8 +523,8 @@ public sealed class RestaurantPostingService(
 
                 await EnsureShiftOpenIfRequiredAsync(cancellationToken);
 
-                var (_, check) = await CreateHiddenVirtualCheckAsync(
-                    SelfSaleSectionName, SelfSaleSectionName, branchId, userId, submissionKey: null, cancellationToken);
+                var (_, check) = await CreateTablelessCheckAsync(
+                    RestaurantSaleChannel.SelfSatis, branchId, userId, submissionKey: null, cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
                 return check;
@@ -569,11 +554,11 @@ public sealed class RestaurantPostingService(
                     cancellationToken);
 
                 var selfCheck = await dbContext.RestaurantChecks
-                    .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+                    .Include(x => x.RestaurantTableSession)
                     .SingleOrDefaultAsync(x => x.Id == selfSaleCheckId, cancellationToken)
                     ?? throw new InvalidOperationException("Adisyon bulunamadı.");
 
-                if (selfCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name != SelfSaleSectionName)
+                if (selfCheck.RestaurantTableSession.Channel != RestaurantSaleChannel.SelfSatis)
                 {
                     throw new InvalidOperationException("Yalnızca Self Satış adisyonları bir masaya aktarılabilir.");
                 }
@@ -583,6 +568,7 @@ public sealed class RestaurantPostingService(
                 }
 
                 var targetTable = await dbContext.RestaurantTables
+                    .Include(x => x.RestaurantSection)
                     .SingleOrDefaultAsync(x => x.Id == targetTableId, cancellationToken)
                     ?? throw new InvalidOperationException("Hedef masa bulunamadı.");
                 if (!targetTable.IsActive)
@@ -608,6 +594,8 @@ public sealed class RestaurantPostingService(
                     var newSession = new RestaurantTableSession
                     {
                         RestaurantTableId = targetTable.Id,
+                        Channel = RestaurantSaleChannel.Masa,
+                        BranchId = targetTable.RestaurantSection.BranchId,
                         Status = RestaurantTableSessionStatus.Open,
                         OpenedAtUtc = DateTime.UtcNow,
                         OpenedByUserId = userId,
@@ -701,8 +689,8 @@ public sealed class RestaurantPostingService(
 
                 var packageNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("PACKAGE_ORDER", cancellationToken);
 
-                var (_, check) = await CreateHiddenVirtualCheckAsync(
-                    PackageSectionName, packageNumber, branchId, createdByUserId, submissionKey, cancellationToken);
+                var (_, check) = await CreateTablelessCheckAsync(
+                    RestaurantSaleChannel.Paket, branchId, createdByUserId, submissionKey, cancellationToken);
 
                 var packageOrder = new PackageOrder
                 {
@@ -925,7 +913,7 @@ public sealed class RestaurantPostingService(
         }
 
         var check = await dbContext.RestaurantChecks
-            .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantTableSession)
             .SingleOrDefaultAsync(x => x.Id == restaurantCheckId, cancellationToken)
             ?? throw new InvalidOperationException("Adisyon bulunamadı.");
 
@@ -943,7 +931,7 @@ public sealed class RestaurantPostingService(
         // fişi üretmez - sipariş satırları yine de normal şekilde kaydedilir (stok/muhasebe için
         // gerekli), yalnızca aşağıdaki istasyon yönlendirme/KitchenTicket bloğu bu kanal için
         // atlanır.
-        var isSelfSaleChannel = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == SelfSaleSectionName;
+        var isSelfSaleChannel = check.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis;
 
         var order = new RestaurantOrder
         {
@@ -1152,7 +1140,7 @@ public sealed class RestaurantPostingService(
             {
                 await printDispatchService.EnqueueForRoleAsync(
                     Domain.Enums.PrinterRole.Mutfak,
-                    check.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId,
+                    check.RestaurantTableSession.BranchId,
                     Domain.Enums.PrintTemplateType.MutfakFisi,
                     ticket.Id,
                     $"Mutfak fişi - {ticket.TicketNumber ?? ("#" + ticket.Id)}",
@@ -2687,6 +2675,14 @@ public sealed class RestaurantPostingService(
                     throw new InvalidOperationException("Yalnızca açık oturumlar taşınabilir.");
                 }
 
+                if (session.RestaurantTableId is null)
+                {
+                    // Masasız (Self Satış/Paket) oturumlar "Masa Taşı" ile taşınamaz - onlar zaten
+                    // masasız çalışır, taşınacak bir masaları yok. Bkz. TransferSelfSaleToTableAsync
+                    // (Self Satış'ı gerçek bir masaya AKTARMAK için AYRI, doğru akış).
+                    throw new InvalidOperationException("Masasız bir oturum taşınamaz.");
+                }
+
                 if (session.RestaurantTableId == toRestaurantTableId)
                 {
                     throw new InvalidOperationException("Hedef masa mevcut masayla aynı olamaz.");
@@ -2706,7 +2702,7 @@ public sealed class RestaurantPostingService(
                 dbContext.RestaurantTableSessionMoves.Add(new RestaurantTableSessionMove
                 {
                     RestaurantTableSessionId = session.Id,
-                    FromRestaurantTableId = session.RestaurantTableId,
+                    FromRestaurantTableId = session.RestaurantTableId.Value,
                     ToRestaurantTableId = targetTable.Id,
                     MovedAtUtc = DateTime.UtcNow,
                     MovedByUserId = movedByUserId,
@@ -2839,6 +2835,7 @@ public sealed class RestaurantPostingService(
                     ?? throw new InvalidOperationException("Kaynak adisyon bulunamadı ya da açık değil.");
 
                 var targetTable = await dbContext.RestaurantTables
+                    .Include(x => x.RestaurantSection)
                     .SingleOrDefaultAsync(x => x.Id == targetTableId && x.IsActive, cancellationToken)
                     ?? throw new InvalidOperationException("Hedef masa bulunamadı veya pasif.");
 
@@ -2889,6 +2886,8 @@ public sealed class RestaurantPostingService(
                     var newSession = new RestaurantTableSession
                     {
                         RestaurantTableId = targetTable.Id,
+                        Channel = RestaurantSaleChannel.Masa,
+                        BranchId = targetTable.RestaurantSection.BranchId,
                         Status = RestaurantTableSessionStatus.Open,
                         OpenedAtUtc = DateTime.UtcNow,
                         OpenedByUserId = userId,

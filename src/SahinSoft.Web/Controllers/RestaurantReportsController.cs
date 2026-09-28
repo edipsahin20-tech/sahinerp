@@ -12,13 +12,13 @@ namespace SahinSoft.Web.Controllers;
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
 public sealed class RestaurantReportsController(ApplicationDbContext dbContext, RestaurantPostingService postingService, SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService) : RestaurantControllerBase(dbContext)
 {
-    // Kaynak (Masa/Paket/Self) yeni bir alan/tablo değil - satışın bağlı olduğu sanal/gerçek
-    // masanın salonu neyse odur (bkz. Self Satış/Paket'in gizli salon deseni). Dashboard'daki
-    // PaymentSummary yardımcısıyla aynı mantık.
-    private static string SourceTypeOf(string sectionName) => sectionName switch
+    // Kaynak (Masa/Paket/Self) - RestaurantTableSession.Channel'dan doğrudan okunur (2026-09-29
+    // mimari karar öncesi bu, satışın bağlı olduğu sanal/gerçek masanın salon adından TAHMİN
+    // ediliyordu - artık masasız satışlarda salon/masa hiç yok, Channel AÇIK bir alan).
+    private static string SourceTypeOf(RestaurantSaleChannel channel) => channel switch
     {
-        RestaurantPostingService.SelfSaleSectionName => "self",
-        "Paket" => "package",
+        RestaurantSaleChannel.SelfSatis => "self",
+        RestaurantSaleChannel.Paket => "package",
         _ => "table"
     };
 
@@ -128,8 +128,8 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 x.DiscountAmount,
                 x.Status,
                 x.RestaurantCheckId,
-                TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
-                SectionName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name,
+                TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable != null ? x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name : null,
+                Channel = x.RestaurantCheck.RestaurantTableSession.Channel,
                 OpenerName = x.RestaurantCheck.RestaurantTableSession.OpenedByUserId,
                 Payments = x.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => p.PaymentMethod).ToList()
             })
@@ -302,10 +302,10 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 .Select(g =>
                 {
                     var sale = saleByCheckId[g.Key.CheckId];
-                    var sourceType = SourceTypeOf(sale.SectionName);
+                    var sourceType = SourceTypeOf(sale.Channel);
                     var isPackage = sourceType == "package";
                     var pkg = isPackage && packageNumbers.TryGetValue(sale.RestaurantCheckId, out var p) ? p : null;
-                    var sourceLabel = isPackage ? pkg?.PackageNumber ?? sale.TableName : sourceType == "self" ? "Self Satış" : sale.TableName;
+                    var sourceLabel = isPackage ? pkg?.PackageNumber ?? sale.TableName ?? "" : sourceType == "self" ? "Self Satış" : sale.TableName ?? "";
                     return new RestaurantDiscountComplimentaryRowViewModel(sale.IssuedAtUtc, sale.DocumentNumber, sourceLabel, g.Key.IsComplimentary, null, g.Sum(x => x.DiscountAmountSnapshot));
                 })
                 .OrderByDescending(x => x.IssuedAtUtc)
@@ -314,9 +314,9 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
 
         var filtered = source switch
         {
-            "table" => daySales.Where(x => SourceTypeOf(x.SectionName) == "table"),
-            "package" => daySales.Where(x => SourceTypeOf(x.SectionName) == "package"),
-            "self" => daySales.Where(x => SourceTypeOf(x.SectionName) == "self"),
+            "table" => daySales.Where(x => SourceTypeOf(x.Channel) == "table"),
+            "package" => daySales.Where(x => SourceTypeOf(x.Channel) == "package"),
+            "self" => daySales.Where(x => SourceTypeOf(x.Channel) == "self"),
             _ => daySales.AsEnumerable()
         };
 
@@ -324,14 +324,14 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .OrderByDescending(x => x.IssuedAtUtc)
             .Select(x =>
             {
-                var sourceType = SourceTypeOf(x.SectionName);
+                var sourceType = SourceTypeOf(x.Channel);
                 var isPackage = sourceType == "package";
                 var pkg = isPackage && packageNumbers.TryGetValue(x.RestaurantCheckId, out var p) ? p : null;
                 return new RestaurantReceiptRowViewModel(
                     x.Id,
                     x.IssuedAtUtc,
                     x.DocumentNumber,
-                    isPackage ? pkg?.PackageNumber ?? x.TableName : sourceType == "self" ? "Self Satış" : x.TableName,
+                    isPackage ? pkg?.PackageNumber ?? x.TableName ?? "" : sourceType == "self" ? "Self Satış" : x.TableName ?? "",
                     isPackage ? pkg?.CustomerName ?? "" : openerNames.GetValueOrDefault(x.OpenerName, ""),
                     sourceType,
                     PaymentSummary(x.Payments),
@@ -520,10 +520,11 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .OrderByDescending(x => x.TaxRate)
             .ToList();
 
-        var hiddenSectionNames = new[] { RestaurantPostingService.SelfSaleSectionName, "Paket" };
+        // Masa raporları SADECE gerçek Masa Satış oturumlarını sayar (Edip, 2026-09-29: "masa
+        // doluluk, açık masa gibi masa istatistiklerine Self/Paket dahil edilmemeli").
         var xActiveTableCount = await dbContext.RestaurantTableSessions
             .AsNoTracking()
-            .Where(x => x.Status == RestaurantTableSessionStatus.Open && !hiddenSectionNames.Contains(x.RestaurantTable.RestaurantSection.Name))
+            .Where(x => x.Status == RestaurantTableSessionStatus.Open && x.Channel == RestaurantSaleChannel.Masa)
             .CountAsync();
         var xActivePackageCount = await dbContext.PackageOrders
             .AsNoTracking()
@@ -588,8 +589,8 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                         x.GrandTotal,
                         x.Status,
                         x.RestaurantCheckId,
-                        TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
-                        SectionName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name,
+                        TableName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable != null ? x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name : null,
+                        Channel = x.RestaurantCheck.RestaurantTableSession.Channel,
                         OpenerName = x.RestaurantCheck.RestaurantTableSession.OpenedByUserId,
                         Payments = x.RestaurantCheck.Payments.Where(p => !p.IsReversal).Select(p => p.PaymentMethod).ToList()
                     })
@@ -648,14 +649,14 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     .OrderByDescending(x => x.IssuedAtUtc)
                     .Select(x =>
                     {
-                        var sourceType = SourceTypeOf(x.SectionName);
+                        var sourceType = SourceTypeOf(x.Channel);
                         var isPackage = sourceType == "package";
                         var pkg = isPackage && zPackageNumbers.TryGetValue(x.RestaurantCheckId, out var p) ? p : null;
                         return new RestaurantReceiptRowViewModel(
                             x.Id,
                             x.IssuedAtUtc,
                             x.DocumentNumber,
-                            isPackage ? pkg?.PackageNumber ?? x.TableName : sourceType == "self" ? "Self Satış" : x.TableName,
+                            isPackage ? pkg?.PackageNumber ?? x.TableName ?? "" : sourceType == "self" ? "Self Satış" : x.TableName ?? "",
                             isPackage ? pkg?.CustomerName ?? "" : zOpenerNames.GetValueOrDefault(x.OpenerName, ""),
                             sourceType,
                             PaymentSummary(x.Payments),
@@ -673,14 +674,13 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 .AsNoTracking()
                 .Include(x => x.Lines)
                 .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments).ThenInclude(x => x.FinancialAccount)
-                .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+                .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
                 .SingleOrDefaultAsync(x => x.Id == selected.Value);
 
             if (sale is not null)
             {
-                var sectionName = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name;
-                var sourceType = SourceTypeOf(sectionName);
-                var tableName = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
+                var sourceType = SourceTypeOf(sale.RestaurantCheck.RestaurantTableSession.Channel);
+                var tableName = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? "";
                 string sourceLabel;
                 if (sourceType == "package")
                 {

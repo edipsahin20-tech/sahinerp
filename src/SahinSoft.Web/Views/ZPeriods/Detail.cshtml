@@ -27,39 +27,70 @@
     <div class="alert alert-info py-2">@success</div>
 }
 
+@{
+    // Net Ciro = SADECE gerçek tahsil edilen ödeme yöntemleri (Nakit+Kredi Kartı+Yemek Kartı+
+    // Açık Hesap) - Ödenmez'in finansal karşılığı yok, ciroya HİÇ dahil değil. İndirim/İkram/
+    // Ödenmez/İptaller SADECE bilgi amaçlı ayrı satırlar, NET CİRO hesabına hiçbiri karışmaz
+    // (Edip, 2026-09-28). KDV ayrıca eklenmez/çıkarılmaz - tüm tutarlar zaten KDV dahildir.
+    var netCiro = Model.CashTotal + Model.CreditCardTotal + Model.MealCardTotal + Model.OpenAccountTotal;
+}
+
 <style>
-    .z-receipt { max-width: 420px; margin: 0 auto; background: #fff; border: 1px solid #E3E8EF; border-radius: 12px; padding: 24px; font-family: "Courier New", monospace; }
-    .z-receipt .zp-center { text-align: center; }
-    .z-receipt .zp-brand { font-weight: 800; font-size: 1.1rem; }
-    .z-receipt hr { border-top: 1px dashed #999; }
-    .z-receipt .zp-kv { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+    .thermal-receipt { max-width: 420px; margin: 0 auto; background: #fff; border: 1px solid #E3E8EF; border-radius: 12px; padding: 24px; font-family: "Courier New", monospace; }
+    .thermal-receipt .tr-center { text-align: center; }
+    .thermal-receipt .tr-brand { font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px; color: #b8860b; }
+    .thermal-receipt .tr-sub { font-size: 0.78rem; color: #6c7a89; }
+    .thermal-receipt hr { border: none; border-top: 1px dashed #999; margin: 8px 0; }
+    .thermal-receipt .tr-kv { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+    .thermal-receipt .tr-section-title { font-weight: 700; font-size: 0.82rem; margin-top: 4px; }
+    .thermal-receipt .tr-hint { font-size: 0.7rem; color: #8793a3; font-style: italic; margin-bottom: 4px; }
+    .thermal-receipt .tr-net { font-weight: 800; font-size: 1.05rem; }
+    .thermal-receipt .tr-footer { font-size: 0.72rem; color: #6c7a89; }
     @@media print {
         .erp-breadcrumb-v2, .erp-page-head { display: none; }
-        .z-receipt { border: none; }
+        .thermal-receipt { border: none; }
     }
 </style>
 
-<div class="z-receipt">
-    <div class="zp-center zp-brand">@Model.BranchName</div>
-    <div class="zp-center zp-brand">Z RAPORU</div>
+<div class="thermal-receipt">
+    <div class="tr-center tr-brand">ŞAHİNSOFT</div>
+    <div class="tr-center tr-sub">@Model.BranchName</div>
+    @if (!string.IsNullOrWhiteSpace(Model.BranchAddress))
+    {
+        <div class="tr-center tr-sub">@Model.BranchAddress</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.BranchPhone))
+    {
+        <div class="tr-center tr-sub">Tel: @Model.BranchPhone</div>
+    }
     <hr />
-    <div class="zp-kv"><span>Z NO</span><span>#@Model.ZPeriodId</span></div>
-    <div class="zp-kv"><span>AÇILIŞ</span><span>@Model.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
-    <div class="zp-kv"><span>KAPANIŞ</span><span>@(Model.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")</span></div>
-    <div class="zp-kv"><span>KAPATAN</span><span>@Model.ClosedByUserName</span></div>
-    <div class="zp-kv"><span>FİŞ SAYISI</span><span>@Model.ReceiptCount</span></div>
+    <div class="tr-center" style="font-weight:800;">Z RAPORU</div>
+    <div class="tr-center tr-sub">(Gün Sonu Raporu)</div>
     <hr />
-    <div class="zp-kv"><span>BRÜT TOPLAM</span><span>@Model.GrossTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>İNDİRİM/İKRAM</span><span>-@Model.DiscountTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>KDV</span><span>@Model.TaxTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv zp-brand"><span>NET TOPLAM</span><span>@Model.NetTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Z No</span><span>#@Model.ZPeriodId</span></div>
+    <div class="tr-kv"><span>Açılış</span><span>@Model.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+    <div class="tr-kv"><span>Kapanış</span><span>@(Model.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")</span></div>
+    <div class="tr-kv"><span>Kapatan</span><span>@Model.ClosedByUserName</span></div>
+    <div class="tr-kv"><span>Fiş Sayısı</span><span>@Model.ReceiptCount</span></div>
     <hr />
-    <div class="zp-center zp-brand">ÖDEME TÜRÜ DÖKÜMÜ</div>
-    <div class="zp-kv"><span>NAKİT</span><span>@Model.CashTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>KREDİ KARTI</span><span>@Model.CreditCardTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>YEMEK KARTI</span><span>@Model.MealCardTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>ÖDENMEZ</span><span>@Model.UnpaidTotal.ToString("N2") ₺</span></div>
-    <div class="zp-kv"><span>AÇIK HESAP</span><span>@Model.OpenAccountTotal.ToString("N2") ₺</span></div>
+    <div class="tr-section-title">SATIŞ ÖZETİ</div>
+    <div class="tr-kv"><span>Nakit</span><span>@Model.CashTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Kredi Kartı</span><span>@Model.CreditCardTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Yemek Kartı</span><span>@Model.MealCardTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Açık Hesap</span><span>@Model.OpenAccountTotal.ToString("N2") ₺</span></div>
     <hr />
-    <div class="zp-center">Bu rapor dahili Z Raporudur — Resmî Mali Belge Değildir.</div>
+    <div class="tr-kv tr-net"><span>NET CİRO</span><span>@netCiro.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="tr-section-title">İNDİRİM / İKRAM / ÖDENMEZ</div>
+    <div class="tr-hint">(bilgi amaçlı — Net Ciro'ya dahil değildir)</div>
+    <div class="tr-kv"><span>İndirim</span><span>@Model.DiscountTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>İkram</span><span>@Model.ComplimentaryTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Ödenmez</span><span>@Model.UnpaidTotal.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="tr-section-title">İPTALLER</div>
+    <div class="tr-hint">(bilgi amaçlı — Net Ciro'ya dahil değildir)</div>
+    <div class="tr-kv"><span>Satır İptal (@Model.LineCancellationCount)</span><span>@Model.LineCancellationTotal.ToString("N2") ₺</span></div>
+    <div class="tr-kv"><span>Fiş İptal (@Model.ReceiptCancellationCount)</span><span>@Model.ReceiptCancellationTotal.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="tr-center tr-footer">Bu rapor dahili Z Raporudur — Resmî Mali Belge Değildir.</div>
 </div>

@@ -16,6 +16,8 @@ namespace SahinSoft.Web.Controllers;
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
 public sealed class PrintersController(ApplicationDbContext dbContext, PrintDispatchService dispatchService) : Controller
 {
+    private static readonly PrinterRole[] SingleAssignmentRoles = [PrinterRole.Adisyon, PrinterRole.XRaporu, PrinterRole.ZRaporu];
+
     public async Task<IActionResult> Index()
     {
         var printers = await dbContext.Printers
@@ -24,7 +26,59 @@ public sealed class PrintersController(ApplicationDbContext dbContext, PrintDisp
             .Include(x => x.PrintTemplate)
             .OrderBy(x => x.Branch.Name).ThenBy(x => x.Role).ThenBy(x => x.Name)
             .ToListAsync();
+        ViewBag.QuickAssignBranches = await BuildQuickAssignAsync();
         return View(printers);
+    }
+
+    private async Task<List<BranchPrinterAssignmentViewModel>> BuildQuickAssignAsync()
+    {
+        var relevant = await dbContext.Printers
+            .AsNoTracking()
+            .Where(x => SingleAssignmentRoles.Contains(x.Role))
+            .Include(x => x.Branch)
+            .OrderBy(x => x.Branch.Name).ThenBy(x => x.Name)
+            .ToListAsync();
+
+        return relevant
+            .GroupBy(x => new { x.BranchId, x.Branch.Name })
+            .Select(g => new BranchPrinterAssignmentViewModel
+            {
+                BranchId = g.Key.BranchId,
+                BranchName = g.Key.Name,
+                Roles = SingleAssignmentRoles
+                    .Select(role => new RolePrinterAssignmentViewModel
+                    {
+                        Role = role,
+                        Options = g.Where(p => p.Role == role).Select(p => (p.Id, p.Name)).ToList(),
+                        ActivePrinterId = g.FirstOrDefault(p => p.Role == role && p.IsActive)?.Id
+                    })
+                    .Where(r => r.Options.Count > 0)
+                    .ToList()
+            })
+            .Where(b => b.Roles.Count > 0)
+            .OrderBy(b => b.BranchName)
+            .ToList();
+    }
+
+    // Bir şubede aynı rolde birden fazla yazıcı olabilir (ör. test amaçlı) ama
+    // EnqueueForRoleAsync'in kullandığı TEK yazıcı açıkça bu şekilde seçilir - seçilen Aktif
+    // olur, aynı şube+roldeki DİĞER TÜM yazıcılar Pasif olur.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetActiveForRole(int branchId, PrinterRole role, int printerId)
+    {
+        var printers = await dbContext.Printers.Where(x => x.BranchId == branchId && x.Role == role).ToListAsync();
+        if (printers.All(x => x.Id != printerId))
+        {
+            return NotFound();
+        }
+        foreach (var printer in printers)
+        {
+            printer.IsActive = printer.Id == printerId;
+        }
+        await dbContext.SaveChangesAsync();
+        TempData["Success"] = "Yazıcı ataması güncellendi.";
+        return RedirectToAction(nameof(Index));
     }
 
     public async Task<IActionResult> Create()

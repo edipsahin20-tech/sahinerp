@@ -49,4 +49,14 @@ public sealed class ZPeriodDetailViewModel
     public decimal MealCardTotal { get; set; }
     public decimal UnpaidTotal { get; set; }
     public decimal OpenAccountTotal { get; set; }
+
+    // İptaller (Edip, 2026-09-28: "sadece iptalleri ciro hesabına dahil etme, o bilgi amaçlı" -
+    // bilgi amaçlı ayrı satır, NetTotal'a hiç dahil değil, hiçbir zaman olmadı).
+    public int LineCancellationCount { get; set; }
+    public decimal LineCancellationTotal { get; set; }
+    public int ReceiptCancellationCount { get; set; }
+    public decimal ReceiptCancellationTotal { get; set; }
+
+    public string? BranchAddress { get; set; }
+    public string? BranchPhone { get; set; }
 }

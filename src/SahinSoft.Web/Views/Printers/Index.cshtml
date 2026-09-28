@@ -1,7 +1,9 @@
 @model IReadOnlyList<SahinSoft.Domain.Entities.Printer>
 @using SahinSoft.Domain.Enums
+@using SahinSoft.Web.Models
 @{
     ViewData["Title"] = "Yazıcılar";
+    var quickAssign = (List<BranchPrinterAssignmentViewModel>)ViewBag.QuickAssignBranches;
 }
 
 <div class="erp-toolbar">
@@ -21,6 +23,45 @@
 }
 
 <p class="text-secondary small">Her şube için Adisyon/Mutfak/X Raporu/Z Raporu çıktılarının hangi fiziksel yazıcıya gideceği burada tanımlanır. Ağ (TCP/IP) yazıcılara sunucu doğrudan bağlanır; Windows Yazıcı (USB) seçimi o makinede çalışan SahinSoft.PrintAgent gerektirir.</p>
+
+<div class="erp-panel mb-3">
+    <div class="erp-panel-body">
+        <div class="fw-bold mb-1">Ana Yazıcı Ataması</div>
+        <p class="text-secondary small mb-3">Adisyon fişi, X Raporu ve Z Raporu her zaman TEK bir yazıcıya basılır — aşağıdan hangisinin kullanılacağını seçin. (Mutfak burada yok: hangi ürünün hangi yazıcıdan çıkacağı <a asp-controller="Categories" asp-action="Create">Kategori Tanımla</a> ekranındaki Mutfak İstasyonu alanından, kategoriye göre ayarlanır.)</p>
+        @if (quickAssign.Count == 0)
+        {
+            <p class="text-secondary small mb-0">Henüz Adisyon/X Raporu/Z Raporu rolünde tanımlı bir yazıcı yok. Önce <a asp-action="Create">+ Yeni Yazıcı</a> ile en az bir tane oluşturun.</p>
+        }
+        else
+        {
+            foreach (var branch in quickAssign)
+            {
+                <div class="mb-3">
+                    <div class="fw-semibold small mb-2">@branch.BranchName</div>
+                    <div class="row g-2">
+                        @foreach (var roleAssignment in branch.Roles)
+                        {
+                            <div class="col-md-4">
+                                <form method="post" asp-action="SetActiveForRole" class="d-flex align-items-center gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="branchId" value="@branch.BranchId" />
+                                    <input type="hidden" name="role" value="@((int)roleAssignment.Role)" />
+                                    <label class="text-secondary small mb-0" style="min-width:90px;">@roleAssignment.Role.GetDisplayName()</label>
+                                    <select name="printerId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        @foreach (var option in roleAssignment.Options)
+                                        {
+                                            <option value="@option.Id" selected="@(option.Id == roleAssignment.ActivePrinterId)">@option.Name</option>
+                                        }
+                                    </select>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
 
 <div class="erp-panel">
     <div class="erp-panel-body p-0">

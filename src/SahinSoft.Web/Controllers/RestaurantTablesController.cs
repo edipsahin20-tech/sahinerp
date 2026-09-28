@@ -6,17 +6,29 @@ using SahinSoft.Domain.Constants;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Web.Data;
 using SahinSoft.Web.Models;
+using SahinSoft.Web.Services;
 
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
 public sealed class RestaurantTablesController(ApplicationDbContext dbContext) : Controller
 {
+    // Self Satış/Paket işlemleri, her işlem için kendi tek-kullanımlık GİZLİ sanal masasını alır
+    // (bkz. RestaurantPostingService.CreateHiddenVirtualCheckAsync - Edip, 2026-08-09: "bir market
+    // gibi düşün, masasız" - aynı anda birden çok kasiyer/kiosk çakışmasın diye TEK bir paylaşılan
+    // masa yerine her satış kendi masasını alıyor). Bu kayıtlar hiç temizlenmiyor - zamanla bu
+    // admin listesini doldurup gerçek masa tanımlarını görmeyi zorlaştırıyordu (Edip, 2026-09-28:
+    // ekran görüntüsünde yüzlerce "Self Satış" satırı). Gerçek masa yönetimiyle hiç alakaları yok,
+    // bu yüzden bu ekrandan (sadece BU ekrandan - satış akışları etkilenmiyor) filtrelendi.
+    private static readonly string[] HiddenSystemSectionNames =
+        [RestaurantPostingService.SelfSaleSectionName, "Paket"];
+
     public async Task<IActionResult> Index()
     {
         var tables = await dbContext.RestaurantTables
             .AsNoTracking()
             .Include(x => x.RestaurantSection)
+            .Where(x => !HiddenSystemSectionNames.Contains(x.RestaurantSection.Name))
             .OrderBy(x => x.RestaurantSection.DisplayOrder).ThenBy(x => x.Name)
             .ToListAsync();
         return View(tables);

@@ -314,7 +314,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var query = dbContext.RetailSales
             .AsNoTracking()
             .Where(x => x.IssuedAtUtc >= fromUtc && x.IssuedAtUtc < toUtc)
-            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
             .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
             .Include(x => x.RestaurantCheck).ThenInclude(x => x.AttachedCustomer);
 
@@ -331,12 +331,12 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
 
         var rows = all.Select(x =>
         {
-            var sectionName = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection.Name;
-            var thisSourceType = sectionName == RestaurantPostingService.SelfSaleSectionName ? "self" : sectionName == "Paket" ? "package" : "table";
+            var channel = x.RestaurantCheck.RestaurantTableSession.Channel;
+            var thisSourceType = channel == RestaurantSaleChannel.SelfSatis ? "self" : channel == RestaurantSaleChannel.Paket ? "package" : "table";
             var methods = x.RestaurantCheck.Payments.Select(p => p.PaymentMethod).ToList();
             var masaLabel = thisSourceType == "package"
-                ? (packageNumbers.GetValueOrDefault(x.RestaurantCheckId) ?? x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name)
-                : thisSourceType == "self" ? "Self Satış" : x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
+                ? (packageNumbers.GetValueOrDefault(x.RestaurantCheckId) ?? "Paket")
+                : thisSourceType == "self" ? "Self Satış" : x.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? "";
             return new
             {
                 id = x.Id,
@@ -558,7 +558,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         ActivePage = "tables";
         var check = await dbContext.RestaurantChecks
             .AsNoTracking()
-            .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+            .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x!.RestaurantSection)
             .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.KitchenTicketLines)
             .Include(x => x.Orders).ThenInclude(x => x.Lines).ThenInclude(x => x.Product)
             .Include(x => x.AttachedCustomer)
@@ -638,7 +638,20 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 x.EnableTicketNoteButton, x.EnableTableTransferButton, x.EnableSendToKitchenButton, x.EnablePriceCheckButton, x.EnableKeyboardButton, x.EnableHoldReceiptButton, x.EnableHeldReceiptsButton, x.EnableProductListButton, x.EnableComplimentaryReceiptButton, x.EnableReceiptListButton, x.EnableClearOrderButton })
             .SingleOrDefaultAsync();
 
-        var isSelfSaleCheck = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName;
+        var isSelfSaleCheck = check.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis;
+
+        // Masasız (Self Satış/Paket) adisyonlarda gösterilecek gerçek bir masa/bölüm yok - Paket
+        // için kendi paket numarasını, Self Satış için sabit etiketi gösteriyoruz (Edip, 2026-09-29:
+        // "Self/Paket'te masa alanı yoksa sahte masa adı basmamalı, satış tipi/fiş no gösterilmeli").
+        string? packageNumberForDisplay = null;
+        if (check.RestaurantTableSession.Channel == RestaurantSaleChannel.Paket)
+        {
+            packageNumberForDisplay = await dbContext.PackageOrders
+                .AsNoTracking()
+                .Where(x => x.RestaurantCheckId == check.Id)
+                .Select(x => x.PackageNumber)
+                .SingleOrDefaultAsync();
+        }
         // Edip, 2026-09-28: "ürün bazlı masa transfer... sağ tarafa bir buton ekle, masa
         // bölümleri açılsın" - eskiden bu liste SADECE Self Satış'ın "Masaya Aktar" özelliği için
         // dolduruluyordu; artık Masa/Paket'teki yeni ürün-bazlı transfer de AYNI listeyi kullanıyor,
@@ -660,8 +673,18 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             CheckId = check.Id,
             CheckNumber = check.CheckNumber,
             TableId = check.RestaurantTableSession.RestaurantTableId,
-            TableName = check.RestaurantTableSession.RestaurantTable.Name,
-            SectionName = check.RestaurantTableSession.RestaurantTable.RestaurantSection.Name,
+            TableName = check.RestaurantTableSession.Channel switch
+            {
+                RestaurantSaleChannel.Paket => packageNumberForDisplay ?? RestaurantPostingService.PackageSectionName,
+                RestaurantSaleChannel.SelfSatis => RestaurantPostingService.SelfSaleSectionName,
+                _ => check.RestaurantTableSession.RestaurantTable?.Name ?? ""
+            },
+            SectionName = check.RestaurantTableSession.Channel switch
+            {
+                RestaurantSaleChannel.Paket => RestaurantPostingService.PackageSectionName,
+                RestaurantSaleChannel.SelfSatis => RestaurantPostingService.SelfSaleSectionName,
+                _ => check.RestaurantTableSession.RestaurantTable?.RestaurantSection.Name ?? ""
+            },
             GuestCount = check.RestaurantTableSession.GuestCount,
             OpenedAtUtc = check.RestaurantTableSession.OpenedAtUtc,
             IsSelfSaleCheck = isSelfSaleCheck,

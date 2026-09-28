@@ -16,8 +16,17 @@ public sealed class RestaurantTableSession : EntityBase
     // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
     public Guid? SubmissionKey { get; set; }
 
-    public int RestaurantTableId { get; set; }
-    public RestaurantTable RestaurantTable { get; set; } = null!;
+    // Masa OPSİYONELDİR (Edip, 2026-09-29 mimari karar: "Masa ana işlem değildir... market
+    // kullanacağım, masada yok") - Self Satış/Paket oturumlarında null kalır, gerçek bir
+    // RestaurantTable/RestaurantSection satırı ASLA üretilmez. Hangi kanaldan geldiği Channel
+    // alanından, hangi şubeye ait olduğu BranchId'den (masa zincirinden BAĞIMSIZ) okunur - eskiden
+    // ikisi de RestaurantTable.RestaurantSection üzerinden dolaylı çözülüyordu.
+    public int? RestaurantTableId { get; set; }
+    public RestaurantTable? RestaurantTable { get; set; }
+
+    public RestaurantSaleChannel Channel { get; set; } = RestaurantSaleChannel.Masa;
+    public int BranchId { get; set; }
+    public Branch Branch { get; set; } = null!;
 
     // Masa birleştirme — bu oturum başka bir oturuma birleştirildiyse hedef oturumu gösterir.
     // Faz 1'de yalnızca veri modeli hazırlanır; birleştirme ekranı/akışı ikinci aşamada gelir

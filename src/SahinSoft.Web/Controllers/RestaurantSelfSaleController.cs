@@ -31,7 +31,7 @@ public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext,
             .Where(x => x.Status == RestaurantCheckStatus.Open
                 && x.HeldAtUtc == null
                 && x.RestaurantTableSession.OpenedByUserId == userId
-                && x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName)
+                && x.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis)
             .OrderByDescending(x => x.OpenedAtUtc)
             .Select(x => (int?)x.Id)
             .FirstOrDefaultAsync();
@@ -94,16 +94,17 @@ public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext,
         var held = await dbContext.RestaurantChecks
             .AsNoTracking()
             .Where(x => x.Status == RestaurantCheckStatus.Open && x.HeldAtUtc != null
-                     && (userBranchId == null || x.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId == userBranchId))
-            .Include(x => x.RestaurantTableSession).ThenInclude(x => x.RestaurantTable).ThenInclude(x => x.RestaurantSection)
+                     && (userBranchId == null || x.RestaurantTableSession.BranchId == userBranchId))
             .OrderBy(x => x.HeldAtUtc)
             .Select(x => new
             {
                 checkId = x.Id,
                 checkNumber = x.CheckNumber,
-                sourceLabel = x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name == RestaurantPostingService.SelfSaleSectionName
+                sourceLabel = x.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis
                     ? "Self Satış"
-                    : x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name + " — " + x.RestaurantTableSession.RestaurantTable.Name,
+                    : x.RestaurantTableSession.Channel == RestaurantSaleChannel.Paket
+                        ? "Paket"
+                        : (x.RestaurantTableSession.RestaurantTable != null ? x.RestaurantTableSession.RestaurantTable.RestaurantSection.Name + " — " + x.RestaurantTableSession.RestaurantTable.Name : ""),
                 heldAtUtc = x.HeldAtUtc,
                 itemCount = x.Orders.SelectMany(o => o.Lines).Count(l => l.Status != RestaurantOrderLineStatus.Cancelled),
                 total = x.Orders.SelectMany(o => o.Lines).Where(l => l.Status != RestaurantOrderLineStatus.Cancelled)

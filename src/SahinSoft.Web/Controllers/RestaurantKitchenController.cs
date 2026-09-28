@@ -54,7 +54,10 @@ public sealed class RestaurantKitchenController(ApplicationDbContext dbContext, 
                 TicketId = ticket.Id,
                 TicketNumber = ticket.TicketNumber,
                 StationName = ticket.KitchenStation.Name,
-                TableName = ticket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
+                TableName = ticket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable != null
+                    ? ticket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name
+                    : ticket.RestaurantOrder.RestaurantCheck.RestaurantTableSession.Channel == RestaurantSaleChannel.Paket
+                        ? "Paket" : "Self Satış",
                 CheckNumber = ticket.RestaurantOrder.RestaurantCheck.CheckNumber,
                 Status = ticket.Status,
                 SentAtUtc = ticket.SentAtUtc,
