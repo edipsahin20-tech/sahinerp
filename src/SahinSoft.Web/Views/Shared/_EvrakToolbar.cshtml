@@ -77,4 +77,14 @@
             <span>Sonra</span>
         </button>
     }
+
+    <!-- Kırmızı Kapat butonu (Edip, 2026-09-28: "resmi örnek gösterdim kırmızı kapat butonu ekle
+         bütün alanlarda olsun") - form değişmemişse doğrudan listeye döner, kaydedilmemiş
+         değişiklik varsa önce kaydetmeyi ister (evrak-close-guard.js, dirty-check formu #evrak-form
+         üzerinden yapar). _EvrakToolbar TEK yerden değiştiği için bu buton tüm Form.cshtml
+         ekranlarına (Cari, Ürün, Fatura, vb.) otomatik yayılır. -->
+    <button type="button" id="evrak-close-btn" class="erp-evrak-btn erp-evrak-btn-close" data-close-url="@Url.Action("Index", Model.Controller)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="M6 6l12 12" /></svg>
+        <span>Kapat</span>
+    </button>
 </div>

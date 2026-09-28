@@ -10,7 +10,7 @@ using SahinSoft.Web.Services;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
-public sealed class RestaurantReportsController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantReportsController(ApplicationDbContext dbContext, RestaurantPostingService postingService, SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService) : RestaurantControllerBase(dbContext)
 {
     // Kaynak (Masa/Paket/Self) yeni bir alan/tablo değil - satışın bağlı olduğu sanal/gerçek
     // masanın salonu neyse odur (bkz. Self Satış/Paket'in gizli salon deseni). Dashboard'daki
@@ -1023,4 +1023,30 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
 
         return RedirectToAction(nameof(Index), new { tab = returnTab, date, zShiftId });
     }
+
+    // Çıktı Tasarımcısı entegrasyonu (kademeli geçiş, adım 4c: X Raporu) - bu ekranın kendi
+    // hesaplama mantığını TEKRARLAMAZ, PrintDataProvider.BuildForXReportAsync AYRI ve bağımsız
+    // olarak "aktif Z döneminin o ana kadarki verisi"ni canlı hesaplar (bkz. plan). Kullanıcının
+    // kendi şubesi yoksa (Administrator gibi) merkez şube kullanılır - RestaurantControllerBase.
+    // BuildShellAsync ile AYNI düşüş deseni.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendXReportToPrinter(string returnTab = "daily", DateOnly? date = null)
+    {
+        var userBranchId = await dbContext.Users.AsNoTracking().Where(x => x.Id == CurrentUserId).Select(x => x.BranchId).SingleOrDefaultAsync();
+        var branchId = userBranchId ?? await dbContext.Branches.AsNoTracking().Where(x => x.IsHeadOffice).Select(x => x.Id).FirstOrDefaultAsync();
+
+        var (jobId, result) = await printDispatchService.EnqueueAndSendForRoleAsync(RestaurantPrinterRole, branchId, RestaurantPrintTemplateType, sourceId: branchId, "X Raporu");
+        TempData["Success"] = jobId switch
+        {
+            null => "Bu şube için tanımlı bir X Raporu yazıcısı yok (Ayarlar → Yazıcılar).",
+            _ when result?.Success == true => "X Raporu termal yazıcıya gönderildi.",
+            _ => $"X Raporu yazıcıya gönderilemedi: {result?.Error}"
+        };
+
+        return RedirectToAction(nameof(Index), new { tab = returnTab, date });
+    }
+
+    private const SahinSoft.Domain.Enums.PrinterRole RestaurantPrinterRole = SahinSoft.Domain.Enums.PrinterRole.XRaporu;
+    private const SahinSoft.Domain.Enums.PrintTemplateType RestaurantPrintTemplateType = SahinSoft.Domain.Enums.PrintTemplateType.XRaporu;
 }

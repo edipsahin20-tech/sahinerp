@@ -1,0 +1,117 @@
+@model IReadOnlyList<SahinSoft.Domain.Entities.Printer>
+@using SahinSoft.Domain.Enums
+@{
+    ViewData["Title"] = "Yazıcılar";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Yazıcılar</h1>
+        <span class="erp-toolbar-meta">@Model.Count kayıt</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-controller="RestaurantSettings" asp-action="Index" class="btn btn-erp-outline btn-sm">← Ayarlar</a>
+        <a asp-action="Create" class="btn btn-erp-primary btn-sm">+ Yeni Yazıcı</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<p class="text-secondary small">Her şube için Adisyon/Mutfak/X Raporu/Z Raporu çıktılarının hangi fiziksel yazıcıya gideceği burada tanımlanır. Ağ (TCP/IP) yazıcılara sunucu doğrudan bağlanır; Windows Yazıcı (USB) seçimi o makinede çalışan SahinSoft.PrintAgent gerektirir.</p>
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Yazıcı Adı</th>
+                    <th>Rol</th>
+                    <th>Şube</th>
+                    <th>Bağlantı</th>
+                    <th>Kağıt</th>
+                    <th>Şablon</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="@(item.IsActive ? "" : "text-secondary")">
+                    <td class="fw-semibold">@item.Name</td>
+                    <td>@item.Role.GetDisplayName()</td>
+                    <td>@item.Branch.Name</td>
+                    <td>
+                        @(item.ConnectionType == PrinterConnectionType.NetworkRaw9100 ? "Ağ" : "Windows Yazıcı") — <code>@item.ConnectionAddress</code>
+                    </td>
+                    <td>@((int)item.PaperWidth)mm</td>
+                    <td>@(item.PrintTemplate?.Name ?? "Varsayılan")</td>
+                    <td>
+                        @if (item.IsActive)
+                        {
+                            <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-erp-outline test-print-btn" data-printer-id="@item.Id" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Test Yazdır</button>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8" class="text-center text-secondary py-4">Kayıt bulunamadı.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>
+
+<div id="testPrintResult" class="alert py-2 mt-2" style="display:none;"></div>
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.test-print-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var printerId = btn.getAttribute('data-printer-id');
+                var resultBox = document.getElementById('testPrintResult');
+                btn.disabled = true;
+                btn.textContent = 'Gönderiliyor...';
+                fetch('@Url.Action("TestPrint")/' + printerId, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        resultBox.style.display = 'block';
+                        if (data.success) {
+                            resultBox.className = 'alert alert-success py-2 mt-2';
+                            resultBox.textContent = 'Test çıktısı gönderildi: Başarılı (İş #' + data.jobId + ')';
+                        } else {
+                            resultBox.className = 'alert alert-danger py-2 mt-2';
+                            resultBox.textContent = 'Test çıktısı gönderilemedi: ' + (data.error || 'Bilinmeyen hata');
+                        }
+                    })
+                    .catch(function (err) {
+                        resultBox.style.display = 'block';
+                        resultBox.className = 'alert alert-danger py-2 mt-2';
+                        resultBox.textContent = 'İstek başarısız: ' + err;
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                        btn.textContent = 'Test Yazdır';
+                    });
+            });
+        });
+    </script>
+}

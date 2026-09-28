@@ -1,0 +1,65 @@
+@model SahinSoft.Web.Models.ZPeriodDetailViewModel
+@{
+    ViewData["Title"] = "Z Raporu #" + Model.ZPeriodId;
+}
+
+<div class="erp-breadcrumb-v2">Raporlar <span>/</span> <a asp-action="Index">Z Listesi</a> <span>/</span> Z #@Model.ZPeriodId</div>
+
+<div class="erp-page-head">
+    <div>
+        <h1>Z Raporu — @Model.BranchName</h1>
+        <p>@(Model.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-") tarihinde kapatıldı.</p>
+    </div>
+    <div class="erp-page-head-actions">
+        <button type="button" class="btn-erp-outline-secondary" onclick="window.print()">
+            <i class="fa-solid fa-print"></i> Yazdır / PDF Olarak Kaydet
+        </button>
+        <form method="post" asp-action="SendToPrinter" asp-route-id="@Model.ZPeriodId" class="d-inline">
+            <button type="submit" class="btn-erp-outline-secondary">
+                <i class="fa-solid fa-receipt"></i> Termal Yazıcıya Gönder
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-info py-2">@success</div>
+}
+
+<style>
+    .z-receipt { max-width: 420px; margin: 0 auto; background: #fff; border: 1px solid #E3E8EF; border-radius: 12px; padding: 24px; font-family: "Courier New", monospace; }
+    .z-receipt .zp-center { text-align: center; }
+    .z-receipt .zp-brand { font-weight: 800; font-size: 1.1rem; }
+    .z-receipt hr { border-top: 1px dashed #999; }
+    .z-receipt .zp-kv { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+    @@media print {
+        .erp-breadcrumb-v2, .erp-page-head { display: none; }
+        .z-receipt { border: none; }
+    }
+</style>
+
+<div class="z-receipt">
+    <div class="zp-center zp-brand">@Model.BranchName</div>
+    <div class="zp-center zp-brand">Z RAPORU</div>
+    <hr />
+    <div class="zp-kv"><span>Z NO</span><span>#@Model.ZPeriodId</span></div>
+    <div class="zp-kv"><span>AÇILIŞ</span><span>@Model.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span></div>
+    <div class="zp-kv"><span>KAPANIŞ</span><span>@(Model.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")</span></div>
+    <div class="zp-kv"><span>KAPATAN</span><span>@Model.ClosedByUserName</span></div>
+    <div class="zp-kv"><span>FİŞ SAYISI</span><span>@Model.ReceiptCount</span></div>
+    <hr />
+    <div class="zp-kv"><span>BRÜT TOPLAM</span><span>@Model.GrossTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>İNDİRİM/İKRAM</span><span>-@Model.DiscountTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>KDV</span><span>@Model.TaxTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv zp-brand"><span>NET TOPLAM</span><span>@Model.NetTotal.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="zp-center zp-brand">ÖDEME TÜRÜ DÖKÜMÜ</div>
+    <div class="zp-kv"><span>NAKİT</span><span>@Model.CashTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>KREDİ KARTI</span><span>@Model.CreditCardTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>YEMEK KARTI</span><span>@Model.MealCardTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>ÖDENMEZ</span><span>@Model.UnpaidTotal.ToString("N2") ₺</span></div>
+    <div class="zp-kv"><span>AÇIK HESAP</span><span>@Model.OpenAccountTotal.ToString("N2") ₺</span></div>
+    <hr />
+    <div class="zp-center">Bu rapor dahili Z Raporudur — Resmî Mali Belge Değildir.</div>
+</div>

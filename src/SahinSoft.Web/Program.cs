@@ -126,6 +126,10 @@ builder.Services.AddScoped<RestaurantPermissionService>();
 builder.Services.AddScoped<OverdueScheduleService>();
 builder.Services.AddScoped<InvoiceCancellationOrchestrationService>();
 builder.Services.AddScoped<DispatchNotePostingService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.Printing.IPrintDataProvider, SahinSoft.Web.Services.Printing.RestaurantPrintDataProvider>();
+builder.Services.AddSingleton<SahinSoft.Web.Services.Printing.PrintRenderingService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.Printing.PrintDispatchService>();
+builder.Services.AddHttpClient("PrintAgent");
 
 // Hibrit yerel/bulut senkron (Faz B): MerkezSync:Enabled kapalıyken bu servis
 // hemen uyanıp tekrar uyur, hiçbir şeye dokunmaz - şube tamamen bağımsız çalışır.
@@ -134,6 +138,7 @@ builder.Services.AddHttpClient("MerkezSync");
 builder.Services.AddHostedService<BranchSyncBackgroundService>();
 builder.Services.AddHostedService<KitchenAutoReadyBackgroundService>();
 builder.Services.AddHostedService<RestaurantAutoZBackgroundService>();
+builder.Services.AddHostedService<SahinSoft.Web.Services.Printing.PrintDispatchBackgroundService>();
 
 var app = builder.Build();
 
@@ -200,6 +205,15 @@ try
 catch (Exception ex)
 {
     app.Logger.LogError(ex, "Database seed error on startup.");
+}
+
+try
+{
+    await SahinSoft.Web.Data.PrintTemplateSeed.InitializeAsync(app.Services);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Print template seed error on startup.");
 }
 
 app.Run();

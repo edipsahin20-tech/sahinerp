@@ -41,7 +41,8 @@ public sealed class RestaurantPostingService(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     RestaurantPermissionService permissionService,
-    InventoryBalanceService inventoryBalance)
+    InventoryBalanceService inventoryBalance,
+    SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService)
 {
     // Masa/Self Satış/Paket - üç "yeni satış başlat" giriş noktasının hepsi bunu çağırır.
     // InventorySettings.RequireOpenShiftForSales kapalıyken (varsayılan) hiçbir şey yapmaz.
@@ -1025,16 +1026,7 @@ public sealed class RestaurantPostingService(
             }
         }
 
-        // KDS takibi kapalıysa (Edip, 2026-09-03: varsayılan kapalı) hiçbir KitchenTicket
-        // oluşturulmaz - satırlar doğrudan Servis Edildi sayılır, Mutfak ekranında Hazır/Servis
-        // Edildi tıklamalarına gerek kalmaz. Açıksa bugünkü davranış (istasyona göre fiş) aynen
-        // sürer.
-        var isKitchenTrackingEnabled = await dbContext.InventorySettings
-            .Where(x => x.Id == 1)
-            .Select(x => x.IsKitchenTrackingEnabled)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (!isKitchenTrackingEnabled || isSelfSaleChannel)
+        if (isSelfSaleChannel)
         {
             foreach (var line in orderLines)
             {
@@ -1045,6 +1037,24 @@ public sealed class RestaurantPostingService(
             await transaction.CommitAsync(cancellationToken);
             return new SendOrderToKitchenResult(order, []);
         }
+
+        // GERÇEK HATA (2026-09-28, Edip: "sistem acik olsun olmasin mutfaga cikti gonderebilsin
+        // KDS sistemi farkli bir olay") - "Mutfak KDS Takibi" ayarı SADECE Mutfak ekranındaki
+        // Sent/InProgress/Ready KUYRUĞUNUN görünürlüğünü kontrol eder (personelin Hazır/Servis
+        // Edildi tıklaması gereken aktif bir ekran akışı mı, yoksa hiç). Fiziksel yazıcıya basma
+        // bu ayardan TAMAMEN bağımsızdır - bu yüzden istasyon yönlendirme + KitchenTicket
+        // oluşturma HER ZAMAN çalışır (aşağıdaki yazdırma döngüsü ticket.Id'ye ihtiyaç duyuyor).
+        // Yalnızca BAŞLANGIÇ durumu farklı: takip açıkken Sent/Preparing (KDS ekranında görünür,
+        // personel ilerletir), kapalıyken doğrudan Served (KDS ekranına hiç girmez, dashboard/
+        // nav'daki "bekleyen" sayaçlarını hiç etkilemez) - ama HER İKİ durumda da fiş basılır.
+        var isKitchenTrackingEnabled = await dbContext.InventorySettings
+            .Where(x => x.Id == 1)
+            .Select(x => x.IsKitchenTrackingEnabled)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var initialTicketStatus = isKitchenTrackingEnabled ? KitchenTicketStatus.Sent : KitchenTicketStatus.Served;
+        var initialTicketLineStatus = isKitchenTrackingEnabled ? KitchenTicketLineStatus.Sent : KitchenTicketLineStatus.Served;
+        var initialOrderLineStatus = isKitchenTrackingEnabled ? RestaurantOrderLineStatus.Preparing : RestaurantOrderLineStatus.Served;
 
         // Ürünün varsayılan mutfak istasyonuna göre grupla. İstasyonu olmayan ürünler mutfak fişine
         // eklenmez ama kalemin kendisi kaydedilir (ör. şişe içecek) — yalnızca sessizce atlanmaz,
@@ -1063,6 +1073,13 @@ public sealed class RestaurantPostingService(
             if (stationId is null)
             {
                 unroutedProductNames.Add(line.ProductNameSnapshot);
+                // İstasyonu yok - ne KDS ekranına ne yazıcıya gider. Takip açıkken eski davranış
+                // korunur (dokunulmaz, Ordered'da kalır); kapalıyken KDS hiç yokmuş gibi satır
+                // doğrudan Servis Edildi sayılır.
+                if (!isKitchenTrackingEnabled)
+                {
+                    line.Status = RestaurantOrderLineStatus.Served;
+                }
                 continue;
             }
 
@@ -1074,6 +1091,7 @@ public sealed class RestaurantPostingService(
             group.Add(line);
         }
 
+        var createdTickets = new List<(KitchenTicket Ticket, int StationId)>();
         foreach (var (stationId, groupLines) in linesByStation)
         {
             var station = await dbContext.KitchenStations
@@ -1083,7 +1101,7 @@ public sealed class RestaurantPostingService(
             {
                 RestaurantOrder = order,
                 KitchenStationId = stationId,
-                Status = KitchenTicketStatus.Sent,
+                Status = initialTicketStatus,
                 SentAtUtc = DateTime.UtcNow
             };
             dbContext.KitchenTickets.Add(ticket);
@@ -1094,12 +1112,12 @@ public sealed class RestaurantPostingService(
                 {
                     KitchenTicket = ticket,
                     RestaurantOrderLine = line,
-                    Status = KitchenTicketLineStatus.Sent
+                    Status = initialTicketLineStatus
                 });
-                // Fiş gönderildiği an satırın hazırlık durumu Preparing'e geçer — kalan durum geçişleri
-                // (InProgress/Ready/Served) Faz 3'teki mutfak ekranından KitchenTicketLine üzerinden
-                // yapılacak, RestaurantOrderLine.Status o zaman ticket satırlarından yeniden hesaplanır.
-                line.Status = RestaurantOrderLineStatus.Preparing;
+                // Fiş gönderildiği an satırın hazırlık durumu Preparing'e geçer (takip açıkken) —
+                // kalan durum geçişleri (InProgress/Ready/Served) Faz 3'teki mutfak ekranından
+                // KitchenTicketLine üzerinden yapılır. Takip kapalıyken satır doğrudan Served olur.
+                line.Status = initialOrderLineStatus;
             }
 
             // Fiziksel yazıcıya HENÜZ hiçbir şey gönderilmez — bu yalnızca kuyruk kaydıdır. Gelecekteki
@@ -1117,10 +1135,37 @@ public sealed class RestaurantPostingService(
                     Lines = groupLines.Select(x => new { x.ProductNameSnapshot, x.PortionNameSnapshot, x.Quantity, x.KitchenNote }).ToList()
                 })
             });
+
+            createdTickets.Add((ticket, stationId));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        // Çıktı Tasarımcısı entegrasyonu (kademeli geçiş, adım 4b: Mutfak Fişi) - "Mutfak KDS
+        // Takibi" ayarı kapalı olsa bile HER ZAMAN çalışır (yukarıdaki initialTicketStatus notuna
+        // bkz.) - KDS ekran takibi ile fiziksel yazdırma birbirinden bağımsız. Transaction
+        // KAPANDIKTAN SONRA, best-effort - yazıcı tanımlı değilse sessizce atlanır.
+        foreach (var (ticket, stationId) in createdTickets)
+        {
+            try
+            {
+                await printDispatchService.EnqueueForRoleAsync(
+                    Domain.Enums.PrinterRole.Mutfak,
+                    check.RestaurantTableSession.RestaurantTable.RestaurantSection.BranchId,
+                    Domain.Enums.PrintTemplateType.MutfakFisi,
+                    ticket.Id,
+                    $"Mutfak fişi - {ticket.TicketNumber ?? ("#" + ticket.Id)}",
+                    cancellationToken,
+                    kitchenStationId: stationId);
+            }
+            catch
+            {
+                // Sipariş zaten mutfağa/KDS'ye ulaştı - yazdırma kuyruğa alınamasa bile burada
+                // fırlatmak siparişi geri almaz.
+            }
+        }
+
         return new SendOrderToKitchenResult(order, unroutedProductNames);
     }
 
@@ -1867,7 +1912,8 @@ public sealed class RestaurantPostingService(
                         TaxRateSnapshot = line.TaxRateSnapshot,
                         DiscountAmountSnapshot = line.DiscountAmountSnapshot,
                         LineTotal = lineTotal,
-                        ProductId = line.ProductId
+                        ProductId = line.ProductId,
+                        IsComplimentary = line.IsComplimentary
                     });
                 }
 
@@ -2157,6 +2203,29 @@ public sealed class RestaurantPostingService(
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
+                // Çıktı Tasarımcısı entegrasyonu (kademeli geçiş, adım 4a: Adisyon Fişi) - satış
+                // akışını ASLA bloklamaz (bkz. PrintDispatchService), bu yüzden transaction
+                // KAPANDIKTAN SONRA, best-effort olarak çağrılır. Bu role atanmış aktif yazıcı
+                // yoksa sessizce atlanır - eski window.print() akışı (Receipt.cshtml) HİÇ
+                // DOKUNULMADAN paralel çalışmaya devam eder.
+                try
+                {
+                    await printDispatchService.EnqueueForRoleAsync(
+                        Domain.Enums.PrinterRole.Adisyon,
+                        effectiveBranchId,
+                        Domain.Enums.PrintTemplateType.Adisyon,
+                        retailSale.Id,
+                        $"Adisyon kapanışı - {retailSale.DocumentNumber}",
+                        cancellationToken);
+                }
+                catch
+                {
+                    // Yazdırma kuyruğa alınamasa bile satış zaten KAPANDI ve kalıcı - burada
+                    // fırlatmak satışı geri almaz (transaction zaten commit edildi), sadece
+                    // kullanıcıya gereksiz bir hata gösterirdi.
+                }
+
                 return retailSale;
             });
         }, cancellationToken);

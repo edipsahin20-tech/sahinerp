@@ -1060,6 +1060,27 @@ table.erp-table .form-select {
     color: #8a2a2a;
 }
 
+.erp-evrak-btn-close {
+    background: #dc2626;
+    border-color: #b91c1c;
+    color: #fff;
+}
+
+.erp-evrak-btn-close:hover {
+    background: #b91c1c;
+    border-color: #991b1b;
+    color: #fff;
+}
+
+.erp-evrak-btn-close.is-dirty {
+    animation: erp-evrak-close-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes erp-evrak-close-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+    50% { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+}
+
 .erp-evrak-toolbar form {
     margin: 0;
 }

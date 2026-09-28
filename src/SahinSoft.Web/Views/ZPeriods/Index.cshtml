@@ -1,0 +1,83 @@
+@model SahinSoft.Web.Models.ZPeriodListViewModel
+@{
+    ViewData["Title"] = "Z Listesi";
+    var totalPages = (int)Math.Ceiling(Model.TotalCount / (double)Model.PageSize);
+}
+
+<div class="erp-breadcrumb-v2">Raporlar <span>/</span> Z Listesi</div>
+
+<div class="erp-page-head">
+    <div>
+        <h1>Z Listesi</h1>
+        <p>Kapanmış Z dönemlerinin listesi — şube ve tarihe göre süzülebilir. Bir Z'ye tıklayarak raporu görüntüleyip çıktı alabilirsiniz.</p>
+    </div>
+</div>
+
+<div class="erp-list-card">
+    <form method="get" class="erp-list-card-toolbar" style="flex-wrap:wrap; gap:10px;">
+        <select name="branchId">
+            <option value="">Tüm Şubeler</option>
+            @foreach (var b in Model.Branches)
+            {
+                <option value="@b.Id" selected="@(Model.BranchId == b.Id)">@b.Name</option>
+            }
+        </select>
+        <input type="date" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+        <input type="date" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+        <button type="submit" class="btn-erp-list-new" style="padding:8px 16px;">Filtrele</button>
+        <a asp-action="Index" class="btn-erp-outline-secondary" style="padding:8px 16px;">Temizle</a>
+    </form>
+
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Şube</th>
+                    <th>Açılış</th>
+                    <th>Kapanış</th>
+                    <th>Tür</th>
+                    <th class="text-end">Fiş Sayısı</th>
+                    <th class="text-end">Net Tutar</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-secondary text-center py-4">Filtreye uyan kapanmış Z dönemi bulunamadı.</td></tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr style="cursor:pointer;" onclick="window.location='@Url.Action("Detail", new { id = item.ZPeriodId })'">
+                        <td>@item.BranchName</td>
+                        <td>@item.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@(item.ClosedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")</td>
+                        <td>
+                            @if (item.ClosedAutomatically)
+                            {
+                                <span class="badge text-bg-secondary-subtle text-secondary-emphasis">Otomatik</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-success-subtle text-success-emphasis">Elle</span>
+                            }
+                        </td>
+                        <td class="text-end">@item.ReceiptCount</td>
+                        <td class="text-end">@item.NetTotal.ToString("N2") ₺</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            @for (var p = 1; p <= totalPages; p++)
+            {
+                <a class="btn-erp-outline-secondary @(p == Model.Page ? "active" : "")" style="padding:4px 12px;"
+                   asp-action="Index" asp-route-page="@p" asp-route-branchId="@Model.BranchId" asp-route-dateFrom="@Model.DateFrom" asp-route-dateTo="@Model.DateTo">@p</a>
+            }
+        </div>
+    }
+    <p class="text-secondary small mt-2">Toplam @Model.TotalCount kayıt.</p>
+</div>

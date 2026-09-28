@@ -79,13 +79,27 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             .ToListAsync();
 
         var checkIds = sales.Select(x => x.RestaurantCheckId).ToList();
-        var paymentsByCheckId = await dbContext.RestaurantPayments
+        var paymentAmountsByCheckId = await dbContext.RestaurantPayments
             .AsNoTracking()
             .Where(x => checkIds.Contains(x.RestaurantCheckId) && !x.IsReversal)
-            .GroupBy(x => x.RestaurantCheckId)
-            .Select(g => new { CheckId = g.Key, Methods = g.Select(p => p.PaymentMethod).Distinct().ToList() })
+            .GroupBy(x => new { x.RestaurantCheckId, x.PaymentMethod })
+            .Select(g => new { g.Key.RestaurantCheckId, g.Key.PaymentMethod, Amount = g.Sum(p => p.Amount) })
             .ToListAsync();
-        var paymentsLookup = paymentsByCheckId.ToDictionary(x => x.CheckId, x => x.Methods);
+        var paymentsLookup = paymentAmountsByCheckId
+            .GroupBy(x => x.RestaurantCheckId)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.PaymentMethod, x => x.Amount));
+
+        // Filtreye uyan TÜM kayıtların (sayfalama olmadan) ödeme türü bazlı toplamları - ayrı,
+        // hafif bir sorgu (yalnızca check id + ödeme türü + tutar, satır bazlı entity yüklenmez).
+        var filteredCheckIdsQuery = query.Select(x => x.RestaurantCheckId);
+        var totalsByMethod = await dbContext.RestaurantPayments
+            .AsNoTracking()
+            .Where(p => !p.IsReversal && filteredCheckIdsQuery.Contains(p.RestaurantCheckId))
+            .GroupBy(p => p.PaymentMethod)
+            .Select(g => new { Method = g.Key, Total = g.Sum(p => p.Amount) })
+            .ToDictionaryAsync(x => x.Method, x => x.Total);
+        var discountTotal = await query.SumAsync(x => x.DiscountAmount);
+        var grandTotalAll = await query.SumAsync(x => x.GrandTotal);
 
         var model = new RetailSaleListViewModel
         {
@@ -98,10 +112,20 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             Page = page,
             TotalCount = totalCount,
             PageSize = pageSize,
+            Totals = new RetailSaleListTotalsViewModel
+            {
+                CashTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.Cash),
+                CreditCardTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.CreditCard),
+                MealCardTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.MealCard),
+                UnpaidTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.Unpaid),
+                OpenAccountTotal = totalsByMethod.GetValueOrDefault(RestaurantPaymentMethod.OpenAccount),
+                DiscountTotal = discountTotal,
+                GrandTotal = grandTotalAll
+            },
             Items = sales.Select(x =>
             {
                 var section = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
-                var methods = paymentsLookup.GetValueOrDefault(x.RestaurantCheckId, []);
+                var amounts = paymentsLookup.GetValueOrDefault(x.RestaurantCheckId, []);
                 return new RetailSaleListItemViewModel
                 {
                     RetailSaleId = x.Id,
@@ -111,15 +135,12 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
                     Channel = ResolveChannel(section),
                     SourceLabel = x.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name,
                     GrandTotal = x.GrandTotal,
-                    PaymentMethodsSummary = methods.Count == 0
-                        ? "-"
-                        : string.Join(", ", methods.Select(m => m switch
-                        {
-                            RestaurantPaymentMethod.Cash => "Nakit",
-                            RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
-                            RestaurantPaymentMethod.MealCard => "Yemek Kartı",
-                            _ => m.ToString()
-                        })),
+                    CashAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.Cash),
+                    CreditCardAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.CreditCard),
+                    MealCardAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.MealCard),
+                    UnpaidAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.Unpaid),
+                    OpenAccountAmount = amounts.GetValueOrDefault(RestaurantPaymentMethod.OpenAccount),
+                    DiscountAmount = x.DiscountAmount,
                     Status = x.Status == RetailSaleStatus.Cancelled ? "İptal Edildi" : "Tamamlandı",
                     CustomerName = x.Customer != null ? x.Customer.Name : null
                 };
@@ -192,6 +213,8 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
                     RestaurantPaymentMethod.Cash => "Nakit",
                     RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
                     RestaurantPaymentMethod.MealCard => "Yemek Kartı",
+                    RestaurantPaymentMethod.Unpaid => "Ödenmez",
+                    RestaurantPaymentMethod.OpenAccount => "Açık Hesap",
                     _ => p.PaymentMethod.ToString()
                 },
                 Amount = p.Amount
@@ -211,18 +234,20 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
         var sales = await query.ToListAsync();
 
         var checkIds = sales.Select(x => x.RestaurantCheckId).ToList();
-        var paymentsByCheckId = await dbContext.RestaurantPayments
+        var paymentAmountsByCheckId = await dbContext.RestaurantPayments
             .AsNoTracking()
             .Where(x => checkIds.Contains(x.RestaurantCheckId) && !x.IsReversal)
-            .GroupBy(x => x.RestaurantCheckId)
-            .Select(g => new { CheckId = g.Key, Methods = g.Select(p => p.PaymentMethod).Distinct().ToList() })
+            .GroupBy(x => new { x.RestaurantCheckId, x.PaymentMethod })
+            .Select(g => new { g.Key.RestaurantCheckId, g.Key.PaymentMethod, Amount = g.Sum(p => p.Amount) })
             .ToListAsync();
-        var paymentsLookup = paymentsByCheckId.ToDictionary(x => x.CheckId, x => x.Methods);
+        var paymentsLookup = paymentAmountsByCheckId
+            .GroupBy(x => x.RestaurantCheckId)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.PaymentMethod, x => x.Amount));
         var branchNamesById = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Perakende Fiş Listesi");
-        var headers = new[] { "Fiş No", "Tarih", "Şube", "Kanal", "Masa/Kaynak", "Cari", "Ödeme Türü", "Tutar", "Durum" };
+        var headers = new[] { "Fiş No", "Tarih", "Şube", "Kanal", "Masa/Kaynak", "Cari", "Nakit", "Kredi Kartı", "Yemek Kartı", "Ödenmez", "Açık Hesap", "İndirim/İkram", "Tutar", "Durum" };
         for (var i = 0; i < headers.Length; i++)
         {
             sheet.Cell(1, i + 1).Value = headers[i];
@@ -230,10 +255,16 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
         }
 
         var row = 2;
+        decimal cashTotal = 0, creditCardTotal = 0, mealCardTotal = 0, unpaidTotal = 0, openAccountTotal = 0, discountTotal = 0, grandTotal = 0;
         foreach (var sale in sales)
         {
             var section = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.RestaurantSection;
-            var methods = paymentsLookup.GetValueOrDefault(sale.RestaurantCheckId, []);
+            var amounts = paymentsLookup.GetValueOrDefault(sale.RestaurantCheckId, []);
+            var cash = amounts.GetValueOrDefault(RestaurantPaymentMethod.Cash);
+            var creditCard = amounts.GetValueOrDefault(RestaurantPaymentMethod.CreditCard);
+            var mealCard = amounts.GetValueOrDefault(RestaurantPaymentMethod.MealCard);
+            var unpaid = amounts.GetValueOrDefault(RestaurantPaymentMethod.Unpaid);
+            var openAccount = amounts.GetValueOrDefault(RestaurantPaymentMethod.OpenAccount);
             sheet.Cell(row, 1).Value = sale.DocumentNumber;
             sheet.Cell(row, 2).Value = sale.IssuedAtUtc.ToLocalTime();
             sheet.Cell(row, 2).Style.DateFormat.Format = "dd.MM.yyyy HH:mm";
@@ -241,16 +272,36 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             sheet.Cell(row, 4).Value = ResolveChannel(section);
             sheet.Cell(row, 5).Value = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable.Name;
             sheet.Cell(row, 6).Value = sale.Customer?.Name ?? "";
-            sheet.Cell(row, 7).Value = methods.Count == 0 ? "-" : string.Join(", ", methods.Select(m => m switch
-            {
-                RestaurantPaymentMethod.Cash => "Nakit",
-                RestaurantPaymentMethod.CreditCard => "Kredi Kartı",
-                RestaurantPaymentMethod.MealCard => "Yemek Kartı",
-                _ => m.ToString()
-            }));
-            sheet.Cell(row, 8).Value = sale.GrandTotal;
-            sheet.Cell(row, 9).Value = sale.Status == RetailSaleStatus.Cancelled ? "İptal Edildi" : "Tamamlandı";
+            sheet.Cell(row, 7).Value = cash;
+            sheet.Cell(row, 8).Value = creditCard;
+            sheet.Cell(row, 9).Value = mealCard;
+            sheet.Cell(row, 10).Value = unpaid;
+            sheet.Cell(row, 11).Value = openAccount;
+            sheet.Cell(row, 12).Value = sale.DiscountAmount;
+            sheet.Cell(row, 13).Value = sale.GrandTotal;
+            sheet.Cell(row, 14).Value = sale.Status == RetailSaleStatus.Cancelled ? "İptal Edildi" : "Tamamlandı";
+            cashTotal += cash;
+            creditCardTotal += creditCard;
+            mealCardTotal += mealCard;
+            unpaidTotal += unpaid;
+            openAccountTotal += openAccount;
+            discountTotal += sale.DiscountAmount;
+            grandTotal += sale.GrandTotal;
             row++;
+        }
+
+        sheet.Cell(row, 6).Value = "TOPLAM";
+        sheet.Cell(row, 6).Style.Font.Bold = true;
+        sheet.Cell(row, 7).Value = cashTotal;
+        sheet.Cell(row, 8).Value = creditCardTotal;
+        sheet.Cell(row, 9).Value = mealCardTotal;
+        sheet.Cell(row, 10).Value = unpaidTotal;
+        sheet.Cell(row, 11).Value = openAccountTotal;
+        sheet.Cell(row, 12).Value = discountTotal;
+        sheet.Cell(row, 13).Value = grandTotal;
+        for (var i = 6; i <= 13; i++)
+        {
+            sheet.Cell(row, i).Style.Font.Bold = true;
         }
         sheet.Columns().AdjustToContents();
 

@@ -99,6 +99,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RetailSale> RetailSales => Set<RetailSale>();
     public DbSet<RetailSaleLine> RetailSaleLines => Set<RetailSaleLine>();
     public DbSet<RestaurantZPeriod> RestaurantZPeriods => Set<RestaurantZPeriod>();
+    public DbSet<PrintTemplate> PrintTemplates => Set<PrintTemplate>();
+    public DbSet<Printer> Printers => Set<Printer>();
+    public DbSet<PrintJob> PrintJobs => Set<PrintJob>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -1531,6 +1534,30 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasFilter("[Status] = 1")
                 .HasDatabaseName("IX_RestaurantZPeriods_OneOpen");
             entity.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PrintTemplate>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Printer>(entity =>
+        {
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ConnectionAddress).HasMaxLength(200).IsRequired();
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PrintTemplate).WithMany(x => x.Printers).HasForeignKey(x => x.PrintTemplateId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.KitchenStation).WithMany().HasForeignKey(x => x.KitchenStationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PrintJob>(entity =>
+        {
+            entity.Property(x => x.SourceDescription).HasMaxLength(300);
+            entity.Property(x => x.LastError).HasMaxLength(2000);
+            entity.HasOne(x => x.Printer).WithMany(x => x.PrintJobs).HasForeignKey(x => x.PrinterId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PrintTemplate).WithMany().HasForeignKey(x => x.PrintTemplateId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.ProcessedAtUtc).HasDatabaseName("IX_PrintJobs_Pending").HasFilter("[ProcessedAtUtc] IS NULL");
         });
 
         builder.Entity<RestaurantPermissionProfile>(entity =>

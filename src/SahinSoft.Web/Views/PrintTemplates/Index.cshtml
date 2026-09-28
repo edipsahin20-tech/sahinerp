@@ -1,0 +1,92 @@
+@model SahinSoft.Web.Models.PrintTemplateListViewModel
+@using SahinSoft.Domain.Enums
+@{
+    ViewData["Title"] = "Çıktı Tasarımcısı";
+}
+
+<div class="erp-toolbar">
+    <div class="erp-toolbar-title">
+        <h1>Çıktı Tasarımcısı</h1>
+        <span class="erp-toolbar-meta">Adisyon, mutfak fişi ve raporların yazdırma şablonlarını tasarlayın</span>
+    </div>
+    <div class="erp-toolbar-actions">
+        <a asp-controller="RestaurantSettings" asp-action="Index" class="btn btn-erp-outline btn-sm">← Ayarlar</a>
+        <div class="dropdown d-inline-block">
+            <button class="btn btn-erp-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">+ Yeni Şablon</button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" asp-action="Designer" asp-route-type="@PrintTemplateType.Adisyon">Adisyon Fişi</a></li>
+                <li><a class="dropdown-item" asp-action="Designer" asp-route-type="@PrintTemplateType.MutfakFisi">Mutfak Fişi</a></li>
+                <li><a class="dropdown-item" asp-action="Designer" asp-route-type="@PrintTemplateType.XRaporu">X Raporu</a></li>
+                <li><a class="dropdown-item" asp-action="Designer" asp-route-type="@PrintTemplateType.ZRaporu">Z Raporu</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success py-2">@success</div>
+}
+
+<div class="erp-panel">
+    <div class="erp-panel-body p-0">
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Şablon Adı</th>
+                    <th>Tip</th>
+                    <th>Kağıt</th>
+                    <th>Versiyon</th>
+                    <th>Varsayılan</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr class="@(item.IsActive ? "" : "text-secondary")">
+                    <td class="fw-semibold">@item.Name</td>
+                    <td>@item.TemplateType.GetDisplayName()</td>
+                    <td>@item.PaperWidthMm mm</td>
+                    <td>v@(item.Version)</td>
+                    <td>
+                        @if (item.IsDefault)
+                        {
+                            <span class="badge text-bg-warning-subtle text-warning-emphasis">Varsayılan</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-action="SetDefault" asp-route-id="@item.Id" class="d-inline">
+                                <button type="submit" class="btn btn-erp-outline" style="padding: 0.1rem 0.5rem; font-size: 0.75rem;">Varsayılan Yap</button>
+                            </form>
+                        }
+                    </td>
+                    <td>
+                        @if (item.IsActive)
+                        {
+                            <span class="badge text-bg-success-subtle text-success-emphasis">Aktif</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-danger-subtle text-danger-emphasis">Pasif</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Designer" asp-route-id="@item.Id" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem;">Düzenle</a>
+                        <form method="post" asp-action="Delete" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('Bu şablonu silmek istediğinize emin misiniz?');">
+                            <button type="submit" class="btn btn-erp-outline" style="padding: 0.15rem 0.6rem; font-size: 0.78rem; color:#c0392b;">Sil</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-secondary py-4">Henüz şablon yok. "+ Yeni Şablon" ile başlayın.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>

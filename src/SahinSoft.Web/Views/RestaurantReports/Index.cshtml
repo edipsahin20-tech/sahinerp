@@ -525,6 +525,9 @@ else if (Model.ActiveTab == "x")
     <div class="actions no-print" style="margin-top:10px;">
         <button type="button" class="rbtn gold" onclick="window.print()">🖨 X Raporu Yazdır</button>
         <button type="button" class="rbtn pdf" onclick="window.print()">📄 PDF İndir</button>
+        <form method="post" asp-action="SendXReportToPrinter" asp-route-returnTab="x" asp-route-date="@Model.ReportDate.ToString("yyyy-MM-dd")" class="d-inline">
+            <button type="submit" class="rbtn">🧾 Termal Yazıcıya Gönder</button>
+        </form>
     </div>
 }
 else if (Model.ActiveTab == "z")

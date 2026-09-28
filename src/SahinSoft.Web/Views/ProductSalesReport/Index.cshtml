@@ -1,0 +1,92 @@
+@model SahinSoft.Web.Models.ProductSalesReportViewModel
+@{
+    ViewData["Title"] = "Ürün Satış Raporu";
+}
+
+<div class="erp-breadcrumb-v2">Raporlar <span>/</span> Ürün Satış Raporu</div>
+
+<div class="erp-page-head">
+    <div>
+        <h1>Ürün Satış Raporu</h1>
+        <p>Ürün bazında satış adedi ve tutarı — şube, tarih, kategori, marka ve ürüne göre süzülebilir (iptal edilen fişler hariçtir).</p>
+    </div>
+</div>
+
+<div class="erp-list-card">
+    <form method="get" class="erp-list-card-toolbar" style="flex-wrap:wrap; gap:10px;">
+        <select name="branchId">
+            <option value="">Tüm Şubeler</option>
+            @foreach (var b in Model.Branches)
+            {
+                <option value="@b.Id" selected="@(Model.BranchId == b.Id)">@b.Name</option>
+            }
+        </select>
+        <input type="date" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+        <input type="date" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+        <select name="categoryId">
+            <option value="">Tüm Kategoriler</option>
+            @foreach (var c in Model.Categories)
+            {
+                <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">@c.Name</option>
+            }
+        </select>
+        <select name="brand">
+            <option value="">Tüm Markalar</option>
+            @foreach (var b in Model.Brands)
+            {
+                <option value="@b" selected="@(Model.Brand == b)">@b</option>
+            }
+        </select>
+        <input type="text" name="productQuery" placeholder="Ürün ara..." value="@Model.ProductQuery" />
+        <button type="submit" class="btn-erp-list-new" style="padding:8px 16px;">Filtrele</button>
+        <a asp-action="Index" class="btn-erp-outline-secondary" style="padding:8px 16px;">Temizle</a>
+    </form>
+
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin:14px 0;">
+        <div style="flex:1; min-width:150px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#166534;">Toplam Adet</div>
+            <div style="font-weight:700; color:#166534;">@Model.TotalQuantity.ToString("N2")</div>
+        </div>
+        <div style="flex:1; min-width:150px; background:#FFF7ED; border:1px solid #FED7AA; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#9A3412;">Toplam İndirim/İkram</div>
+            <div style="font-weight:700; color:#9A3412;">@Model.TotalDiscount.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:150px; background:#111827; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#D1D5DB;">Toplam Satış Tutarı</div>
+            <div style="font-weight:700; color:#fff;">@Model.TotalAmount.ToString("N2") ₺</div>
+        </div>
+    </div>
+
+    <div class="erp-table-wrap">
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>Ürün</th>
+                    <th>Kategori</th>
+                    <th>Marka</th>
+                    <th class="text-end">Satılan Adet</th>
+                    <th class="text-end">İndirim/İkram</th>
+                    <th class="text-end">Toplam Tutar</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-secondary text-center py-4">Filtreye uyan satış bulunamadı.</td></tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>@item.ProductName</td>
+                        <td>@item.CategoryName</td>
+                        <td>@(item.Brand ?? "-")</td>
+                        <td class="text-end">@item.QuantitySold.ToString("N2")</td>
+                        <td class="text-end">@item.DiscountAmount.ToString("N2") ₺</td>
+                        <td class="text-end">@item.TotalAmount.ToString("N2") ₺</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-secondary small mt-2">Toplam @Model.Items.Count ürün.</p>
+</div>

@@ -198,14 +198,14 @@
     </div>
 </div>
 
-<button type="button" class="@GroupToggleClass("Reports", "RetailSales")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports", "RetailSales")">
+<button type="button" class="@GroupToggleClass("Reports", "RetailSales", "ZPeriods", "RetailSaleCancellations", "ProductSalesReport")" data-bs-toggle="collapse" data-bs-target="#@Id("group-raporlar")" aria-expanded="@Expanded("Reports", "RetailSales", "ZPeriods", "RetailSaleCancellations", "ProductSalesReport")">
     <span class="toggle-left">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18.7 8 13 13.7l-4-4L3 16" /></svg>
         Raporlar
     </span>
     @Html.Raw(chevron)
 </button>
-<div class="@CollapseClass("Reports", "RetailSales")" id="@Id("group-raporlar")" data-bs-parent="#@Id("sidebar-accordion")">
+<div class="@CollapseClass("Reports", "RetailSales", "ZPeriods", "RetailSaleCancellations", "ProductSalesReport")" id="@Id("group-raporlar")" data-bs-parent="#@Id("sidebar-accordion")">
     <div class="erp-sidebar-subnav">
         <a class="nav-link" asp-controller="Customers" asp-action="Index">Cari Hesap Hareketleri</a>
         <a class="nav-link" asp-controller="Reports" asp-action="StockMovements">Stok Hareketleri</a>
@@ -216,6 +216,9 @@
         <!-- Edip, 2026-09-28: "rapor ekranını muhasebe programına ekleyeceksin" - restoran
              modülünün ürettiği RetailSale kayıtlarını (perakende fiş) ana ERP'den görüntüler. -->
         <a class="@NavClass("RetailSales")" asp-controller="RetailSales" asp-action="Index">Perakende Fiş Listesi</a>
+        <a class="@NavClass("ZPeriods")" asp-controller="ZPeriods" asp-action="Index">Z Listesi</a>
+        <a class="@NavClass("RetailSaleCancellations")" asp-controller="RetailSaleCancellations" asp-action="Index">Fiş İptal Listesi</a>
+        <a class="@NavClass("ProductSalesReport")" asp-controller="ProductSalesReport" asp-action="Index">Ürün Satış Raporu</a>
     </div>
 </div>
 

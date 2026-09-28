@@ -41,10 +41,43 @@
             <option value="@((int)RestaurantPaymentMethod.Cash)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.Cash)">Nakit</option>
             <option value="@((int)RestaurantPaymentMethod.CreditCard)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.CreditCard)">Kredi Kartı</option>
             <option value="@((int)RestaurantPaymentMethod.MealCard)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.MealCard)">Yemek Kartı</option>
+            <option value="@((int)RestaurantPaymentMethod.Unpaid)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.Unpaid)">Ödenmez</option>
+            <option value="@((int)RestaurantPaymentMethod.OpenAccount)" selected="@(Model.PaymentMethod == (int)RestaurantPaymentMethod.OpenAccount)">Açık Hesap</option>
         </select>
         <button type="submit" class="btn-erp-list-new" style="padding:8px 16px;">Filtrele</button>
         <a asp-action="Index" class="btn-erp-outline-secondary" style="padding:8px 16px;">Temizle</a>
     </form>
+
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin:14px 0;">
+        <div style="flex:1; min-width:130px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#166534;">Nakit</div>
+            <div style="font-weight:700; color:#166534;">@Model.Totals.CashTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:130px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#1D4ED8;">Kredi Kartı</div>
+            <div style="font-weight:700; color:#1D4ED8;">@Model.Totals.CreditCardTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:130px; background:#FEFCE8; border:1px solid #FEF08A; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#854D0E;">Yemek Kartı</div>
+            <div style="font-weight:700; color:#854D0E;">@Model.Totals.MealCardTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:130px; background:#FEF2F2; border:1px solid #FECACA; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#991B1B;">Ödenmez</div>
+            <div style="font-weight:700; color:#991B1B;">@Model.Totals.UnpaidTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:130px; background:#F5F3FF; border:1px solid #DDD6FE; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#5B21B6;">Açık Hesap</div>
+            <div style="font-weight:700; color:#5B21B6;">@Model.Totals.OpenAccountTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:130px; background:#FFF7ED; border:1px solid #FED7AA; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#9A3412;">İndirim/İkram</div>
+            <div style="font-weight:700; color:#9A3412;">@Model.Totals.DiscountTotal.ToString("N2") ₺</div>
+        </div>
+        <div style="flex:1; min-width:150px; background:#111827; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:.75rem; color:#D1D5DB;">Genel Toplam (tüm ödeme türleri)</div>
+            <div style="font-weight:700; color:#fff;">@Model.Totals.GrandTotal.ToString("N2") ₺</div>
+        </div>
+    </div>
 
     <div class="erp-table-wrap">
         <table class="erp-table">
@@ -56,7 +89,12 @@
                     <th>Kanal</th>
                     <th>Masa/Kaynak</th>
                     <th>Cari</th>
-                    <th>Ödeme Türü</th>
+                    <th class="text-end">Nakit</th>
+                    <th class="text-end">Kredi Kartı</th>
+                    <th class="text-end">Yemek Kartı</th>
+                    <th class="text-end">Ödenmez</th>
+                    <th class="text-end">Açık Hesap</th>
+                    <th class="text-end">İndirim/İkram</th>
                     <th class="text-end">Tutar</th>
                     <th>Durum</th>
                 </tr>
@@ -64,7 +102,7 @@
             <tbody>
                 @if (Model.Items.Count == 0)
                 {
-                    <tr><td colspan="9" class="text-secondary text-center py-4">Filtreye uyan fiş bulunamadı.</td></tr>
+                    <tr><td colspan="14" class="text-secondary text-center py-4">Filtreye uyan fiş bulunamadı.</td></tr>
                 }
                 @foreach (var item in Model.Items)
                 {
@@ -75,7 +113,12 @@
                         <td>@item.Channel</td>
                         <td>@item.SourceLabel</td>
                         <td>@(item.CustomerName ?? "-")</td>
-                        <td>@item.PaymentMethodsSummary</td>
+                        <td class="text-end">@(item.CashAmount > 0 ? item.CashAmount.ToString("N2") : "-")</td>
+                        <td class="text-end">@(item.CreditCardAmount > 0 ? item.CreditCardAmount.ToString("N2") : "-")</td>
+                        <td class="text-end">@(item.MealCardAmount > 0 ? item.MealCardAmount.ToString("N2") : "-")</td>
+                        <td class="text-end">@(item.UnpaidAmount > 0 ? item.UnpaidAmount.ToString("N2") : "-")</td>
+                        <td class="text-end">@(item.OpenAccountAmount > 0 ? item.OpenAccountAmount.ToString("N2") : "-")</td>
+                        <td class="text-end">@(item.DiscountAmount > 0 ? item.DiscountAmount.ToString("N2") : "-")</td>
                         <td class="text-end">@item.GrandTotal.ToString("N2") ₺</td>
                         <td>
                             @if (item.Status == "İptal Edildi")

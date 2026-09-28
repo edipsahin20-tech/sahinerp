@@ -1,0 +1,169 @@
+@model SahinSoft.Web.Models.PrinterFormViewModel
+@using SahinSoft.Domain.Enums
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Yazıcıyı Düzenle" : "Yeni Yazıcı";
+}
+
+<form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input asp-for="Id" type="hidden" />
+
+    <div class="erp-toolbar">
+        <div class="erp-toolbar-title"><h1>@ViewData["Title"]</h1></div>
+        @if (isEdit)
+        {
+            <div class="erp-toolbar-actions">
+                <button type="button" id="testPrintBtn" class="btn btn-erp-outline btn-sm" data-printer-id="@Model.Id">Test Yazdır</button>
+            </div>
+        }
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+    <div id="testPrintResult" class="alert py-2" style="display:none;"></div>
+
+    <div class="erp-panel">
+        <div class="erp-panel-header">Yazıcı Bilgileri</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" autofocus placeholder="Örn: Kasa XPrinter 80mm" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="Role"></label>
+                    <select asp-for="Role" class="form-select" asp-items="Html.GetEnumSelectList<PrinterRole>()"></select>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="BranchId"></label>
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.BranchId), Id = nameof(Model.BranchId),
+                        Value = Model.BranchId?.ToString(),
+                        DisplayValue = Model.BranchDisplay,
+                        Endpoint = Url.Action("Branches", "Lookup")!,
+                        Title = "Şube Seç", Placeholder = "Şube seçin" })" />
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="PrintTemplateId">Şablon</label>
+                    <select asp-for="PrintTemplateId" class="form-select">
+                        <option value="">Varsayılan şablon kullanılsın</option>
+                        @foreach (var t in Model.AvailableTemplates)
+                        {
+                            <option value="@t.Id" selected="@(Model.PrintTemplateId == t.Id)">@t.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="erp-field" id="kitchenStationField" style="display:none;">
+                    <label asp-for="KitchenStationId">Mutfak İstasyonu (opsiyonel)</label>
+                    <select asp-for="KitchenStationId" class="form-select">
+                        <option value="">Bağlı değil</option>
+                        @foreach (var s in Model.AvailableKitchenStations)
+                        {
+                            <option value="@s.Id" selected="@(Model.KitchenStationId == s.Id)">@s.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-panel mt-3">
+        <div class="erp-panel-header">Bağlantı</div>
+        <div class="erp-panel-body">
+            <div class="erp-field-grid">
+                <div class="erp-field">
+                    <label asp-for="ConnectionType"></label>
+                    <select asp-for="ConnectionType" id="connectionTypeSelect" class="form-select" asp-items="Html.GetEnumSelectList<PrinterConnectionType>()"></select>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="ConnectionAddress" id="connectionAddressLabel"></label>
+                    <input asp-for="ConnectionAddress" class="form-control" placeholder="192.168.1.50:9100" />
+                    <span asp-validation-for="ConnectionAddress" class="text-danger small"></span>
+                    <div class="form-text">Ağ (TCP/IP): "ip:port" biçiminde (örn. 192.168.1.50:9100). Windows Yazıcı: o makinedeki OS yazıcı kuyruk adı.</div>
+                </div>
+                <div class="erp-field" id="agentUrlField" style="display:none;">
+                    <label asp-for="AgentBaseUrl"></label>
+                    <input asp-for="AgentBaseUrl" class="form-control" placeholder="http://localhost:5058" />
+                    <div class="form-text">Boş bırakılırsa http://localhost:5058 kullanılır.</div>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="PaperWidth"></label>
+                    <select asp-for="PaperWidth" class="form-select" asp-items="Html.GetEnumSelectList<PrinterPaperWidth>()"></select>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="CopyCount"></label>
+                    <input asp-for="CopyCount" type="number" min="1" max="10" class="form-control" />
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 mt-3">
+                <div class="form-check form-switch">
+                    <input asp-for="AutoCut" class="form-check-input" />
+                    <label asp-for="AutoCut" class="form-check-label"></label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<partial name="_EvrakToolbar" model="(SahinSoft.Web.Models.EvrakToolbarViewModel?)ViewBag.Toolbar" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var typeSelect = document.getElementById('connectionTypeSelect');
+            var agentField = document.getElementById('agentUrlField');
+            var roleSelect = document.querySelector('[name="Role"]');
+            var kitchenField = document.getElementById('kitchenStationField');
+
+            function refreshConnectionType() {
+                agentField.style.display = typeSelect.value === '@((int)PrinterConnectionType.WindowsSpooler)' ? '' : 'none';
+            }
+            function refreshRole() {
+                kitchenField.style.display = roleSelect.value === '@((int)PrinterRole.Mutfak)' ? '' : 'none';
+            }
+            typeSelect.addEventListener('change', refreshConnectionType);
+            roleSelect.addEventListener('change', refreshRole);
+            refreshConnectionType();
+            refreshRole();
+
+            var testBtn = document.getElementById('testPrintBtn');
+            if (testBtn) {
+                testBtn.addEventListener('click', function () {
+                    var resultBox = document.getElementById('testPrintResult');
+                    testBtn.disabled = true;
+                    testBtn.textContent = 'Gönderiliyor...';
+                    fetch('@Url.Action("TestPrint")/' + testBtn.getAttribute('data-printer-id'), {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            resultBox.style.display = 'block';
+                            if (data.success) {
+                                resultBox.className = 'alert alert-success py-2';
+                                resultBox.textContent = 'Test çıktısı gönderildi: Başarılı (İş #' + data.jobId + ')';
+                            } else {
+                                resultBox.className = 'alert alert-danger py-2';
+                                resultBox.textContent = 'Test çıktısı gönderilemedi: ' + (data.error || 'Bilinmeyen hata');
+                            }
+                        })
+                        .catch(function (err) {
+                            resultBox.style.display = 'block';
+                            resultBox.className = 'alert alert-danger py-2';
+                            resultBox.textContent = 'İstek başarısız: ' + err;
+                        })
+                        .finally(function () {
+                            testBtn.disabled = false;
+                            testBtn.textContent = 'Test Yazdır';
+                        });
+                });
+            }
+        })();
+    </script>
+}

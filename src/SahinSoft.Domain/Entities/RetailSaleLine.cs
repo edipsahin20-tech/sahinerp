@@ -11,6 +11,11 @@ public sealed class RetailSaleLine : EntityBase
     public decimal DiscountAmountSnapshot { get; set; }
     public decimal LineTotal { get; set; }
 
+    // RestaurantOrderLine.IsComplimentary'den kapanışta kopyalanır (Çıktı Tasarımcısı X/Z
+    // raporlarının İndirim ile İkram'ı GERÇEKTEN ayırabilmesi için - DiscountAmountSnapshot tek
+    // başına ikisini ayırt edemiyordu, bkz. RestaurantPostingService.CloseCheckAsync).
+    public bool IsComplimentary { get; set; }
+
     public int RetailSaleId { get; set; }
     public RetailSale RetailSale { get; set; } = null!;
     public int ProductId { get; set; }

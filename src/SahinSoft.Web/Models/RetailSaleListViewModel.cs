@@ -12,6 +12,7 @@ public sealed class RetailSaleListViewModel
 {
     public List<RetailSaleListItemViewModel> Items { get; set; } = [];
     public List<Branch> Branches { get; set; } = [];
+    public RetailSaleListTotalsViewModel Totals { get; set; } = new();
 
     public int? BranchId { get; set; }
     public DateTime? DateFrom { get; set; }
@@ -32,9 +33,28 @@ public sealed class RetailSaleListItemViewModel
     public string Channel { get; set; } = string.Empty;
     public string SourceLabel { get; set; } = string.Empty;
     public decimal GrandTotal { get; set; }
-    public string PaymentMethodsSummary { get; set; } = string.Empty;
+    public decimal CashAmount { get; set; }
+    public decimal CreditCardAmount { get; set; }
+    public decimal MealCardAmount { get; set; }
+    public decimal UnpaidAmount { get; set; }
+    public decimal OpenAccountAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? CustomerName { get; set; }
+}
+
+// Filtreye uyan TÜM kayıtların (sayfalama olmadan) ödeme türü bazlı toplamları (Edip,
+// 2026-09-28: "toplam rakamlar bir yerde toplam nakit kredi kartı butun ödeme tıplerın
+// toplandıgı gösteren bir alan da olsun").
+public sealed class RetailSaleListTotalsViewModel
+{
+    public decimal CashTotal { get; set; }
+    public decimal CreditCardTotal { get; set; }
+    public decimal MealCardTotal { get; set; }
+    public decimal UnpaidTotal { get; set; }
+    public decimal OpenAccountTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal GrandTotal { get; set; }
 }
 
 public sealed class RetailSaleDetailViewModel
