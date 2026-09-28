@@ -10645,3 +10645,488 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905122300_AddAskGuestCountSetting'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [AskGuestCountOnTableOpen] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905122300_AddAskGuestCountSetting'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [AskGuestCountOnTableOpen] = CAST(1 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905122300_AddAskGuestCountSetting'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905122300_AddAskGuestCountSetting', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905230517_AddRestaurantOrderLineToStockMovement'
+)
+BEGIN
+    ALTER TABLE [StockMovements] ADD [RestaurantOrderLineId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905230517_AddRestaurantOrderLineToStockMovement'
+)
+BEGIN
+    CREATE INDEX [IX_StockMovements_RestaurantOrderLineId] ON [StockMovements] ([RestaurantOrderLineId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905230517_AddRestaurantOrderLineToStockMovement'
+)
+BEGIN
+    ALTER TABLE [StockMovements] ADD CONSTRAINT [FK_StockMovements_RestaurantOrderLines_RestaurantOrderLineId] FOREIGN KEY ([RestaurantOrderLineId]) REFERENCES [RestaurantOrderLines] ([Id]) ON DELETE SET NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260905230517_AddRestaurantOrderLineToStockMovement'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260905230517_AddRestaurantOrderLineToStockMovement', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    ALTER TABLE [RetailSales] ADD [RestaurantZPeriodId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    CREATE TABLE [RestaurantZPeriods] (
+        [Id] int NOT NULL IDENTITY,
+        [Status] int NOT NULL,
+        [OpenedAtUtc] datetime2 NOT NULL,
+        [ClosedAtUtc] datetime2 NULL,
+        [ClosedByUserId] nvarchar(450) NULL,
+        [BranchId] int NOT NULL,
+        [ReceiptCount] int NOT NULL,
+        [GrossTotal] decimal(18,2) NOT NULL,
+        [DiscountTotal] decimal(18,2) NOT NULL,
+        [NetTotal] decimal(18,2) NOT NULL,
+        [TaxTotal] decimal(18,2) NOT NULL,
+        [ComplimentaryTotal] decimal(18,2) NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_RestaurantZPeriods] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RestaurantZPeriods_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    CREATE INDEX [IX_RetailSales_RestaurantZPeriodId] ON [RetailSales] ([RestaurantZPeriodId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantZPeriods_BranchId] ON [RestaurantZPeriods] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_RestaurantZPeriods_OneOpen] ON [RestaurantZPeriods] ([Status]) WHERE [Status] = 1');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_RestaurantZPeriods_RecordId] ON [RestaurantZPeriods] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    ALTER TABLE [RetailSales] ADD CONSTRAINT [FK_RetailSales_RestaurantZPeriods_RestaurantZPeriodId] FOREIGN KEY ([RestaurantZPeriodId]) REFERENCES [RestaurantZPeriods] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    DBCC CHECKIDENT ('RestaurantZPeriods', RESEED, 11);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906093915_AddRestaurantZPeriod'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260906093915_AddRestaurantZPeriod', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    ALTER TABLE [RestaurantZPeriods] ADD [ClosedAutomatically] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [AutoZEnabled] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [AutoZTimeLocal] time NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [LastAutoZCheckDateLocal] date NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    EXEC(N'UPDATE [InventorySettings] SET [AutoZEnabled] = CAST(0 AS bit), [AutoZTimeLocal] = NULL, [LastAutoZCheckDateLocal] = NULL
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906123821_AddAutoZSettings'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260906123821_AddAutoZSettings', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906125446_RemoveAutoZWatermark'
+)
+BEGIN
+    DECLARE @var4 nvarchar(max);
+    SELECT @var4 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[InventorySettings]') AND [c].[name] = N'LastAutoZCheckDateLocal');
+    IF @var4 IS NOT NULL EXEC(N'ALTER TABLE [InventorySettings] DROP CONSTRAINT ' + @var4 + ';');
+    ALTER TABLE [InventorySettings] DROP COLUMN [LastAutoZCheckDateLocal];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906125446_RemoveAutoZWatermark'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260906125446_RemoveAutoZWatermark', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906185040_AddIsProtectedSystemAccount'
+)
+BEGIN
+    ALTER TABLE [AspNetUsers] ADD [IsProtectedSystemAccount] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260906185040_AddIsProtectedSystemAccount'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260906185040_AddIsProtectedSystemAccount', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260927215048_AddOrderLineSettledByPendingPayment'
+)
+BEGIN
+    ALTER TABLE [RestaurantOrderLines] ADD [SettledByPendingPaymentId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260927215048_AddOrderLineSettledByPendingPayment'
+)
+BEGIN
+    CREATE INDEX [IX_RestaurantOrderLines_SettledByPendingPaymentId] ON [RestaurantOrderLines] ([SettledByPendingPaymentId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260927215048_AddOrderLineSettledByPendingPayment'
+)
+BEGIN
+    ALTER TABLE [RestaurantOrderLines] ADD CONSTRAINT [FK_RestaurantOrderLines_RestaurantCheckPendingPayments_SettledByPendingPaymentId] FOREIGN KEY ([SettledByPendingPaymentId]) REFERENCES [RestaurantCheckPendingPayments] ([Id]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260927215048_AddOrderLineSettledByPendingPayment'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260927215048_AddOrderLineSettledByPendingPayment', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    ALTER TABLE [RetailSaleLines] ADD [IsComplimentary] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE TABLE [PrintTemplates] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(150) NOT NULL,
+        [TemplateType] int NOT NULL,
+        [LayoutJson] nvarchar(max) NOT NULL,
+        [PaperWidthMm] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        [IsDefault] bit NOT NULL,
+        [Version] int NOT NULL,
+        [BranchId] int NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_PrintTemplates] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_PrintTemplates_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE TABLE [Printers] (
+        [Id] int NOT NULL IDENTITY,
+        [Name] nvarchar(150) NOT NULL,
+        [Role] int NOT NULL,
+        [ConnectionType] int NOT NULL,
+        [ConnectionAddress] nvarchar(200) NOT NULL,
+        [AgentBaseUrl] nvarchar(max) NULL,
+        [PaperWidth] int NOT NULL,
+        [AutoCut] bit NOT NULL,
+        [CopyCount] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        [BranchId] int NOT NULL,
+        [PrintTemplateId] int NULL,
+        [KitchenStationId] int NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_Printers] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Printers_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_Printers_KitchenStations_KitchenStationId] FOREIGN KEY ([KitchenStationId]) REFERENCES [KitchenStations] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_Printers_PrintTemplates_PrintTemplateId] FOREIGN KEY ([PrintTemplateId]) REFERENCES [PrintTemplates] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE TABLE [PrintJobs] (
+        [Id] int NOT NULL IDENTITY,
+        [PrinterId] int NOT NULL,
+        [PrintTemplateId] int NULL,
+        [RenderedEscPosBase64] nvarchar(max) NOT NULL,
+        [SourceDescription] nvarchar(300) NOT NULL,
+        [OccurredAtUtc] datetime2 NOT NULL,
+        [ProcessedAtUtc] datetime2 NULL,
+        [RetryCount] int NOT NULL,
+        [LastError] nvarchar(2000) NULL,
+        [IsTestPrint] bit NOT NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_PrintJobs] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_PrintJobs_PrintTemplates_PrintTemplateId] FOREIGN KEY ([PrintTemplateId]) REFERENCES [PrintTemplates] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_PrintJobs_Printers_PrinterId] FOREIGN KEY ([PrinterId]) REFERENCES [Printers] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_Printers_BranchId] ON [Printers] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_Printers_KitchenStationId] ON [Printers] ([KitchenStationId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_Printers_PrintTemplateId] ON [Printers] ([PrintTemplateId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Printers_RecordId] ON [Printers] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_PrintJobs_Pending] ON [PrintJobs] ([ProcessedAtUtc]) WHERE [ProcessedAtUtc] IS NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_PrintJobs_PrinterId] ON [PrintJobs] ([PrinterId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_PrintJobs_PrintTemplateId] ON [PrintJobs] ([PrintTemplateId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_PrintJobs_RecordId] ON [PrintJobs] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE INDEX [IX_PrintTemplates_BranchId] ON [PrintTemplates] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_PrintTemplates_RecordId] ON [PrintTemplates] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260928122602_AddPrintTemplatePrinterAndPrintJob'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260928122602_AddPrintTemplatePrinterAndPrintJob', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
