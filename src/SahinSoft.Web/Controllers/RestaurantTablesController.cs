@@ -25,12 +25,16 @@ public sealed class RestaurantTablesController(ApplicationDbContext dbContext) :
 
     public async Task<IActionResult> Index()
     {
-        var tables = await dbContext.RestaurantTables
+        // Doğal sıralama (Edip, 2026-09-29: "masalar 1'den başlayarak sıralansın, HER ZAMAN böyle
+        // olsun") - bkz. NaturalSortComparer yorumu; düz SQL ORDER BY .Name sözlük sırası üretir.
+        var tables = (await dbContext.RestaurantTables
             .AsNoTracking()
             .Include(x => x.RestaurantSection)
             .Where(x => !HiddenSystemSectionNames.Contains(x.RestaurantSection.Name))
-            .OrderBy(x => x.RestaurantSection.DisplayOrder).ThenBy(x => x.Name)
-            .ToListAsync();
+            .ToListAsync())
+            .OrderBy(x => x.RestaurantSection.DisplayOrder)
+            .ThenBy(x => x.Name, NaturalSortComparer.Instance)
+            .ToList();
         return View(tables);
     }
 

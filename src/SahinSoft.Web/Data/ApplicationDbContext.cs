@@ -1275,10 +1275,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.OpenedByUserId).HasMaxLength(450).IsRequired();
             entity.Property(x => x.WaiterUserId).HasMaxLength(450);
             entity.Property(x => x.ClosedByUserId).HasMaxLength(450);
-            // Aynı masada iki aktif oturum olamaz — DB seviyesinde garanti.
+            // Aynı masada iki aktif oturum olamaz — DB seviyesinde garanti. Masasız (Self/Paket,
+            // RestaurantTableId=NULL) oturumlar bu kurala tabi değil — SQL Server filtreli unique
+            // index'te NULL'ları BİRBİRİNİN DUPLICATE'İ sayar (ANSI-SQL'in aksine), bu yüzden
+            // "IS NOT NULL" filtresi olmadan aynı anda 2. Self Satış açılışı bu index'i ihlal eder.
             entity.HasIndex(x => x.RestaurantTableId)
                 .IsUnique()
-                .HasFilter("[Status] = 1")
+                .HasFilter("[Status] = 1 AND [RestaurantTableId] IS NOT NULL")
                 .HasDatabaseName("IX_RestaurantTableSessions_OneOpenPerTable");
             // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
             entity.HasIndex(x => x.SubmissionKey).IsUnique().HasFilter("[SubmissionKey] IS NOT NULL");

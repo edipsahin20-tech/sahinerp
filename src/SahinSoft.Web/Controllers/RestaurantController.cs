@@ -61,7 +61,7 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             Sections = sections.Select(section => new RestaurantFloorSectionViewModel
             {
                 Name = section.Name,
-                Tables = section.Tables.OrderBy(t => t.Name).Select(table =>
+                Tables = section.Tables.OrderBy(t => t.Name, NaturalSortComparer.Instance).Select(table =>
                 {
                     var session = openSessions.SingleOrDefault(s => s.RestaurantTableId == table.Id);
                     var check = session?.Checks.SingleOrDefault(c => c.Status == RestaurantCheckStatus.Open);
@@ -656,17 +656,28 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         // bölümleri açılsın" - eskiden bu liste SADECE Self Satış'ın "Masaya Aktar" özelliği için
         // dolduruluyordu; artık Masa/Paket'teki yeni ürün-bazlı transfer de AYNI listeyi kullanıyor,
         // bu yüzden self satış olup olmadığına bakılmadan HER ZAMAN dolduruluyor (kendi masası hariç).
-        var availableTables = await dbContext.RestaurantTables
+        // Doğal sıralama (Edip, 2026-09-29: "masalar 1'den başlayarak sıralansın, HER ZAMAN böyle
+        // olsun") - .Name'e göre düz SQL ORDER BY sözlük sırası üretir (VIP-1, VIP-10, VIP-2, ...),
+        // bu yüzden önce materialize edilip NaturalSortComparer ile bellek içinde sıralanıyor -
+        // IsOccupied de bu yüzden ayrı bir toplu sorguyla (openTableIds) hesaplanıyor, her masanın
+        // TÜM Sessions geçmişini belleğe çekmemek için.
+        var openTableIds = (await dbContext.RestaurantTableSessions
+            .AsNoTracking()
+            .Where(x => x.Status == RestaurantTableSessionStatus.Open && x.RestaurantTableId != null)
+            .Select(x => x.RestaurantTableId!.Value)
+            .ToListAsync())
+            .ToHashSet();
+
+        var availableTables = (await dbContext.RestaurantTables
             .AsNoTracking()
             .Where(x => x.IsActive && x.RestaurantSection.IsActive && x.Id != check.RestaurantTableSession.RestaurantTableId)
             .Include(x => x.RestaurantSection)
-            .OrderBy(x => x.RestaurantSection.DisplayOrder).ThenBy(x => x.Name)
-            .Select(x => new RestaurantTransferTableOptionViewModel(
-                x.Id,
-                x.RestaurantSection.Name,
-                x.Name,
-                x.Sessions.Any(s => s.Status == RestaurantTableSessionStatus.Open)))
-            .ToListAsync();
+            .Select(x => new { x.Id, SectionName = x.RestaurantSection.Name, x.Name, x.RestaurantSection.DisplayOrder })
+            .ToListAsync())
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name, NaturalSortComparer.Instance)
+            .Select(x => new RestaurantTransferTableOptionViewModel(x.Id, x.SectionName, x.Name, openTableIds.Contains(x.Id)))
+            .ToList();
 
         var model = new RestaurantCheckViewModel
         {
@@ -913,6 +924,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     // controller Waiter rolüne kapalı (Administrator/RestaurantManager/Cashier) - burası bu
     // controller'ın kendi rol kapsamında (Administrator/RestaurantManager/Waiter) kalması için
     // ayrı, küçük bir aksiyon.
+    //
+    // GERÇEK HATA (2026-09-29, "sahte masa temizliği" regresyon testinde bulundu) - SourceLabel/
+    // SourceType SABİT "Self Satış" idi; bu aksiyon sadece Self Satış hızlı ödemesinden
+    // çağrıldığı için o zamana kadar fark edilmemişti, ama HeldReceipts/Fiş Listesi üzerinden
+    // GERÇEK bir Masa Satış adisyonunun fişi de bu aksiyondan açılabiliyor - o durumda gerçek masa
+    // adı yerine yanlışlıkla "Self Satış" basılıyordu. RestaurantReportsController.SourceTypeOf ile
+    // AYNI Channel tabanlı mantık burada da uygulanıyor.
     [HttpGet]
     public async Task<IActionResult> Receipt(int id)
     {
@@ -920,18 +938,42 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .AsNoTracking()
             .Include(x => x.Lines)
             .Include(x => x.RestaurantCheck).ThenInclude(x => x.Payments)
+            .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (sale is null)
         {
             return NotFound();
         }
 
+        var channel = sale.RestaurantCheck.RestaurantTableSession.Channel;
+        var sourceType = channel switch
+        {
+            RestaurantSaleChannel.SelfSatis => "self",
+            RestaurantSaleChannel.Paket => "package",
+            _ => "table"
+        };
+        var tableName = sale.RestaurantCheck.RestaurantTableSession.RestaurantTable?.Name ?? "";
+        string sourceLabel;
+        if (sourceType == "package")
+        {
+            var pkgOrder = await dbContext.PackageOrders.AsNoTracking().SingleOrDefaultAsync(x => x.RestaurantCheckId == sale.RestaurantCheckId);
+            sourceLabel = pkgOrder is null ? tableName : $"{pkgOrder.PackageNumber} · {pkgOrder.CustomerName}";
+        }
+        else if (sourceType == "self")
+        {
+            sourceLabel = "Self Satış";
+        }
+        else
+        {
+            sourceLabel = tableName;
+        }
+
         var model = new RestaurantReceiptDetailViewModel
         {
             DocumentNumber = sale.DocumentNumber,
             IssuedAtUtc = sale.IssuedAtUtc,
-            SourceLabel = "Self Satış",
-            SourceType = "self",
+            SourceLabel = sourceLabel,
+            SourceType = sourceType,
             IsCancelled = sale.Status == RetailSaleStatus.Cancelled,
             Lines = sale.Lines.Select(l => new RestaurantReceiptDetailLine(l.ProductNameSnapshot, l.Quantity, l.UnitPriceSnapshot, l.LineTotal)).ToList(),
             SubtotalAmount = sale.SubtotalAmount,

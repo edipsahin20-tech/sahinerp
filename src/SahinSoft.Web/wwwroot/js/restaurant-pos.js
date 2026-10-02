@@ -363,7 +363,14 @@
         cart.forEach(function (line, idx) {
             total += lineTotal(line);
             totalGross += line.quantity * line.unitPrice;
-            pendingDiscountsTotal += line.discountAmount || 0;
+            // GERÇEK HATA (2026-09-29, 60 işlemlik regresyon testinde bulundu) - İkram edilmiş
+            // (isComplimentary=true) bekleyen bir satırda discountAmount genelde 0 kalır (ikram
+            // AYRI bir bayrakla izlenir, lineTotal() bunu zaten doğru hesaplıyor), ama bu toplam
+            // SADECE discountAmount'ı sayıyordu - footer'daki net "Toplam" (restaurant-close-
+            // payment.js) bu satırı hiç düşmüyor, "Ara Toplam" (kasıtlı BRÜT) ile aynı kalıyordu.
+            // Para asla yanlış tahsil edilmedi (Ödeme Al modalı kendi doğru payableTotal'ını
+            // kullanıyor) - bu sadece gönderilmeden önceki ekran özetiydi.
+            pendingDiscountsTotal += line.isComplimentary ? (line.quantity * line.unitPrice) : (line.discountAmount || 0);
             var div = document.createElement('div');
             div.className = 'cart-line' + (line.cartId === selectedCartId ? ' selected' : '');
             var badges = '';
