@@ -923,9 +923,9 @@ function updatePdfPreview() {
   } else {
     fx.rows.forEach((r, idx) => {
       const t = tlc.rows[idx];
-      // Döviz teklifte: birim fiyat döviz (altında TL), tutar TL (altında döviz) — her satırda iki para birimi birlikte.
+      // Döviz teklifte her iki sütunda da üstte TL, altında döviz (küçük, parantezli) gösterilir.
       const unitCell = foreign
-        ? `<strong>${formatMoney(r.itemUnitPrice)} ${symbol}</strong>${secondary(t.itemUnitPrice, '₺')}`
+        ? `<strong>${formatMoney(t.itemUnitPrice)} ₺</strong>${secondary(r.itemUnitPrice, symbol)}`
         : `${formatMoney(r.itemUnitPrice)} ${symbol}`;
       const totalCell = foreign
         ? `<strong>${formatMoney(t.net)} ₺</strong>${secondary(r.net, symbol)}`
@@ -965,8 +965,8 @@ function updatePdfPreview() {
   document.getElementById('pdf-grand-label').textContent = foreign ? 'GENEL TOPLAM (KDV Dahil):' : 'GENEL TOPLAM:';
   document.getElementById('pdf-val-grand').textContent = `${formatMoney(main.grandTotal)} ${mainSym}`;
   if (foreign) {
-    document.getElementById('pdf-tl-label').textContent = 'Toplam Dolar Karşılığı:'.replace('Dolar', activeCurrency === 'EUR' ? 'Euro' : 'Dolar');
-    document.getElementById('pdf-val-tl-grand').textContent = `${symbol}${formatMoney(fx.grandTotal)} (${symbol}1 = ${formatMoney(getQuoteRate())} ₺)`;
+    document.getElementById('pdf-tl-label').textContent = activeCurrency === 'EUR' ? 'Toplam Euro Karşılığı:' : 'Toplam Dolar Karşılığı:';
+    document.getElementById('pdf-val-tl-grand').innerHTML = `${symbol}${formatMoney(fx.grandTotal)}<div style="font-size:9px;font-weight:400;opacity:.85;">(${symbol}1 = ${formatMoney(getQuoteRate())} ₺)</div>`;
   }
   updateTlTotals();
 }
