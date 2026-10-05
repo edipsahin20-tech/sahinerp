@@ -22,6 +22,8 @@ public sealed class RetailSalesController(ApplicationDbContext dbContext) : Cont
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.RestaurantCheck).ThenInclude(x => x.RestaurantTableSession).ThenInclude(x => x!.RestaurantTable)
+            // İptal edilmiş fişler bu listede ve toplamlarında görünmez (ayrı "Fiş İptal Listesi" ekranında izlenir).
+            .Where(x => x.Status != RetailSaleStatus.Cancelled)
             .AsQueryable();
 
         if (branchId.HasValue)

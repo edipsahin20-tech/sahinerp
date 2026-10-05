@@ -238,7 +238,7 @@ public sealed class RestaurantPostingService(
         string? approverUserId = null;
         if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
         {
-            approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken)
+            approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, performedByUserId, cancellationToken)
                 ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
         }
 
@@ -1192,8 +1192,8 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken)
-                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancelledByUserId, cancellationToken)
+                        ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz, bu işlem için yetkisiz veya işlemi yapanla aynı kişi.");
                 }
 
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(
@@ -1305,7 +1305,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, performedByUserId, cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1418,7 +1418,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForEditKitchenSentLinesAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, performedByUserId, cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1488,7 +1488,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, performedByUserId, cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1553,7 +1553,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForComplimentaryAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyComplimentary, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyComplimentary, performedByUserId, cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
