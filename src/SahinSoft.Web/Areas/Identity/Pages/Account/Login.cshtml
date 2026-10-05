@@ -25,6 +25,22 @@
         </div>
         <span asp-validation-for="Input.Password" class="text-danger small"></span>
     </div>
+    @if (!Model.IsDesktop && Model.DatabaseProfiles.Count > 0)
+    {
+        <div class="auth-field">
+            <label asp-for="Input.DatabaseProfileName" class="form-label">Kullanılacak Veritabanı</label>
+            <div class="auth-field-control">
+                <select asp-for="Input.DatabaseProfileName" class="form-select">
+                    @foreach (var profile in Model.DatabaseProfiles)
+                    {
+                        <option value="@profile.Name">@profile.Name@(profile.IsDefault ? " (varsayılan)" : "")</option>
+                    }
+                </select>
+            </div>
+            <span class="form-text small">Giriş yapacağınız firma veritabanını seçin. Seçiminiz bir sonraki girişte hatırlanır.</span>
+        </div>
+    }
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="form-check">
             <input class="form-check-input" asp-for="Input.RememberMe" />

@@ -104,6 +104,12 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
 
         foreach (var evt in request.Events)
         {
+            if (evt.EventType is "CollectionReceiptApproved" or "PaymentReceiptApproved" or "CollectionReceiptCancelled" or "PaymentReceiptCancelled")
+            {
+                await HandleReceiptEventAsync(evt, branchCode, result, cancellationToken);
+                continue;
+            }
+
             if (evt.EventType != "RestaurantCheckClosed")
             {
                 continue;
@@ -132,7 +138,19 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
                 return StatusCode(500, "\"Perakende Satışlar Carisi\" merkezde tanımlı değil - migration uygulanmamış olabilir.");
             }
 
-            var documentNumber = $"{branchCode}-{payload.DocumentNumber}";
+            // Belge numarası SATIŞIN şubesiyle kurulur (yük kodu yoksa bağlantı kodu) - böylece iki
+            // şubenin aynı numaralı fişi merkezde ayrı kalır.
+            // Şube kodu olmayan (eski) olay tahmin edilerek bir şubeye atanmaz; merkezde kayıt oluşturulmaz.
+            if (string.IsNullOrWhiteSpace(payload.BranchCode))
+            {
+                result.SkippedCount++;
+                continue;
+            }
+
+            var saleBranchCode = payload.BranchCode;
+            var documentNumber = $"{saleBranchCode}-{payload.DocumentNumber}";
+            var centralBranchId = await dbContext.Branches.AsNoTracking()
+                .Where(x => x.Code == saleBranchCode).Select(x => (int?)x.Id).FirstOrDefaultAsync(cancellationToken);
 
             // Talimat 1 (2026-09-06) - "muhasebe satış kaydında en az Kaynak Satış ID, Adisyon No,
             // Z Period/Report ID, Z No, şube, tarih-saat izlenebilir olmalı" - hepsi tek bir
@@ -163,7 +181,8 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
                     Debit = payload.GrandTotal,
                     Credit = 0,
                     CustomerId = retailCustomer.Id,
-                    Description = $"[{branchCode}] Restoran satışı - {payload.CheckNumber}{zNoSuffix}"
+                    OriginBranchId = centralBranchId,
+                    Description = $"[{saleBranchCode}] Restoran satışı - {payload.CheckNumber}{zNoSuffix}"
                 });
 
                 dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
@@ -176,7 +195,8 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
                     Debit = 0,
                     Credit = payload.GrandTotal,
                     CustomerId = retailCustomer.Id,
-                    Description = $"[{branchCode}] Restoran tahsilatı - {payload.CheckNumber}{zNoSuffix}"
+                    OriginBranchId = centralBranchId,
+                    Description = $"[{saleBranchCode}] Restoran tahsilatı - {payload.CheckNumber}{zNoSuffix}"
                 });
             }
 
@@ -195,6 +215,157 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(result);
+    }
+
+
+    // Tahsilat/tediye onayı: müşteri ve hesaplar KODLA eşlenir; biri merkezde yoksa olay atlanır (tahmin yok).
+    // Onay cari (alacak/borç) ve kasa/banka hareketi yazar; iptal, orijinal kaydın ters hareketini üretir.
+    private async Task HandleReceiptEventAsync(TransactionSyncEvent evt, string branchCode, TransactionSyncResult result, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Deserialize<PaymentReceiptSyncPayload>(evt.PayloadJson);
+        if (payload is null)
+        {
+            result.SkippedCount++;
+            return;
+        }
+
+        var isCancel = evt.EventType.EndsWith("Cancelled", StringComparison.Ordinal);
+        var entityType = isCancel ? "PaymentReceiptCancelled" : "PaymentReceiptApproved";
+        var externalId = payload.ReceiptRecordId.ToString();
+        var alreadyProcessed = await dbContext.ExternalRecordMappings.AnyAsync(
+            x => x.SourceSystem == branchCode && x.EntityType == entityType && x.ExternalId == externalId, cancellationToken);
+        if (alreadyProcessed)
+        {
+            result.SkippedCount++;
+            return;
+        }
+
+        if (isCancel)
+        {
+            var original = await dbContext.ExternalRecordMappings.AsNoTracking().SingleOrDefaultAsync(
+                x => x.SourceSystem == branchCode && x.EntityType == "PaymentReceiptApproved" && x.ExternalId == externalId, cancellationToken);
+            if (original is null)
+            {
+                result.SkippedCount++;
+                return;
+            }
+
+            var docNumber = original.InternalId;
+            var cariOriginals = await dbContext.CurrentAccountTransactions
+                .Where(x => x.DocumentNumber == docNumber && x.ReversalOfId == null).ToListAsync(cancellationToken);
+            foreach (var orig in cariOriginals)
+            {
+                dbContext.CurrentAccountTransactions.Add(new CurrentAccountTransaction
+                {
+                    TransactionDateUtc = DateTime.UtcNow,
+                    TransactionType = orig.TransactionType == CurrentAccountTransactionType.Collection
+                        ? CurrentAccountTransactionType.DebitNote
+                        : CurrentAccountTransactionType.CreditNote,
+                    DocumentNumber = $"IPTAL-{docNumber}",
+                    CurrencyCode = orig.CurrencyCode,
+                    ExchangeRate = orig.ExchangeRate,
+                    Debit = orig.Credit,
+                    Credit = orig.Debit,
+                    CustomerId = orig.CustomerId,
+                    OriginBranchId = orig.OriginBranchId,
+                    Description = $"[{branchCode}] Tahsilat/tediye iptali - {payload.ReceiptNumber} - {payload.Reason}",
+                    ReversalOfId = orig.Id
+                });
+            }
+
+            var finOriginals = await dbContext.FinancialTransactions
+                .Where(x => x.DocumentNumber == docNumber && x.ReversalOfId == null).ToListAsync(cancellationToken);
+            foreach (var orig in finOriginals)
+            {
+                dbContext.FinancialTransactions.Add(new FinancialTransaction
+                {
+                    TransactionDateUtc = DateTime.UtcNow,
+                    TransactionType = orig.TransactionType,
+                    DocumentNumber = $"IPTAL-{docNumber}",
+                    Amount = orig.Amount,
+                    ExchangeRate = orig.ExchangeRate,
+                    Description = $"[{branchCode}] Tahsilat/tediye iptali - {payload.ReceiptNumber} - {payload.Reason}",
+                    FinancialAccountId = orig.FinancialAccountId,
+                    CustomerId = orig.CustomerId,
+                    OriginBranchId = orig.OriginBranchId,
+                    ReversalOfId = orig.Id
+                });
+            }
+
+            dbContext.ExternalRecordMappings.Add(new ExternalRecordMapping
+            {
+                SourceSystem = branchCode,
+                EntityType = entityType,
+                ExternalId = externalId,
+                InternalId = $"IPTAL-{docNumber}",
+                ExternalCode = payload.ReceiptNumber,
+                LastSynchronizedAtUtc = DateTime.UtcNow
+            });
+            result.AcceptedCount++;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.BranchCode) || string.IsNullOrWhiteSpace(payload.CustomerCode) || payload.Lines.Count == 0)
+        {
+            result.SkippedCount++;
+            return;
+        }
+
+        var customer = await dbContext.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Code == payload.CustomerCode, cancellationToken);
+        var originBranch = await dbContext.Branches.AsNoTracking().FirstOrDefaultAsync(x => x.Code == payload.BranchCode, cancellationToken);
+        var accountCodes = payload.Lines.Select(x => x.AccountCode).Distinct().ToList();
+        var accounts = await dbContext.FinancialAccounts.AsNoTracking()
+            .Where(x => accountCodes.Contains(x.Code)).ToDictionaryAsync(x => x.Code, x => x.Id, cancellationToken);
+        if (customer is null || originBranch is null || accounts.Count != accountCodes.Count)
+        {
+            result.SkippedCount++;
+            return;
+        }
+
+        var isCollection = payload.ReceiptType == (int)ReceiptType.Collection;
+        var docNo = $"{payload.BranchCode}-{payload.ReceiptNumber}";
+        var cari = new CurrentAccountTransaction
+        {
+            TransactionDateUtc = payload.ReceiptDateUtc,
+            TransactionType = isCollection ? CurrentAccountTransactionType.Collection : CurrentAccountTransactionType.Payment,
+            DocumentNumber = docNo,
+            CurrencyCode = "TRY",
+            ExchangeRate = 1,
+            Debit = isCollection ? 0 : payload.TotalAmount,
+            Credit = isCollection ? payload.TotalAmount : 0,
+            CustomerId = customer.Id,
+            OriginBranchId = originBranch.Id,
+            Description = $"[{payload.BranchCode}] Tahsilat/tediye - {payload.ReceiptNumber}"
+        };
+        dbContext.CurrentAccountTransactions.Add(cari);
+
+        foreach (var line in payload.Lines)
+        {
+            dbContext.FinancialTransactions.Add(new FinancialTransaction
+            {
+                TransactionDateUtc = payload.ReceiptDateUtc,
+                TransactionType = isCollection ? FinancialTransactionType.Collection : FinancialTransactionType.Payment,
+                DocumentNumber = docNo,
+                Amount = line.Amount,
+                ExchangeRate = 1,
+                Description = line.Description ?? $"[{payload.BranchCode}] {payload.ReceiptNumber}",
+                FinancialAccountId = accounts[line.AccountCode],
+                CustomerId = customer.Id,
+                OriginBranchId = originBranch.Id,
+                CurrentAccountTransaction = cari
+            });
+        }
+
+        dbContext.ExternalRecordMappings.Add(new ExternalRecordMapping
+        {
+            SourceSystem = branchCode,
+            EntityType = entityType,
+            ExternalId = externalId,
+            InternalId = docNo,
+            ExternalCode = payload.ReceiptNumber,
+            LastSynchronizedAtUtc = DateTime.UtcNow
+        });
+        result.AcceptedCount++;
     }
 
     private async Task<(IActionResult? Error, SahinSoft.Domain.Entities.Branch? Branch)> TryAuthenticateBranchAsync(string branchCode, CancellationToken cancellationToken)

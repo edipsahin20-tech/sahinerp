@@ -21,6 +21,12 @@ public sealed class RestaurantZPeriod : EntityBase
     public string? ClosedByUserId { get; set; }
     public int BranchId { get; set; }
 
+    // Şube bazlı Z numarası ("Z-000002" gibi, o şubenin 1'den başlayan sayacı). Eski kayıtlarda
+    // null kalır - bu durumda etiket Id'den üretilir (bkz. LabelFor).
+    public string? ZNumber { get; set; }
+
+    public static string LabelFor(int id, string? zNumber) => zNumber ?? $"Z-{id:D6}";
+
     // Talimat 1 (2026-09-06) - otomatik (zamanlanmış) Z ile elle "Z Raporu Al" ayrımı, raporlama/
     // audit amaçlı. ClosedByUserId otomatik kapanışta null kalır (hiçbir kullanıcı tetiklemedi).
     public bool ClosedAutomatically { get; set; }

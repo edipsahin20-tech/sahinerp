@@ -93,6 +93,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RestaurantPermissionProfile> RestaurantPermissionProfiles => Set<RestaurantPermissionProfile>();
     public DbSet<RestaurantPersonnelPermissionProfile> RestaurantPersonnelPermissionProfiles => Set<RestaurantPersonnelPermissionProfile>();
     public DbSet<RestaurantPermissionAuditLog> RestaurantPermissionAuditLogs => Set<RestaurantPermissionAuditLog>();
+    public DbSet<LoginSession> LoginSessions => Set<LoginSession>();
     public DbSet<RestaurantCheckPendingPayment> RestaurantCheckPendingPayments => Set<RestaurantCheckPendingPayment>();
     public DbSet<PackageOrder> PackageOrders => Set<PackageOrder>();
     public DbSet<RestaurantCourier> RestaurantCouriers => Set<RestaurantCourier>();
@@ -333,6 +334,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Quantity).HasPrecision(18, 3);
             entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.ForeignUnitPrice).HasPrecision(18, 4);
             entity.Property(x => x.DiscountRate).HasPrecision(5, 2);
             entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.TaxRate).HasPrecision(5, 2);
@@ -410,6 +412,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<CurrentAccountTransaction>(entity =>
         {
+            entity.HasOne(x => x.OriginBranch).WithMany().HasForeignKey(x => x.OriginBranchId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.DocumentNumber).HasMaxLength(50).IsRequired();
             entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
             entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
@@ -546,6 +549,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<InvoiceLine>(entity =>
         {
+            entity.Property(x => x.ForeignUnitPrice).HasPrecision(18, 4);
             entity.Property(x => x.ProductCodeSnapshot).HasMaxLength(40).IsRequired();
             entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
             entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();
@@ -624,6 +628,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<PaymentReceipt>(entity =>
         {
+            entity.HasOne(x => x.OriginBranch).WithMany().HasForeignKey(x => x.OriginBranchId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.ReceiptNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.DocumentNumber).HasMaxLength(50);
             entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
@@ -1535,8 +1540,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.TaxTotal).HasPrecision(18, 2);
             entity.Property(x => x.ComplimentaryTotal).HasPrecision(18, 2);
             entity.Property(x => x.ClosedByUserId).HasMaxLength(450);
-            // Vardiya'daki (RestaurantCashShift) AYNI desen - her an tam olarak bir açık Z dönemi.
-            entity.HasIndex(x => x.Status)
+            // Her ŞUBE'nin tam olarak bir açık Z dönemi olur (şubeler bağımsız kapanır).
+            entity.HasIndex(x => new { x.BranchId, x.Status })
                 .IsUnique()
                 .HasFilter("[Status] = 1")
                 .HasDatabaseName("IX_RestaurantZPeriods_OneOpen");
@@ -1639,7 +1644,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.CancelledByUserId).HasMaxLength(450);
             entity.Property(x => x.CancellationReason).HasMaxLength(500);
             entity.Property(x => x.TradeType).HasMaxLength(100);
-            entity.HasIndex(x => x.DocumentNumber).IsUnique();
+            // Fiş numarası ŞUBE bazlı benzersiz: her şubenin kendi sayacı var, iki şubede aynı
+            // numara (PSF.00001) normaldir. Şube yoksa (eski kayıtlar) BranchId NULL olarak eşleşir.
+            entity.HasIndex(x => new { x.BranchId, x.DocumentNumber }).IsUnique();
             // Bir adisyon başına en fazla 1 dahili perakende satış fişi.
             entity.HasIndex(x => x.RestaurantCheckId).IsUnique();
             entity.HasOne(x => x.RestaurantCheck).WithMany().HasForeignKey(x => x.RestaurantCheckId).OnDelete(DeleteBehavior.Restrict);

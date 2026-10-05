@@ -27,3 +27,4 @@ src/SahinSoft.Web/wwwroot/uploads/
 .DS_Store
 **/.DS_Store
 
+deploy/*.bak-*

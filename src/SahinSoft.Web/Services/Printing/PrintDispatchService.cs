@@ -103,6 +103,7 @@ public sealed class PrintDispatchService(ApplicationDbContext dbContext, PrintRe
             PrinterRole.Mutfak => PrintTemplateType.MutfakFisi,
             PrinterRole.XRaporu => PrintTemplateType.XRaporu,
             PrinterRole.ZRaporu => PrintTemplateType.ZRaporu,
+            PrinterRole.CariMakbuz => PrintTemplateType.CariMakbuz,
             _ => PrintTemplateType.Adisyon
         };
     }
@@ -112,6 +113,13 @@ public sealed class PrintDispatchService(ApplicationDbContext dbContext, PrintRe
         var template = printer.PrintTemplateId.HasValue
             ? await dbContext.PrintTemplates.AsNoTracking().SingleOrDefaultAsync(x => x.Id == printer.PrintTemplateId.Value, cancellationToken)
             : await dbContext.PrintTemplates.AsNoTracking().Where(x => x.TemplateType == templateType && x.IsDefault && x.IsActive).FirstOrDefaultAsync(cancellationToken);
+
+        // Yazıcıya bağlı şablon istenen belge tipinden farklıysa (ör. makbuz, Adisyon yazıcısına
+        // yönlendirildiğinde) o şablon kullanılmaz; istenen tipin varsayılan şablonu alınır.
+        if (template != null && template.TemplateType != templateType)
+        {
+            template = await dbContext.PrintTemplates.AsNoTracking().Where(x => x.TemplateType == templateType && x.IsDefault && x.IsActive).FirstOrDefaultAsync(cancellationToken);
+        }
 
         var layout = template != null ? PrintRenderingService.ParseLayout(template.LayoutJson) : [];
         var paperWidth = template?.PaperWidthMm ?? (int)printer.PaperWidth;
@@ -142,6 +150,7 @@ public sealed class PrintDispatchService(ApplicationDbContext dbContext, PrintRe
         PrintTemplateType.MutfakFisi => await dataProvider.BuildForKitchenTicketAsync(sourceId, cancellationToken),
         PrintTemplateType.ZRaporu => await dataProvider.BuildForZPeriodAsync(sourceId, cancellationToken),
         PrintTemplateType.XRaporu => await dataProvider.BuildForXReportAsync(sourceId, cancellationToken),
+        PrintTemplateType.CariMakbuz => await dataProvider.BuildForPaymentReceiptAsync(sourceId, cancellationToken),
         _ => new PrintDataContext()
     };
 

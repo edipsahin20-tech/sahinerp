@@ -13,5 +13,7 @@ public enum PrintTemplateType
     [Display(Name = "X Raporu")]
     XRaporu = 3,
     [Display(Name = "Z Raporu")]
-    ZRaporu = 4
+    ZRaporu = 4,
+    [Display(Name = "Tahsilat/Tediye Makbuzu")]
+    CariMakbuz = 5
 }

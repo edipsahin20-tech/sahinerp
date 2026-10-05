@@ -10,7 +10,7 @@ using SahinSoft.Web.Services;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Kitchen}")]
-public sealed class RestaurantKitchenController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantKitchenController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     public async Task<IActionResult> Index(int? stationId)
     {

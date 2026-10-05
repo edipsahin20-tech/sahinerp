@@ -75,7 +75,7 @@
                         }
                         <th>Ürün</th>
                         <th class="text-end">Miktar</th>
-                        <th class="text-end">Birim Fiyat</th>
+                        <th class="text-end">Birim Fiyat (₺)</th>@if (Model.CurrencyCode != "TRY") {<th class="text-end">Birim Fiyat (@Model.CurrencyCode)</th>}
                         <th class="text-end">İsk. %</th>
                         <th class="text-end">KDV %</th>
                         <th class="text-end">Tutar</th>
@@ -93,7 +93,7 @@
                         }
                         <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
-                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>@if (Model.CurrencyCode != "TRY") {<td class="text-end">@((line.ForeignUnitPrice ?? (Model.ExchangeRate > 0 ? Math.Round(line.UnitPrice / Model.ExchangeRate, 2) : 0)).ToString("N2"))</td>}
                         <td class="text-end">@line.DiscountRate.ToString("N2")</td>
                         <td class="text-end">@line.TaxRate.ToString("N2")</td>
                         <td class="text-end">@line.GrossTotal.ToString("N2")</td>
@@ -116,7 +116,11 @@
                 {
                     <div class="erp-totals-row"><span>KDV %@tax.TaxRate.ToString("0.##")</span><span>@tax.TaxAmount.ToString("N2")</span></div>
                 }
-                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
+                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") ₺</span></div>
+                @if (Model.CurrencyCode != "TRY" && Model.ExchangeRate > 0)
+                {
+                    <div class="erp-totals-row"><span>@Model.CurrencyCode karşılığı (Kur: @Model.ExchangeRate.ToString("N4"))</span><span class="erp-total-value">@((Model.GrandTotal / Model.ExchangeRate).ToString("N2")) @Model.CurrencyCode</span></div>
+                }
             </div>
         </div>
     </div>

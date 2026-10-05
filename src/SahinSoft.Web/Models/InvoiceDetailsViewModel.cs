@@ -19,6 +19,10 @@ public sealed class InvoiceDetailsViewModel
     public string? CustomerAddress { get; set; }
     public string WarehouseName { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
+    public decimal ExchangeRate { get; set; } = 1;
+    public bool IsForeign => !string.Equals(CurrencyCode, "TRY", StringComparison.OrdinalIgnoreCase);
+    // Döviz faturasının USD/EUR karşılığı: TL toplam / kur (satır TL'leri kayıt anında kurla hesaplanmıştır).
+    public decimal ForeignGrandTotal => ExchangeRate > 0 ? Math.Round(GrandTotal / ExchangeRate, 2, MidpointRounding.AwayFromZero) : 0;
     public string? ReferenceNumber { get; set; }
     public string? PaymentTerm { get; set; }
     public string? TradeType { get; set; }
@@ -60,6 +64,7 @@ public sealed class InvoiceDetailsLineViewModel
     public string UnitSnapshot { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal? ForeignUnitPrice { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }

@@ -8,5 +8,6 @@ public interface IPrintDataProvider
     Task<PrintDataContext> BuildForKitchenTicketAsync(int kitchenTicketId, CancellationToken cancellationToken = default);
     Task<PrintDataContext> BuildForZPeriodAsync(int zPeriodId, CancellationToken cancellationToken = default);
     Task<PrintDataContext> BuildForXReportAsync(int branchId, CancellationToken cancellationToken = default);
+    Task<PrintDataContext> BuildForPaymentReceiptAsync(int paymentReceiptId, CancellationToken cancellationToken = default);
     PrintDataContext BuildSample(PrintTemplateType type);
 }

@@ -12,6 +12,13 @@ public sealed class PaymentReceiptFormViewModel
 
     public ReceiptType ReceiptType { get; set; }
 
+    // Restoran bölümünden açıldıysa true: fiş seçili TERMİNAL şubesine göre damgalanır ve hesaplar
+    // o şubenin kasası/bankası ya da ortak hesap olmak zorunda.
+    public bool FromRestaurant { get; set; }
+
+    // Restoran ekranında "Makbuz yazdır" işaretliyse kayıttan sonra 80mm termal yazıcıya makbuz gönderilir.
+    public bool PrintReceipt { get; set; }
+
     public string? ReceiptNumber { get; set; }
 
     [Required(ErrorMessage = "Cari seçilmelidir.")]

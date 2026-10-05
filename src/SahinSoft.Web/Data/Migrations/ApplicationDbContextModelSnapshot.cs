@@ -846,6 +846,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int?>("NegotiableInstrumentId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("OriginBranchId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("QuoteId")
                         .HasColumnType("int");
 
@@ -879,6 +882,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.HasIndex("NegotiableInstrumentId");
+
+                    b.HasIndex("OriginBranchId");
 
                     b.HasIndex("QuoteId");
 
@@ -1635,6 +1640,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<string>("BranchName")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -1659,6 +1667,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -1679,6 +1690,8 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
 
                     b.HasIndex("Code")
                         .IsUnique();
@@ -1701,6 +1714,7 @@ namespace SahinSoft.Web.Data.Migrations
                             CreatedAtUtc = new DateTime(2026, 7, 27, 0, 0, 0, 0, DateTimeKind.Utc),
                             CurrencyCode = "TRY",
                             IsActive = true,
+                            IsShared = false,
                             Name = "Merkez Kasa",
                             RecordId = new Guid("00000000-0000-0000-0000-000000000000"),
                             RowVersion = new byte[0]
@@ -1746,6 +1760,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int?>("NegotiableInstrumentId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("OriginBranchId")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("RecordId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
@@ -1778,6 +1795,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("DocumentNumber");
 
                     b.HasIndex("NegotiableInstrumentId");
+
+                    b.HasIndex("OriginBranchId");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
@@ -2463,6 +2482,10 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int?>("DispatchNoteLineId")
                         .HasColumnType("int");
 
+                    b.Property<decimal?>("ForeignUnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<int>("InvoiceId")
                         .HasColumnType("int");
 
@@ -2760,6 +2783,50 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("KitchenTicketLines");
+                });
+
+            modelBuilder.Entity("SahinSoft.Domain.Entities.LoginSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("SessionKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordId")
+                        .IsUnique();
+
+                    b.ToTable("LoginSessions");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.NegotiableInstrument", b =>
@@ -3380,6 +3447,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<int?>("InvoiceId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("OriginBranchId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ReceiptDateUtc")
                         .HasColumnType("datetime2");
 
@@ -3422,6 +3492,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasIndex("CostCenterId");
 
                     b.HasIndex("InvoiceId");
+
+                    b.HasIndex("OriginBranchId");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
@@ -4898,6 +4970,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<decimal?>("ForeignUnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<int>("LineNumber")
                         .HasColumnType("int");
 
@@ -5140,6 +5216,9 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<DateTime?>("BillRequestedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -5246,6 +5325,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AttachedCustomerId");
+
+                    b.HasIndex("BranchId");
 
                     b.HasIndex("CheckNumber")
                         .IsUnique();
@@ -6245,14 +6326,15 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("Id");
+                    b.Property<string>("ZNumber")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasIndex("BranchId");
+                    b.HasKey("Id");
 
                     b.HasIndex("RecordId")
                         .IsUnique();
 
-                    b.HasIndex("Status")
+                    b.HasIndex("BranchId", "Status")
                         .IsUnique()
                         .HasDatabaseName("IX_RestaurantZPeriods_OneOpen")
                         .HasFilter("[Status] = 1");
@@ -6267,6 +6349,9 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
 
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
@@ -6367,9 +6452,6 @@ namespace SahinSoft.Web.Data.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("DocumentNumber")
-                        .IsUnique();
-
                     b.HasIndex("RecordId")
                         .IsUnique();
 
@@ -6377,6 +6459,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("RestaurantZPeriodId");
+
+                    b.HasIndex("BranchId", "DocumentNumber")
+                        .IsUnique()
+                        .HasFilter("[BranchId] IS NOT NULL");
 
                     b.ToTable("RetailSales", t =>
                         {
@@ -7726,6 +7812,11 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasForeignKey("NegotiableInstrumentId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "OriginBranch")
+                        .WithMany()
+                        .HasForeignKey("OriginBranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SahinSoft.Domain.Entities.Quote", "Quote")
                         .WithMany("AccountTransactions")
                         .HasForeignKey("QuoteId")
@@ -7741,6 +7832,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("Invoice");
 
                     b.Navigation("NegotiableInstrument");
+
+                    b.Navigation("OriginBranch");
 
                     b.Navigation("Quote");
 
@@ -7892,6 +7985,15 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("TaxRate");
                 });
 
+            modelBuilder.Entity("SahinSoft.Domain.Entities.FinancialAccount", b =>
+                {
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
+                    b.Navigation("Branch");
+                });
+
             modelBuilder.Entity("SahinSoft.Domain.Entities.FinancialTransaction", b =>
                 {
                     b.HasOne("SahinSoft.Domain.Entities.CurrentAccountTransaction", "CurrentAccountTransaction")
@@ -7915,6 +8017,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasForeignKey("NegotiableInstrumentId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "OriginBranch")
+                        .WithMany()
+                        .HasForeignKey("OriginBranchId");
+
                     b.HasOne("SahinSoft.Domain.Entities.FinancialTransaction", "ReversalOf")
                         .WithMany()
                         .HasForeignKey("ReversalOfId")
@@ -7927,6 +8033,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("FinancialAccount");
 
                     b.Navigation("NegotiableInstrument");
+
+                    b.Navigation("OriginBranch");
 
                     b.Navigation("ReversalOf");
                 });
@@ -8194,6 +8302,11 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "OriginBranch")
+                        .WithMany()
+                        .HasForeignKey("OriginBranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("BusinessProject");
 
                     b.Navigation("CostCenter");
@@ -8201,6 +8314,8 @@ namespace SahinSoft.Web.Data.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Invoice");
+
+                    b.Navigation("OriginBranch");
                 });
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.PaymentReceiptLine", b =>
@@ -8633,6 +8748,10 @@ namespace SahinSoft.Web.Data.Migrations
                         .HasForeignKey("AttachedCustomerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
                     b.HasOne("SahinSoft.Domain.Entities.Invoice", "LinkedInvoice")
                         .WithMany()
                         .HasForeignKey("LinkedInvoiceId")
@@ -8650,6 +8769,8 @@ namespace SahinSoft.Web.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("AttachedCustomer");
+
+                    b.Navigation("Branch");
 
                     b.Navigation("LinkedInvoice");
 
@@ -8870,6 +8991,10 @@ namespace SahinSoft.Web.Data.Migrations
 
             modelBuilder.Entity("SahinSoft.Domain.Entities.RetailSale", b =>
                 {
+                    b.HasOne("SahinSoft.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
                     b.HasOne("SahinSoft.Domain.Entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -8885,6 +9010,8 @@ namespace SahinSoft.Web.Data.Migrations
                         .WithMany("RetailSales")
                         .HasForeignKey("RestaurantZPeriodId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Branch");
 
                     b.Navigation("Customer");
 

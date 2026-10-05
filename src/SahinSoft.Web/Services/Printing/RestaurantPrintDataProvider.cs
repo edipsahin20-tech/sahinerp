@@ -1,3 +1,4 @@
+using SahinSoft.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -281,6 +282,37 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
         }
     }
 
+    public async Task<PrintDataContext> BuildForPaymentReceiptAsync(int paymentReceiptId, CancellationToken cancellationToken = default)
+    {
+        var receipt = await dbContext.PaymentReceipts
+            .AsNoTracking()
+            .Include(x => x.Customer)
+            .Include(x => x.OriginBranch)
+            .Include(x => x.Lines).ThenInclude(x => x.FinancialAccount)
+            .SingleAsync(x => x.Id == paymentReceiptId, cancellationToken);
+
+        var company = await dbContext.CompanySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
+        var cashierName = await dbContext.Users.AsNoTracking().Where(x => x.Id == receipt.CreatedByUserId).Select(x => x.FullName).SingleOrDefaultAsync(cancellationToken) ?? receipt.CreatedByUserId;
+        var isCollection = receipt.ReceiptType == ReceiptType.Collection;
+        var lines = receipt.Lines.OrderBy(x => x.LineNumber).ToList();
+
+        var ctx = new PrintDataContext();
+        FillCommonHeader(ctx, company, receipt.OriginBranch?.Name ?? "", receipt.OriginBranch?.Address, receipt.OriginBranch?.Phone);
+        // Fiş tarihi yalnızca tarih (saatsiz) tutulur; sahte bir saat basılmaz.
+        ctx.Texts["common.dateTime"] = receipt.ReceiptDateUtc.ToString("dd.MM.yyyy");
+        ctx.Texts["makbuz.title"] = isCollection ? "TAHSİLAT MAKBUZU" : "TEDİYE MAKBUZU";
+        ctx.Texts["makbuz.number"] = receipt.ReceiptNumber;
+        ctx.Texts["makbuz.status"] = receipt.Status == PaymentReceiptStatus.Approved ? "Onaylı" : receipt.Status == PaymentReceiptStatus.Cancelled ? "İptal" : "Taslak";
+        ctx.Texts["makbuz.customerName"] = receipt.Customer.Name;
+        ctx.Texts["makbuz.customerCode"] = receipt.Customer.Code;
+        ctx.Texts["makbuz.accountName"] = string.Join(", ", lines.Select(x => x.FinancialAccount.Name).Distinct());
+        ctx.Texts["makbuz.paymentMethod"] = string.Join(", ", lines.Select(x => x.PaymentMethod.GetDisplayName()).Distinct());
+        ctx.Texts["makbuz.amount"] = receipt.TotalAmount.ToString("N2") + " ₺";
+        ctx.Texts["makbuz.description"] = receipt.Description ?? "";
+        ctx.Texts["makbuz.cashierName"] = cashierName;
+        return ctx;
+    }
+
     public PrintDataContext BuildSample(PrintTemplateType type)
     {
         var ctx = new PrintDataContext();
@@ -317,6 +349,18 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
                     new(1, "Fındık Lahmacun", 120, 120)
                 ];
                 ctx.PaymentBreakdown = [new("Nakit", 1, 700)];
+                break;
+            case PrintTemplateType.CariMakbuz:
+                ctx.Texts["makbuz.title"] = "TAHSİLAT MAKBUZU";
+                ctx.Texts["makbuz.number"] = "TAH.00001";
+                ctx.Texts["makbuz.status"] = "Taslak";
+                ctx.Texts["makbuz.customerName"] = "ÖRNEK GIDA TEDARİK";
+                ctx.Texts["makbuz.customerCode"] = "TEDARIK01";
+                ctx.Texts["makbuz.accountName"] = "Merkez Nakit Kasası";
+                ctx.Texts["makbuz.paymentMethod"] = "Nakit";
+                ctx.Texts["makbuz.amount"] = "1.250,00 ₺";
+                ctx.Texts["makbuz.description"] = "Örnek tahsilat";
+                ctx.Texts["makbuz.cashierName"] = "Test Kasiyer";
                 break;
             case PrintTemplateType.MutfakFisi:
                 ctx.Texts["mutfak.tableName"] = "TERAS-4";

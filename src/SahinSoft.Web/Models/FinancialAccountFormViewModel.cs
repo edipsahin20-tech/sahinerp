@@ -7,7 +7,8 @@ public sealed class FinancialAccountFormViewModel
 {
     public int Id { get; set; }
 
-    [Required, StringLength(30)]
+    // Boşsa sunucu otomatik kod üretir (FinancialAccountsController.Create); bu yüzden Required değil.
+    [StringLength(30)]
     [Display(Name = "Hesap kodu")]
     public string Code { get; set; } = string.Empty;
 
@@ -36,4 +37,8 @@ public sealed class FinancialAccountFormViewModel
 
     [Display(Name = "Aktif")]
     public bool IsActive { get; set; } = true;
+
+    public int? BranchId { get; set; }
+
+    public bool IsShared { get; set; }
 }

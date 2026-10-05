@@ -125,3 +125,27 @@
         </div>
     </div>
 </div>
+
+@{
+    var branchOpen = ViewBag.BranchOpenBalances as List<(string Name, decimal Open)>;
+}
+@if (branchOpen is { Count: > 0 })
+{
+    <div class="card mt-3">
+        <div class="card-header">Şube bazlı açık bakiye (FIFO)</div>
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead><tr><th>Kaynak Şube</th><th class="text-end">Açık Tutar</th></tr></thead>
+                <tbody>
+                @foreach (var b in branchOpen)
+                {
+                    <tr>
+                        <td>@b.Name</td>
+                        <td class="text-end">@b.Open.ToString("N2")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

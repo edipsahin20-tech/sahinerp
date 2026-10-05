@@ -280,6 +280,7 @@ public sealed class CustomersController(
 
     public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to)
     {
+        var zNumberById = await dbContext.RestaurantZPeriods.AsNoTracking().Where(x => x.ZNumber != null).ToDictionaryAsync(x => x.Id, x => x.ZNumber);
         var customer = await dbContext.Customers
             .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == id);
@@ -308,28 +309,32 @@ public sealed class CustomersController(
             rangeQuery = rangeQuery.Where(x => x.TransactionDateUtc < to.Value.AddDays(1));
         }
 
+        // Ekstre sırası kayıt sırası (Id): bakiye ve şube dağılımı (FIFO) aynı sırayla hesaplanır.
+        // Tahsilatın fiş tarihi gün başı olabildiği için tarihe göre sıralamak tutarsız bakiye gösterirdi.
         var transactions = await rangeQuery
-            .OrderBy(x => x.TransactionDateUtc)
-            .ThenBy(x => x.Id)
+            .OrderBy(x => x.Id)
             .ToListAsync();
 
         var statementDocumentNumbers = transactions.Select(x => x.DocumentNumber).Distinct().ToList();
         var statementRetailSaleLookup = await dbContext.RetailSales
             .AsNoTracking()
             .Where(x => statementDocumentNumbers.Contains(x.DocumentNumber))
-            .Select(x => new { x.DocumentNumber, x.Id, x.RestaurantZPeriodId })
-            .ToDictionaryAsync(x => x.DocumentNumber, x => new { x.Id, x.RestaurantZPeriodId });
+            .Select(x => new { x.DocumentNumber, x.BranchId, x.Id, x.RestaurantZPeriodId })
+            .ToListAsync();
+        var statementRetailSaleByNumber = statementRetailSaleLookup.ToLookup(x => x.DocumentNumber);
 
         var runningBalance = openingBalance;
         var lines = new List<CustomerStatementLineViewModel>();
         foreach (var transaction in transactions)
         {
             runningBalance += transaction.Debit - transaction.Credit;
-            statementRetailSaleLookup.TryGetValue(transaction.DocumentNumber, out var retailSale);
+            var retailSale = ReceiptLinkResolver.Pick(statementRetailSaleByNumber[transaction.DocumentNumber],
+                x => x.BranchId, transaction.OriginBranchId);
             lines.Add(new CustomerStatementLineViewModel
             {
                 TransactionDateUtc = transaction.TransactionDateUtc,
-                TransactionType = transaction.TransactionType.GetDisplayName(),
+                // Ters kayıt (iptal) mevcut tür adıyla değil "İptal" olarak gösterilir.
+                TransactionType = transaction.ReversalOfId is not null ? "İptal" : transaction.TransactionType.GetDisplayName(),
                 DocumentNumber = transaction.DocumentNumber,
                 Description = transaction.Description,
                 Debit = transaction.Debit,
@@ -337,7 +342,7 @@ public sealed class CustomersController(
                 RunningBalance = runningBalance,
                 RestaurantRetailSaleId = retailSale?.Id,
                 RestaurantZPeriodId = retailSale?.RestaurantZPeriodId,
-                RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
+                RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? RestaurantZPeriod.LabelFor(zId, zNumberById.GetValueOrDefault(zId)) : null
             });
         }
 
@@ -352,6 +357,16 @@ public sealed class CustomersController(
             ClosingBalance = runningBalance,
             Lines = lines
         };
+
+        // Şube dağılımı (FIFO) - tüm geçmişe göre açık alacağın hangi kaynak şubeye ait olduğu.
+        var allCariRows = await dbContext.CurrentAccountTransactions.AsNoTracking()
+            .Where(x => x.CustomerId == id)
+            .Select(x => new CariBranchAllocator.Row(x.TransactionDateUtc, x.Id, x.Debit, x.Credit, x.OriginBranchId))
+            .ToListAsync();
+        var branchNames = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
+        ViewBag.BranchOpenBalances = CariBranchAllocator.OpenByBranch(allCariRows)
+            .Select(x => (Name: x.BranchId is { } bid ? branchNames.GetValueOrDefault(bid, "Şube " + bid) : "Şube atanmamış", Open: x.OpenAmount))
+            .ToList();
 
         return View(model);
     }

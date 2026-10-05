@@ -1,0 +1,79 @@
+<Window x:Class="SahinSoft.ConfigTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ŞahinSoft Veritabanı Yönetimi"
+        Width="1400" Height="900" MinWidth="1100" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PageBg}"
+        FontFamily="Segoe UI">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sol kenar çubuğu -->
+        <Border Grid.Column="0" Background="{StaticResource SidebarBg}">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Top" Margin="20,22,20,18">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource PrimaryBlue}">
+                            <TextBlock Text="&#128451;" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="ŞahinSoft" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock Text="Veritabanı Yönetimi" Foreground="{StaticResource SidebarTextMuted}" FontSize="11.5" Margin="0,6,0,0"/>
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Height="1" Background="#1C2D47" Margin="12,0"/>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,16">
+                    <RadioButton x:Name="NavHistory" Style="{StaticResource SidebarItemStyle}" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#128337;" FontSize="14" Width="22"/>
+                            <TextBlock Text="İşlem Geçmişi" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+
+                <StackPanel Margin="0,4,0,0">
+                    <RadioButton x:Name="NavConnection" Style="{StaticResource SidebarItemStyle}" IsChecked="True" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#128451;" FontSize="14" Width="22"/>
+                            <TextBlock Text="Bağlantı Ayarları" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavCentral" Style="{StaticResource SidebarItemStyle}" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#128268;" FontSize="14" Width="22"/>
+                            <TextBlock Text="Merkez Bağlantı Ayarı" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavMaintenance" Style="{StaticResource SidebarItemStyle}" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#128295;" FontSize="14" Width="22"/>
+                            <TextBlock Text="Oluştur ve Bakım" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavClearTransactions" Style="{StaticResource SidebarItemStyle}" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#128465;" FontSize="14" Width="22"/>
+                            <TextBlock Text="Hareketleri Sil" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavCleanDatabase" Style="{StaticResource SidebarItemStyle}" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#129529;" FontSize="14" Width="22"/>
+                            <TextBlock Text="Veritabanını Temizle" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- İçerik alanı -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="36,28,36,28">
+            <ContentControl x:Name="PageHost"/>
+        </ScrollViewer>
+    </Grid>
+</Window>

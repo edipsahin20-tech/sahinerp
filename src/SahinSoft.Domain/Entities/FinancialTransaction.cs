@@ -14,6 +14,12 @@ public sealed class FinancialTransaction : EntityBase
 
     public int FinancialAccountId { get; set; }
     public FinancialAccount FinancialAccount { get; set; } = null!;
+
+    // Hareketin HANGİ ŞUBEDEN geldiği (ör. Merkez, Atabulvarı). Hesap ortak olabilir (tek
+    // YAPI KREDİ, tek Trendyol kasası); şube bilgisi hesap yerine hareket üzerinde tutulur.
+    // Null = eski/şubesiz kayıt (göçle doldurulur).
+    public int? OriginBranchId { get; set; }
+    public Branch? OriginBranch { get; set; }
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
     public int? CurrentAccountTransactionId { get; set; }

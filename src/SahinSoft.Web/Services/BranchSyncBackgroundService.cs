@@ -86,7 +86,9 @@ public sealed class BranchSyncBackgroundService(
 
         foreach (var item in payload.Categories)
         {
-            var local = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.RecordId == item.RecordId, cancellationToken);
+            // Eşleşme RecordId veya kod (benzersiz) ile: yerelde aynı kodlu kayıt varsa ikinci kopya
+            // eklenmez (IX_..._Code benzersizlik hatası katalog senkronunu kilitliyordu). Merkez kimliği alınır.
+            var local = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.RecordId == item.RecordId || x.Code == item.Code, cancellationToken);
             if (local is null)
             {
                 dbContext.ProductCategories.Add(new ProductCategory
@@ -99,6 +101,7 @@ public sealed class BranchSyncBackgroundService(
             }
             else
             {
+                local.RecordId = item.RecordId;
                 local.Code = item.Code;
                 local.Name = item.Name;
                 local.IsActive = item.IsActive;
@@ -108,7 +111,8 @@ public sealed class BranchSyncBackgroundService(
 
         foreach (var item in payload.TaxRates)
         {
-            var local = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.RecordId == item.RecordId, cancellationToken);
+            // Eşleşme RecordId veya kod ile (bkz. kategori notu). KDV10 gibi yerel kodlu kayıtlar çakışmaz.
+            var local = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.RecordId == item.RecordId || x.Code == item.Code, cancellationToken);
             if (local is null)
             {
                 dbContext.TaxRates.Add(new TaxRate
@@ -123,6 +127,7 @@ public sealed class BranchSyncBackgroundService(
             }
             else
             {
+                local.RecordId = item.RecordId;
                 local.Code = item.Code;
                 local.Name = item.Name;
                 local.Rate = item.Rate;
@@ -148,7 +153,8 @@ public sealed class BranchSyncBackgroundService(
                 continue;
             }
 
-            var local = await dbContext.Products.FirstOrDefaultAsync(x => x.RecordId == item.RecordId, cancellationToken);
+            // Eşleşme RecordId veya stok kodu ile (bkz. kategori notu).
+            var local = await dbContext.Products.FirstOrDefaultAsync(x => x.RecordId == item.RecordId || x.StockCode == item.StockCode, cancellationToken);
             if (local is null)
             {
                 dbContext.Products.Add(new Product
@@ -168,6 +174,7 @@ public sealed class BranchSyncBackgroundService(
             }
             else
             {
+                local.RecordId = item.RecordId;
                 local.StockCode = item.StockCode;
                 local.Name = item.Name;
                 local.Barcode = item.Barcode;
@@ -206,7 +213,7 @@ public sealed class BranchSyncBackgroundService(
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         var pending = await dbContext.IntegrationOutboxMessages
-            .Where(x => x.EventType == "RestaurantCheckClosed" && x.ProcessedAtUtc == null)
+            .Where(x => (x.EventType == "RestaurantCheckClosed" || x.EventType == "CollectionReceiptApproved" || x.EventType == "PaymentReceiptApproved" || x.EventType == "CollectionReceiptCancelled" || x.EventType == "PaymentReceiptCancelled") && x.ProcessedAtUtc == null)
             .OrderBy(x => x.OccurredAtUtc)
             .Take(100)
             .ToListAsync(cancellationToken);
@@ -232,7 +239,24 @@ public sealed class BranchSyncBackgroundService(
         };
 
         var requestUri = $"api/sync/transactions?branchCode={Uri.EscapeDataString(current.BranchCode)}";
-        var response = await client.PostAsJsonAsync(requestUri, request, cancellationToken);
+        // Bağlantı kesilmesi (merkez kapalı, ağ hatası, zaman aşımı) da bir DENEME sayılır: sayaç ve son
+        // hata kaydedilir ki bekleyen/hatalı durum doğru görünsün (aksi halde istisna sessizce yutulurdu).
+        HttpResponseMessage response;
+        try
+        {
+            response = await client.PostAsJsonAsync(requestUri, request, cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Merkeze satış push isteği ulaşamadı: {Message}", ex.Message);
+            foreach (var message in pending)
+            {
+                message.RetryCount++;
+                message.LastError = "Bağlantı hatası: " + ex.Message;
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -252,6 +276,7 @@ public sealed class BranchSyncBackgroundService(
         foreach (var message in pending)
         {
             message.ProcessedAtUtc = DateTime.UtcNow;
+            message.LastError = null;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

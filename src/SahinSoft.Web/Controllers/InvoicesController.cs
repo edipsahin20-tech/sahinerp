@@ -627,6 +627,7 @@ public sealed class InvoicesController(
                     ProductId = x.ProductId,
                     Quantity = x.Quantity,
                     UnitPrice = x.UnitPrice,
+                    ForeignUnitPrice = x.ForeignUnitPrice,
                     DiscountRate = x.DiscountRate,
                     TaxRate = x.TaxRate,
                     Description = x.Description,
@@ -897,6 +898,7 @@ public sealed class InvoicesController(
             CustomerAddress = invoice.Customer.Address,
             WarehouseName = invoice.Warehouse.Name,
             CurrencyCode = invoice.CurrencyCode,
+            ExchangeRate = invoice.ExchangeRate,
             ReferenceNumber = invoice.ReferenceNumber,
             PaymentTerm = invoice.PaymentTerm,
             TradeType = invoice.TradeType,
@@ -936,6 +938,7 @@ public sealed class InvoicesController(
                     UnitSnapshot = x.UnitSnapshot,
                     Quantity = x.Quantity,
                     UnitPrice = x.UnitPrice,
+                    ForeignUnitPrice = x.ForeignUnitPrice,
                     DiscountRate = x.DiscountRate,
                     DiscountAmount = x.DiscountAmount,
                     TaxRate = x.TaxRate,
@@ -1156,7 +1159,7 @@ public sealed class InvoicesController(
             ? DateTime.SpecifyKind(source.DueDateUtc.Value, DateTimeKind.Utc)
             : null;
         target.CurrencyCode = source.CurrencyCode.Trim().ToUpperInvariant();
-        target.ExchangeRate = source.ExchangeRate;
+        target.ExchangeRate = string.Equals(source.CurrencyCode.Trim(), "TRY", StringComparison.OrdinalIgnoreCase) ? 1 : source.ExchangeRate;
         target.Notes = source.Notes?.Trim();
         target.ReferenceNumber = source.ReferenceNumber?.Trim();
         target.PaymentTerm = source.PaymentTerm?.Trim();
@@ -1175,6 +1178,14 @@ public sealed class InvoicesController(
     // erken kesilsin diye dönüş değeri false olur (true = toplamlar geçerli, satırlar eklendi).
     private async Task<bool> MapLinesAsync(InvoiceFormViewModel source, Invoice target)
     {
+        // Döviz faturası: satır fiyatları fatura para biriminde girilir, TL karşılığı kur ile hesaplanıp
+        // UnitPrice'a yazılır (muhasebe TL çalışır). Kur girilmemişse fatura kaydedilmez.
+        var isForeign = !string.Equals(source.CurrencyCode, "TRY", StringComparison.OrdinalIgnoreCase);
+        if (isForeign && source.ExchangeRate <= 0)
+        {
+            return false;
+        }
+
         var productIds = source.Lines
             .Where(x => x.ProductId.HasValue)
             .Select(x => x.ProductId!.Value)
@@ -1192,6 +1203,15 @@ public sealed class InvoicesController(
                 continue;
             }
 
+            // "Fiyatlara KDV Dahil" işaretliyse girilen birim fiyat KDV dahildir; KDV hariç (fatura para birimi)
+            // tabana çevrilir. Mevcut toplam/KDV mantığı hep KDV hariç fiyatla çalışsın diye bu taban korunur.
+            var foreignNet = source.PricesIncludeTax && line.TaxRate > 0
+                ? Math.Round(line.UnitPrice / (1 + line.TaxRate / 100), 6, MidpointRounding.AwayFromZero)
+                : line.UnitPrice;
+            var unitTl = isForeign
+                ? Math.Round(foreignNet * source.ExchangeRate, 2, MidpointRounding.AwayFromZero)
+                : foreignNet;
+
             target.Lines.Add(new InvoiceLine
             {
                 LineNumber = lineNumber++,
@@ -1200,12 +1220,8 @@ public sealed class InvoicesController(
                 ProductNameSnapshot = product.Name,
                 UnitSnapshot = product.Unit,
                 Quantity = line.Quantity,
-                // "Fiyatlara KDV Dahil" işaretliyse girilen birim fiyat KDV dahildir; kayıt sırasında
-                // KDV hariç birim fiyata çevrilir ki mevcut toplam/KDV hesap mantığı (InvoiceTotalsCalculator,
-                // onay/iptal ters kayıtları) hiç değişmeden, hep KDV hariç fiyat üzerinden çalışmaya devam etsin.
-                UnitPrice = source.PricesIncludeTax && line.TaxRate > 0
-                    ? Math.Round(line.UnitPrice / (1 + line.TaxRate / 100), 6, MidpointRounding.AwayFromZero)
-                    : line.UnitPrice,
+                UnitPrice = unitTl,
+                ForeignUnitPrice = isForeign ? foreignNet : null,
                 DiscountRate = line.DiscountRate,
                 TaxRate = line.TaxRate,
                 Description = line.Description?.Trim(),

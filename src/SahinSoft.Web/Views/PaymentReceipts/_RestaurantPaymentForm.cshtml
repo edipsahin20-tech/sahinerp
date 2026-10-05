@@ -1,0 +1,260 @@
+@using SahinSoft.Domain.Enums
+@model SahinSoft.Web.Models.PaymentReceiptFormViewModel
+@{
+    var isCollection = Model.ReceiptType == ReceiptType.Collection;
+    var terminalBranch = Context.Request.Cookies["ss_terminal_branch"] ?? "";
+    var accounts = (IEnumerable<dynamic>)(ViewBag.RestaurantAccounts ?? Enumerable.Empty<dynamic>());
+    var firstLine = Model.Lines.Count > 0 ? Model.Lines[0] : new PaymentReceiptLineFormViewModel();
+    var selectedMethodIsBank = firstLine.PaymentMethod == PaymentMethod.BankTransfer;
+}
+<style>
+    .rp-page-title { font-size: 26px; font-weight: 800; color: #0B1524; margin: 0; }
+    .rp-page-sub { color: #6F7F92; margin: 2px 0 16px; font-size: 14px; }
+    .rp-wrap { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; align-items: start; }
+    .rp-card { background: #fff; border: 1px solid #E3E8EF; border-radius: 18px; padding: 18px 20px; box-shadow: 0 6px 18px rgba(15,35,55,.05); margin-bottom: 16px; }
+    .rp-step { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: #132238; margin-bottom: 12px; }
+    .rp-step .rp-num { width: 26px; height: 26px; border-radius: 999px; background: #EEF3FA; color: #1d4f9c; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+    .rp-cust { border: 1px solid #E3E8EF; border-radius: 14px; padding: 14px 16px; background: #F8FAFD; }
+    .rp-balance { margin-top: 12px; border-radius: 14px; padding: 12px 16px; background: #EAF7EF; }
+    .rp-balance small { display: block; color: #1F9D55; font-weight: 700; font-size: 13px; }
+    .rp-balance strong { font-size: 24px; color: #15703f; }
+    .rp-balance.payable { background: #FFF1E8; }
+    .rp-balance.payable small { color: #C0551B; }
+    .rp-balance.payable strong { color: #A34412; }
+    .rp-radio-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .rp-radio { border: 1.5px solid #E3E8EF; border-radius: 16px; padding: 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 800; color: #132238; }
+    .rp-radio input { accent-color: #0B1524; width: 18px; height: 18px; margin-left: auto; }
+    .rp-radio.active { border-color: #1d5fd0; background: #F3F7FF; color: #1d5fd0; }
+    .rp-acc { margin-top: 12px; border: 1px solid #E3E8EF; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .rp-acc .rp-acc-name { font-weight: 800; color: #132238; }
+    .rp-acc .rp-chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #EEF3FA; color: #1d4f9c; margin-left: 6px; }
+    .rp-acc .rp-chip.shared { background: #FFF6DB; color: #8a6400; }
+    .rp-acc select { min-width: 220px; }
+    .rp-hint { font-size: 12px; color: #6F7F92; margin-top: 6px; }
+    .rp-display { background: #F4F7FB; border-radius: 16px; padding: 22px 24px; text-align: right; font-size: 46px; font-weight: 800; color: #0B1524; min-height: 116px; display: flex; align-items: center; justify-content: flex-end; }
+    .rp-keys { display: grid; grid-template-columns: repeat(3, 1fr) 1fr; gap: 10px; margin-top: 12px; }
+    .rp-key { padding: 16px 0; border-radius: 14px; border: 1px solid #E3E8EF; background: #F4F7FB; font-size: 22px; font-weight: 800; color: #132238; cursor: pointer; }
+    .rp-key:active { transform: scale(.97); }
+    .rp-key.danger { background: #FDEDF0; color: #D94A4A; border-color: #f3c4cc; }
+    .rp-print { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 14px; color: #1e293b; cursor: pointer; }
+    .rp-print input { width: 18px; height: 18px; accent-color: #16a34a; }
+    .rp-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+    .rp-save { padding: 14px 22px; border: 0; border-radius: 14px; background: #1F9D55; color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; }
+    .rp-save.payment { background: #E8702A; }
+    .rp-cancel { padding: 14px 22px; border-radius: 14px; border: 1px solid #E3E8EF; background: #fff; font-weight: 800; text-decoration: none; color: #132238; }
+    @@media (max-width: 900px) { .rp-wrap { grid-template-columns: 1fr; } }
+</style>
+
+<form id="evrak-form" method="post" asp-action="Create">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="SubmissionKey" type="hidden" />
+    <input asp-for="ReceiptType" type="hidden" />
+    <input asp-for="FromRestaurant" type="hidden" />
+    <input asp-for="CurrencyCode" type="hidden" />
+    <input asp-for="ExchangeRate" type="hidden" />
+    <input asp-for="ReceiptDateUtc" type="hidden" />
+    <input type="hidden" name="Lines.Index" value="0" />
+    <input type="hidden" name="Lines[0].ReferenceNumber" value="" />
+    <input type="hidden" name="Lines[0].PaymentMethod" id="rp-method" value="@(selectedMethodIsBank ? 2 : 1)" />
+    <input type="hidden" name="Lines[0].Amount" id="rp-amount" value="@(firstLine.Amount)" />
+    <input type="hidden" name="Lines[0].Description" id="rp-line-desc" value="" />
+
+    <h1 class="rp-page-title">@(isCollection ? "Cari Tahsilat" : "Cari Tediye")</h1>
+    <p class="rp-page-sub">@(isCollection ? "Cariden gelen ödemeyi kaydedin." : "Cariye yapılan ödemeyi kaydedin.")</p>
+
+    <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+
+    <div class="rp-wrap">
+        <div>
+            <div class="rp-card">
+                <div class="rp-step"><span class="rp-num">1</span> Cari seçimi</div>
+                <div class="rp-cust">
+                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
+                        Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
+                        Value = Model.CustomerId?.ToString(),
+                        DisplayValue = Model.CustomerDisplay,
+                        Endpoint = Url.Action("Customers", "Lookup")!,
+                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                    <div class="rp-balance @(isCollection ? "" : "payable")" id="rp-balance-box">
+                        <small id="rp-balance-label">@(isCollection ? "Açık alacak" : "Cariye borcumuz")</small>
+                        <strong id="rp-balance-value">0,00 ₺</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rp-card">
+                <div class="rp-step"><span class="rp-num">2</span> @(isCollection ? "Paranın gireceği hesap" : "Paranın çıkacağı hesap")</div>
+                <div class="rp-radio-row">
+                    <label class="rp-radio @(selectedMethodIsBank ? "" : "active")" data-kind="cash">
+                        🏧 Nakit Kasa <input type="radio" name="rp-kind" value="cash" @(selectedMethodIsBank ? "" : "checked") />
+                    </label>
+                    <label class="rp-radio @(selectedMethodIsBank ? "active" : "")" data-kind="bank">
+                        🏦 Banka / Ortak Hesap <input type="radio" name="rp-kind" value="bank" @(selectedMethodIsBank ? "checked" : "") />
+                    </label>
+                </div>
+                <div class="rp-acc">
+                    <div>
+                        <span class="rp-acc-name" id="rp-acc-name">—</span>
+                        <span class="rp-chip" id="rp-acc-chip">Şube</span>
+                        <div class="rp-hint" id="rp-acc-branch"></div>
+                    </div>
+                    <select name="Lines[0].FinancialAccountId" id="rp-account" class="form-select" required>
+                        <option value="">— Hesap seçin —</option>
+                        @foreach (var a in accounts)
+                        {
+                            <option value="@a.id" data-type="@a.type" data-branch="@(a.branchId ?? 0)" data-shared="@(a.shared ? "1" : "0")" data-branchname="@(a.branchName ?? "")"
+                                    selected="@(firstLine.FinancialAccountId == (int)a.id)">@a.name @(a.shared ? "(ortak)" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="rp-hint">Listede yalnızca bu terminalin şubesinin hesapları ve ortak hesaplar gösterilir.</div>
+            </div>
+
+            <div class="rp-card">
+                <div class="rp-step"><span class="rp-num">+</span> Açıklama (isteğe bağlı)</div>
+                <textarea asp-for="Description" class="form-control" rows="2" placeholder="Örn. Trendyol ödemesi, fatura no, vb."></textarea>
+            </div>
+        </div>
+
+        <div>
+            <div class="rp-card">
+                <div class="rp-step"><span class="rp-num">3</span> @(isCollection ? "Tahsilat tutarı" : "Ödeme tutarı")</div>
+                <div class="rp-display" id="rp-display">0,00 ₺</div>
+                <div class="rp-keys" id="rp-keys">
+                    <button type="button" class="rp-key" data-k="7">7</button>
+                    <button type="button" class="rp-key" data-k="8">8</button>
+                    <button type="button" class="rp-key" data-k="9">9</button>
+                    <button type="button" class="rp-key danger" data-k="back">⌫ Sil</button>
+                    <button type="button" class="rp-key" data-k="4">4</button>
+                    <button type="button" class="rp-key" data-k="5">5</button>
+                    <button type="button" class="rp-key" data-k="6">6</button>
+                    <button type="button" class="rp-key" data-k="clear">Temizle</button>
+                    <button type="button" class="rp-key" data-k="1">1</button>
+                    <button type="button" class="rp-key" data-k="2">2</button>
+                    <button type="button" class="rp-key" data-k="3">3</button>
+                    <button type="button" class="rp-key" data-k="00">00</button>
+                    <button type="button" class="rp-key" data-k="0">0</button>
+                    <button type="button" class="rp-key" data-k=",">,</button>
+                </div>
+                <div class="rp-footer">
+                    <label class="rp-print"><input type="checkbox" name="PrintReceipt" value="true" checked /> Makbuz yazdır (80mm)</label>
+                    <a class="rp-cancel" href="@Url.Action("Index", "RestaurantDashboard")">Vazgeç</a>
+                    <button type="submit" class="rp-save @(isCollection ? "" : "payment")">@(isCollection ? "✓ Tahsilatı Kaydet" : "✓ Tediyeyi Kaydet")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    (function () {
+        var terminalBranch = '@terminalBranch';
+        var accountSelect = document.getElementById('rp-account');
+        var isCollection = @(isCollection ? "true" : "false");
+        var balanceUrl = '@Url.Action("CustomerBalance", "PaymentReceipts")';
+        var customerInput = document.querySelector('input[name="CustomerId"]');
+        var balanceValue = document.getElementById('rp-balance-value');
+        var balanceLabel = document.getElementById('rp-balance-label');
+        var balanceBox = document.getElementById('rp-balance-box');
+        var accName = document.getElementById('rp-acc-name');
+        var accChip = document.getElementById('rp-acc-chip');
+        var accBranch = document.getElementById('rp-acc-branch');
+
+        function money(n) { return Math.abs(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺'; }
+
+        function refreshBalance() {
+            var id = customerInput ? customerInput.value : '';
+            if (!id) { balanceValue.textContent = '0,00 ₺'; return; }
+            fetch(balanceUrl + '?customerId=' + encodeURIComponent(id))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    // Tahsilatta açık alacak (pozitif bakiye); tediyede cariye borç (negatif bakiye).
+                    var amount = isCollection ? Math.max(d.balance, 0) : Math.max(-d.balance, 0);
+                    balanceValue.textContent = money(amount);
+                })
+                .catch(function () { balanceValue.textContent = '—'; });
+        }
+
+        function refreshAccountCard() {
+            var opt = accountSelect.options[accountSelect.selectedIndex];
+            if (!opt || !opt.value) { accName.textContent = '—'; accChip.style.display = 'none'; accBranch.textContent = ''; return; }
+            accName.textContent = opt.textContent.replace(' (ortak)', '').trim();
+            accChip.style.display = '';
+            var shared = opt.getAttribute('data-shared') === '1';
+            accChip.textContent = shared ? 'Ortak hesap' : 'Şube hesabı';
+            accChip.className = 'rp-chip' + (shared ? ' shared' : '');
+            accBranch.textContent = 'İşlem şubesi: ' + (shared ? 'Tüm şubeler' : (opt.getAttribute('data-branchname') || '—'));
+        }
+
+        // Lookup bileşeni değeri doğrudan alana yazdığı için değişimi yoklayarak izliyoruz.
+        var lastCustomer = customerInput ? customerInput.value : '';
+        setInterval(function () {
+            var now = customerInput ? customerInput.value : '';
+            if (now !== lastCustomer) { lastCustomer = now; refreshBalance(); }
+        }, 500);
+        accountSelect.addEventListener('change', refreshAccountCard);
+        refreshBalance();
+        var accountSelect = document.getElementById('rp-account');
+        var methodInput = document.getElementById('rp-method');
+        var amountInput = document.getElementById('rp-amount');
+        var lineDesc = document.getElementById('rp-line-desc');
+        var description = document.querySelector('textarea[name="Description"]');
+        var display = document.getElementById('rp-display');
+        var form = document.getElementById('evrak-form');
+        var amountText = '';
+
+        function renderDisplay() {
+            display.textContent = (amountText || '0') + ' ₺';
+            amountInput.value = amountText.replace(/\./g, '').replace(',', '.') || '0';
+        }
+
+        function filterAccounts(kind) {
+            var wantType = kind === 'bank' ? '2' : '1';
+            var firstVisible = null;
+            Array.from(accountSelect.options).forEach(function (opt) {
+                if (!opt.value) { opt.hidden = false; return; }
+                var visible = opt.getAttribute('data-type') === wantType &&
+                    (opt.getAttribute('data-shared') === '1' || opt.getAttribute('data-branch') === terminalBranch);
+                opt.hidden = !visible;
+                if (visible && !firstVisible) firstVisible = opt;
+            });
+            var current = accountSelect.options[accountSelect.selectedIndex];
+            if (!current || current.hidden || !current.value) {
+                accountSelect.value = firstVisible ? firstVisible.value : '';
+            }
+            methodInput.value = kind === 'bank' ? '2' : '1';
+            document.querySelectorAll('.rp-radio').forEach(function (r) {
+                r.classList.toggle('active', r.getAttribute('data-kind') === kind);
+            });
+            refreshAccountCard();
+        }
+
+        document.querySelectorAll('input[name="rp-kind"]').forEach(function (radio) {
+            radio.addEventListener('change', function () { filterAccounts(radio.value); });
+        });
+
+        document.getElementById('rp-keys').addEventListener('click', function (event) {
+            var key = event.target.getAttribute('data-k');
+            if (!key) return;
+            if (key === 'clear') { amountText = ''; }
+            else if (key === 'back') { amountText = amountText.slice(0, -1); }
+            else if (key === ',') { if (amountText.indexOf(',') === -1) amountText = (amountText || '0') + ','; }
+            else if (amountText.length < 14) {
+                if (amountText === '0' && key !== ',') amountText = '';
+                amountText += key;
+            }
+            renderDisplay();
+        });
+
+        form.addEventListener('submit', function () {
+            lineDesc.value = description ? description.value : '';
+            amountInput.value = (amountText || '0').replace(/\./g, '').replace(',', '.');
+        });
+
+        var initialKind = methodInput.value === '2' ? 'bank' : 'cash';
+        filterAccounts(initialKind);
+        renderDisplay();
+        refreshAccountCard();
+    })();
+</script>

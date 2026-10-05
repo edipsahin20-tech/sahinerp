@@ -19,7 +19,7 @@ namespace SahinSoft.Web.Controllers;
 // yarım kalmış sepeti kaybetmesin diye, o kullanıcının açık bir Self Satış adisyonu varsa ona
 // devam edilir; yoksa yeni bir tane açılır.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Waiter},{AppRoles.Cashier}")]
-public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     public async Task<IActionResult> Index()
     {
@@ -27,9 +27,13 @@ public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext,
 
         var userId = CurrentUserId;
 
+        // Self adisyonu TERMİNAL şubesine göre aranır/açılır: başka şubenin açık self adisyonu bu
+        // terminale gelmez (şubeler arası karışma olmasın). Terminal ayarı yoksa eski davranış.
+        var terminalBranchId = int.TryParse(Request.Cookies["ss_terminal_branch"], out var tb) ? (int?)tb : null;
         var openCheckId = await dbContext.RestaurantChecks
             .Where(x => x.Status == RestaurantCheckStatus.Open
                 && x.HeldAtUtc == null
+                && (terminalBranchId == null || x.BranchId == terminalBranchId)
                 && x.RestaurantTableSession.OpenedByUserId == userId
                 && x.RestaurantTableSession.Channel == RestaurantSaleChannel.SelfSatis)
             .OrderByDescending(x => x.OpenedAtUtc)
@@ -47,7 +51,7 @@ public sealed class RestaurantSelfSaleController(ApplicationDbContext dbContext,
                 .Where(x => x.Id == userId)
                 .Select(x => x.BranchId)
                 .SingleOrDefaultAsync();
-            var branchId = userBranchId ?? await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync();
+            var branchId = terminalBranchId ?? userBranchId ?? await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync();
 
             var check = await postingService.CreateSelfSaleCheckAsync(branchId, userId);
             checkId = check.Id;

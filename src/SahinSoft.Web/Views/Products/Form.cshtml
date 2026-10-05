@@ -359,18 +359,34 @@
    listesini gösterir (satıra tıklayınca o değer seçilir), üstteki mini formdan yeni kayıt eklenir —
    doğrudan bir prompt() ile "kör" ekleme yapılmaz. *@
 <div class="modal fade" id="optionPickerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="optionPickerTitle">Liste</h5>
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;">
+            <div class="modal-header" style="border-bottom:0;">
+                <div>
+                    <h5 class="modal-title mb-0" id="optionPickerTitle">Liste</h5>
+                    <small class="text-secondary" id="optionPickerSubtitle">Kayıtları yönetin ve seçin.</small>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <div class="modal-body">
-                <div class="input-group mb-3">
-                    <input type="text" id="optionPickerNewValue" class="form-control" placeholder="Yeni değer..." />
-                    <button type="button" class="btn btn-erp-primary" id="optionPickerAddBtn">Ekle</button>
+                <div class="input-group mb-2">
+                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="optionPickerSearch" class="form-control" placeholder="Ara..." autocomplete="off" />
+                    <span class="input-group-text small text-secondary" id="optionPickerCount">0 kayıt</span>
+                </div>
+                <div class="p-3 mb-3 rounded-3" style="background:#EEF5FD;border:1px solid #CFE2F7;">
+                    <label class="form-label small fw-bold mb-1">Yeni kayıt</label>
+                    <div class="input-group">
+                        <input type="text" id="optionPickerNewValue" class="form-control" placeholder="Yeni değer yazın" />
+                        <button type="button" class="btn btn-erp-primary" id="optionPickerAddBtn">+ Ekle</button>
+                    </div>
                 </div>
                 <div class="list-group" id="optionPickerList"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #E3E8EF;">
+                <div class="me-auto small text-secondary">Seçili: <strong id="optionPickerSelected">—</strong></div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-erp-primary" id="optionPickerApplyBtn">✓ Seçimi Uygula</button>
             </div>
         </div>
     </div>
@@ -503,26 +519,88 @@
                 return bsModal;
             }
 
+            var pendingValue = null;
+
             function renderList() {
                 var select = document.getElementById(activeConfig.targetSelectId);
+                var query = (document.getElementById('optionPickerSearch').value || '').toLowerCase();
+                var currentValue = pendingValue !== null ? pendingValue : select.value;
                 listEl.innerHTML = '';
+                var shown = 0;
                 Array.from(select.options).forEach(function (option) {
                     if (!option.value) return;
-                    var row = document.createElement('button');
-                    row.type = 'button';
-                    row.className = 'list-group-item list-group-item-action' + (option.selected ? ' active' : '');
-                    row.textContent = option.textContent;
-                    row.addEventListener('click', function () {
-                        select.value = option.value;
-                        select.dispatchEvent(new Event('change'));
-                        bsModal.hide();
+                    if (query && option.textContent.toLowerCase().indexOf(query) === -1) return;
+                    shown++;
+                    var isSelected = option.value === String(currentValue);
+                    var row = document.createElement('div');
+                    row.className = 'list-group-item d-flex align-items-center justify-content-between' + (isSelected ? ' active' : '');
+                    row.style.cursor = 'pointer';
+                    var label = document.createElement('span');
+                    label.textContent = (isSelected ? '✓ ' : '') + option.textContent;
+                    row.appendChild(label);
+                    row.addEventListener('click', function (e) {
+                        if (e.target.closest('[data-action]')) return;
+                        pendingValue = option.value;
+                        renderList();
                     });
+                    if (activeConfig.serverBacked) {
+                        var actions = document.createElement('span');
+                        actions.className = 'd-flex gap-2';
+                        var edit = document.createElement('a');
+                        edit.href = '@Url.Action("Edit", "Categories")/' + option.value;
+                        edit.target = '_blank';
+                        edit.setAttribute('data-action', 'edit');
+                        edit.className = 'btn btn-sm btn-outline-secondary';
+                        edit.textContent = '✎';
+                        var del = document.createElement('button');
+                        del.type = 'button';
+                        del.setAttribute('data-action', 'delete');
+                        del.className = 'btn btn-sm btn-outline-danger';
+                        del.textContent = '🗑';
+                        del.addEventListener('click', function () { deleteOption(option); });
+                        actions.appendChild(edit);
+                        actions.appendChild(del);
+                        row.appendChild(actions);
+                    }
                     listEl.appendChild(row);
                 });
+                document.getElementById('optionPickerCount').textContent = shown + ' kayıt';
+                var selectedOpt = Array.from(select.options).find(function (o) { return o.value === String(currentValue); });
+                document.getElementById('optionPickerSelected').textContent = selectedOpt && selectedOpt.value ? selectedOpt.textContent : '—';
                 if (!listEl.children.length) {
-                    listEl.innerHTML = '<p class="text-secondary small mb-0">Henüz kayıt yok — üstteki kutudan ekleyebilirsiniz.</p>';
+                    listEl.innerHTML = '<p class="text-secondary small mb-0">Kayıt bulunamadı — üstteki kutudan ekleyebilirsiniz.</p>';
                 }
             }
+
+            function deleteOption(option) {
+                if (!confirm('"' + option.textContent + '" silinsin mi?')) return;
+                var formData = new FormData();
+                var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (tokenInput) formData.append('__RequestVerificationToken', tokenInput.value);
+                fetch('@Url.Action("Delete", "Categories")/' + option.value, { method: 'POST', body: formData })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('silinemedi');
+                        var select = document.getElementById(activeConfig.targetSelectId);
+                        option.remove();
+                        if (select.value === option.value) select.value = '';
+                        pendingValue = null;
+                        renderList();
+                    })
+                    .catch(function () { alert('Kayıt silinemedi. Kullanımda olabilir.'); });
+            }
+
+            document.getElementById('optionPickerSearch').addEventListener('input', renderList);
+
+            document.getElementById('optionPickerApplyBtn').addEventListener('click', function () {
+                var select = document.getElementById(activeConfig.targetSelectId);
+                var value = pendingValue !== null ? pendingValue : select.value;
+                if (pendingValue !== null) {
+                    select.value = value;
+                    select.dispatchEvent(new Event('change'));
+                }
+                pendingValue = null;
+                ensureModal().hide();
+            });
 
             document.querySelectorAll('.option-picker-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -532,6 +610,8 @@
                     };
                     titleEl.textContent = btn.getAttribute('data-title') || 'Liste';
                     newValueInput.value = '';
+                    pendingValue = null;
+                    document.getElementById('optionPickerSearch').value = '';
                     renderList();
                     ensureModal().show();
                 });

@@ -138,6 +138,36 @@ public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContex
         return documentNumber;
     }
 
+    // Şube bazlı numara: aynı önek (PSF.) ama her şubenin KENDİ sayacı. Yeni şube sayacı, genel
+    // sayacın o anki NextNumber'ından başlar; böylece mevcut numaralar bozulmaz ve bir şubenin
+    // numarası diğerininkini etkilemez (iki şubede aynı numaralı fiş olabilir, merkezde şube
+    // kimliğiyle ayrılır).
+    internal async Task<string> GenerateForBranchWithinTransactionAsync(string sequenceKey, int branchId, CancellationToken cancellationToken = default)
+    {
+        var defaultSequence = await dbContext.NumberSequences
+            .SingleAsync(x => x.Key == sequenceKey, cancellationToken);
+
+        var composedKey = $"{sequenceKey}:B{branchId}";
+        var sequence = await dbContext.NumberSequences
+            .SingleOrDefaultAsync(x => x.Key == composedKey, cancellationToken);
+        if (sequence is null)
+        {
+            sequence = new NumberSequence
+            {
+                Key = composedKey,
+                Prefix = defaultSequence.Prefix,
+                NextNumber = defaultSequence.NextNumber,
+                Padding = defaultSequence.Padding
+            };
+            dbContext.NumberSequences.Add(sequence);
+        }
+
+        var documentNumber = $"{sequence.Prefix}{sequence.NextNumber.ToString($"D{sequence.Padding}")}";
+        sequence.NextNumber++;
+        sequence.UpdatedAtUtc = DateTime.UtcNow;
+        return documentNumber;
+    }
+
     // Formu doldururken önerilen sıra numarasını göstermek için — sayaç TÜKETİLMEZ (NextNumber artmaz).
     // Varsayılan seriyi (ör. "SF.") temsil eden asıl NumberSequence satırına bakar.
     public async Task<(string Prefix, long NextNumber, int Padding)> PeekAsync(string sequenceKey, CancellationToken cancellationToken = default)

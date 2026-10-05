@@ -1,0 +1,48 @@
+@{
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Terminal Ayarları";
+    var branches = (IEnumerable<dynamic>)ViewData["Branches"]!;
+    var accounts = (IEnumerable<dynamic>)ViewData["Accounts"]!;
+    int? currentBranch = (int?)ViewData["CurrentBranchId"];
+    int? currentCash = (int?)ViewData["CurrentCashId"];
+}
+
+<div class="rest-shell-page" style="padding:16px;max-width:720px;">
+    <h2 style="font-size:22px;font-weight:700;">Terminal Ayarları</h2>
+    <p style="color:#5b6675;">Bu tarayıcının (terminalin) çalıştığı şube ve nakit kasası. Ayar bu tarayıcıda saklanır; diğer terminalleri etkilemez. Şube seçilmeden tahsilat yapılamaz.</p>
+
+    @if (TempData["Success"] is string ok)
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+    @if (TempData["Error"] is string err)
+    {
+        <div class="alert alert-danger">@err</div>
+    }
+
+    <form method="post" asp-action="SetTerminal" asp-controller="Restaurant">
+        @Html.AntiForgeryToken()
+        <div style="margin-bottom:12px;">
+            <label class="form-label">Şube</label>
+            <select name="branchId" class="form-select" required>
+                <option value="">— Şube seçin —</option>
+                @foreach (var b in branches)
+                {
+                    <option value="@b.Id" selected="@(currentBranch == (int)b.Id)">@b.Name</option>
+                }
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label class="form-label">Nakit kasası / banka / yemek çeki</label>
+            <select name="cashAccountId" class="form-select">
+                <option value="">— Seçilmedi —</option>
+                @foreach (var a in accounts)
+                {
+                    <option value="@a.Id" selected="@(currentCash == (int)a.Id)">@a.Name @(a.IsShared ? "(ortak)" : "")</option>
+                }
+            </select>
+            <div style="font-size:12px;color:#5b6675;margin-top:4px;">Seçilen şubenin kasaları ve ortak hesaplar gösterilir. Hesap şubesi ile seçili şube uyuşmazsa kayıt reddedilir.</div>
+        </div>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </form>
+</div>

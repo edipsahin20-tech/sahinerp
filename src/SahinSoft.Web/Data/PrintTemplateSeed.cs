@@ -19,6 +19,7 @@ public static class PrintTemplateSeed
         await EnsureDefaultAsync(dbContext, PrintTemplateType.MutfakFisi, "Mutfak Fişi", MutfakLayout);
         await EnsureDefaultAsync(dbContext, PrintTemplateType.XRaporu, "X Raporu", XRaporuLayout);
         await EnsureDefaultAsync(dbContext, PrintTemplateType.ZRaporu, "Z Raporu", ZRaporuLayout);
+        await EnsureDefaultAsync(dbContext, PrintTemplateType.CariMakbuz, "Tahsilat/Tediye Makbuzu", CariMakbuzLayout);
     }
 
     private static async Task EnsureDefaultAsync(ApplicationDbContext dbContext, PrintTemplateType type, string name, string layoutJson)
@@ -69,6 +70,37 @@ public static class PrintTemplateSeed
       {"type":"spacer","heightMm":2},
       {"type":"staticText","staticText":"ŞAHİNSOFT","align":"center","bold":true},
       {"type":"staticText","staticText":"Restoran Çözümleri","align":"center"},
+      {"type":"cut"}
+    ]
+    """;
+
+    private const string CariMakbuzLayout = """
+    [
+      {"type":"staticText","staticText":"ŞAHİNSOFT","align":"center","bold":true},
+      {"type":"text","bindingKey":"common.companyName","align":"center"},
+      {"type":"text","bindingKey":"common.branchName","align":"center"},
+      {"type":"text","bindingKey":"common.address","align":"center"},
+      {"type":"text","bindingKey":"common.phone","align":"center"},
+      {"type":"divider"},
+      {"type":"text","bindingKey":"makbuz.title","align":"center","bold":true},
+      {"type":"divider"},
+      {"type":"text","bindingKey":"makbuz.number","label":"Makbuz No"},
+      {"type":"text","bindingKey":"common.dateTime","label":"Tarih"},
+      {"type":"text","bindingKey":"makbuz.status","label":"Durum"},
+      {"type":"text","bindingKey":"makbuz.cashierName","label":"Kasiyer"},
+      {"type":"divider"},
+      {"type":"text","bindingKey":"makbuz.customerName","label":"Cari","bold":true},
+      {"type":"text","bindingKey":"makbuz.customerCode","label":"Cari Kodu"},
+      {"type":"divider"},
+      {"type":"text","bindingKey":"makbuz.accountName","label":"Hesap"},
+      {"type":"text","bindingKey":"makbuz.paymentMethod","label":"Ödeme Türü"},
+      {"type":"divider"},
+      {"type":"text","bindingKey":"makbuz.amount","label":"TUTAR","bold":true},
+      {"type":"text","bindingKey":"makbuz.description","label":"Açıklama"},
+      {"type":"spacer","heightMm":6},
+      {"type":"staticText","staticText":"Teslim Eden / Alan: ................","align":"left"},
+      {"type":"spacer","heightMm":4},
+      {"type":"staticText","staticText":"Bu belge mali değer taşımaz.","align":"center"},
       {"type":"cut"}
     ]
     """;

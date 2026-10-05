@@ -55,6 +55,18 @@
         .ts-branch-tab.active { background: var(--ts-navy); color: #fff; border-color: var(--ts-navy); }
         .ts-branch-panel { display: none; }
         .ts-branch-panel.active { display: block; }
+        .ts-step { margin-bottom: 20px; }
+        .ts-step-title { font-size: 12px; font-weight: 800; color: var(--ts-gold); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 6px; }
+        .ts-chip { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #EEF3FA; color: #1d4f9c; font-size: 12px; font-weight: 700; margin-left: 6px; }
+        .ts-chip.shared { background: #FFF6DB; color: #8a6400; }
+        .ts-current { font-size: 12.5px; color: var(--ts-text-2); margin-bottom: 12px; }
+        .ts-hidden { display: none !important; }
+        .ts-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .ts-tab { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--ts-border); background: #fff; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--ts-text); }
+        .ts-tab.active { background: var(--ts-navy); color: #fff; border-color: var(--ts-navy); }
+        .ts-tab-panel { display: none; }
+        .ts-tab-panel.active { display: block; }
+        @@media (max-width: 760px) { .ts-tabs { grid-template-columns: 1fr 1fr; } .ts-grid2, .ts-grid3 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -75,124 +87,141 @@
             <div class="ts-flash err">⚠ @err</div>
         }
 
-        <!-- Şube Ayarları -->
+        @if (Model.Branches.Count == 0)
+        {
+            <div class="ts-card"><div class="ts-empty">Henüz şube tanımlı değil.</div></div>
+        }
+
+        <div class="ts-tabs" role="tablist">
+            <button type="button" class="ts-tab active" data-tab="terminal">🏢 Terminal ve Şube</button>
+            <button type="button" class="ts-tab" data-tab="kasa">🖨 Kasa Tanımları</button>
+            <button type="button" class="ts-tab" data-tab="hesaplar">💳 Hesaplar</button>
+            <button type="button" class="ts-tab" data-tab="yazarkasa">🧾 Yazar Kasa</button>
+        </div>
+
+        <div class="ts-tab-panel active" data-tab-panel="terminal">
+        <!-- 1 · Terminal şubesi ve kasası -->
         <div class="ts-card">
-            <h2>📍 Şube Ayarları</h2>
-            <p class="ts-card-sub">Bu terminalin bağlı olduğu şube(ler)in ad/adres/telefon bilgileri.</p>
-            @if (Model.Branches.Count == 0)
-            {
-                <div class="ts-empty">Henüz şube tanımlı değil.</div>
-            }
-            else
-            {
-                <div class="ts-branch-tabs">
-                    @for (var i = 0; i < Model.Branches.Count; i++)
-                    {
-                        <button type="button" class="ts-branch-tab @(i == 0 ? "active" : "")" data-branch-tab="@Model.Branches[i].Id">@Model.Branches[i].Name</button>
-                    }
-                </div>
-                @for (var i = 0; i < Model.Branches.Count; i++)
+            <div class="ts-step-title">1 · Bu terminal hangi şubede çalışacak?</div>
+            <h2>🖥 Terminal Şubesi ve Kasası</h2>
+            <p class="ts-card-sub">Bu tarayıcının çalıştığı şube ve çalışan kasa. Üst çubukta bu seçim görünür.</p>
+            <div class="ts-current">
+                Şu an: <b>@(Model.TerminalBranchId is { } tbid ? Model.Branches.FirstOrDefault(x => x.Id == tbid)?.Name ?? "—" : "Seçilmedi")</b>
+                @if (Model.TerminalRegisterId is { } trid)
                 {
-                    var b = Model.Branches[i];
-                    <form method="post" asp-action="SaveBranch" class="ts-branch-panel @(i == 0 ? "active" : "")" data-branch-panel="@b.Id">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@b.Id" />
-                        <div class="ts-grid2">
-                            <div class="ts-field"><label>Şube Adı</label><input name="name" value="@b.Name" required /></div>
-                            <div class="ts-field"><label>Telefon</label><input name="phone" value="@b.Phone" /></div>
-                        </div>
-                        <div class="ts-field"><label>Adres</label><input name="address" value="@b.Address" /></div>
-                        <button type="submit" class="ts-btn">Şube Bilgilerini Kaydet</button>
-                    </form>
+                    <span class="ts-chip">Kasa: @(Model.CashRegisters.FirstOrDefault(x => x.Id == trid)?.Name)</span>
                 }
+            </div>
+            <form method="post" asp-action="SetTerminal" id="terminal-form">
+                @Html.AntiForgeryToken()
+                <div class="ts-grid2">
+                    <div class="ts-field">
+                        <label>Terminal şubesi</label>
+                        <select name="branchId" id="term-branch" required>
+                            <option value="">— Şube seçin —</option>
+                            @foreach (var b in Model.Branches)
+                            {
+                                <option value="@b.Id" selected="@(Model.TerminalBranchId == b.Id)">@b.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="ts-field">
+                        <label>Çalışan kasa (bu şubenin kasaları)</label>
+                        <select name="registerId" id="term-register">
+                            <option value="">— Kasa seçilmedi —</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="ts-btn">Terminali Kaydet</button>
+            </form>
+        </div>
+
+        <!-- 2 · Seçili şubenin bilgileri -->
+        <div class="ts-card" id="branch-info-card">
+            <div class="ts-step-title">2 · Seçili şubenin bilgileri</div>
+            <h2>📍 Şube Bilgileri</h2>
+            <p class="ts-card-sub">Yukarıda seçili şubenin ad, adres ve telefon bilgileri.</p>
+            @for (var i = 0; i < Model.Branches.Count; i++)
+            {
+                var b = Model.Branches[i];
+                <form method="post" asp-action="SaveBranch" class="ts-branch-panel" data-branch-panel="@b.Id">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@b.Id" />
+                    <div class="ts-grid2">
+                        <div class="ts-field"><label>Şube Adı</label><input name="name" value="@b.Name" required /></div>
+                        <div class="ts-field"><label>Telefon</label><input name="phone" value="@b.Phone" /></div>
+                    </div>
+                    <div class="ts-field"><label>Adres</label><input name="address" value="@b.Address" /></div>
+                    <button type="submit" class="ts-btn">Şube Bilgilerini Kaydet</button>
+                </form>
             }
         </div>
 
-        <!-- Kasa Ayarları -->
+        </div>
+
+        <div class="ts-tab-panel" data-tab-panel="kasa">
+        <!-- 3 · Kasa tanımı -->
         <div class="ts-card">
-            <h2>🧾 Kasa Ayarları</h2>
-            <p class="ts-card-sub">Kasa numarası ve her kasanın hangi Nakit/Kredi Kartı hesabına bağlı olduğu. <b>Yukarıda seçili şubenin</b> kasaları listelenir.</p>
-            @if (Model.CashRegisters.Count > 0)
+            <div class="ts-step-title">3 · Kasa tanımla</div>
+            <h2>🧾 Kasa Tanımları</h2>
+            <p class="ts-card-sub">Kasanın adını yazın. Şube, yukarıda seçili şubedir; kasa ve hesap seçenekleri yalnızca o şubenin hesaplarıdır (ortak hesaplar her şubede görünür).</p>
+            <div class="ts-register-row ts-register-head" id="reg-list-head">
+                <span>Kasa</span><span>Şube</span><span>Nakit Hesabı</span><span>Kredi Kartı Hesabı</span><span></span>
+            </div>
+            @foreach (var r in Model.CashRegisters)
             {
-                <div class="ts-register-row ts-register-head">
-                    <span>Kasa Numarası</span><span>Şube</span><span>Nakit Hesabı</span><span>Kredi Kartı Hesabı</span><span></span>
+                <div class="ts-register-row reg-row" data-register-branch="@r.BranchId"
+                     data-reg-id="@r.Id" data-reg-branch="@r.BranchId" data-reg-name="@r.Name"
+                     data-reg-cash="@r.CashFinancialAccountId" data-reg-credit="@r.CreditCardFinancialAccountId"
+                     data-reg-meal="@r.MealCardFinancialAccountId">
+                    <span>@r.Name</span>
+                    <span>@r.Branch.Name</span>
+                    <span>@r.CashFinancialAccount.Name</span>
+                    <span>@r.CreditCardFinancialAccount.Name</span>
+                    <span style="display:flex;gap:6px;">
+                        <button type="button" class="ts-btn outline reg-edit-btn" style="padding:6px 10px;">Düzenle</button>
+                        <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Pasif Yap</button>
+                        </form>
+                        <form method="post" asp-action="DeleteCashRegister" onsubmit="return confirm('Bu kasa KALICI OLARAK silinsin mi? Bu işlem geri alınamaz.');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Sil</button>
+                        </form>
+                    </span>
                 </div>
-                @foreach (var r in Model.CashRegisters)
-                {
-                    <div class="ts-register-row" data-register-branch="@r.BranchId"
-                         data-reg-id="@r.Id" data-reg-branch="@r.BranchId" data-reg-name="@r.Name"
-                         data-reg-cash="@r.CashFinancialAccountId" data-reg-credit="@r.CreditCardFinancialAccountId"
-                         data-reg-meal="@r.MealCardFinancialAccountId">
-                        <span>@r.Name</span>
-                        <span>@r.Branch.Name</span>
-                        <span>@r.CashFinancialAccount.Name</span>
-                        <span>@r.CreditCardFinancialAccount.Name</span>
-                        <span style="display:flex;gap:6px;">
-                            <button type="button" class="ts-btn outline reg-edit-btn" style="padding:6px 10px;">Düzenle</button>
-                            <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@r.Id" />
-                                <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Pasif Yap</button>
-                            </form>
-                            <form method="post" asp-action="DeleteCashRegister" onsubmit="return confirm('Bu kasa KALICI OLARAK silinsin mi? Bu işlem geri alınamaz.');">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@r.Id" />
-                                <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Sil</button>
-                            </form>
-                        </span>
-                    </div>
-                }
             }
-            else
-            {
-                <div class="ts-empty">Henüz kasa tanımı yok.</div>
-            }
+            <div class="ts-empty ts-hidden" id="reg-empty-note">Bu şubede henüz kasa tanımı yok.</div>
+
             <h3 style="font-size:13px;margin:18px 0 10px;" id="reg-form-title">Yeni Kasa Ekle</h3>
             <form method="post" asp-action="SaveCashRegister" id="cash-register-form">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" id="reg-id-input" value="0" />
+                <div class="ts-grid2">
+                    <div class="ts-field">
+                        <label>Kasa adı</label>
+                        <input name="name" id="reg-name-input" placeholder="Örn: Kasa 1" required />
+                    </div>
+                    <div class="ts-field">
+                        <label>Şube (seçili terminal şubesi)</label>
+                        <input id="reg-branch-display" value="" readonly />
+                        <input type="hidden" name="branchId" id="reg-branch-input" />
+                    </div>
+                </div>
                 <div class="ts-grid3">
                     <div class="ts-field">
-                        <label>Kasa Numarası / Adı</label>
-                        <input name="name" id="reg-name-input" placeholder="Kasa 1" required />
+                        <label>Nakit hesabı</label>
+                        <select name="cashFinancialAccountId" id="reg-cash-select" required></select>
                     </div>
                     <div class="ts-field">
-                        <label>Şube</label>
-                        <select name="branchId" id="reg-branch-select" required>
-                            @foreach (var b in Model.Branches)
-                            {
-                                <option value="@b.Id">@b.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <div></div>
-                    <div class="ts-field">
-                        <label>Nakit Kasası (Hesap)</label>
-                        <select name="cashFinancialAccountId" id="reg-cash-select" required>
-                            @foreach (var a in Model.FinancialAccounts)
-                            {
-                                <option value="@a.Id">@a.Name</option>
-                            }
-                        </select>
+                        <label>Kredi kartı hesabı</label>
+                        <select name="creditCardFinancialAccountId" id="reg-credit-select" required></select>
                     </div>
                     <div class="ts-field">
-                        <label>Kredi Kartı Kasası (Hesap)</label>
-                        <select name="creditCardFinancialAccountId" id="reg-credit-select" required>
-                            @foreach (var a in Model.FinancialAccounts)
-                            {
-                                <option value="@a.Id">@a.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="ts-field">
-                        <label>Yemek Kartı Hesabı (opsiyonel)</label>
-                        <select name="mealCardFinancialAccountId" id="reg-meal-select">
-                            <option value="">— Kredi kartı hesabı kullanılsın —</option>
-                            @foreach (var a in Model.FinancialAccounts)
-                            {
-                                <option value="@a.Id">@a.Name</option>
-                            }
-                        </select>
+                        <label>Yemek kartı hesabı (opsiyonel)</label>
+                        <select name="mealCardFinancialAccountId" id="reg-meal-select"></select>
                     </div>
                 </div>
                 <button type="submit" class="ts-btn">Kasayı Kaydet</button>
@@ -200,7 +229,21 @@
             </form>
         </div>
 
-        <!-- Yazar Kasa Ayarları -->
+        </div>
+
+        <div class="ts-tab-panel" data-tab-panel="hesaplar">
+        <!-- 4 · Seçili şubenin hesapları -->
+        <div class="ts-card">
+            <div class="ts-step-title">4 · Şubenin kayıtlı hesapları</div>
+            <h2>🏦 Kasa ve Banka Hesapları</h2>
+            <p class="ts-card-sub">Seçili şubenin hesapları ve ortak hesaplar. Yeni hesap tanımı Ayarlar › Finans Hesapları ekranından yapılır.</p>
+            <div id="account-list"></div>
+        </div>
+
+        </div>
+
+        <div class="ts-tab-panel" data-tab-panel="yazarkasa">
+        <!-- 5 · Yazar kasa -->
         <div class="ts-card">
             <h2>🖨 Yazar Kasa Ayarları</h2>
             <p class="ts-card-sub">Fiskal cihaz (yazar kasa) bağlantısı — kapalıyken satışlar cihaza hiç gönderilmez.</p>
@@ -225,176 +268,144 @@
             </form>
         </div>
 
-        <!-- Bağlantı Modu (Edip, 2026-09-27: "kendi lokalinde çalışacaksa kendi veritabanını,
-             buluttan çalışacaksa bulut ayarlarını yapabileceği bir bölüm... normal ana program
-             buluttan çalışacak, satış programı localden de çalışmaya devam edecek, bağlantı gidip
-             gelse de") - hibrit yerel/bulut mimarisi. Bulut = varsayılan, bu terminal ana ERP'yle
-             AYNI paylaşımlı bulut veritabanına doğrudan bağlanır. Yerel = bu terminal KENDİ yerel
-             SQL Server'ına bağlanır (internet kesilse de satış durmaz) ve zaten inşa edilmiş
-             MerkezSync/BranchSyncBackgroundService ile arka planda merkezle senkronize olur. -->
-        <div class="ts-card" style="border-color:#F0C040;">
-            <h2>🔌 Bağlantı Modu</h2>
-            <p class="ts-card-sub">Bu terminal bulut veritabanına mı, yoksa kendi yerel veritabanına mı bağlanacak? <b>Kaydettikten sonra programı yeniden başlatmanız gerekir.</b></p>
-            <form method="post" asp-action="SaveConnectionMode" id="connection-mode-form">
-                @Html.AntiForgeryToken()
-                <div class="ts-branch-tabs">
-                    <button type="button" class="ts-branch-tab @(!Model.IsLocalMode ? "active" : "")" data-mode-tab="cloud">☁ Bulut</button>
-                    <button type="button" class="ts-branch-tab @(Model.IsLocalMode ? "active" : "")" data-mode-tab="local">💻 Yerel</button>
-                </div>
-                <input type="hidden" name="isLocalMode" id="is-local-mode-input" value="@(Model.IsLocalMode ? "true" : "false")" />
-
-                <div data-mode-panel="cloud" style="@(Model.IsLocalMode ? "display:none;" : "")">
-                    <h3 style="font-size:13px;margin:14px 0 8px;">Bulut Veritabanı</h3>
-                    <p class="ts-card-sub" style="margin-top:-4px;">Boş bırakılırsa ana ERP'nin varsayılan paylaşımlı bulut bağlantısı kullanılır. Doldurursanız bu terminal BURADA girdiğiniz bulut sunucusuna/kullanıcısına bağlanır.</p>
-                    <div class="ts-grid3">
-                        <div class="ts-field"><label>Sunucu</label><input name="cloudServer" value="@Model.CloudServer" placeholder="141.98.114.2,4634" /></div>
-                        <div class="ts-field"><label>Veritabanı Adı</label><input name="cloudDatabase" value="@Model.CloudDatabase" /></div>
-                        <div class="ts-field">
-                            <label>Kimlik Doğrulama</label>
-                            <select id="cloud-auth-select">
-                                <option value="true" selected="@Model.CloudUseWindowsAuth">Windows Kimlik Doğrulama</option>
-                                <option value="false" selected="@(!Model.CloudUseWindowsAuth)">SQL Server (Kullanıcı/Şifre)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="ts-grid2" id="cloud-sql-auth-fields" style="@(Model.CloudUseWindowsAuth ? "display:none;" : "")">
-                        <div class="ts-field"><label>Kullanıcı Adı</label><input name="cloudUserId" value="@Model.CloudUserId" /></div>
-                        <div class="ts-field"><label>Şifre</label><input type="password" name="cloudPassword" value="@Model.CloudPassword" /></div>
-                    </div>
-                    <input type="hidden" name="cloudUseWindowsAuth" id="cloud-use-windows-auth-hidden" value="@(Model.CloudUseWindowsAuth ? "true" : "false")" />
-                </div>
-
-                <div data-mode-panel="local" style="@(Model.IsLocalMode ? "" : "display:none;")">
-                    <h3 style="font-size:13px;margin:14px 0 8px;">Yerel Veritabanı</h3>
-                    <div class="ts-grid3">
-                        <div class="ts-field"><label>Sunucu</label><input name="localServer" value="@Model.LocalServer" placeholder=".\SQLEXPRESS veya localhost" /></div>
-                        <div class="ts-field"><label>Veritabanı Adı</label><input name="localDatabase" value="@Model.LocalDatabase" /></div>
-                        <div class="ts-field">
-                            <label>Kimlik Doğrulama</label>
-                            <select id="local-auth-select">
-                                <option value="true" selected="@Model.LocalUseWindowsAuth">Windows Kimlik Doğrulama</option>
-                                <option value="false" selected="@(!Model.LocalUseWindowsAuth)">SQL Server (Kullanıcı/Şifre)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="ts-grid2" id="local-sql-auth-fields" style="@(Model.LocalUseWindowsAuth ? "display:none;" : "")">
-                        <div class="ts-field"><label>Kullanıcı Adı</label><input name="localUserId" value="@Model.LocalUserId" /></div>
-                        <div class="ts-field"><label>Şifre</label><input type="password" name="localPassword" value="@Model.LocalPassword" /></div>
-                    </div>
-                    <input type="hidden" name="localUseWindowsAuth" id="local-use-windows-auth-hidden" value="@(Model.LocalUseWindowsAuth ? "true" : "false")" />
-
-                    <h3 style="font-size:13px;margin:18px 0 8px;">Merkezle Senkronizasyon</h3>
-                    <p class="ts-card-sub" style="margin-top:-4px;">Bu şube, bağlantısı olduğunda satışlarını otomatik olarak merkez (bulut) sunucuyla senkronize eder.</p>
-                    <div class="ts-grid2">
-                        <div class="ts-field"><label>Merkez Sunucu Adresi (URL)</label><input name="merkezBaseUrl" value="@Model.MerkezBaseUrl" placeholder="https://merkez.sahinbilisim.com.tr" /></div>
-                        <div class="ts-field"><label>Şube Kodu</label><input name="merkezBranchCode" value="@Model.MerkezBranchCode" /></div>
-                    </div>
-                    <div class="ts-grid2">
-                        <div class="ts-field"><label>API Anahtarı</label><input name="merkezApiKey" value="@Model.MerkezApiKey" /></div>
-                        <div class="ts-field"><label>Senkron Aralığı (saniye)</label><input type="number" name="merkezPollIntervalSeconds" value="@Model.MerkezPollIntervalSeconds" min="10" /></div>
-                    </div>
-                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
-                        <input type="checkbox" name="merkezSyncEnabled" value="true" style="width:auto;" checked="@Model.MerkezSyncEnabled" /> Merkez senkronizasyonu aktif
-                    </label>
-                </div>
-
-                <button type="submit" class="ts-btn">Bağlantı Ayarlarını Kaydet</button>
-            </form>
         </div>
     </div>
+    <script type="application/json" id="accounts-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts.Select(a => new { id = a.Id, name = a.Name, branchId = a.BranchId, shared = a.IsShared })))</script>
+    <script type="application/json" id="registers-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CashRegisters.Select(r => new { id = r.Id, name = r.Name, branchId = r.BranchId, cash = r.CashFinancialAccountId, credit = r.CreditCardFinancialAccountId, meal = r.MealCardFinancialAccountId })))</script>
+    <script type="application/json" id="branches-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Branches.Select(b => new { id = b.Id, name = b.Name })))</script>
     <script>
-        // Kasa Ayarları listesini yukarıdaki Şube sekmesine göre filtreler (Edip, 2026-09-27:
-        // "hangi şubeyi seçtiysem o şube tanımladığım kasa... kasaları gelsin").
-        function filterRegistersByBranch(branchId) {
-            document.querySelectorAll('[data-register-branch]').forEach(function (row) {
-                row.style.display = row.getAttribute('data-register-branch') === String(branchId) ? '' : 'none';
-            });
-            var branchSelect = document.getElementById('reg-branch-select');
-            if (branchSelect) { branchSelect.value = String(branchId); }
-        }
-
-        document.querySelectorAll('[data-branch-tab]').forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                document.querySelectorAll('[data-branch-tab]').forEach(function (t) { t.classList.remove('active'); });
-                document.querySelectorAll('[data-branch-panel]').forEach(function (p) { p.classList.remove('active'); });
-                tab.classList.add('active');
-                document.querySelector('[data-branch-panel="' + tab.getAttribute('data-branch-tab') + '"]').classList.add('active');
-                filterRegistersByBranch(tab.getAttribute('data-branch-tab'));
-            });
-        });
         (function () {
-            var firstTab = document.querySelector('[data-branch-tab]');
-            if (firstTab) { filterRegistersByBranch(firstTab.getAttribute('data-branch-tab')); }
-        })();
+            var accounts = JSON.parse(document.getElementById('accounts-data').textContent);
+            var registers = JSON.parse(document.getElementById('registers-data').textContent);
+            var branches = JSON.parse(document.getElementById('branches-data').textContent);
+            var termBranch = document.getElementById('term-branch');
+            var termRegister = document.getElementById('term-register');
+            var regBranchDisplay = document.getElementById('reg-branch-display');
+            var regBranchInput = document.getElementById('reg-branch-input');
+            var regCash = document.getElementById('reg-cash-select');
+            var regCredit = document.getElementById('reg-credit-select');
+            var regMeal = document.getElementById('reg-meal-select');
+            var regForm = document.getElementById('cash-register-form');
+            var regIdInput = document.getElementById('reg-id-input');
+            var regName = document.getElementById('reg-name-input');
+            var regTitle = document.getElementById('reg-form-title');
+            var regCancel = document.getElementById('reg-cancel-edit-btn');
+            var currentTerminalRegister = @(Model.TerminalRegisterId?.ToString() ?? "null");
 
-        // Kasa "Düzenle" - satırdaki data-reg-* alanlarını forma doldurur, kaydet aynı forma POST
-        // eder ama artık id=0 yerine gerçek id ile (controller SaveCashRegister'da id>0 ise
-        // güncelleme, id=0 ise ekleme yapıyor).
-        var regForm = document.getElementById('cash-register-form');
-        var regIdInput = document.getElementById('reg-id-input');
-        var regFormTitle = document.getElementById('reg-form-title');
-        var regCancelBtn = document.getElementById('reg-cancel-edit-btn');
-        document.querySelectorAll('.reg-edit-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var row = btn.closest('[data-reg-id]');
-                regIdInput.value = row.getAttribute('data-reg-id');
-                document.getElementById('reg-name-input').value = row.getAttribute('data-reg-name') || '';
-                document.getElementById('reg-branch-select').value = row.getAttribute('data-reg-branch') || '';
-                document.getElementById('reg-cash-select').value = row.getAttribute('data-reg-cash') || '';
-                document.getElementById('reg-credit-select').value = row.getAttribute('data-reg-credit') || '';
-                document.getElementById('reg-meal-select').value = row.getAttribute('data-reg-meal') || '';
-                regFormTitle.textContent = 'Kasayı Düzenle';
-                regCancelBtn.style.display = '';
-                regForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            });
-        });
-        if (regCancelBtn) {
-            regCancelBtn.addEventListener('click', function () {
-                regForm.reset();
-                regIdInput.value = '0';
-                regFormTitle.textContent = 'Yeni Kasa Ekle';
-                regCancelBtn.style.display = 'none';
-                var activeTab = document.querySelector('[data-branch-tab].active');
-                if (activeTab) { document.getElementById('reg-branch-select').value = activeTab.getAttribute('data-branch-tab'); }
-            });
-        }
-        var fiscalSelect = document.getElementById('fiscal-device-select');
-        var fiscalUrlInput = document.getElementById('fiscal-url-input');
-        if (fiscalSelect && fiscalUrlInput) {
-            fiscalSelect.addEventListener('change', function () {
-                fiscalUrlInput.disabled = fiscalSelect.value === 'None';
-            });
-        }
+            function branchName(id) {
+                var b = branches.find(function (x) { return String(x.id) === String(id); });
+                return b ? b.name : '';
+            }
 
-        // Bağlantı Modu - Bulut/Yerel sekmeleri + Windows/SQL kimlik doğrulama alan gizleme.
-        (function () {
-            var isLocalInput = document.getElementById('is-local-mode-input');
-            document.querySelectorAll('[data-mode-tab]').forEach(function (tab) {
+            // Seçili şubenin hesapları: şubeye ait + ortak olanlar. Seçenekler her seferinde yeniden kurulur.
+            function accountsFor(branchId) {
+                return accounts.filter(function (a) { return a.shared || String(a.branchId) === String(branchId); });
+            }
+
+            function fillSelect(sel, list, selectedValue, emptyLabel) {
+                sel.innerHTML = '';
+                if (emptyLabel !== undefined) {
+                    var empty = document.createElement('option');
+                    empty.value = ''; empty.textContent = emptyLabel;
+                    sel.appendChild(empty);
+                }
+                list.forEach(function (a) {
+                    var o = document.createElement('option');
+                    o.value = a.id; o.textContent = a.name + (a.shared ? ' (ortak)' : '');
+                    if (String(a.id) === String(selectedValue)) o.selected = true;
+                    sel.appendChild(o);
+                });
+            }
+
+            function renderBranch(branchId, keepRegisterId) {
+                // Terminal kasa listesi
+                var regs = registers.filter(function (r) { return String(r.branchId) === String(branchId); });
+                fillSelect(termRegister, regs.map(function (r) { return { id: r.id, name: r.name, shared: false }; }), keepRegisterId, '— Kasa seçilmedi —');
+
+                // Kasa tanımı formu: şube otomatik, hesap listeleri şubeye göre
+                regBranchInput.value = branchId || '';
+                regBranchDisplay.value = branchName(branchId);
+                var list = accountsFor(branchId);
+                fillSelect(regCash, list, null, undefined);
+                fillSelect(regCredit, list, null, undefined);
+                fillSelect(regMeal, list, null, '— Kredi kartı hesabı kullanılsın —');
+
+                // Kasa listesi satırları
+                document.querySelectorAll('.reg-row').forEach(function (row) {
+                    row.classList.toggle('ts-hidden', String(row.getAttribute('data-register-branch')) !== String(branchId));
+                });
+                document.getElementById('reg-empty-note').classList.toggle('ts-hidden', regs.length > 0);
+                document.getElementById('reg-list-head').classList.toggle('ts-hidden', regs.length === 0);
+
+                // Şube bilgisi formu
+                document.querySelectorAll('[data-branch-panel]').forEach(function (p) {
+                    p.classList.toggle('ts-hidden', String(p.getAttribute('data-branch-panel')) !== String(branchId));
+                });
+                document.getElementById('branch-info-card').classList.toggle('ts-hidden', !branchId);
+
+                // Hesap listesi (salt okunur)
+                var acc = document.getElementById('account-list');
+                acc.innerHTML = '';
+                if (!branchId) { acc.innerHTML = '<div class="ts-empty">Önce terminal şubesini seçin.</div>'; return; }
+                if (list.length === 0) { acc.innerHTML = '<div class="ts-empty">Bu şube için hesap tanımı yok.</div>'; return; }
+                list.forEach(function (a) {
+                    var d = document.createElement('div');
+                    d.className = 'ts-register-row';
+                    d.style.gridTemplateColumns = '1fr auto';
+                    var n = document.createElement('span'); n.textContent = a.name;
+                    var t = document.createElement('span');
+                    t.className = 'ts-chip' + (a.shared ? ' shared' : '');
+                    t.textContent = a.shared ? 'Ortak' : branchName(a.branchId);
+                    d.appendChild(n); d.appendChild(t);
+                    acc.appendChild(d);
+                });
+            }
+
+            termBranch.addEventListener('change', function () { renderBranch(termBranch.value, ''); });
+
+            // Düzenle: satırdaki değerleri forma taşır
+            document.querySelectorAll('.reg-edit-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var row = btn.closest('[data-reg-id]');
+                    var bid = row.getAttribute('data-reg-branch');
+                    if (termBranch.value !== bid) { termBranch.value = bid; renderBranch(bid, ''); }
+                    regIdInput.value = row.getAttribute('data-reg-id');
+                    regName.value = row.getAttribute('data-reg-name') || '';
+                    regCash.value = row.getAttribute('data-reg-cash') || '';
+                    regCredit.value = row.getAttribute('data-reg-credit') || '';
+                    regMeal.value = row.getAttribute('data-reg-meal') || '';
+                    regTitle.textContent = 'Kasayı Düzenle';
+                    regCancel.style.display = '';
+                    regForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+            if (regCancel) {
+                regCancel.addEventListener('click', function () {
+                    regForm.reset();
+                    regIdInput.value = '0';
+                    regTitle.textContent = 'Yeni Kasa Ekle';
+                    regCancel.style.display = 'none';
+                    renderBranch(termBranch.value, '');
+                });
+            }
+
+            // Sayfa açılışı: mevcut terminal şubesi
+            var initialBranch = termBranch.value;
+            renderBranch(initialBranch, currentTerminalRegister || '');
+
+            document.querySelectorAll('.ts-tab').forEach(function (tab) {
                 tab.addEventListener('click', function () {
-                    var mode = tab.getAttribute('data-mode-tab');
-                    document.querySelectorAll('[data-mode-tab]').forEach(function (t) { t.classList.remove('active'); });
-                    tab.classList.add('active');
-                    document.querySelectorAll('[data-mode-panel]').forEach(function (p) {
-                        p.style.display = p.getAttribute('data-mode-panel') === mode ? '' : 'none';
-                    });
-                    if (isLocalInput) { isLocalInput.value = mode === 'local' ? 'true' : 'false'; }
+                    var key = tab.getAttribute('data-tab');
+                    document.querySelectorAll('.ts-tab').forEach(function (t) { t.classList.toggle('active', t === tab); });
+                    document.querySelectorAll('[data-tab-panel]').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-tab-panel') === key); });
                 });
             });
 
-            function wireAuthToggle(selectId, hiddenId, fieldsId) {
-                var authSelect = document.getElementById(selectId);
-                var authHidden = document.getElementById(hiddenId);
-                var sqlAuthFields = document.getElementById(fieldsId);
-                if (authSelect) {
-                    authSelect.addEventListener('change', function () {
-                        var isWindows = authSelect.value === 'true';
-                        if (authHidden) { authHidden.value = isWindows ? 'true' : 'false'; }
-                        if (sqlAuthFields) { sqlAuthFields.style.display = isWindows ? 'none' : ''; }
-                    });
-                }
+            var fiscalSelect = document.getElementById('fiscal-device-select');
+            var fiscalUrlInput = document.getElementById('fiscal-url-input');
+            if (fiscalSelect && fiscalUrlInput) {
+                fiscalSelect.addEventListener('change', function () { fiscalUrlInput.disabled = fiscalSelect.value === 'None'; });
             }
-            wireAuthToggle('local-auth-select', 'local-use-windows-auth-hidden', 'local-sql-auth-fields');
-            wireAuthToggle('cloud-auth-select', 'cloud-use-windows-auth-hidden', 'cloud-sql-auth-fields');
         })();
     </script>
 </body>

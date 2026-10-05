@@ -43,6 +43,16 @@
                     <label asp-for="BranchName"></label>
                     <input asp-for="BranchName" class="form-control" />
                 </div>
+                <div class="erp-field">
+                    <label>Sahip olduğu şube</label>
+                    <select asp-for="BranchId" class="form-select" asp-items="ViewBag.BranchOptions">
+                        <option value="">— Ortak / şube yok —</option>
+                    </select>
+                    <small class="text-secondary">Nakit kasası gibi tek şubeye ait hesaplar için seçin. Ortak hesaplarda boş bırakın.</small>
+                </div>
+                <div class="erp-field">
+                    <label><input asp-for="IsShared" type="checkbox" /> Ortak hesap (tüm şubeler kullanır, hareket kaynak şubesini taşır)</label>
+                </div>
                 <div class="erp-field" style="grid-column: 1 / -1;">
                     <label asp-for="Iban"></label>
                     <input asp-for="Iban" class="form-control" />

@@ -1,34 +1,68 @@
 @model SahinSoft.Web.Models.RestaurantDataHealthViewModel
 @{
     Layout = "_RestaurantShellLayout";
-    ViewData["Title"] = "Veri Sağlığı / Mutabakat Merkezi";
+    ViewData["Title"] = "Veri Sağlığı ve Mutabakat Merkezi";
+    var dateText = Model.FilterDate.ToString("yyyy-MM-dd");
 
-    static string StatusBadgeClass(string status) => status switch
+    static string StatusChip(string status) => status switch
     {
         "YESIL" => "background:#DFF5E7;color:#1f7a4d;",
         "SARI" => "background:#FFF3D6;color:#8a6d1a;",
         _ => "background:#FBE1E1;color:#8a2a2a;"
     };
 
-    static string StatusLabel(string status) => status switch
+    static string StatusText(string status) => status switch
     {
-        "YESIL" => "● Tam",
-        "SARI" => "● Bekliyor",
-        _ => "● Hatalı"
+        "YESIL" => "Eşleşti",
+        "SARI" => "Bekliyor",
+        _ => "Hatalı"
     };
 
-    static string CellBadgeClass(string value) => value switch
+    static string PartChip(string value) => value switch
     {
-        "Tam" or "Gerekmiyor" or "Kapalı" => "color:#1f7a4d;",
-        "Bekliyor" => "color:#8a6d1a;",
-        _ => "color:#8a2a2a;font-weight:700;"
+        "Tam" => "background:#DFF5E7;color:#1f7a4d;",
+        "Bekliyor" => "background:#FFF3D6;color:#8a6d1a;",
+        "Kapalı" or "Gerekmiyor" => "background:#EEF1F5;color:#5b6675;",
+        _ => "background:#FBE1E1;color:#8a2a2a;"
+    };
+
+    static string ActionLabel(string action) => action switch
+    {
+        "Added" => "Eklendi",
+        "Modified" => "Güncellendi",
+        "Deleted" => "Silindi",
+        _ => action
+    };
+
+    static string ActionChip(string action) => action switch
+    {
+        "Added" => "background:#DFF5E7;color:#1f7a4d;",
+        "Modified" => "background:#E8F0FB;color:#2456a8;",
+        "Deleted" => "background:#FBE1E1;color:#8a2a2a;",
+        _ => "background:#EEF1F5;color:#5b6675;"
     };
 }
 
-<div class="rest-shell">
-    <div class="report-header">
-        <h2>Veri Sağlığı / Mutabakat Merkezi</h2>
-        <p class="sub">Günlük satışların Yerel / Merkez / Muhasebe karşılıklarını tek ekrandan takip edin.</p>
+<div class="dh-page">
+    <div class="dh-head">
+        <div>
+            <h2 class="dh-title">Veri Sağlığı ve Mutabakat Merkezi</h2>
+            <p class="dh-sub">Yerel, merkez ve muhasebe kayıtlarını karşılaştırın.</p>
+        </div>
+        <div class="dh-actions">
+            <form method="get" asp-action="Index" class="dh-filter">
+                <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                <input type="date" name="date" value="@dateText" class="form-control" />
+                <button type="submit" class="dh-btn dh-btn-primary">
+                    <i class="fa-solid fa-filter"></i> Filtrele
+                </button>
+            </form>
+            <form method="post" asp-action="Recheck">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="date" value="@dateText" />
+                <button type="submit" class="dh-btn dh-btn-outline"><i class="fa-solid fa-rotate"></i> Tekrar Kontrol Et</button>
+            </form>
+        </div>
     </div>
 
     @if (TempData["Success"] is string successMsg)
@@ -40,158 +74,328 @@
         <div class="alert alert-danger">@errorMsg</div>
     }
 
-    <form method="get" asp-action="Index" class="d-flex align-items-end gap-2 mb-3">
-        <div>
-            <label class="form-label small mb-1">Tarih</label>
-            <input type="date" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" class="form-control" />
-        </div>
-        <button type="submit" class="btn btn-erp-outline">Filtrele</button>
-        <form method="post" asp-action="Recheck" class="d-inline">
-            <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
-            <button type="submit" class="btn btn-erp-outline">↻ Tekrar Kontrol Et</button>
-        </form>
-        @if (!Model.MerkezSyncEnabled)
-        {
-            <span class="badge text-bg-secondary align-self-center">Merkez senkron kapalı - Merkez sütunu bilgi amaçlı "Kapalı" gösterir</span>
-        }
-    </form>
-
-    <div class="report-kpis2">
-        <div class="rcard report-kpi2" style="--soft:#EDF3F9"><small>TOPLAM FİŞ</small><strong>@Model.TotalCount</strong></div>
-        <div class="rcard report-kpi2" style="--soft:#E8F6F3"><small>EŞLEŞEN</small><strong style="color:#1f7a4d">@Model.MatchedCount</strong></div>
-        <div class="rcard report-kpi2" style="--soft:#FFF8E8"><small>BEKLEYEN</small><strong style="color:#8a6d1a">@Model.PendingCount</strong></div>
-        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>HATALI</small><strong style="color:#8a2a2a">@Model.ErrorCount</strong></div>
-        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>EKSİK MERKEZ</small><strong style="color:#8a2a2a">@Model.MissingCentralCount</strong></div>
-        <div class="rcard report-kpi2" style="--soft:#FBEAEA"><small>EKSİK MUHASEBE</small><strong style="color:#8a2a2a">@Model.MissingAccountingCount</strong></div>
-    </div>
-
-    @if (Model.ZSummary.Count > 0)
+    @if (!Model.MerkezSyncEnabled)
     {
-        <div class="rcard mb-3" style="padding:16px;">
-            <h4 class="mb-2">Z Bazında Karşılaştırma</h4>
-            <div class="report-table-wrap">
-                <div class="rthead" style="grid-template-columns: 140px 100px 100px 100px 100px;"><span>Z NO</span><span>ŞUBE</span><span>MERKEZ</span><span>MUHASEBE</span><span>DURUM</span></div>
-                @foreach (var z in Model.ZSummary)
-                {
-                    <div class="rrow2" style="grid-template-columns: 140px 100px 100px 100px 100px;">
-                        <span class="fw-semibold">@z.ZNo</span>
-                        <span>@z.BranchCount</span>
-                        <span style="@(z.CentralCount < z.BranchCount ? "color:#8a2a2a;font-weight:700;" : "")">@z.CentralCount</span>
-                        <span style="@(z.AccountingCount < z.BranchCount ? "color:#8a2a2a;font-weight:700;" : "")">@z.AccountingCount</span>
-                        <span>
-                            @if (z.IsMismatched)
-                            {
-                                <span class="badge" style="background:#FBE1E1;color:#8a2a2a;">KIRMIZI</span>
-                            }
-                            else
-                            {
-                                <span class="badge" style="background:#DFF5E7;color:#1f7a4d;">YEŞİL</span>
-                            }
-                        </span>
-                    </div>
-                }
-            </div>
+        <div class="dh-banner">
+            <i class="fa-solid fa-circle-info"></i>
+            <b>Merkez senkronizasyonu kapalı.</b> Merkez kayıtları karşılaştırmaya dahil edilmez.
         </div>
     }
 
-    <div class="rcard" style="padding:16px;">
-        <h4 class="mb-2">Fiş Bazında Mutabakat</h4>
-        <div class="report-table-wrap">
-            <div class="rthead" style="grid-template-columns: 90px 100px 90px 90px 90px 90px 90px 1fr 140px;">
-                <span>SAAT</span><span>ADS NO</span><span>Z NO</span><span>TUTAR</span><span>YEREL</span><span>MERKEZ</span><span>MUHASEBE</span><span>DURUM / NEDEN</span><span></span>
-            </div>
-            @if (Model.Rows.Count == 0)
+    <div class="dh-kpis">
+        <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-receipt" style="color:#2456a8;"></i><small>Toplam Fiş</small></div><strong>@Model.TotalCount</strong><span class="dh-kpi-orb" style="background:#EAF1FB;"></span></div>
+        <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-circle-check" style="color:#1f7a4d;"></i><small>Eşleşen</small></div><strong style="color:#1f7a4d;">@Model.MatchedCount</strong><span class="dh-kpi-orb" style="background:#E6F6EC;"></span></div>
+        <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-clock" style="color:#b7791f;"></i><small>Bekleyen</small></div><strong style="color:#b7791f;">@Model.PendingCount</strong><span class="dh-kpi-orb" style="background:#FFF3D6;"></span></div>
+        <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-circle-exclamation" style="color:#c53030;"></i><small>Hatalı</small></div><strong style="color:#c53030;">@Model.ErrorCount</strong><span class="dh-kpi-orb" style="background:#FBE4E4;"></span></div>
+        <div class="dh-kpi">
+            <div class="dh-kpi-top"><i class="fa-solid fa-link" style="color:#5b6675;"></i><small>Eksik Merkez</small></div>
+            @if (Model.MerkezSyncEnabled)
             {
-                <div class="p-3 text-secondary small">Bu tarihte fiş bulunamadı.</div>
+                <strong style="color:#c53030;">@Model.MissingCentralCount</strong>
             }
-            @foreach (var row in Model.Rows)
+            else
             {
-                <div class="rrow2" style="grid-template-columns: 90px 100px 90px 90px 90px 90px 90px 1fr 140px; @(Model.SelectedRow?.RetailSaleId == row.RetailSaleId ? "background:#FFF6DF;" : "")">
-                    <span>@row.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</span>
-                    <span><span class="erp-code-badge">@row.CheckNumber</span></span>
-                    <span>@row.ZNo</span>
-                    <span>@row.GrandTotal.ToString("N2") ₺</span>
-                    <span style="@CellBadgeClass(row.LocalStatus)">@row.LocalStatus</span>
-                    <span style="@CellBadgeClass(row.CentralStatus)">@row.CentralStatus</span>
-                    <span style="@CellBadgeClass(row.AccountingStatus)">@row.AccountingStatus</span>
-                    <span>
-                        <span class="badge" style="@StatusBadgeClass(row.OverallStatus)">@StatusLabel(row.OverallStatus)</span>
-                        @if (row.ErrorReasons.Count > 0)
-                        {
-                            <small class="d-block text-secondary">@string.Join(" · ", row.ErrorReasons)</small>
-                        }
-                    </span>
-                    <span class="d-flex gap-1 flex-wrap">
-                        <a asp-action="Index" asp-route-date="@Model.FilterDate.ToString("yyyy-MM-dd")" asp-route-selected="@row.RetailSaleId" class="btn btn-sm btn-erp-outline">İncele</a>
-                        @if (row.CanRepairZReference)
-                        {
-                            <form method="post" asp-action="RepairZReference" class="d-inline">
-                                <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
-                                <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
-                                <button type="submit" class="btn btn-sm btn-erp">Eksikleri Onar</button>
-                            </form>
-                        }
-                        @if (row.CanRetransmitToCentral)
-                        {
-                            <form method="post" asp-action="RetransmitToCentral" class="d-inline">
-                                <input type="hidden" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" />
-                                <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
-                                <button type="submit" class="btn btn-sm btn-erp-outline">Yeniden Aktar</button>
-                            </form>
-                        }
-                    </span>
-                </div>
+                @Html.Raw("<strong>—</strong><em>Senkron kapalı</em>")
             }
+            <span class="dh-kpi-orb" style="background:#EEF1F5;"></span>
         </div>
+        <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-file-lines" style="color:#5b6675;"></i><small>Eksik Muhasebe</small></div><strong style="color:@(Model.MissingAccountingCount > 0 ? "#c53030" : "#13233a");">@Model.MissingAccountingCount</strong><span class="dh-kpi-orb" style="background:#FBE4E4;"></span></div>
     </div>
 
-    @if (Model.SelectedRow is not null)
-    {
-        <!-- Talimat 1 madde 7 - "yan yana teşhis": bir tarafta sistemdeki kayıt, diğer tarafta
-             gerçek fiş önizlemesi (mevcut Fiş Gör akışına link - uydurma bir ikinci görünüm
-             İCAT EDİLMEDİ, tek gerçek kaynağa yönlendirilir). -->
-        <div class="rcard mt-3" style="padding:16px;">
-            <h4 class="mb-2">Yan Yana Teşhis — @Model.SelectedRow.CheckNumber</h4>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="fw-semibold mb-2">Sistemdeki Kayıt</div>
-                    <table class="table table-sm">
-                        <tr><td>Belge No</td><td>@Model.SelectedRow.DocumentNumber</td></tr>
-                        <tr><td>Adisyon No</td><td>@Model.SelectedRow.CheckNumber</td></tr>
-                        <tr><td>Z No</td><td>@(Model.SelectedRow.ZNo ?? "—")</td></tr>
-                        <tr><td>Tarih/Saat</td><td>@Model.SelectedRow.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td></tr>
-                        <tr><td>Tutar</td><td>@Model.SelectedRow.GrandTotal.ToString("N2") ₺</td></tr>
-                        <tr><td>Yerel</td><td>@Model.SelectedRow.LocalStatus</td></tr>
-                        <tr><td>Merkez</td><td>@Model.SelectedRow.CentralStatus</td></tr>
-                        <tr><td>Muhasebe</td><td>@Model.SelectedRow.AccountingStatus</td></tr>
+    <div class="dh-card">
+        <div class="dh-tabs">
+            <a class="dh-tab @(Model.ActiveTab == "fis" ? "active" : "")" href="@Url.Action("Index", new { date = dateText, tab = "fis" })"><i class="fa-solid fa-file-lines"></i> Fiş Bazında Mutabakat</a>
+            <a class="dh-tab @(Model.ActiveTab == "z" ? "active" : "")" href="@Url.Action("Index", new { date = dateText, tab = "z" })"><i class="fa-solid fa-chart-column"></i> Z Bazında Mutabakat</a>
+            <a class="dh-tab @(Model.ActiveTab == "log" ? "active" : "")" href="@Url.Action("Index", new { date = dateText, tab = "log" })"><i class="fa-solid fa-screwdriver-wrench"></i> Onarım Logu</a>
+            <form method="get" asp-action="Index" class="dh-search">
+                <input type="hidden" name="date" value="@dateText" />
+                <input type="hidden" name="tab" value="@Model.ActiveTab" />
+                <input type="search" name="q" value="@Model.Search" placeholder="Fiş veya Z no ara" class="form-control" />
+            </form>
+        </div>
+
+        @if (Model.ActiveTab == "fis")
+        {
+            <div class="dh-table-wrap">
+                <table class="dh-table">
+                    <thead>
+                        <tr>
+                            <th>Saat</th><th>Adisyon No</th><th>Z No</th><th class="num">Tutar</th>
+                            <th>Yerel</th><th>Merkez</th><th>Muhasebe</th><th>Durum</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Rows.Count == 0)
+                        {
+                            <tr><td colspan="9" class="dh-empty">Bu tarihte fiş bulunamadı.</td></tr>
+                        }
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>@row.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</td>
+                                <td><span class="dh-code">@row.CheckNumber</span></td>
+                                <td>@(row.ZNo ?? "—")</td>
+                                <td class="num">@row.GrandTotal.ToString("N2") ₺</td>
+                                <td><span class="dh-chip" style="@PartChip(row.LocalStatus)">● @row.LocalStatus</span></td>
+                                <td><span class="dh-chip" style="@PartChip(row.CentralStatus)">● @row.CentralStatus</span></td>
+                                <td><span class="dh-chip" style="@PartChip(row.AccountingStatus)">● @row.AccountingStatus</span></td>
+                                <td><span class="dh-chip" style="@StatusChip(row.OverallStatus)">● @StatusText(row.OverallStatus)</span></td>
+                                <td class="text-end">
+                                    <a class="dh-btn dh-btn-sm" href="@Url.Action("Inspect", new { id = row.RetailSaleId, date = dateText })"><i class="fa-solid fa-eye"></i> İncele</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="dh-foot">
+                <span>@Model.Rows.Count fiş</span>
+                <span>Toplam: <strong>@Model.Rows.Sum(r => r.GrandTotal).ToString("N2") ₺</strong></span>
+            </div>
+        }
+        else if (Model.ActiveTab == "z")
+        {
+            <div class="dh-table-wrap">
+                <table class="dh-table">
+                    <thead>
+                        <tr>
+                            <th>Z No</th><th>Tarih</th><th class="num">Fiş Sayısı</th><th class="num">Yerel Toplam</th>
+                            <th>Merkez Toplam</th><th class="num">Muhasebe Toplam</th><th class="num">Fark</th><th>Durum</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ZSummary.Count == 0)
+                        {
+                            <tr><td colspan="9" class="dh-empty">Bu tarihte Z kaydı bulunamadı.</td></tr>
+                        }
+                        @foreach (var z in Model.ZSummary)
+                        {
+                            var diff = z.LocalTotal - z.AccountingTotal;
+                            <tr class="@(Model.ZDetail?.ZPeriodId == z.ZPeriodId ? "dh-selected" : "")">
+                                <td><a class="dh-link" href="@Url.Action("Index", new { date = dateText, tab = "z", zId = z.ZPeriodId })">@z.ZNo</a></td>
+                                <td>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                                <td class="num">@z.BranchCount</td>
+                                <td class="num">@z.LocalTotal.ToString("N2") ₺</td>
+                                <td><span class="dh-chip" style="@PartChip(Model.MerkezSyncEnabled ? (z.CentralCount == z.BranchCount ? "Tam" : "Hatalı") : "Kapalı")">@(Model.MerkezSyncEnabled ? (z.CentralCount == z.BranchCount ? "Tam" : "Hatalı") : "Kapalı")</span></td>
+                                <td class="num">@z.AccountingTotal.ToString("N2") ₺</td>
+                                <td class="num">@diff.ToString("N2") ₺</td>
+                                <td><span class="dh-chip" style="@StatusChip(z.IsMismatched ? "KIRMIZI" : "YESIL")">● @(z.IsMismatched ? "Farklı" : "Eşleşti")</span></td>
+                                <td class="text-end">
+                                    <a class="dh-btn dh-btn-sm" href="@Url.Action("Index", new { date = dateText, tab = "z", zId = z.ZPeriodId })">Z Detayı</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.ZDetail is { } zd)
+            {
+                var zDiff = zd.LocalTotal - zd.AccountingTotal;
+                <div class="dh-zdetail">
+                    <div class="dh-zdetail-head">
+                        <div>
+                            <h3>Z Detayı • @zd.ZNo</h3>
+                            <p>@zd.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                        </div>
+                        <a class="dh-btn dh-btn-outline" target="_blank" href="@Url.Action("Detail", "ZPeriods", new { id = zd.ZPeriodId })"><i class="fa-solid fa-file-lines"></i> Z Raporunu Gör</a>
+                    </div>
+
+                    <div class="dh-grid2">
+                        <div class="dh-panel">
+                            <h4>Kayıt Karşılaştırması</h4>
+                            <table class="dh-table dh-table-compact">
+                                <thead><tr><th>Kontrol</th><th>Yerel</th><th>Merkez</th><th>Muhasebe</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Fiş Sayısı</td><td>@zd.LocalCount</td><td><span class="dh-chip" style="@PartChip(Model.MerkezSyncEnabled ? "Tam" : "Kapalı")">@(Model.MerkezSyncEnabled ? "Tam" : "Kapalı")</span></td><td>@zd.Rows.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor")</td></tr>
+                                    <tr><td>Satış Toplamı</td><td>@zd.LocalTotal.ToString("N2") ₺</td><td><span class="dh-chip" style="@PartChip("Kapalı")">Kapalı</span></td><td>@zd.AccountingTotal.ToString("N2") ₺</td></tr>
+                                    <tr><td>Kayıt Durumu</td><td><span class="dh-chip" style="@PartChip(zd.Rows.All(x => x.LocalStatus == "Tam") ? "Tam" : "Hatalı")">@(zd.Rows.All(x => x.LocalStatus == "Tam") ? "Tam" : "Eksik")</span></td><td><span class="dh-chip" style="@PartChip("Kapalı")">Kapalı</span></td><td><span class="dh-chip" style="@PartChip(zd.Rows.All(x => x.AccountingStatus is "Tam" or "Gerekmiyor") ? "Tam" : "Hatalı")">@(zd.Rows.All(x => x.AccountingStatus is "Tam" or "Gerekmiyor") ? "Tam" : "Eksik")</span></td></tr>
+                                </tbody>
+                            </table>
+                            <p class="dh-note">
+                                @if (zDiff == 0 && zd.Rows.All(x => x.LocalStatus == "Tam" && x.AccountingStatus is "Tam" or "Gerekmiyor"))
+                                {
+                                    <span class="text-success">✓ Yerel ve muhasebe kayıtları eşleşiyor.</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#8a2a2a;">Yerel ve muhasebe kayıtları arasında fark var.</span>
+                                }
+                            </p>
+                        </div>
+
+                        <div class="dh-panel">
+                            <div class="dh-panel-head">
+                                <h4>Mutabakat Sonucu</h4>
+                                <span class="dh-chip" style="@StatusChip(zDiff == 0 ? "YESIL" : "KIRMIZI")">@(zDiff == 0 ? "Fark yok" : "Fark var")</span>
+                            </div>
+                            <div class="dh-kv"><span>Fiş farkı</span><strong>@(zd.LocalCount - zd.Rows.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor"))</strong></div>
+                            <div class="dh-kv"><span>Tutar farkı</span><strong>@zDiff.ToString("N2") ₺</strong></div>
+                            <p class="dh-note">Merkez karşılaştırması @(Model.MerkezSyncEnabled ? "açık." : "kapalı.")</p>
+                        </div>
+                    </div>
+
+                    <div class="dh-panel">
+                        <div class="dh-panel-head">
+                            <h4>Bu Z'ye Bağlı Fişler</h4>
+                            <a class="dh-btn dh-btn-outline dh-btn-sm" href="@Url.Action("Index", new { date = dateText, tab = "fis" })">Fiş Bazında Gör</a>
+                        </div>
+                        <table class="dh-table dh-table-compact">
+                            <thead><tr><th>Saat</th><th>Adisyon No</th><th class="num">Tutar</th><th>Yerel</th><th>Muhasebe</th><th></th></tr></thead>
+                            <tbody>
+                                @if (zd.Rows.Count == 0)
+                                {
+                                    <tr><td colspan="6" class="dh-empty">Bu Z'ye bağlı fiş yok.</td></tr>
+                                }
+                                @foreach (var row in zd.Rows)
+                                {
+                                    <tr>
+                                        <td>@row.IssuedAtUtc.ToLocalTime().ToString("HH:mm")</td>
+                                        <td><span class="dh-code">@row.CheckNumber</span></td>
+                                        <td class="num">@row.GrandTotal.ToString("N2") ₺</td>
+                                        <td><span class="dh-chip" style="@PartChip(row.LocalStatus)">@row.LocalStatus</span></td>
+                                        <td><span class="dh-chip" style="@PartChip(row.AccountingStatus)">@row.AccountingStatus</span></td>
+                                        <td class="text-end"><a class="dh-btn dh-btn-sm" href="@Url.Action("Inspect", new { id = row.RetailSaleId, date = dateText })"><i class="fa-solid fa-eye"></i> İncele</a></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="dh-table-wrap">
+                <table class="dh-table">
+                    <thead>
+                        <tr><th>Tarih / Saat</th><th>Kullanıcı</th><th>İşlem</th><th>Kayıt</th><th>Değişiklik</th><th>Detay</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentRepairs.Count == 0)
+                        {
+                            <tr><td colspan="6" class="dh-empty">Henüz onarım/denetim kaydı yok.</td></tr>
+                        }
+                        @foreach (var log in Model.RecentRepairs)
+                        {
+                            <tr>
+                                <td>@log.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@log.UserName</td>
+                                <td><span class="dh-chip" style="@ActionChip(log.Action)">@ActionLabel(log.Action)</span></td>
+                                <td>@(log.EntityName) #@log.EntityId</td>
+                                <td>@(log.Action == "Added" ? "Yeni kayıt oluşturuldu" : log.Action == "Modified" ? "Kayıt güncellendi" : "Kayıt silindi")</td>
+                                <td>
+                                    @if (log.EntityName == "RetailSale" && int.TryParse(log.EntityId, out var logSaleId))
+                                    {
+                                        <a class="dh-link" href="@Url.Action("Inspect", new { id = logSaleId, date = dateText })">Detayı Gör</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <details class="dh-raw mt-3">
+                <summary><strong>Teknik Kayıt Ayrıntıları</strong> <span class="text-secondary small">Eski / yeni değerler ve ham kayıt ayrıntıları</span></summary>
+                <div class="dh-table-wrap mt-2">
+                    <table class="dh-table dh-table-compact">
+                        <thead><tr><th>Tarih / Saat</th><th>Kayıt</th><th>Eski değer</th><th>Yeni değer</th></tr></thead>
+                        <tbody>
+                            @foreach (var raw in Model.RecentRepairs.Where(x => x.OldValuesJson is not null || x.NewValuesJson is not null).Take(30))
+                            {
+                                <tr>
+                                    <td>@raw.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@raw.EntityName #@raw.EntityId</td>
+                                    <td><code class="small">@(raw.OldValuesJson ?? "—")</code></td>
+                                    <td><code class="small">@(raw.NewValuesJson ?? "—")</code></td>
+                                </tr>
+                            }
+                        </tbody>
                     </table>
                 </div>
-                <div class="col-md-6">
-                    <div class="fw-semibold mb-2">Gerçek Fiş Kaynağı</div>
-                    <a asp-controller="Restaurant" asp-action="Receipt" asp-route-id="@Model.SelectedRow.RetailSaleId" target="_blank" class="btn btn-erp-outline">🔍 Fişi Gör (yeni sekmede)</a>
-                    <div class="form-text mt-2">Tutar/miktar/ürün gibi finansal alanlar yalnızca gerçek fiş kaynağından doğrulandıktan sonra elle düzeltilir - sistem bu alanları asla tahmin etmez.</div>
-                </div>
+            </details>
+        }
+    </div>
+
+    @if (Model.ActiveTab == "fis")
+    {
+        var localOk = Model.Rows.All(r => r.LocalStatus == "Tam");
+        var acctOk = Model.Rows.All(r => r.AccountingStatus is "Tam" or "Gerekmiyor");
+        <div class="dh-card dh-summary">
+            <h3><i class="fa-solid fa-file-lines"></i> Kontrol Özeti</h3>
+            <div class="dh-summary-grid">
+                <div class="dh-sum-item"><span class="dh-sum-ico @(localOk ? "ok" : "bad")"><i class="fa-solid @(localOk ? "fa-check" : "fa-xmark")"></i></span><div><b>@(localOk ? "Yerel kayıtlar tamam" : "Yerel kayıtlarda eksik var")</b><small>@(localOk ? "Tüm fişler yerel sistemde mevcut." : "Bazı fişler yerel sistemde eksik.")</small></div></div>
+                <div class="dh-sum-item"><span class="dh-sum-ico @(acctOk ? "ok" : "bad")"><i class="fa-solid @(acctOk ? "fa-check" : "fa-xmark")"></i></span><div><b>@(acctOk ? "Muhasebe kayıtları eşleşiyor" : "Muhasebe kayıtlarında eksik var")</b><small>@(acctOk ? "Yerel kayıtlar muhasebe ile uyumlu." : "Bazı fişler muhasebeye aktarılmamış.")</small></div></div>
+                <div class="dh-sum-item"><span class="dh-sum-ico off"><i class="fa-solid fa-minus"></i></span><div><b>Merkez karşılaştırması @(Model.MerkezSyncEnabled ? "açık" : "kapalı")</b><small>@(Model.MerkezSyncEnabled ? "Merkez kayıtları karşılaştırmaya dahildir." : "Merkez senkronizasyonu kapalı olduğu için merkez kayıtları karşılaştırmaya dahil edilmez.")</small></div></div>
             </div>
         </div>
     }
 
-    @if (Model.RecentRepairs.Count > 0)
-    {
-        <div class="rcard mt-3" style="padding:16px;">
-            <h4 class="mb-2">Onarım Logu</h4>
-            <div class="report-table-wrap">
-                <div class="rthead" style="grid-template-columns: 140px 100px 100px 130px 1fr;"><span>Tarih/Saat</span><span>Kullanıcı</span><span>İşlem</span><span>Kayıt</span><span>Eski → Yeni</span></div>
-                @foreach (var log in Model.RecentRepairs)
-                {
-                    <div class="rrow2" style="grid-template-columns: 140px 100px 100px 130px 1fr;">
-                        <span>@log.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
-                        <span>@log.UserId</span>
-                        <span>@log.Action</span>
-                        <span>@log.EntityName #@log.EntityId</span>
-                        <span class="small text-secondary text-truncate" style="max-width:400px;" title="@log.OldValuesJson → @log.NewValuesJson">@(log.OldValuesJson ?? "—") → @(log.NewValuesJson ?? "—")</span>
-                    </div>
-                }
-            </div>
-        </div>
-    }
 </div>
+
+<style>
+    .dh-page { padding-bottom: 32px; }
+    .dh-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .dh-title { font-size: 32px; font-weight: 800; margin: 0; color: #0f1f3a; letter-spacing: -.01em; }
+    .dh-sub { margin: 4px 0 0; color: #475569; font-size: 17px; }
+    .dh-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .dh-filter { display: flex; gap: 12px; align-items: center; }
+    .dh-filter input[type=date] { width: 190px; height: 46px; border-radius: 10px; border: 1px solid #d5deea; font-size: 15px; }
+    .dh-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; height: 46px; border-radius: 10px; border: 1px solid #2563eb; background: #fff; color: #1d4ed8; font-weight: 600; font-size: 16px; text-decoration: none; cursor: pointer; }
+    .dh-btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 2px 6px rgba(37,99,235,.28); }
+    .dh-btn-outline { background: #fff; }
+    .dh-btn-sm { padding: 4px 14px; height: auto; font-size: 14px; border-radius: 8px; }
+    .dh-banner { background: #eef2f7; border: 1px solid #dde4ee; color: #1e293b; border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; font-size: 15px; }
+    .dh-banner i { color: #64748b; margin-right: 8px; }
+    .dh-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .dh-kpi { position: relative; overflow: hidden; background: #fff; border: 1px solid #e6ecf4; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(16,24,40,.06); min-height: 112px; }
+    .dh-kpi-top { display: flex; gap: 10px; align-items: center; }
+    .dh-kpi-top i { font-size: 22px; line-height: 1; }
+    .dh-kpi small { color: #475569; font-size: 15px; font-weight: 500; }
+    .dh-kpi strong { display: block; font-size: 34px; font-weight: 800; color: #13233a; margin-top: 10px; line-height: 1; position: relative; z-index: 1; }
+    .dh-kpi em { display: block; font-size: 13px; color: #7a8594; font-style: normal; margin-top: 8px; position: relative; z-index: 1; }
+    .dh-kpi-orb { position: absolute; right: -22px; bottom: -22px; width: 84px; height: 84px; border-radius: 50%; opacity: .9; }
+    .dh-card { background: #fff; border: 1px solid #e6ecf4; border-radius: 12px; padding: 0 18px 16px; box-shadow: 0 1px 3px rgba(16,24,40,.06); margin-bottom: 18px; }
+    .dh-tabs { display: flex; gap: 28px; align-items: center; border-bottom: 1px solid #e6ecf4; margin: 0 -18px 16px; padding: 0 18px; flex-wrap: wrap; }
+    .dh-tab { padding: 18px 4px 14px; border-bottom: 3px solid transparent; color: #475569; text-decoration: none; font-weight: 500; font-size: 17px; margin-bottom: -1px; }
+    .dh-tab i { margin-right: 6px; }
+    .dh-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .dh-search { margin-left: auto; }
+    .dh-search input { width: 270px; height: 44px; border-radius: 10px; font-size: 15px; }
+    .dh-table-wrap { overflow-x: auto; border: 1px solid #e6ecf4; border-radius: 10px; }
+    .dh-table { width: 100%; border-collapse: collapse; font-size: 15px; color: #1e293b; }
+    .dh-table th { text-align: left; color: #1e293b; font-size: 14px; font-weight: 700; padding: 14px 12px; background: #f5f7fb; border-bottom: 1px solid #e6ecf4; }
+    .dh-table td { padding: 14px 12px; border-bottom: 1px solid #edf1f7; vertical-align: middle; white-space: nowrap; }
+    .dh-table tbody tr:last-child td { border-bottom: 0; }
+    .dh-table .num { text-align: right; }
+    .dh-table-compact td, .dh-table-compact th { padding: 9px 10px; font-size: 14px; }
+    .dh-foot { display: flex; align-items: center; gap: 48px; padding: 14px 6px 0; color: #475569; font-size: 15px; }
+    .dh-foot strong { color: #0f1f3a; font-size: 16px; margin-left: 6px; }
+    .dh-summary { padding-top: 16px; }
+    .dh-summary h3 { font-size: 20px; font-weight: 700; margin: 0 0 14px; color: #0f1f3a; }
+    .dh-summary h3 i { margin-right: 8px; color: #475569; }
+    .dh-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+    .dh-sum-item { display: flex; gap: 14px; align-items: flex-start; padding: 0 22px; border-left: 1px solid #e6ecf4; }
+    .dh-sum-item:first-child { border-left: 0; padding-left: 0; }
+    .dh-sum-item b { display: block; font-size: 16px; color: #0f1f3a; }
+    .dh-sum-item small { color: #64748b; font-size: 14px; }
+    .dh-sum-ico { flex: 0 0 38px; height: 38px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
+    .dh-sum-ico.ok { background: #22a55b; } .dh-sum-ico.bad { background: #dc2626; } .dh-sum-ico.off { background: #94a3b8; }
+    .dh-selected { background: #eaf2ff; }
+    .dh-empty { text-align: center; color: #7a8594; padding: 24px 8px; }
+    .dh-chip { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .dh-code { background: #fdeccb; color: #7a4a00; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 14px; }
+    .dh-link { color: #2563eb; font-weight: 600; text-decoration: none; }
+    .dh-zdetail { margin-top: 18px; border-top: 1px solid #e3e9f2; padding-top: 16px; }
+    .dh-zdetail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .dh-zdetail-head h3 { margin: 0; font-size: 20px; color: #13233a; }
+    .dh-zdetail-head p { margin: 2px 0 0; color: #5b6675; font-size: 13px; }
+    .dh-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .dh-panel { border: 1px solid #e3e9f2; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .dh-panel h4 { font-size: 15px; margin: 0 0 10px; color: #13233a; }
+    .dh-panel-head { display: flex; justify-content: space-between; align-items: center; }
+    .dh-kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f3f8; font-size: 14px; }
+    .dh-note { font-size: 13px; color: #5b6675; margin: 10px 0 0; }
+    @@media (max-width: 1100px) { .dh-summary-grid { grid-template-columns: 1fr; gap: 14px; } .dh-sum-item { border-left: 0; padding: 0; } .dh-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dh-grid2 { grid-template-columns: 1fr; } }
+    @@media (max-width: 640px) { .dh-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dh-search input { width: 100%; } }
+</style>

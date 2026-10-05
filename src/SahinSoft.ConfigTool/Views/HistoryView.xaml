@@ -1,0 +1,48 @@
+<UserControl x:Class="SahinSoft.ConfigTool.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="İşlem Geçmişi" Style="{StaticResource PageTitleStyle}"/>
+        <TextBlock Text="Bu araçla yapılan tüm bağlantı/bakım/silme işlemlerinin kaydı." Style="{StaticResource PageSubtitleStyle}"/>
+
+        <Border Style="{StaticResource CardStyle}" Margin="0,24,0,0">
+            <StackPanel>
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="100"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="TARİH/SAAT" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/>
+                    <TextBlock Grid.Column="1" Text="İŞLEM / DETAY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/>
+                    <TextBlock Grid.Column="2" Text="VERİTABANI" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/>
+                    <TextBlock Grid.Column="3" Text="DURUM" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/>
+                </Grid>
+                <Separator/>
+                <ItemsControl x:Name="LogItems" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,10,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="100"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding When}" FontSize="12.5"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Operation}" FontSize="12.5" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{Binding Database}" FontSize="12.5"/>
+                                <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="12.5" Foreground="{Binding StatusColor}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="EmptyText" Text="Henüz işlem yapılmadı." FontSize="12.5" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

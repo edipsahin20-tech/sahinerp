@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
 using SahinSoft.Web.Data;
+using SahinSoft.Web.Models.Api;
 
 namespace SahinSoft.Web.Services;
 
@@ -41,6 +42,15 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             throw new InvalidOperationException("Yalnızca satırı bulunan taslak fişler onaylanabilir.");
         }
 
+        if (receipt.OriginBranchId is { } originBranch)
+        {
+            var accountError = await CheckBranchAccountsAsync(originBranch, receipt.Lines.Select(x => x.FinancialAccountId), cancellationToken);
+            if (accountError is not null)
+            {
+                throw new InvalidOperationException(accountError);
+            }
+        }
+
         await PostReceiptAsync(receipt, cancellationToken);
 
         receipt.Status = PaymentReceiptStatus.Approved;
@@ -52,14 +62,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             EventType = receipt.ReceiptType == ReceiptType.Collection
                 ? "CollectionReceiptApproved"
                 : "PaymentReceiptApproved",
-            PayloadJson = JsonSerializer.Serialize(new
-            {
-                receipt.RecordId,
-                receipt.ReceiptNumber,
-                receipt.ReceiptType,
-                receipt.CustomerId,
-                receipt.TotalAmount
-            })
+            PayloadJson = JsonSerializer.Serialize(await BuildSyncPayloadAsync(receipt, null, cancellationToken))
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -101,6 +104,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             Credit = receipt.ReceiptType == ReceiptType.Collection ? receipt.TotalAmount : 0,
             CustomerId = receipt.CustomerId,
             InvoiceId = receipt.InvoiceId,
+            OriginBranchId = receipt.OriginBranchId,
             Description = receipt.Description
         };
         dbContext.CurrentAccountTransactions.Add(accountTransaction);
@@ -119,6 +123,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
                 Description = line.Description ?? receipt.Description,
                 FinancialAccountId = line.FinancialAccountId,
                 CustomerId = receipt.CustomerId,
+                OriginBranchId = receipt.OriginBranchId,
                 CurrentAccountTransaction = accountTransaction
             };
             line.CurrentAccountTransaction = accountTransaction;
@@ -126,6 +131,62 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
         }
 
         return Task.CompletedTask;
+    }
+
+    // Restoran terminal şubesine göre hesap kuralı: kasa/banka ya o şubeye ait olmalı ya da ortak (IsShared) olmalı.
+    // Başka şubenin kasası seçilirse işlem reddedilir (tahmin/otomatik düzeltme yok).
+    public async Task<string?> CheckBranchAccountsAsync(int? branchId, IEnumerable<int> accountIds, CancellationToken cancellationToken = default)
+    {
+        if (branchId is null)
+        {
+            return null;
+        }
+
+        var ids = accountIds.Distinct().ToList();
+        var accounts = await dbContext.FinancialAccounts.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.Id, x.Name, x.IsActive, x.BranchId, x.IsShared })
+            .ToListAsync(cancellationToken);
+        var invalid = accounts.Where(x => !x.IsActive || (x.BranchId != branchId && !x.IsShared)).Select(x => x.Name).ToList();
+        var missing = ids.Count - accounts.Count;
+        if (invalid.Count == 0 && missing == 0)
+        {
+            return null;
+        }
+
+        return "Bu terminal şubesinde kullanılamayan hesap(lar): " + (invalid.Count > 0 ? string.Join(", ", invalid) : "bulunamayan hesap") + ". Yalnızca seçili şubenin kasa/bankası veya ortak hesaplar kullanılabilir.";
+    }
+
+    // Merkez senkronu için zenginleştirilmiş yük: müşteri kodu, hesap kodları, kaynak şube kodu.
+    private async Task<PaymentReceiptSyncPayload> BuildSyncPayloadAsync(PaymentReceipt receipt, string? reason, CancellationToken cancellationToken)
+    {
+        var customerCode = await dbContext.Customers.AsNoTracking()
+            .Where(x => x.Id == receipt.CustomerId).Select(x => x.Code).SingleAsync(cancellationToken);
+        var accountIds = receipt.Lines.Select(x => x.FinancialAccountId).Distinct().ToList();
+        var accountCodes = await dbContext.FinancialAccounts.AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Code, cancellationToken);
+        var branchCode = receipt.OriginBranchId is { } ob
+            ? await dbContext.Branches.AsNoTracking().Where(x => x.Id == ob).Select(x => x.Code).SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        return new PaymentReceiptSyncPayload
+        {
+            ReceiptRecordId = receipt.RecordId,
+            ReceiptNumber = receipt.ReceiptNumber,
+            ReceiptType = (int)receipt.ReceiptType,
+            ReceiptDateUtc = receipt.ReceiptDateUtc,
+            CustomerCode = customerCode,
+            TotalAmount = receipt.TotalAmount,
+            BranchCode = branchCode,
+            Description = receipt.Description,
+            Reason = reason,
+            Lines = receipt.Lines.OrderBy(x => x.LineNumber).Select(x => new PaymentReceiptSyncLine
+            {
+                AccountCode = accountCodes.GetValueOrDefault(x.FinancialAccountId, string.Empty),
+                Amount = x.Amount,
+                Description = x.Description
+            }).ToList()
+        };
     }
 
     public Task CancelAsync(
@@ -220,6 +281,8 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
                         Debit = originalAccountTransaction.Credit,
                         Credit = originalAccountTransaction.Debit,
                         CustomerId = originalAccountTransaction.CustomerId,
+                        // Ters kayıt, orijinalin kaynak şubesini korur (şube dağılımı iptalde de doğru kalsın).
+                        OriginBranchId = originalAccountTransaction.OriginBranchId,
                         Description = $"Tahsilat/tediye iptali - {reason}",
                         ReversalOfId = originalAccountTransaction.Id
                     };
@@ -239,6 +302,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
                 Description = $"Tahsilat/tediye iptali - {reason}",
                 FinancialAccountId = originalFinancialTransaction.FinancialAccountId,
                 CustomerId = originalFinancialTransaction.CustomerId,
+                OriginBranchId = originalFinancialTransaction.OriginBranchId,
                 CurrentAccountTransaction = reversalAccountTransaction,
                 ReversalOfId = originalFinancialTransaction.Id
             });
@@ -287,15 +351,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             EventType = receipt.ReceiptType == ReceiptType.Collection
                 ? "CollectionReceiptCancelled"
                 : "PaymentReceiptCancelled",
-            PayloadJson = JsonSerializer.Serialize(new
-            {
-                receipt.RecordId,
-                receipt.ReceiptNumber,
-                receipt.ReceiptType,
-                receipt.CustomerId,
-                receipt.TotalAmount,
-                Reason = reason
-            })
+            PayloadJson = JsonSerializer.Serialize(await BuildSyncPayloadAsync(receipt, reason, cancellationToken))
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);

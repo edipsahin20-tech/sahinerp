@@ -1,3 +1,4 @@
+using SahinSoft.Domain.Entities;
 namespace SahinSoft.Web.Services;
 
 /// <summary>
@@ -18,10 +19,11 @@ public sealed class RestaurantAutoZBackgroundService(
             {
                 using var scope = scopeFactory.CreateScope();
                 var postingService = scope.ServiceProvider.GetRequiredService<RestaurantPostingService>();
-                var closed = await postingService.RunAutomaticZCheckAsync(DateTime.UtcNow, stoppingToken);
-                if (closed is not null)
+                var closedPeriods = await postingService.RunAutomaticZCheckAsync(DateTime.UtcNow, stoppingToken);
+                foreach (var closed in closedPeriods)
                 {
-                    logger.LogInformation("Otomatik Z: Z-{Id:D6} oluşturuldu ({ReceiptCount} fiş, {NetTotal} TL).", closed.Id, closed.ReceiptCount, closed.NetTotal);
+                    // Her şube ayrı izlenir: kapanan şubenin kimliği, Z numarası ve dönem Id'si loglanır.
+                    logger.LogInformation("Otomatik Z: şube {BranchId} {ZLabel} oluşturuldu (dönem {PeriodId}, {ReceiptCount} fiş, {NetTotal} TL).", closed.BranchId, RestaurantZPeriod.LabelFor(closed.Id, closed.ZNumber), closed.Id, closed.ReceiptCount, closed.NetTotal);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

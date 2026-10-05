@@ -8,6 +8,10 @@ public sealed class RestaurantDataHealthViewModel
     public DateOnly FilterDate { get; set; }
     public bool MerkezSyncEnabled { get; set; }
 
+    // "fis" | "z" | "log" - Fiş Bazında Mutabakat / Z Bazında Mutabakat / Onarım Logu
+    public string ActiveTab { get; set; } = "fis";
+    public string? Search { get; set; }
+
     public int TotalCount { get; set; }
     public int MatchedCount { get; set; }
     public int PendingCount { get; set; }
@@ -19,7 +23,9 @@ public sealed class RestaurantDataHealthViewModel
     public List<RestaurantDataHealthRow> Rows { get; set; } = [];
     public List<RestaurantDataHealthAuditRow> RecentRepairs { get; set; } = [];
 
+    public RestaurantDataHealthZDetail? ZDetail { get; set; }
     public RestaurantDataHealthRow? SelectedRow { get; set; }
+    public List<RestaurantDataHealthAuditRow> SelectedRowAudits { get; set; } = [];
 }
 
 public sealed record RestaurantDataHealthZSummaryRow(
@@ -28,7 +34,24 @@ public sealed record RestaurantDataHealthZSummaryRow(
     int BranchCount,
     int CentralCount,
     int AccountingCount,
-    bool IsMismatched);
+    bool IsMismatched,
+    decimal LocalTotal,
+    decimal AccountingTotal,
+    DateTime OpenedAtUtc,
+    DateTime? ClosedAtUtc);
+
+// Z Detayı paneli - seçilen Z'nin Yerel/Merkez/Muhasebe karşılaştırması ve bağlı fişler.
+public sealed class RestaurantDataHealthZDetail
+{
+    public int ZPeriodId { get; set; }
+    public string ZNo { get; set; } = string.Empty;
+    public DateTime OpenedAtUtc { get; set; }
+    public DateTime? ClosedAtUtc { get; set; }
+    public int LocalCount { get; set; }
+    public decimal LocalTotal { get; set; }
+    public decimal AccountingTotal { get; set; }
+    public List<RestaurantDataHealthRow> Rows { get; set; } = [];
+}
 
 public sealed class RestaurantDataHealthRow
 {
@@ -57,7 +80,7 @@ public sealed class RestaurantDataHealthRow
 
 public sealed record RestaurantDataHealthAuditRow(
     DateTime CreatedAtUtc,
-    string UserId,
+    string UserName,
     string Action,
     string EntityName,
     string? EntityId,

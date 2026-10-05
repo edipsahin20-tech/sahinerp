@@ -18,6 +18,12 @@
                 </select>
             </div>
             <div class="erp-field">
+                <label>Şube</label>
+                <select name="branchId" class="form-select" style="min-width: 180px;" asp-items="Model.Branches" onchange="this.form.submit()">
+                    <option value="">Tüm şubeler</option>
+                </select>
+            </div>
+            <div class="erp-field">
                 <label>Başlangıç</label>
                 <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
             </div>
@@ -54,6 +60,7 @@
                     <tr>
                         <th data-sort="date">Tarih</th>
                         <th data-sort="text">Hesap</th>
+                        <th data-sort="text">Şube</th>
                         <th data-sort="text">Hareket</th>
                         <th data-sort="text">Cari</th>
                         <th data-sort="text">Belge No</th>
@@ -68,6 +75,7 @@
                     <tr>
                         <td>@line.TransactionDateUtc.ToString("dd.MM.yyyy")</td>
                         <td class="fw-semibold">@line.AccountName</td>
+                        <td>@(line.BranchName ?? "—")</td>
                         <td>@line.TransactionType</td>
                         <td>@line.CustomerName</td>
                         <td><span class="erp-code-badge">@line.DocumentNumber</span></td>
@@ -88,7 +96,7 @@
                 }
                 @if (Model.Lines.Count == 0)
                 {
-                    <tr data-live-search-empty><td colspan="8" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
+                    <tr data-live-search-empty><td colspan="9" class="text-center text-secondary py-4">Bu filtrelerde hareket bulunamadı.</td></tr>
                 }
                 </tbody>
             </table>
@@ -121,7 +129,7 @@
                 });
                 var totalIn = 0, totalOut = 0;
                 rows.forEach(function (row) {
-                    var amount = parseAmount(row.cells[6].textContent);
+                    var amount = parseAmount(row.cells[row.cells.length - 1].textContent);
                     if (amount >= 0) totalIn += amount; else totalOut += -amount;
                 });
                 inEl.textContent = '+' + fmt(totalIn);

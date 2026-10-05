@@ -25,6 +25,9 @@
     <div class="erp-toolbar-actions">
         <a asp-action="Index" class="btn btn-erp-outline btn-sm">Liste</a>
         <button type="button" class="btn btn-erp-outline btn-sm" onclick="window.print()">Yazdır</button>
+        <form method="post" asp-action="PrintReceipt" asp-route-id="@Model.Id" class="d-inline">
+            <button type="submit" class="btn btn-erp-outline btn-sm">Makbuz Yazdır (80mm)</button>
+        </form>
         @if (Model.Status == PaymentReceiptStatus.Draft)
         {
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-erp-outline btn-sm">Düzenle</a>

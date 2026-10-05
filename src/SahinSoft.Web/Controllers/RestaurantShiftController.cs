@@ -13,7 +13,7 @@ namespace SahinSoft.Web.Controllers;
 // vardiyayı açar, hepsi aynı açık vardiyayı görür/kullanır, hangisi isterse kapatabilir. Bkz.
 // RestaurantPostingService.OpenShiftAsync yorumu.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
-public sealed class RestaurantShiftController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantShiftController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     public async Task<IActionResult> Index()
     {

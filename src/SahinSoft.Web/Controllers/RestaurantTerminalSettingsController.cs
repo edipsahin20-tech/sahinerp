@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,22 +16,17 @@ namespace SahinSoft.Web.Controllers;
 // bir "restoran-only" ayar deposu değil, sadece kiosk terminaline özel SADE bir arayüzdür
 // (BranchesController/RestaurantCashRegistersController/SettingsController'ın genel çok-sekmeli
 // ERP ekranlarına yönlendirmez).
+//
+// Edip, 2026-10-02: "sadece burdan bu bölümü kaldır, ayarları artık muhasebe klasöründeki
+// veritabanı ayarlarından yapacağız" - burada duran "Bağlantı Modu" (Bulut/Yerel + Merkez Sync)
+// bölümü KALDIRILDI. Veritabanı bağlantısı artık TEK yerden yönetiliyor:
+// SahinSoft.ConfigTool (SahinSoftVeritabaniAyarlari.exe) - ikisi de appsettings.Local.json'a
+// yazıyordu, ama iki ayrı ekran olması kafa karıştırıyordu. Merkez Sync (offline terminal -
+// merkez senkronu) bu kaldırmayla birlikte ŞU AN HİÇBİR YERDEN AYARLANAMIYOR - Edip'e açıkça
+// soruldu, bilerek bu şekilde onayladı.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
-public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, IConfiguration configuration) : Controller
+public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext) : Controller
 {
-    // Bu makineye özel katman (Program.cs: "AddJsonFile(...)") - GİT'e HİÇ girmez. Bağlantı
-    // dizesi/senkron ayarları BİLEREK buraya yazılır, ana appsettings.json'a DEĞİL - o dosya
-    // paylaşımlı/varsayılan (bulut) yapılandırmayı taşır ve asla bu ekrandan değiştirilmez.
-    //
-    // %ProgramData%\SahinSoft altında, UYGULAMANIN KENDİ KURULUM KLASÖRÜNDE DEĞİL (Edip,
-    // 2026-09-27, gerçek hata: "appsettings.Local.json dosyasına yazılamadı - Access to the path
-    // 'C:\SitesSahinSoft\appsettings.Local.json' is denied") - IIS altındaki bir site klasörü
-    // genellikle SADECE OKUNABİLİR (app pool kimliğinin yazma izni yoktur, her publish'te de
-    // üzerine yazılır); ProgramData ise TAM BUNUN İÇİN VAR OLAN, standart, her zaman yazılabilir
-    // makine-geneli ayar konumu. Program.cs'teki AddJsonFile AYNI formülü kullanıyor - path'i
-    // değiştirmek isterseniz İKİSİNİ BİRDEN güncelleyin.
-    private string LocalOverridePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SahinSoft", "appsettings.Local.json");
-
     public async Task<IActionResult> Index()
     {
         var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
@@ -52,116 +45,60 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             FiscalDeviceType = settings.FiscalDeviceType,
             FiscalAgentUrl = settings.FiscalAgentUrl
         };
-        PopulateConnectionMode(vm);
+
+        // Bu tarayıcının (terminalin) mevcut şube ve kasa seçimi - çerezlerden okunur.
+        vm.TerminalBranchId = int.TryParse(Request.Cookies[TerminalBranchCookie], out var tb) ? tb : null;
+        if (int.TryParse(Request.Cookies[TerminalCashCookie], out var cashId))
+        {
+            vm.TerminalRegisterId = vm.CashRegisters
+                .FirstOrDefault(x => x.CashFinancialAccountId == cashId && x.BranchId == vm.TerminalBranchId)?.Id;
+        }
         return View(vm);
     }
 
-    private void PopulateConnectionMode(RestaurantTerminalSettingsViewModel vm)
+    private const string TerminalBranchCookie = "ss_terminal_branch";
+    private const string TerminalCashCookie = "ss_terminal_cash";
+
+    // Terminalin şubesini ve (varsa) kasasını bu tarayıcının çerezine yazar. Kasa, seçilen şubenin
+    // aktif bir kasa tanımı olmalıdır; kasa seçilmezse kasa çerezi temizlenir.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetTerminal(int branchId, int? registerId)
     {
-        vm.MerkezPollIntervalSeconds = 120;
-        vm.LocalDatabase = "SahinSoftDb";
-        vm.LocalUseWindowsAuth = true;
-        vm.CloudDatabase = "SahinSoftDb";
-
-        var overrideExists = System.IO.File.Exists(LocalOverridePath);
-        JsonObject? root = null;
-        string? overrideConnString = null;
-        string? savedMode = null;
-
-        if (overrideExists)
+        var branchExists = await dbContext.Branches.AnyAsync(x => x.Id == branchId && x.IsActive);
+        if (!branchExists)
         {
-            try
-            {
-                root = JsonNode.Parse(System.IO.File.ReadAllText(LocalOverridePath))?.AsObject();
-                if (root is not null)
-                {
-                    vm.HasLocalOverrideFile = true;
-                    overrideConnString = root["ConnectionStrings"]?["DefaultConnection"]?.GetValue<string>();
-                    savedMode = root["TerminalConnectionMode"]?.GetValue<string>();
+            TempData["Error"] = "Seçilen şube bulunamadı.";
+            return RedirectToAction(nameof(Index));
+        }
 
-                    var merkez = root["MerkezSync"];
-                    if (merkez is not null)
-                    {
-                        vm.MerkezSyncEnabled = merkez["Enabled"]?.GetValue<bool>() ?? false;
-                        vm.MerkezBaseUrl = merkez["BaseUrl"]?.GetValue<string>() ?? string.Empty;
-                        vm.MerkezBranchCode = merkez["BranchCode"]?.GetValue<string>() ?? string.Empty;
-                        vm.MerkezApiKey = merkez["ApiKey"]?.GetValue<string>() ?? string.Empty;
-                        vm.MerkezPollIntervalSeconds = merkez["PollIntervalSeconds"]?.GetValue<int>() ?? 120;
-                    }
-                }
-            }
-            catch
+        RestaurantCashRegister? register = null;
+        if (registerId is { } rid)
+        {
+            register = await dbContext.RestaurantCashRegisters.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == rid && x.IsActive && x.BranchId == branchId);
+            if (register is null)
             {
-                // Bozuk/elle düzenlenmiş bir appsettings.Local.json - sessizce varsayılanlarla
-                // devam, kaydetme SIFIRDAN yazacağı için kendini kendi kendine onarır.
+                TempData["Error"] = "Seçilen kasa bu şubeye ait değil ya da pasif.";
+                return RedirectToAction(nameof(Index));
             }
         }
 
-        // "TerminalConnectionMode" işareti VARSA ona güvenilir (Bulut sekmesi de artık kendi özel
-        // sunucusunu yazabildiği için "ConnectionStrings var mı" tek başına hangi sekmenin aktif
-        // olduğunu AYIRT EDEMEZ). İşaret YOKSA (eski/elle oluşturulmuş bir dosya) eski davranışa -
-        // ConnectionStrings varlığına bakmaya - geri düşülür.
-        var isLocal = savedMode is not null
-            ? savedMode == "Local"
-            : !string.IsNullOrWhiteSpace(overrideConnString);
+        var cookieOptions = new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), HttpOnly = true, SameSite = SameSiteMode.Lax, Secure = Request.IsHttps };
+        Response.Cookies.Append(TerminalBranchCookie, branchId.ToString(), cookieOptions);
+        if (register is not null)
+        {
+            Response.Cookies.Append(TerminalCashCookie, register.CashFinancialAccountId.ToString(), cookieOptions);
+        }
+        else
+        {
+            Response.Cookies.Delete(TerminalCashCookie);
+        }
 
-        vm.IsLocalMode = isLocal;
-        if (isLocal && !string.IsNullOrWhiteSpace(overrideConnString))
-        {
-            ParseConnectionString(overrideConnString, vm, isLocal: true);
-        }
-        else if (!isLocal && !string.IsNullOrWhiteSpace(overrideConnString))
-        {
-            // Bulut sekmesinden özel bir sunucu kaydedilmiş - o değerleri Cloud* alanlarına yükle.
-            ParseConnectionString(overrideConnString, vm, isLocal: false);
-        }
-        else if (!isLocal)
-        {
-            // Hiç override yok - uygulama şu an appsettings.json'daki paylaşımlı bulut bağlantısını
-            // KULLANIYOR (Edip, 2026-09-27: "bulut dediğim buluttaki sql bağlantı ayarlarını
-            // girebilmek için bide") - Bulut sekmesi boş görünmesin diye GERÇEKTEN aktif olan bu
-            // bağlantıyı IConfiguration üzerinden okuyup Cloud* alanlarına dolduruyoruz.
-            var effectiveConnString = configuration.GetConnectionString("DefaultConnection");
-            if (!string.IsNullOrWhiteSpace(effectiveConnString))
-            {
-                ParseConnectionString(effectiveConnString, vm, isLocal: false);
-            }
-        }
-    }
-
-    // Hem BU uygulamanın kendi ürettiği (SaveConnectionMode) basit "Anahtar=Değer;..." biçimini,
-    // hem appsettings.json'daki paylaşımlı bulut bağlantı dizesini AYNI şekilde okur (ikisi de aynı
-    // ADO.NET anahtar isimlerini kullanıyor) - genel amaçlı bir ayrıştırıcı DEĞİL, sadece bu iki
-    // kaynağın ürettiği basit biçimi çözer.
-    private static void ParseConnectionString(string connectionString, RestaurantTerminalSettingsViewModel vm, bool isLocal)
-    {
-        foreach (var part in connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var eq = part.IndexOf('=');
-            if (eq <= 0) { continue; }
-            var key = part[..eq].Trim();
-            var value = part[(eq + 1)..].Trim();
-            var isTrue = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-            switch (key.ToLowerInvariant())
-            {
-                case "server":
-                    if (isLocal) { vm.LocalServer = value; } else { vm.CloudServer = value; }
-                    break;
-                case "database":
-                    if (isLocal) { vm.LocalDatabase = value; } else { vm.CloudDatabase = value; }
-                    break;
-                case "user id":
-                    if (isLocal) { vm.LocalUserId = value; vm.LocalUseWindowsAuth = false; }
-                    else { vm.CloudUserId = value; vm.CloudUseWindowsAuth = false; }
-                    break;
-                case "password":
-                    if (isLocal) { vm.LocalPassword = value; } else { vm.CloudPassword = value; }
-                    break;
-                case "trusted_connection" when isTrue:
-                    if (isLocal) { vm.LocalUseWindowsAuth = true; } else { vm.CloudUseWindowsAuth = true; }
-                    break;
-            }
-        }
+        TempData["Success"] = register is null
+            ? "Terminal şubesi kaydedildi. Bu şube için kasa seçilmedi."
+            : "Terminal şubesi ve kasası kaydedildi.";
+        return RedirectToAction(nameof(Index));
     }
 
     // Şube Ayarları - Code/IsHeadOffice/ApiKey gibi geri kalan tüm alanlar bu ekranın kapsamı
@@ -263,107 +200,6 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
             TempData["Success"] = "Kasa silindi.";
         }
         return RedirectToAction(nameof(Index));
-    }
-
-    // Bağlantı Modu (Edip, 2026-09-27) - appsettings.Local.json'a yazar, VERİTABANINA DEĞİL (bu
-    // makinenin HANGİ veritabanına bağlanacağı zaten veritabanının kendisinden okunamaz - klasik
-    // "tavuk-yumurta" sorunu). appsettings.json'daki paylaşılan bulut bağlantısı DOSYA olarak HİÇ
-    // değiştirilmez - "Bulut" alanları BOŞ bırakılırsa (Edip özel bir sunucu/kullanıcı girmediyse)
-    // ConnectionStrings override'ı hiç yazılmaz, uygulama appsettings.json'daki varsayılana geri
-    // düşer. Ama Edip artık (2026-09-27: "bulut dediğim buluttaki sql bağlantı ayarlarını
-    // girebilmek için bide") Bulut alanlarını DOLDURURSA, bu terminal o özel bulut sunucusuna/
-    // kullanıcısına yönlendirilir - appsettings.Local.json üzerinden, appsettings.json'a
-    // DOKUNULMADAN.
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult SaveConnectionMode(
-        bool isLocalMode,
-        string? localServer,
-        string? localDatabase,
-        bool localUseWindowsAuth,
-        string? localUserId,
-        string? localPassword,
-        string? cloudServer,
-        string? cloudDatabase,
-        bool cloudUseWindowsAuth,
-        string? cloudUserId,
-        string? cloudPassword,
-        bool merkezSyncEnabled,
-        string? merkezBaseUrl,
-        string? merkezBranchCode,
-        string? merkezApiKey,
-        int merkezPollIntervalSeconds)
-    {
-        if (isLocalMode && string.IsNullOrWhiteSpace(localServer))
-        {
-            TempData["Error"] = "Yerel mod için Sunucu adresi zorunludur.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var root = new JsonObject();
-        if (isLocalMode)
-        {
-            root["ConnectionStrings"] = new JsonObject
-            {
-                ["DefaultConnection"] = BuildConnectionString(localServer!, localDatabase, localUseWindowsAuth, localUserId, localPassword)
-            };
-        }
-        else if (!string.IsNullOrWhiteSpace(cloudServer))
-        {
-            root["ConnectionStrings"] = new JsonObject
-            {
-                ["DefaultConnection"] = BuildConnectionString(cloudServer, cloudDatabase, cloudUseWindowsAuth, cloudUserId, cloudPassword)
-            };
-        }
-
-        // "TerminalConnectionMode" işareti (2026-09-27 hata düzeltmesi) - Bulut sekmesi de artık
-        // (kullanıcı özel bir sunucu girdiyse) bir ConnectionStrings override'ı yazabildiği için,
-        // sayfa bir sonraki açılışta hangi sekmenin aktif gösterileceğine SADECE "ConnectionStrings
-        // var mı yok mu" bakarak karar veremez (ikisi de yazabiliyor artık) - bu yüzden hangi
-        // sekmenin GERÇEKTEN seçildiği ayrıca, açıkça kaydediliyor.
-        root["TerminalConnectionMode"] = isLocalMode ? "Local" : "Cloud";
-
-        root["MerkezSync"] = new JsonObject
-        {
-            ["Enabled"] = isLocalMode && merkezSyncEnabled,
-            ["BaseUrl"] = merkezBaseUrl ?? string.Empty,
-            ["BranchCode"] = merkezBranchCode ?? string.Empty,
-            ["ApiKey"] = merkezApiKey ?? string.Empty,
-            ["PollIntervalSeconds"] = merkezPollIntervalSeconds > 0 ? merkezPollIntervalSeconds : 120
-        };
-
-        // Dosya yazımı (2026-09-27, Edip: "kaydet dediğimde hata verdi" - gerçek hata:
-        // appsettings.Local.json'ın eski konumu, C:\SitesSahinSoft, IIS altında SADECE OKUNABİLİRDİ)
-        // - ÖNCEDEN bu satırın etrafında hiç try/catch YOKTU, bir IOException/
-        // UnauthorizedAccessException doğrudan işlenmemiş istisna olarak genel "Bir hata oluştu"
-        // sayfasına düşüyordu. Artık yakalanıp kullanıcıya Türkçe, anlaşılır bir mesajla
-        // gösteriliyor - konum da %ProgramData%\SahinSoft'a taşındığı için ZATEN oluşmaması
-        // beklenen bir durum, ama ekstra bir güvenlik ağı olarak kalıyor.
-        try
-        {
-            var directory = Path.GetDirectoryName(LocalOverridePath);
-            if (!string.IsNullOrEmpty(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-            System.IO.File.WriteAllText(LocalOverridePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            TempData["Error"] = $"Ayar dosyasına yazılamadı - '{LocalOverridePath}' klasörüne yazma izni verilmesi gerekebilir. (" + ex.Message + ")";
-            return RedirectToAction(nameof(Index));
-        }
-
-        TempData["Success"] = "Bağlantı ayarları kaydedildi. DEĞİŞİKLİKLERİN ETKİLİ OLMASI İÇİN PROGRAMI YENİDEN BAŞLATMANIZ GEREKİYOR.";
-        return RedirectToAction(nameof(Index));
-    }
-
-    private static string BuildConnectionString(string server, string? database, bool useWindowsAuth, string? userId, string? password)
-    {
-        var db = string.IsNullOrWhiteSpace(database) ? "SahinSoftDb" : database.Trim();
-        return useWindowsAuth
-            ? $"Server={server.Trim()};Database={db};Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
-            : $"Server={server.Trim()};Database={db};User Id={userId};Password={password};TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true";
     }
 
     // Yazar Kasa Ayarları - InventorySettings'in GERÇEK FiscalDeviceType/FiscalAgentUrl

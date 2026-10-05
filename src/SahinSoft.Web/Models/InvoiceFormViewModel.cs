@@ -118,6 +118,8 @@ public sealed class InvoiceLineFormViewModel
     [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Birim fiyat 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Birim fiyat")]
     public decimal UnitPrice { get; set; }
+    // Döviz faturasında satırın fatura para birimindeki birim fiyatı (düzenleme ekranında gösterim için).
+    public decimal? ForeignUnitPrice { get; set; }
 
     [Range(typeof(decimal), "0", "100", ErrorMessage = "İskonto % 0 ile 100 arasında olmalıdır.")]
     [Display(Name = "İskonto %")]

@@ -7,6 +7,8 @@ public sealed class RestaurantShellViewModel
 {
     public string ActivePage { get; set; } = string.Empty;
     public string BranchName { get; set; } = string.Empty;
+    public string? TerminalBranchName { get; set; }
+    public string? TerminalCashName { get; set; }
     public string UserFullName { get; set; } = string.Empty;
     public bool IsShiftOpen { get; set; }
     public DateTime? ShiftOpenedAtUtc { get; set; }

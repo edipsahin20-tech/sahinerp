@@ -6,6 +6,10 @@ namespace SahinSoft.Domain.Entities;
 public sealed class RestaurantCheck : EntityBase
 {
     public string CheckNumber { get; set; } = string.Empty;
+
+    // Adisyonun şubesi (terminalin şube ayarından gelir). Null = göç öncesi kayıt.
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
     public RestaurantCheckStatus Status { get; set; } = RestaurantCheckStatus.Open;
     public DateTime OpenedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? ClosedAtUtc { get; set; }

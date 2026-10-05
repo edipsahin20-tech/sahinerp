@@ -945,3 +945,71 @@ doğrulandı, platform komisyonlu bir Yemeksepeti siparişi oluşturulup net öd
 çıktığı doğrulandı, İptal Et akışı gerekçe girilerek denendi ve sipariş durumunun/adisyonun
 doğru kapandığı doğrulandı. Test verileri (iptal edilen sipariş, kurye durumu) temizlenip
 sistem gerçek kullanıma hazır bırakıldı.
+
+---
+
+## Kabul testi — açık kalan maddeler (2026-10-05)
+
+- **Doğru yetkili PIN ile gönderilmiş satırda ikram: GEÇTİ.** Ayar açıkken yetkisiz PIN (9911, garson)
+  reddedildi ("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz."), satır değişmedi.
+  PIN 66 ile ikram uygulandı; reload sonrası satır "İKRAM" ve 0,00 ₺ olarak kalıcı göründü. Ayar test
+  sonunda kapalıya döndürüldü. (Audit satırı DB'de doğrulanmadı: bu oturumda DB parolası ortamda yoktu.)
+- **Dashboard hatası (GERÇEK BUG, DÜZELTİLDİ):** iki şubede aynı anda açık Z dönemi varken Restoran
+  panosu "Sequence contains more than one element" ile patlıyordu (`RestaurantDashboardController`
+  açık dönemi şubesiz `SingleOrDefaultAsync` ile arıyordu). Raporlarla aynı çözümleme (terminal şubesi →
+  kullanıcı şubesi → merkez) eklendi; satış ve ödeme toplamları da terminal şubesine daraltıldı.
+  Doğrulama: panel 625,00 ₺ / 6 fiş gösteriyor (250 ₺ önceki + 3 × 125 ₺ bu turda).
+- **İki terminal, aynı adisyon, aynı anda kapatma: GEÇTİ.** Terminal A ve B (Merkez, PIN 66) aynı adisyon 33'ü
+  farklı gönderim anahtarlarıyla kapattı: B PSF.00012 (125 ₺) üretti, A "Bu adisyon zaten kapalı" aldı. Tek satış.
+- **İki terminal, farklı adisyon, aynı anda kapatma: GEÇTİ.** A → adisyon 37 → PSF.00013, B → adisyon 38 → PSF.00014.
+  Numaralar çakışmadı.
+- **Şube sınırı (çapraz terminal): GEÇTİ.** Atabulvarı terminali (şube 2, kasa 7) Merkez adisyonu 27'yi
+  kapatmaya çalıştı → "Bu adisyon 1 numaralı şubede açıldı; bu terminal farklı bir şubede" ile engellendi.
+- **Oturum: DÜZELTME GEREKMEDİ, BULGU RAPORLANDI.** Kimliksiz istek login'e yönlendirildi (302). Ancak
+  çıkış yapıldıktan sonra eski çerez kopyası hâlâ 200 döndürüyor: oturumlar sunucuda iptal edilmiyor
+  (ASP.NET Identity çerezi, süre dolana kadar geçerli; varsayılan kayan 14 gün). Düzeltme, aynı PIN'in
+  birden fazla terminalde açık kalmasını etkiler; ürün kararı olduğu için değiştirilmedi.
+- **Oturum süresinin doğal dolması:** 14 gün beklenmeden test edilemedi.
+
+### Kabul testi — kalan 4 madde kapatıldı (2026-10-05, 2. tur)
+
+- **Denetim kaydı:** Sunucu günlüğünde `RestaurantPermissionAuditLogs` INSERT'i 3 kez görüldü; bu, yeniden başlatmadan
+  sonraki 3 başarılı PIN 66 onayıyla eşleşiyor. Parametre değerleri günlükte gizli (`?`); içerik DB'de
+  doğrulanamadı (SQL parolası ortamda yok).
+- **Oturum süresi:** Varsayılan 14 gün beklenmedi. Uygulamanın İZOLE bir kopyasında (port 5090, üretim kodu değişmedi)
+  yaşam süresi 2 dakikaya çekildi: 150 sn sonra aynı çerez login'e yönlendirildi (200 → 302). Çıkış sonrası eski çerez
+  kopyası hâlâ geçerli (bulgu, değiştirilmedi).
+- **Atabulvarı tarafında masa yok:** Tüm bölümler Merkez Şube'ye ait. Atabulvarı için masa tabanlı adisyon açılamıyordu,
+  yalnızca Self Satış ile açılabiliyordu.
+- **Açık hata düzeltildi:** Atabulvarı terminali Merkez masası (VIP-4) açıp adisyon oluşturabiliyordu; adisyon Merkez'de
+  doğuyor, sonra terminal kapanışta engelleniyordu. `RestaurantController.OpenTable` artık terminal şubesi masanın bölüm
+  şubesiyle uyuşmadığında açmayı reddediyor. Doğrulama: Atabulvarı terminali VIP-6'da engellendi (mesaj ekranda),
+  Merkez terminali aynı masayı açabildi (adisyon 42).
+- **Eşzamanlı iki şube kapanışı:** Atabulvarı adisyonu PSF.00012 (kendi sayacı), Merkez adisyonu PSF.00016; ikisi aynı
+  anda başarılı.
+- **Eşzamanlı Z (iki şube):** Merkez Z-000005 (8 fiş) ve Atabulvarı Z-000005 (5 fiş), ikisi 11:54'te kapandı; şube başına
+  sayaç korundu.
+- **Gerçek ikinci tarayıcı:** Chrome eklentisi bağlı değil (`list_connected_browsers` boş); iki bağımsız `curl`
+  oturumu kullanıldı. Fiziksel terminal testi yapılmadı.
+
+### Açık kalan 4 maddenin kapanışı (2026-10-05, 3. tur)
+
+- **Atabulvarı bölümü/masaları:** "ATB Salon" (şube 2), masalar ATB-1..ATB-4 (id 667-670).
+- **Şube kuralları (değiştirilen):** Masa açma (zaten), rezervasyon, masa taşıma ve birleştirme artık terminal şubesi
+  ile masa/oturum şubesi uyuşmazsa reddediliyor (denetleyici). Servis katmanı: taşımada hedef masa oturumun şubesinde
+  olmalı, birleştirmede iki oturum aynı şubede olmalı (terminal çerezi olmayan oturumda da geçerli).
+- **Tarayıcı testi (iki bağımsız oturum: localhost = Merkez terminali, 127.0.0.1 = Atabulvarı terminali):**
+  Merkez'den ATB masasını açma, ATB masasını rezerve etme, ATB oturumunu Merkez masasına taşıma ve Merkez oturumuyla
+  birleştirme: hepsi "Bu masa/oturum terminalin şubesine ait değil." ile reddedildi. Atabulvarı terminali ATB-2 açtı,
+  ATB-3 rezerve etti, ATB-2 → ATB-1 taşıdı, ATB-4 → ATB-2 birleştirdi: hepsi başarılı.
+- **Çıkış ve oturum geçersizleştirme:** Yeni `LoginSession` tablosu (migration AddLoginSessions). Her girişe ss_sid anahtarı
+  bağlanır, çıkışta yalnızca o anahtar iptal edilir. Localhost çıkış yaptı; 127.0.0.1 oturumu açık kaldı (tarayıcı).
+  Çıkış öncesi kopyalanan çerez: giriş ekranına yönlendirildi (302) — curl.
+- **Kasa izolasyonu:** Merkez terminali Atabulvarı kasasını (7) reddetti ("Bu hesap bu şubede kullanılamaz"); kendi kasasıyla kapandı.
+- **Eşzamanlı kapanış (tarayıcı, iki sekme):** Atabulvarı PSF.00013 ve Merkez PSF.00017, aynı anda, ikisi de başarılı.
+- **Yönetici PIN:** Doğru PIN 66 ile ikram uygulandı (0,00 ₺); yanlış PIN 9911 reddedildi (tarayıcı).
+- **Oturum süresi (gerçek sunucu 5080, geçici Auth:CookieLifetimeMinutes=3):** Boşta bırakılan oturum süresi
+  dolunca giriş ekranına düştü; istek yapılan oturum yenilendi ve ilk 3 dakikayı aştıktan sonra da açık kaldı.
+  Sunucu varsayılan süreyle (14 gün, kayan) yeniden başlatıldı.
+- **Denetim kaydı DB doğrulaması: TAMAM.** RestaurantPermissionAuditLogs 4 kayıt (Id 1-4): tümü ToggleLineComplimentary, yapan ve onaylayan KASIYER01, adisyon AD.00027 (şube 1) ve AD.00046 (şube 2), satır ve detay doğru. Yanlış PIN kayıt üretmedi. Şifre geçici dosyada yalnızca bir sorguda kullanıldı, silindi.
+- **Chrome ikinci tarayıcı:** Eklenti bağlı değil; ikinci tarayıcı oturumu olarak 127.0.0.1 kullanıldı.

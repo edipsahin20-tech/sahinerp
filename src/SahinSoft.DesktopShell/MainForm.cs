@@ -59,6 +59,8 @@ public sealed class MainForm : Form
         try
         {
             await _webView.EnsureCoreWebView2Async(null);
+            // Sunucu bu işareti görüp masaüstü penceresinde firma seçimini kilitler (bkz. DatabaseRouter).
+            _webView.CoreWebView2.Settings.UserAgent += " SahinSoftDesktop";
             _webView.CoreWebView2.NavigationCompleted += (_, args) =>
             {
                 if (!args.IsSuccess)

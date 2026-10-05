@@ -1,3 +1,4 @@
+using SahinSoft.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,12 +15,25 @@ namespace SahinSoft.Web.Controllers;
 // görüp eksikleri güvenli şekilde onarabilsin. Yalnızca Administrator - repair aksiyonları
 // senkron/muhasebe durumuna dokunuyor.
 [Authorize(Roles = AppRoles.Administrator)]
-public sealed class RestaurantDataHealthController(ApplicationDbContext dbContext, IConfiguration configuration) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantDataHealthController(ApplicationDbContext dbContext, IConfiguration configuration, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
-    public async Task<IActionResult> Index(DateOnly? date, int? selected)
+    public async Task<IActionResult> Index(DateOnly? date, string? tab, int? zId, string? q)
     {
         ActivePage = "datahealth";
-        var vm = await BuildViewModelAsync(date, selected);
+        var vm = await BuildViewModelAsync(date, null, tab, zId, q);
+        return View(vm);
+    }
+
+    // Fiş İnceleme - tek bir fişin Yerel/Merkez/Muhasebe kayıtları, gerçek fiş kaynağı ve
+    // o fişe ait onarım/denetim logu.
+    public async Task<IActionResult> Inspect(int id, DateOnly? date)
+    {
+        ActivePage = "datahealth";
+        var vm = await BuildViewModelAsync(date, id, "fis", null, null);
+        if (vm.SelectedRow is null)
+        {
+            return NotFound();
+        }
         return View(vm);
     }
 
@@ -36,6 +50,7 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RetransmitToCentral(int retailSaleId, DateOnly? date)
     {
+        var zNumberById = await dbContext.RestaurantZPeriods.AsNoTracking().Where(x => x.ZNumber != null).ToDictionaryAsync(x => x.Id, x => x.ZNumber);
         var sale = await dbContext.RetailSales
             .Include(x => x.RestaurantCheck)
             .SingleOrDefaultAsync(x => x.Id == retailSaleId);
@@ -45,26 +60,20 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
             return RedirectToAction(nameof(Index), new { date });
         }
 
+        // Outbox satırının KENDİ RecordId'si fişin RecordId'si DEĞİL (satır ayrı üretilir) - fişi
+        // payload'daki RetailSaleRecordId ile eşleştiriyoruz; aksi halde her yeniden aktarım aynı
+        // fiş için ikinci bir outbox satırı oluşturur (mükerrer).
+        var saleRecordIdText = sale.RecordId.ToString();
         var existing = await dbContext.IntegrationOutboxMessages
-            .Where(x => x.EventType == "RestaurantCheckClosed" && x.RecordId == sale.RecordId)
-            .SingleOrDefaultAsync();
+            .Where(x => x.EventType == "RestaurantCheckClosed" && x.PayloadJson.Contains(saleRecordIdText))
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync();
 
-        if (existing is not null)
-        {
-            // Deterministik onarım: aynı olayı YENİDEN yaz değil, sadece "işlenmedi" işaretle -
-            // bir sonraki BranchSyncBackgroundService turunda güvenle tekrar denenir (merkez
-            // tarafı ExternalRecordMapping ile idempotent, ikinci kez postalanmaz).
-            existing.ProcessedAtUtc = null;
-            existing.LastError = null;
-        }
-        else
-        {
-            dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
-            {
-                EventType = "RestaurantCheckClosed",
-                PayloadJson = System.Text.Json.JsonSerializer.Serialize(new SahinSoft.Web.Models.Api.RestaurantCheckClosedPayload
+        // Yük HER durumda yeniden kurulur: eski (şubesiz) yük yeniden gönderilirse merkez onu atlar.
+        var payloadJson = System.Text.Json.JsonSerializer.Serialize(new SahinSoft.Web.Models.Api.RestaurantCheckClosedPayload
                 {
                     RetailSaleRecordId = sale.RecordId,
+                    BranchCode = await dbContext.Branches.Where(x => x.Id == sale.BranchId).Select(x => x.Code).SingleOrDefaultAsync(),
                     DocumentNumber = sale.DocumentNumber,
                     IssuedAtUtc = sale.IssuedAtUtc,
                     SubtotalAmount = sale.SubtotalAmount,
@@ -73,8 +82,24 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
                     TradeType = sale.TradeType,
                     CheckNumber = sale.RestaurantCheck.CheckNumber,
                     RestaurantZPeriodId = sale.RestaurantZPeriodId,
-                    RestaurantZNo = sale.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
-                }),
+                    RestaurantZNo = sale.RestaurantZPeriodId is { } zId ? RestaurantZPeriod.LabelFor(zId, zNumberById.GetValueOrDefault(zId)) : null
+                });
+
+        if (existing is not null)
+        {
+            // Deterministik onarım: aynı olayı YENİDEN yaz değil, sadece "işlenmedi" işaretle -
+            // bir sonraki BranchSyncBackgroundService turunda güvenle tekrar denenir (merkez
+            // tarafı ExternalRecordMapping ile idempotent, ikinci kez postalanmaz).
+            existing.PayloadJson = payloadJson;
+            existing.ProcessedAtUtc = null;
+            existing.LastError = null;
+        }
+        else
+        {
+            dbContext.IntegrationOutboxMessages.Add(new IntegrationOutboxMessage
+            {
+                EventType = "RestaurantCheckClosed",
+                PayloadJson = payloadJson,
                 RecordId = sale.RecordId
             });
         }
@@ -119,12 +144,13 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
         sale.RestaurantZPeriodId = matchingPeriod.Id;
         await dbContext.SaveChangesAsync();
 
-        TempData["Success"] = $"{sale.DocumentNumber} → Z-{matchingPeriod.Id:D6} olarak tamamlandı.";
+        TempData["Success"] = $"{sale.DocumentNumber} → {RestaurantZPeriod.LabelFor(matchingPeriod.Id, matchingPeriod.ZNumber)} olarak tamamlandı.";
         return RedirectToAction(nameof(Index), new { date, selected = retailSaleId });
     }
 
-    private async Task<RestaurantDataHealthViewModel> BuildViewModelAsync(DateOnly? date, int? selected)
+    private async Task<RestaurantDataHealthViewModel> BuildViewModelAsync(DateOnly? date, int? selected, string? tab, int? zPeriodId, string? q)
     {
+        var zNumberById = await dbContext.RestaurantZPeriods.AsNoTracking().Where(x => x.ZNumber != null).ToDictionaryAsync(x => x.Id, x => x.ZNumber);
         var filterDate = date ?? DateOnly.FromDateTime(DateTime.Now);
         var dayStartUtc = filterDate.ToDateTime(TimeOnly.MinValue).ToUniversalTime();
         var dayEndUtc = dayStartUtc.AddDays(1);
@@ -214,7 +240,7 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
                 DocumentNumber = s.DocumentNumber,
                 CheckNumber = s.CheckNumber,
                 ZPeriodId = s.RestaurantZPeriodId,
-                ZNo = s.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null,
+                ZNo = s.RestaurantZPeriodId is { } zId ? RestaurantZPeriod.LabelFor(zId, zNumberById.GetValueOrDefault(zId)) : null,
                 IssuedAtUtc = s.IssuedAtUtc,
                 GrandTotal = s.GrandTotal
             };
@@ -287,31 +313,96 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
             rows.Add(row);
         }
 
+        // Z Bazında Mutabakat: Yerel toplam = tüm fişler; Muhasebe toplam = muhasebe karşılığı
+        // doğrulanmış (Tam/Gerekmiyor) fişler. Ödenmez fişleri iki tarafta da yer alır (kasa
+        // hareketi yok ama Z'de sayılır), bu yüzden Fark yalnızca eksik muhasebe kayıtlarını gösterir.
+        var zPeriodMeta = await dbContext.RestaurantZPeriods
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, x => new { x.OpenedAtUtc, x.ClosedAtUtc });
+
         var zGroups = rows
             .Where(x => x.ZPeriodId is not null)
             .GroupBy(x => new { x.ZPeriodId, x.ZNo })
-            .Select(g => new RestaurantDataHealthZSummaryRow(
-                g.Key.ZPeriodId!.Value,
-                g.Key.ZNo!,
-                g.Count(),
-                g.Count(x => x.CentralStatus is "Tam" or "Kapalı"),
-                g.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor"),
-                g.Any(x => x.OverallStatus == "KIRMIZI")))
+            .Select(g =>
+            {
+                var meta = zPeriodMeta.GetValueOrDefault(g.Key.ZPeriodId!.Value);
+                return new RestaurantDataHealthZSummaryRow(
+                    g.Key.ZPeriodId!.Value,
+                    g.Key.ZNo!,
+                    g.Count(),
+                    g.Count(x => x.CentralStatus is "Tam" or "Kapalı"),
+                    g.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor"),
+                    g.Any(x => x.OverallStatus == "KIRMIZI"),
+                    g.Sum(x => x.GrandTotal),
+                    g.Where(x => x.AccountingStatus is "Tam" or "Gerekmiyor").Sum(x => x.GrandTotal),
+                    meta?.OpenedAtUtc ?? g.Min(x => x.IssuedAtUtc),
+                    meta?.ClosedAtUtc);
+            })
             .OrderByDescending(x => x.ZPeriodId)
             .ToList();
 
-        var recentRepairs = await dbContext.AuditLogs
+        // Arama (Z no / fiş no) - Fiş ve Z sekmelerinde filtre olarak uygulanır.
+        var search = q?.Trim();
+        if (!string.IsNullOrEmpty(search))
+        {
+            rows = rows.Where(x => x.DocumentNumber.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (x.ZNo?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+            zGroups = zGroups.Where(x => x.ZNo.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        RestaurantDataHealthZDetail? zDetail = null;
+        var activeZId = zPeriodId ?? zGroups.FirstOrDefault()?.ZPeriodId;
+        var zSummary = zGroups.FirstOrDefault(x => x.ZPeriodId == activeZId);
+        if (zSummary is not null)
+        {
+            zDetail = new RestaurantDataHealthZDetail
+            {
+                ZPeriodId = zSummary.ZPeriodId,
+                ZNo = zSummary.ZNo,
+                OpenedAtUtc = zSummary.OpenedAtUtc,
+                ClosedAtUtc = zSummary.ClosedAtUtc,
+                LocalCount = zSummary.BranchCount,
+                LocalTotal = zSummary.LocalTotal,
+                AccountingTotal = zSummary.AccountingTotal,
+                Rows = rows.Where(x => x.ZPeriodId == zSummary.ZPeriodId).ToList()
+            };
+        }
+
+        // Onarım Logu: fiş / merkez kuyruğu / Z değişikliklerinin denetim kaydı (kullanıcı adıyla).
+        var logRows = await dbContext.AuditLogs
             .AsNoTracking()
-            .Where(x => x.EntityName == "RetailSale" || x.EntityName == "IntegrationOutboxMessage")
+            .Where(x => x.EntityName == "RetailSale" || x.EntityName == "IntegrationOutboxMessage" || x.EntityName == "RestaurantZPeriod")
             .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(30)
-            .Select(x => new RestaurantDataHealthAuditRow(x.CreatedAtUtc, x.UserId, x.Action, x.EntityName, x.EntityId, x.OldValuesJson, x.NewValuesJson))
+            .Take(100)
+            .Select(x => new { x.CreatedAtUtc, x.UserId, x.Action, x.EntityName, x.EntityId, x.OldValuesJson, x.NewValuesJson })
             .ToListAsync();
+        var userIds = logRows.Select(x => x.UserId).Distinct().ToList();
+        var userNames = await dbContext.Users
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.FullName);
+        var recentRepairs = logRows
+            .Select(x => new RestaurantDataHealthAuditRow(
+                x.CreatedAtUtc,
+                userNames.GetValueOrDefault(x.UserId, x.UserId),
+                x.Action,
+                x.EntityName,
+                x.EntityId,
+                x.OldValuesJson,
+                x.NewValuesJson))
+            .ToList();
+
+        var selectedRow = selected is not null ? rows.FirstOrDefault(x => x.RetailSaleId == selected.Value) : null;
+        var selectedAudits = selectedRow is null
+            ? []
+            : recentRepairs.Where(x => x.EntityName == "RetailSale" && x.EntityId == selectedRow.RetailSaleId.ToString()).ToList();
 
         return new RestaurantDataHealthViewModel
         {
             FilterDate = filterDate,
             MerkezSyncEnabled = merkezEnabled,
+            ActiveTab = tab is "z" or "log" ? tab : "fis",
+            Search = search,
             TotalCount = rows.Count,
             MatchedCount = rows.Count(x => x.OverallStatus == "YESIL"),
             PendingCount = rows.Count(x => x.OverallStatus == "SARI"),
@@ -319,9 +410,11 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
             MissingCentralCount = rows.Count(x => x.CentralStatus == "Hatalı"),
             MissingAccountingCount = rows.Count(x => x.AccountingStatus == "Eksik"),
             ZSummary = zGroups,
+            ZDetail = zDetail,
             Rows = rows,
             RecentRepairs = recentRepairs,
-            SelectedRow = selected is not null ? rows.FirstOrDefault(x => x.RetailSaleId == selected.Value) : null
+            SelectedRow = selectedRow,
+            SelectedRowAudits = selectedAudits
         };
     }
 }

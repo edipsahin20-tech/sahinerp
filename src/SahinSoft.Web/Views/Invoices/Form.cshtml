@@ -111,11 +111,15 @@
                 </div>
                 <div class="erp-field">
                     <label asp-for="CurrencyCode"></label>
-                    <input asp-for="CurrencyCode" class="form-control" />
+                    <select asp-for="CurrencyCode" class="form-select" id="currency-select">
+                        <option value="TRY">TRY - Türk Lirası</option>
+                        <option value="USD">USD - Amerikan Doları</option>
+                        <option value="EUR">EUR - Euro</option>
+                    </select>
                 </div>
                 <div class="erp-field">
-                    <label asp-for="ExchangeRate"></label>
-                    <input asp-for="ExchangeRate" class="form-control" />
+                    <label asp-for="ExchangeRate">Döviz kuru (1 @Model.CurrencyCode = ? TL)</label>
+                    <input asp-for="ExchangeRate" class="form-control" id="exchange-rate-input" />
                 </div>
                 <div class="erp-field">
                     <label asp-for="PaymentTerm"></label>
@@ -198,7 +202,8 @@
                             <th style="width: 140px;">Stok Kodu</th>
                             <th style="min-width: 220px;">Ürün Adı</th>
                             <th style="width: 90px;">Miktar</th>
-                            <th style="width: 100px;">Birim Fiyat</th>
+                            <th style="width: 110px;"><span id="price-header">Birim Fiyat (TL)</span></th>
+                            <th style="width: 120px;" class="fx-col">Birim Fiyat (TL)</th>
                             <th style="width: 80px;">İsk. %</th>
                             <th style="width: 80px;">KDV %</th>
                             <th style="width: 100px;">Tutar</th>
@@ -236,7 +241,9 @@
                                     AllowQuickSearch = true })" />
                             </td>
                             <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
-                            <td><input type="text" name="Lines[@i].UnitPrice" value="@Model.Lines[i].UnitPrice" class="form-control price-input" /></td>
+                            <td><input type="text" name="Lines[@i].UnitPrice" value="@(Model.Lines[i].ForeignUnitPrice ?? Model.Lines[i].UnitPrice)" class="form-control price-input" /></td>
+
+                            <td class="fx-col"><span class="line-unit-tl">0,00</span></td>
                             <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control discount-input" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
                             <td class="text-end line-gross">0.00</td>
@@ -260,7 +267,8 @@
                     </div>
                     <div class="erp-totals-row"><span>İskonto (satır + tutar)</span><span id="totals-discount">0.00</span></div>
                     <div id="totals-kdv-breakdown"></div>
-                    <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value" id="totals-grand">0.00</span></div>
+                    <div class="erp-totals-row erp-grand-total"><span>Genel Toplam (TL)</span><span class="erp-total-value" id="totals-grand">0.00</span></div>
+                    <div class="erp-totals-row" id="totals-foreign-row" style="display:none;"><span>Genel Toplam (<span id="totals-currency-label">USD</span>)</span><span class="erp-total-value" id="totals-grand-foreign">0.00</span></div>
                 </div>
             </div>
         </div>
@@ -302,6 +310,8 @@
         </td>
         <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
         <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
+
+        <td class="fx-col"><span class="line-unit-tl">0,00</span></td>
         <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control discount-input" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
         <td class="text-end line-gross">0.00</td>
@@ -453,7 +463,10 @@
                     var codeInput = row.querySelector('.stock-code-input');
                     if (codeInput) codeInput.value = item.code;
                 }
-                row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
+                var catalogPrice = isSales ? item.unitPrice : item.purchaseUnitPrice;
+                // Döviz faturasında stok kartındaki fiyat TL'dir; fatura para birimine kurla çevrilir.
+                if (isForeignCurrency() && currentRate() > 0) { catalogPrice = Math.round((catalogPrice / currentRate()) * 10000) / 10000; }
+                row.querySelector('.price-input').value = catalogPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
                 recalcTotals();
                 var qtyInput = row.querySelector('.quantity-input');
@@ -512,24 +525,71 @@
             // Onaydan önce (taslak haldeyken) kullanıcı satırları girerken toplamları anında görsün diye;
             // sunucudaki (InvoiceTotalsCalculator) ile aynı formül burada da uygulanır. Tutar İskontosu,
             // KDV matrahını doğru düşürmek için satırlar arasında net tutar payına göre orantılı dağıtılır.
+            // Türkçe sayı girişi: "26319,8" → 26319.8 (virgül ondalık, nokta binlik). parseFloat virgülde
+            // kesip "26319" okuduğu için satır tutarı ve KDV yanlış hesaplanıyordu.
+            function parseTrNumber(value) {
+                var text = String(value == null ? '' : value).trim();
+                if (text.indexOf(',') !== -1) {
+                    text = text.replace(/\./g, '').replace(',', '.');
+                }
+                var n = parseFloat(text);
+                return isNaN(n) ? 0 : n;
+            }
+
+            // Gönderimde sayılar sunucunun okuyabileceği biçime (nokta ondalık) çevrilir. Sunucu istek kültürü
+            // en-US olduğu için "26319,8" gönderilirse binlik ayraç sayılıp yanlış kaydedilebilir.
+            document.getElementById('evrak-form').addEventListener('submit', function () {
+                linesBody.querySelectorAll('.quantity-input, .price-input, .discount-input, .tax-input').forEach(function (input) {
+                    input.value = String(parseTrNumber(input.value));
+                });
+                var amountInput = document.getElementById('amount-discount-input');
+                if (amountInput) { amountInput.value = String(parseTrNumber(amountInput.value)); }
+                var rateInput = document.getElementById('exchange-rate-input');
+                if (rateInput) { rateInput.disabled = false; rateInput.value = String(parseTrNumber(rateInput.value) || 1); }
+            });
+
+            function isForeignCurrency() {
+                return document.getElementById('currency-select').value !== 'TRY';
+            }
+
+            function currentRate() {
+                return isForeignCurrency() ? (parseTrNumber(document.getElementById('exchange-rate-input').value) || 0) : 1;
+            }
+
+            function syncCurrencyUi() {
+                var foreign = isForeignCurrency();
+                var code = document.getElementById('currency-select').value;
+                document.getElementById('price-header').textContent = foreign ? 'Birim Fiyat (' + code + ')' : 'Birim Fiyat (TL)';
+                document.querySelectorAll('.fx-col').forEach(function (c) { c.style.display = foreign ? '' : 'none'; });
+                document.getElementById('totals-currency-label').textContent = code;
+                document.getElementById('totals-foreign-row').style.display = foreign ? '' : 'none';
+                document.getElementById('exchange-rate-input').disabled = !foreign;
+                if (!foreign) { document.getElementById('exchange-rate-input').value = '1'; }
+            }
+
             function recalcTotals() {
+                var rate = currentRate();
+                var foreign = isForeignCurrency();
                 var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
-                    var qty = parseFloat(row.querySelector('.quantity-input').value) || 0;
-                    var price = parseFloat(row.querySelector('.price-input').value) || 0;
-                    var discRate = parseFloat(row.querySelector('.discount-input').value) || 0;
-                    var taxRate = parseFloat(row.querySelector('.tax-input').value) || 0;
+                    var qty = parseTrNumber(row.querySelector('.quantity-input').value);
+                    var price = parseTrNumber(row.querySelector('.price-input').value);
+                    var discRate = parseTrNumber(row.querySelector('.discount-input').value);
+                    var taxRate = parseTrNumber(row.querySelector('.tax-input').value);
 
                     var netUnitPrice = pricesIncludeTax.checked && taxRate > 0
                         ? price / (1 + taxRate / 100)
                         : price;
-                    var gross = qty * netUnitPrice;
+                    // Döviz faturasında satır fiyatı fatura para birimindedir; TL karşılığı kurla çarpılır.
+                    var gross = qty * netUnitPrice * rate;
+                    var unitTlEl = row.querySelector('.line-unit-tl');
+                    if (unitTlEl) { unitTlEl.textContent = formatMoney(price * rate); }
                     var lineDiscAmount = gross * discRate / 100;
                     var netAfterLineDiscount = gross - lineDiscAmount;
                     return { row: row, gross: gross, lineDiscAmount: lineDiscAmount, netAfterLineDiscount: netAfterLineDiscount, taxRate: taxRate };
                 });
 
                 var netAfterLineDiscountTotal = rows.reduce(function (s, r) { return s + r.netAfterLineDiscount; }, 0);
-                var rawAmountDiscount = parseFloat(document.getElementById('amount-discount-input').value) || 0;
+                var rawAmountDiscount = parseTrNumber(document.getElementById('amount-discount-input').value);
                 var amountDiscount = Math.min(Math.max(rawAmountDiscount, 0), Math.max(netAfterLineDiscountTotal, 0));
 
                 var subtotal = 0, discountTotal = 0, grandTotal = 0, allocated = 0;
@@ -556,6 +616,9 @@
                 document.getElementById('totals-subtotal').textContent = formatMoney(subtotal);
                 document.getElementById('totals-discount').textContent = formatMoney(discountTotal);
                 document.getElementById('totals-grand').textContent = formatMoney(grandTotal);
+                if (foreign && rate > 0) {
+                    document.getElementById('totals-grand-foreign').textContent = formatMoney(grandTotal / rate);
+                }
                 document.getElementById('totals-kdv-breakdown').innerHTML = Object.keys(kdvByRate).sort(function (a, b) { return a - b; }).map(function (rate) {
                     return '<div class="erp-totals-row"><span>KDV %' + rate + '</span><span>' + formatMoney(kdvByRate[rate]) + '</span></div>';
                 }).join('');
@@ -565,6 +628,10 @@
             pricesIncludeTax.addEventListener('change', recalcTotals);
 
             linesBody.addEventListener('input', recalcTotals);
+            document.getElementById('currency-select').addEventListener('change', function () { syncCurrencyUi(); recalcTotals(); });
+            document.getElementById('exchange-rate-input').addEventListener('input', recalcTotals);
+            syncCurrencyUi();
+            recalcTotals();
             addButton.addEventListener('click', recalcTotals);
             linesBody.addEventListener('click', function (event) {
                 if (event.target.classList.contains('remove-line')) {
@@ -669,7 +736,9 @@
                                 codeInput.value = line.productDisplay.split(' - ')[0];
                             }
                             row.querySelector('.quantity-input').value = line.remainingQuantity;
-                            row.querySelector('.price-input').value = line.unitPrice;
+                            var sourcePrice = line.unitPrice;
+                            if (isForeignCurrency() && currentRate() > 0) { sourcePrice = Math.round((sourcePrice / currentRate()) * 10000) / 10000; }
+                            row.querySelector('.price-input').value = sourcePrice;
                             row.querySelector('.discount-input').value = line.discountRate;
                             row.querySelector('.tax-input').value = line.taxRate;
                             row.querySelector('.source-cell').innerHTML = '<small class="text-muted">İrsaliye ' + escapeHtml(dispatch.dispatchNumber) + '</small>';

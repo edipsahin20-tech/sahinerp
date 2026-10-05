@@ -215,3 +215,31 @@ html, body {
     color: var(--ss-orange-dark);
     text-decoration: underline;
 }
+
+.db-choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.db-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #d6dde6;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.db-choice:has(input:checked) {
+    border-color: #e8741c;
+    background: #fff7f0;
+}
+
+.db-choice input {
+    accent-color: #e8741c;
+}

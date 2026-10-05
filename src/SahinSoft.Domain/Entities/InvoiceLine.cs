@@ -10,6 +10,9 @@ public sealed class InvoiceLine : EntityBase
     public string UnitSnapshot { get; set; } = "Adet";
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    // Döviz faturasında satırın fatura para birimindeki (ör. USD) KDV hariç birim fiyatı. UnitPrice ise
+    // bu × ExchangeRate ile hesaplanan TL'dir; muhasebe/stok her zaman TL üzerinden çalışır.
+    public decimal? ForeignUnitPrice { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }

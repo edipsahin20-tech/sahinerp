@@ -32,10 +32,10 @@ public sealed class FinancialAccountsController(
         return View(await query.ToListAsync());
     }
 
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         ViewBag.Toolbar = new EvrakToolbarViewModel { Controller = "FinancialAccounts" };
-        return View("Form", new FinancialAccountFormViewModel());
+        return await FormView(new FinancialAccountFormViewModel());
     }
 
     [HttpPost]
@@ -57,7 +57,7 @@ public sealed class FinancialAccountsController(
         await ValidateUniqueCodeAsync(form);
         if (!ModelState.IsValid)
         {
-            return View("Form", form);
+            return await FormView(form);
         }
 
         var account = new FinancialAccount();
@@ -66,7 +66,7 @@ public sealed class FinancialAccountsController(
 
         if (!await TrySaveAsync())
         {
-            return View("Form", form);
+            return await FormView(form);
         }
 
         TempData["Success"] = "Hesap kaydedildi.";
@@ -82,7 +82,7 @@ public sealed class FinancialAccountsController(
         }
 
         await SetToolbarAsync(id);
-        return View("Form", new FinancialAccountFormViewModel
+        return await FormView(new FinancialAccountFormViewModel
         {
             Id = account.Id,
             Code = account.Code,
@@ -92,7 +92,9 @@ public sealed class FinancialAccountsController(
             BankName = account.BankName,
             BranchName = account.BranchName,
             Iban = account.Iban,
-            IsActive = account.IsActive
+            IsActive = account.IsActive,
+            BranchId = account.BranchId,
+            IsShared = account.IsShared
         });
     }
 
@@ -155,7 +157,7 @@ public sealed class FinancialAccountsController(
         await ValidateUniqueCodeAsync(form);
         if (!ModelState.IsValid)
         {
-            return View("Form", form);
+            return await FormView(form);
         }
 
         var account = await dbContext.FinancialAccounts.SingleOrDefaultAsync(x => x.Id == id);
@@ -169,7 +171,7 @@ public sealed class FinancialAccountsController(
 
         if (!await TrySaveAsync())
         {
-            return View("Form", form);
+            return await FormView(form);
         }
 
         TempData["Success"] = "Hesap güncellendi.";
@@ -184,6 +186,16 @@ public sealed class FinancialAccountsController(
         }
     }
 
+    private async Task<IActionResult> FormView(FinancialAccountFormViewModel form)
+    {
+        ViewBag.BranchOptions = await dbContext.Branches.AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.Name, x.Id.ToString(), form.BranchId == x.Id))
+            .ToListAsync();
+        return View("Form", form);
+    }
+
     private static void Map(FinancialAccountFormViewModel source, FinancialAccount target)
     {
         target.Code = source.Code.Trim();
@@ -194,6 +206,8 @@ public sealed class FinancialAccountsController(
         target.BranchName = source.BranchName?.Trim();
         target.Iban = source.Iban?.Trim();
         target.IsActive = source.IsActive;
+        target.IsShared = source.IsShared;
+        target.BranchId = source.IsShared ? null : source.BranchId;
     }
 
     private async Task<bool> TrySaveAsync()

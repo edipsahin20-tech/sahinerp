@@ -10,6 +10,9 @@ public sealed class QuoteLine : EntityBase
     public string UnitSnapshot { get; set; } = "Adet";
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    // Döviz teklifinde satırın teklif para birimindeki (ör. USD) KDV hariç birim fiyatı. UnitPrice ise
+    // bu × Quote.ExchangeRate ile hesaplanan TL'dir (faturadaki InvoiceLine.ForeignUnitPrice ile aynı model).
+    public decimal? ForeignUnitPrice { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }

@@ -15,7 +15,7 @@ namespace SahinSoft.Web.Controllers;
 // CLEAN_ROOM_DEVELOPMENT.md. RestaurantManager/Waiter/Kitchen rolleri yalnızca menüde gizlenmekle
 // kalmaz, her aksiyon burada [Authorize(Roles=...)] ile de zorunlu kılınır.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Waiter}")]
-public sealed class RestaurantController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantPermissionService permissionService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantPermissionService permissionService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     public async Task<IActionResult> Index()
     {
@@ -125,6 +125,14 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
+        // Adisyonun şubesi masanın bölümünden gelir; terminal başka şubedeyse o masadan adisyon açılmaz.
+        var openError = await TerminalBranchErrorForTableAsync(tableId);
+        if (openError is not null)
+        {
+            TempData["Error"] = openError;
+            return RedirectToAction(nameof(Index));
+        }
+
         try
         {
             var (_, check) = await postingService.OpenTableSessionAsync(tableId, guestCount, userId, userId, submissionKey);
@@ -143,6 +151,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     public async Task<IActionResult> Reserve(int tableId, DateTime reservedForLocal, int guestCount, string? note)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var reserveError = await TerminalBranchErrorForTableAsync(tableId);
+        if (reserveError is not null)
+        {
+            TempData["Error"] = reserveError;
+            return RedirectToAction(nameof(Index));
+        }
+
         try
         {
             await postingService.CreateReservationAsync(tableId, reservedForLocal.ToUniversalTime(), guestCount, note, userId);
@@ -537,6 +552,85 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     // kasiyer düzenleme diye kapanmış fişleri iptal edemez), SONRA satırları sepete klonlar ki
     // kasiyer ürün ekleyip/silip/ödeme tipini değiştirip yeniden ringleyebilsin. JSON döner (bu
     // sayfa modal içinde kullanır, Raporlar'daki tam sayfa yönlendirmeli sürümden ayrı).
+    // Terminal ayarı (şube + kasa) - tarayıcı çerezinde tutulur, sunucu dosyasında DEĞİL. Her
+    // terminal/tarayıcı kendi seçimini korur; başka terminalin seçimini etkilemez.
+    private const string TerminalBranchCookie = "ss_terminal_branch";
+    private const string TerminalCashCookie = "ss_terminal_cash";
+
+    private int? TerminalBranchId => int.TryParse(Request.Cookies[TerminalBranchCookie], out var id) ? id : null;
+
+    // Terminal şubesi seçiliyse masa/oturum o şubeye ait olmalıdır. Seçili değilse kontrol yapılmaz (eski davranış).
+    private const string TerminalBranchMismatchMessage = "Bu masa/oturum terminalin şubesine ait değil. Masa işlemleri kendi şubesinin terminalinden yapılmalıdır.";
+
+    private async Task<string?> TerminalBranchErrorForTableAsync(int tableId)
+    {
+        if (TerminalBranchId is not { } terminalBranch) return null;
+        var tableBranchId = await dbContext.RestaurantTables.AsNoTracking()
+            .Where(x => x.Id == tableId)
+            .Select(x => (int?)x.RestaurantSection.BranchId)
+            .SingleOrDefaultAsync();
+        return tableBranchId == terminalBranch ? null : TerminalBranchMismatchMessage;
+    }
+
+    private async Task<string?> TerminalBranchErrorForSessionAsync(int sessionId)
+    {
+        if (TerminalBranchId is not { } terminalBranch) return null;
+        var sessionBranchId = await dbContext.RestaurantTableSessions.AsNoTracking()
+            .Where(x => x.Id == sessionId)
+            .Select(x => (int?)x.BranchId)
+            .SingleOrDefaultAsync();
+        return sessionBranchId == terminalBranch ? null : TerminalBranchMismatchMessage;
+    }
+
+    // Terminal şube + kasa seçim ekranı (bu tarayıcı için). Kayıt SetTerminal ile yapılır.
+    public async Task<IActionResult> TerminalSettings()
+    {
+        ActivePage = "terminal";
+        ViewData["Branches"] = await dbContext.Branches.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name }).ToListAsync();
+        ViewData["Accounts"] = await dbContext.FinancialAccounts.AsNoTracking().Where(x => x.IsActive)
+            .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BranchId, x.IsShared }).ToListAsync();
+        ViewData["CurrentBranchId"] = TerminalBranchId;
+        ViewData["CurrentCashId"] = int.TryParse(Request.Cookies[TerminalCashCookie], out var cash) ? cash : (int?)null;
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetTerminal(int branchId, int? cashAccountId)
+    {
+        var branchExists = await dbContext.Branches.AnyAsync(x => x.Id == branchId && x.IsActive);
+        if (!branchExists)
+        {
+            TempData["Error"] = "Seçilen şube bulunamadı.";
+            return RedirectToAction(nameof(TerminalSettings));
+        }
+
+        if (cashAccountId is { } cashId)
+        {
+            var cashOk = await dbContext.FinancialAccounts.AnyAsync(x => x.Id == cashId && x.IsActive && (x.BranchId == branchId || x.IsShared));
+            if (!cashOk)
+            {
+                TempData["Error"] = "Seçilen kasa bu şubeye ait değil.";
+                return RedirectToAction(nameof(TerminalSettings));
+            }
+        }
+
+        var cookieOptions = new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), HttpOnly = true, SameSite = SameSiteMode.Lax, Secure = Request.IsHttps };
+        Response.Cookies.Append(TerminalBranchCookie, branchId.ToString(), cookieOptions);
+        if (cashAccountId is { } c)
+        {
+            Response.Cookies.Append(TerminalCashCookie, c.ToString(), cookieOptions);
+        }
+        else
+        {
+            Response.Cookies.Delete(TerminalCashCookie);
+        }
+
+        TempData["Success"] = "Terminal şube ayarı bu tarayıcıda kaydedildi.";
+        return RedirectToAction(nameof(TerminalSettings));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = AppRoles.Administrator)]
@@ -603,9 +697,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .OrderBy(x => x.Category.Name).ThenBy(x => x.Name)
             .ToListAsync();
 
+        // Terminal şubesi, bu TARAYICININ çerezinde tutulur (ss_terminal_branch). appsettings
+        // sunucuda ortak olduğu için terminal ayarı oraya yazılmaz - her terminal kendi seçimini
+        // taşır. Seçili değilse eski davranış (tüm hesaplar).
+        var terminalBranchId = TerminalBranchId;
         var financialAccounts = await dbContext.FinancialAccounts
             .AsNoTracking()
-            .Where(x => x.IsActive)
+            .Where(x => x.IsActive && (terminalBranchId == null || x.BranchId == terminalBranchId || x.IsShared))
             .OrderBy(x => x.Name)
             .Select(x => new RestaurantFinancialAccountViewModel
             {
@@ -624,10 +722,14 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
             .Where(x => x.Id == CurrentUserId)
             .Select(x => x.BranchId)
             .SingleOrDefaultAsync();
+        // Kasa atamaları TERMİNAL şubesine göre çözülür (terminal seçiliyse). Terminal şubesi yoksa
+        // kullanıcının şubesi kullanılır (eski davranış). Böylece Atabulvarı terminali Merkez kasasını
+        // görmez.
+        var registerBranchId = TerminalBranchId ?? currentUserBranchId;
         var resolvedCashRegister = await dbContext.RestaurantCashRegisters
             .AsNoTracking()
-            .Where(x => x.IsActive && (currentUserBranchId == x.BranchId || x.Branch.IsHeadOffice))
-            .OrderByDescending(x => currentUserBranchId == x.BranchId)
+            .Where(x => x.IsActive && (registerBranchId == x.BranchId || (TerminalBranchId == null && x.Branch.IsHeadOffice)))
+            .OrderByDescending(x => registerBranchId == x.BranchId)
             .Select(x => new { x.CashFinancialAccountId, x.CreditCardFinancialAccountId, x.MealCardFinancialAccountId })
             .FirstOrDefaultAsync();
 
@@ -838,6 +940,28 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClosePayment([FromBody] RestaurantClosePaymentRequest request)
     {
+        // Hesap uygunluğu ÖDEME KAYDEDİLİRKEN de denetlenir: terminal bir şubeye bağlıysa, seçilen
+        // her hesap o şubenin hesabı veya ortak hesap olmalıdır. Bu, eski/başka şube hesabıyla
+        // bir ödemenin karışmasını engeller (ekran filtresi tek başına yeterli değildir).
+        // Terminal şubesi seçili değilse tahsilat YAPILMAZ (kontrol dışı ödeme kalmasın).
+        if (TerminalBranchId is not { } terminalBranch)
+        {
+            return BadRequest(new { message = "Terminal şubesi seçilmemiş. Tahsilat için önce Terminal Ayarları'ndan şube ve kasa seçin." });
+        }
+
+        {
+            var accountIds = request.Payments.Select(p => p.FinancialAccountId).Distinct().ToList();
+            var invalidAccounts = await dbContext.FinancialAccounts
+                .AsNoTracking()
+                .Where(x => accountIds.Contains(x.Id) && !(x.IsActive && (x.BranchId == terminalBranch || x.IsShared)))
+                .Select(x => x.Name)
+                .ToListAsync();
+            if (invalidAccounts.Count > 0)
+            {
+                return BadRequest(new { message = $"Bu hesap bu şubede kullanılamaz: {string.Join(", ", invalidAccounts)}" });
+            }
+        }
+
         // GERÇEK HATA (2026-09-06, kabul testinde bulundu, Fiş İkram) - "Payments.Count == 0"
         // koşulsuz reddi kaldırıldı: tam İkram edilmiş bir adisyonda (grandTotal=0) toplanacak
         // hiçbir tutar yoktur, sıfır ödeme satırıyla kapatmak GEÇERLİDİR - CloseCheckAsync'teki
@@ -859,7 +983,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
                 request.CustomerId,
                 userId,
                 request.SubmissionKey,
-                fiscalInfo);
+                fiscalInfo,
+                TerminalBranchId);
 
             return Ok(new { RetailSaleId = retailSale.Id, retailSale.DocumentNumber, retailSale.GrandTotal });
         }
@@ -1151,6 +1276,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveTable(int sessionId, int toTableId)
     {
+        var moveError = await TerminalBranchErrorForSessionAsync(sessionId) ?? await TerminalBranchErrorForTableAsync(toTableId);
+        if (moveError is not null)
+        {
+            TempData["Error"] = moveError;
+            return RedirectToAction(nameof(Index));
+        }
+
         try
         {
             await postingService.MoveTableSessionAsync(sessionId, toTableId, CurrentUserId, reason: null);
@@ -1168,6 +1300,13 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MergeTables(int fromSessionId, int intoSessionId)
     {
+        var mergeError = await TerminalBranchErrorForSessionAsync(fromSessionId) ?? await TerminalBranchErrorForSessionAsync(intoSessionId);
+        if (mergeError is not null)
+        {
+            TempData["Error"] = mergeError;
+            return RedirectToAction(nameof(Index));
+        }
+
         try
         {
             await postingService.MergeTableSessionsAsync(fromSessionId, intoSessionId, CurrentUserId);

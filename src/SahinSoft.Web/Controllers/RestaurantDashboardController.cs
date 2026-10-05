@@ -1,3 +1,4 @@
+using SahinSoft.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ using SahinSoft.Web.Models;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Waiter},{AppRoles.Cashier}")]
-public sealed class RestaurantDashboardController(ApplicationDbContext dbContext) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantDashboardController(ApplicationDbContext dbContext, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     private static readonly PackageOrderStatus[] ActivePackageStatuses =
         [PackageOrderStatus.Preparing, PackageOrderStatus.Ready, PackageOrderStatus.CourierWaiting, PackageOrderStatus.OnTheWay];
@@ -36,14 +37,24 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         // UtcNow çağrısı yapar) birkaç milisaniye ÖNCE damgalanabiliyor, o satış zaman aralığının
         // dışında kalıp sessizce ciro/fiş sayısından düşüyordu (Edip'in "sonradan tahmin edilmemeli"
         // ek talimatının tam yasakladığı durum). Artık GERÇEK ZPeriodId FK'sı kullanılıyor.
+        // Her şubenin kendi açık Z dönemi var (bkz. RestaurantReportsController, aynı çözümleme):
+        // panel terminal şubesini gösterir (terminal yoksa kullanıcının şubesi, o da yoksa merkez).
+        // Tüm şubelerde tek "açık dönem" varsayımı, iki şubede aynı anda açık dönem olunca
+        // SingleOrDefaultAsync'ı "Sequence contains more than one element" ile patlatıyordu.
+        var dashboardBranchId = int.TryParse(Request.Cookies["ss_terminal_branch"], out var terminalBranchId)
+            ? (int?)terminalBranchId
+            : await dbContext.Users.AsNoTracking().Where(x => x.Id == CurrentUserId).Select(x => x.BranchId).SingleOrDefaultAsync()
+              ?? await dbContext.Branches.AsNoTracking().Where(x => x.IsHeadOffice).Select(x => x.Id).FirstOrDefaultAsync();
+
         var activeZPeriod = await dbContext.RestaurantZPeriods
-            .Where(x => x.Status == RestaurantZPeriodStatus.Open)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Open && x.BranchId == dashboardBranchId)
             .Select(x => new { x.Id, x.OpenedAtUtc })
             .SingleOrDefaultAsync();
         var periodStartUtc = activeZPeriod is not null && activeZPeriod.OpenedAtUtc >= todayStartUtc ? activeZPeriod.OpenedAtUtc : todayStartUtc;
 
         var todaySales = await dbContext.RetailSales
             .AsNoTracking()
+            .Where(x => x.BranchId == dashboardBranchId)
             .Where(x => activeZPeriod != null ? x.RestaurantZPeriodId == activeZPeriod.Id
                 : x.IssuedAtUtc >= periodStartUtc && x.IssuedAtUtc < todayEndUtc)
             .Where(x => x.Status != RetailSaleStatus.Cancelled)
@@ -57,6 +68,7 @@ public sealed class RestaurantDashboardController(ApplicationDbContext dbContext
         // süzülüyor - zaman aralığı DEĞİL.
         var todayPayments = await dbContext.RestaurantPayments
             .AsNoTracking()
+            .Where(x => dbContext.RestaurantChecks.Any(c => c.Id == x.RestaurantCheckId && c.BranchId == dashboardBranchId))
             .Where(x => activeZPeriod != null
                 ? dbContext.RetailSales.Any(rs => rs.RestaurantCheckId == x.RestaurantCheckId && rs.RestaurantZPeriodId == activeZPeriod.Id)
                 : x.PaidAtUtc >= periodStartUtc && x.PaidAtUtc < todayEndUtc)

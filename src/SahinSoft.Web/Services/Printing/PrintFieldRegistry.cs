@@ -87,12 +87,28 @@ public static class PrintFieldRegistry
         new("report.netTotal", "Net Ciro", "Rapor Alanları", "text")
     ];
 
+    private static readonly List<PrintFieldDefinition> CariMakbuzFields =
+    [
+        .. CommonHeaderFields,
+        new("makbuz.title", "Makbuz Başlığı (Tahsilat/Tediye)", "Makbuz Alanları", "text"),
+        new("makbuz.number", "Makbuz No", "Makbuz Alanları", "text"),
+        new("makbuz.status", "Durum", "Makbuz Alanları", "text"),
+        new("makbuz.customerName", "Cari Unvanı", "Makbuz Alanları", "text"),
+        new("makbuz.customerCode", "Cari Kodu", "Makbuz Alanları", "text"),
+        new("makbuz.accountName", "Hesap (Kasa/Banka)", "Makbuz Alanları", "text"),
+        new("makbuz.paymentMethod", "Ödeme Türü", "Makbuz Alanları", "text"),
+        new("makbuz.amount", "Tutar", "Makbuz Alanları", "text"),
+        new("makbuz.description", "Açıklama", "Makbuz Alanları", "text"),
+        new("makbuz.cashierName", "Kasiyer", "Makbuz Alanları", "text")
+    ];
+
     public static IReadOnlyList<PrintFieldDefinition> GetFields(PrintTemplateType type) => type switch
     {
         PrintTemplateType.Adisyon => AdisyonFields,
         PrintTemplateType.MutfakFisi => MutfakFields,
         PrintTemplateType.XRaporu => ReportCommonFields,
         PrintTemplateType.ZRaporu => [.. ReportCommonFields, .. ZOnlyFields],
+        PrintTemplateType.CariMakbuz => CariMakbuzFields,
         _ => []
     };
 

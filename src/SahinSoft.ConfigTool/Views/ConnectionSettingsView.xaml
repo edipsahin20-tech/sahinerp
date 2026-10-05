@@ -1,0 +1,160 @@
+<UserControl x:Class="SahinSoft.ConfigTool.Views.ConnectionSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Veritabanı Bağlantı Ayarları" Style="{StaticResource PageTitleStyle}"/>
+        <TextBlock Text="Sunucu bağlantılarını düzenleyin ve varsayılan veritabanını seçin." Style="{StaticResource PageSubtitleStyle}"/>
+
+        <Grid Margin="0,24,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Kayıtlı bağlantılar listesi -->
+            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="20" VerticalAlignment="Top">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock Text="Kayıtlı Bağlantılar" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center"/>
+                        <Button Content="+ Yeni Bağlantı" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" Padding="12,7" FontSize="12" Click="NewConnection_Click"/>
+                    </Grid>
+                    <ItemsControl x:Name="ProfileList" Margin="0,16,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="White" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,8" Padding="14,12" Cursor="Hand" MouseLeftButtonUp="ProfileCard_Click" Tag="{Binding}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5" Foreground="{StaticResource TextDark}"/>
+                                            <Border Style="{StaticResource BadgeStyle}" HorizontalAlignment="Right" Visibility="{Binding IsDefault, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="Varsayılan" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource BadgeBlueText}"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{StaticResource TextMuted}">
+                                            <Run Text="Sunucu: "/><Run Text="{Binding Server}"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMuted}">
+                                            <Run Text="Veritabanı: "/><Run Text="{Binding Database}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Bağlantı bilgileri formu -->
+            <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Text="Bağlantı Bilgileri" Style="{StaticResource SectionTitleStyle}"/>
+
+                    <Grid Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Bağlantı Adı" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox x:Name="NameBox" Style="{StaticResource FieldTextBoxStyle}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Sunucu Adresi" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox x:Name="ServerBox" Style="{StaticResource FieldTextBoxStyle}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="Veritabanı Adı" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBox x:Name="DatabaseBox" Style="{StaticResource FieldTextBoxStyle}" Text="SahinSoftDb"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,14,0,0">
+                        <TextBlock Text="Kimlik Doğrulama Yöntemi" Style="{StaticResource FieldLabelStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton x:Name="SqlAuthRadio" Grid.Column="0" GroupName="AuthMode" IsChecked="True" Checked="AuthMode_Changed" Style="{StaticResource AuthToggleStyle}">
+                                <TextBlock Text="SQL Server" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton x:Name="WindowsAuthRadio" Grid.Column="1" GroupName="AuthMode" Checked="AuthMode_Changed" Style="{StaticResource AuthToggleStyle}" Margin="8,0,0,0">
+                                <TextBlock Text="Windows" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid x:Name="SqlAuthFieldsPanel" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="SQL Kullanıcı Adı" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox x:Name="UserBox" Style="{StaticResource FieldTextBoxStyle}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Şifre" Style="{StaticResource FieldLabelStyle}"/>
+                            <PasswordBox x:Name="PasswordBoxCtrl" Style="{StaticResource FieldPasswordBoxStyle}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,20,0,0">
+                        <Grid>
+                            <TextBlock Text="Mevcut Veritabanları" Style="{StaticResource FieldLabelStyle}" VerticalAlignment="Center"/>
+                            <Button Content="Veritabanlarını Listele" Style="{StaticResource SecondaryButtonStyle}" Padding="12,7" FontSize="12" HorizontalAlignment="Right" Click="ListDatabases_Click"/>
+                        </Grid>
+                        <Border BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="8" Margin="0,8,0,0" MaxHeight="200">
+                            <ListBox x:Name="DatabaseListBox" BorderThickness="0" SelectionMode="Multiple">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding}" IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected, Mode=OneWay}" IsHitTestVisible="False" Padding="6,4" FontSize="13"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                        <Grid Margin="0,10,0,0">
+                            <TextBlock Text="Tiklediklerin giriş ekranında görünür, tıklanmayanlar kaldırılır." FontSize="11.5" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                            <Button Content="Seçilenleri Giriş Ekranına Ekle" Style="{StaticResource PrimaryButtonStyle}" Padding="12,7" FontSize="12" HorizontalAlignment="Right" Click="SyncLoginDatabases_Click"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <CheckBox x:Name="SetDefaultCheck" Content="Varsayılan bağlantı olarak kullan" Margin="0,16,0,0" FontSize="13"/>
+
+                    <Expander Header="Gelişmiş Ayarlar" Margin="0,16,0,0" FontSize="13" Foreground="{StaticResource TextDark}">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Yapılandırma Dosyası" Style="{StaticResource FieldLabelStyle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ConfigPathBox" Grid.Column="0" Style="{StaticResource FieldTextBoxStyle}"/>
+                                <Button Grid.Column="2" Content="Gözat..." Style="{StaticResource SecondaryButtonStyle}" Padding="12,8" Click="Browse_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <Border Background="{StaticResource InfoBoxBg}" BorderBrush="{StaticResource InfoBoxBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,16,0,0" Visibility="Collapsed" x:Name="StatusBox">
+                        <TextBlock x:Name="StatusText" FontSize="12.5" TextWrapping="Wrap" Foreground="{StaticResource InfoBoxText}"/>
+                    </Border>
+
+                    <Grid Margin="0,20,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Bağlantıyı Test Et" Style="{StaticResource SecondaryButtonStyle}" Click="TestConnection_Click"/>
+                            <Button Content="Profili Sil" Style="{StaticResource SecondaryButtonStyle}" Margin="10,0,0,0" Click="DeleteProfile_Click"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Kaydet" Style="{StaticResource SecondaryButtonStyle}" Click="Save_Click"/>
+                            <Button Content="Bağlantıyı Etkinleştir" Style="{StaticResource PrimaryButtonStyle}" Margin="10,0,0,0" Click="Activate_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </StackPanel>
+</UserControl>

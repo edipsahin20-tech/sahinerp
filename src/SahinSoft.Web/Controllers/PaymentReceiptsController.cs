@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.Filters;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,12 +13,36 @@ using SahinSoft.Web.Services;
 
 namespace SahinSoft.Web.Controllers;
 
-[Authorize]
+// Tahsilat/tediye yazma ve görüntüleme: yönetici, muhasebe personeli, restoran müdürü ve kasiyer.
+// Garson ve mutfak erişemez. İptal yalnızca Administrator (aşağıda ayrıca kısıtlı).
+[Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.Staff},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
 public sealed class PaymentReceiptsController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
-    PaymentReceiptPostingService paymentReceiptPostingService) : Controller
+    PaymentReceiptPostingService paymentReceiptPostingService,
+    RestaurantShellService shellService,
+    SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService) : Controller
 {
+    // Restoran modunda (origin=restaurant ya da FromRestaurant) ekran restoran kabuğunda açılır ve
+    // hesap seçimi için hesap listesi (tür, şube, ortak) ViewBag ile verilir.
+    public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        var isRestaurant = string.Equals(context.HttpContext.Request.Query["origin"].ToString(), "restaurant", StringComparison.OrdinalIgnoreCase)
+            || context.ActionArguments.Values.OfType<PaymentReceiptFormViewModel>().Any(x => x.FromRestaurant);
+        if (isRestaurant)
+        {
+            var type = context.ActionArguments.Values.OfType<PaymentReceiptFormViewModel>().FirstOrDefault()?.ReceiptType
+                ?? (context.ActionArguments.TryGetValue("type", out var t) && t is ReceiptType rt ? rt : ReceiptType.Collection);
+            ViewBag.Shell = await shellService.BuildAsync(User, context.HttpContext.Request, type == ReceiptType.Collection ? "tahsilat" : "tediye");
+            ViewBag.RestaurantAccounts = await dbContext.FinancialAccounts.AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .Select(x => new { id = x.Id, name = x.Name, type = (int)x.AccountType, branchId = x.BranchId, shared = x.IsShared, branchName = dbContext.Branches.Where(b => b.Id == x.BranchId).Select(b => b.Name).FirstOrDefault() })
+                .ToListAsync();
+        }
+        await next();
+    }
+
     public async Task<IActionResult> Index(
         ReceiptType? type,
         PaymentReceiptStatus? status,
@@ -59,11 +84,23 @@ public sealed class PaymentReceiptsController(
         return View(await query.ToListAsync());
     }
 
-    public async Task<IActionResult> Create(ReceiptType type)
+    // Restoran tahsilat/tediye ekranında seçilen carinin güncel bakiyesi (Borç - Alacak).
+    // Pozitif = müşteriden alacak, negatif = cariye borç.
+    [HttpGet]
+    public async Task<IActionResult> CustomerBalance(int customerId)
+    {
+        var balance = await dbContext.CurrentAccountTransactions.AsNoTracking()
+            .Where(x => x.CustomerId == customerId)
+            .SumAsync(x => (decimal?)(x.Debit - x.Credit)) ?? 0m;
+        return Json(new { balance });
+    }
+
+    public async Task<IActionResult> Create(ReceiptType type, string? origin = null)
     {
         var model = new PaymentReceiptFormViewModel
         {
             ReceiptType = type,
+            FromRestaurant = origin == "restaurant",
             Lines = [new PaymentReceiptLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
@@ -80,6 +117,26 @@ public sealed class PaymentReceiptsController(
     public async Task<IActionResult> Create(PaymentReceiptFormViewModel form)
     {
         ValidateLines(form);
+
+        int? originBranchId = null;
+        if (form.FromRestaurant)
+        {
+            originBranchId = int.TryParse(Request.Cookies["ss_terminal_branch"], out var terminalBranch) ? terminalBranch : null;
+            if (originBranchId is null)
+            {
+                ModelState.AddModelError(string.Empty, "Terminal şubesi seçilmemiş. Önce Terminal Ayarları'ndan şube seçin.");
+            }
+            else
+            {
+                var accountError = await paymentReceiptPostingService.CheckBranchAccountsAsync(
+                    originBranchId.Value, form.Lines.Where(x => x.FinancialAccountId is not null).Select(x => x.FinancialAccountId!.Value));
+                if (accountError is not null)
+                {
+                    ModelState.AddModelError(string.Empty, accountError);
+                }
+            }
+        }
+
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
@@ -123,6 +180,7 @@ public sealed class PaymentReceiptsController(
                     };
                     MapHeader(form, newReceipt);
                     MapLines(form, newReceipt);
+                    newReceipt.OriginBranchId = originBranchId;
 
                     dbContext.PaymentReceipts.Add(newReceipt);
                     await dbContext.SaveChangesAsync();
@@ -158,7 +216,76 @@ public sealed class PaymentReceiptsController(
         }
 
         TempData["Success"] = "Tahsilat/tediye taslağı oluşturuldu.";
+        if (form.FromRestaurant && form.PrintReceipt)
+        {
+            var printError = await TryPrintReceiptAsync(receipt.Id, receipt.ReceiptNumber, originBranchId);
+            if (printError is null)
+            {
+                TempData["Success"] += " Makbuz termal yazıcıya gönderildi.";
+            }
+            else
+            {
+                TempData["Error"] = printError;
+            }
+        }
         return RedirectToAction(nameof(Details), new { id = receipt.Id });
+    }
+
+    // Kayıtlı tahsilat/tediye makbuzunu 80mm termal yazıcıdan yeniden yazdırır.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PrintReceipt(int id)
+    {
+        var receipt = await dbContext.PaymentReceipts.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        if (receipt is null)
+        {
+            return NotFound();
+        }
+
+        var printError = await TryPrintReceiptAsync(receipt.Id, receipt.ReceiptNumber, receipt.OriginBranchId);
+        if (printError is null)
+        {
+            TempData["Success"] = "Makbuz termal yazıcıya gönderildi.";
+        }
+        else
+        {
+            TempData["Error"] = printError;
+        }
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // Önce şubenin "Tahsilat/Tediye Makbuzu" yazıcısı, yoksa Adisyon yazıcısı kullanılır. Yazdırma
+    // hatası kaydı asla geri almaz; hata mesajı döner (null = başarılı).
+    private async Task<string?> TryPrintReceiptAsync(int receiptId, string receiptNumber, int? branchId)
+    {
+        branchId ??= int.TryParse(Request.Cookies["ss_terminal_branch"], out var terminalBranch) ? terminalBranch : null;
+        if (branchId is null)
+        {
+            return "Makbuz yazdırılamadı: şube belirlenemedi (Terminal Ayarları'ndan şube seçin).";
+        }
+
+        try
+        {
+            var source = $"Makbuz {receiptNumber}";
+            var (jobId, result) = await printDispatchService.EnqueueAndSendForRoleAsync(
+                PrinterRole.CariMakbuz, branchId.Value, PrintTemplateType.CariMakbuz, receiptId, source);
+            if (jobId is null)
+            {
+                (jobId, result) = await printDispatchService.EnqueueAndSendForRoleAsync(
+                    PrinterRole.Adisyon, branchId.Value, PrintTemplateType.CariMakbuz, receiptId, source);
+            }
+
+            if (jobId is null)
+            {
+                return "Makbuz yazdırılamadı: bu şubede aktif termal yazıcı tanımlı değil (Ayarlar > Yazıcı Yönetimi).";
+            }
+
+            return result is { Success: true } ? null : $"Makbuz yazıcıya gönderilemedi: {result?.Error}";
+        }
+        catch (Exception ex)
+        {
+            return $"Makbuz yazdırılamadı: {ex.Message}";
+        }
     }
 
     public async Task<IActionResult> Edit(int id)
@@ -278,6 +405,21 @@ public sealed class PaymentReceiptsController(
         if (receipt.Status != PaymentReceiptStatus.Draft)
         {
             return BadRequest("Yalnızca taslak fişler düzenlenebilir.");
+        }
+
+        // Kaynak şube kayıtta damgalanır ve düzenlemede DEĞİŞMEZ; hesap uygunluğu ise her düzenlemede
+        // yeniden denetlenir (terminal ayarı kayıttan sonra değişmiş olabilir).
+        if (receipt.OriginBranchId is { } originBranch)
+        {
+            var accountError = await paymentReceiptPostingService.CheckBranchAccountsAsync(
+                originBranch, form.Lines.Where(x => x.FinancialAccountId is not null).Select(x => x.FinancialAccountId!.Value));
+            if (accountError is not null)
+            {
+                ModelState.AddModelError(string.Empty, accountError);
+                await PopulateSelectionsAsync(form);
+                await SetToolbarAsync(id, form.ReceiptType);
+                return View("Form", form);
+            }
         }
 
         MapHeader(form, receipt);

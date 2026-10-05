@@ -1,0 +1,182 @@
+@model SahinSoft.Web.Models.RestaurantDataHealthViewModel
+@{
+    Layout = "_RestaurantShellLayout";
+    var row = Model.SelectedRow!;
+    var dateText = Model.FilterDate.ToString("yyyy-MM-dd");
+    ViewData["Title"] = $"Fiş İnceleme • {row.CheckNumber}";
+
+    static string ChipIcon(string value) => value switch
+    {
+        "Tam" => "fa-circle-check",
+        "Kapalı" or "Gerekmiyor" => "fa-circle-minus",
+        "Bekliyor" => "fa-clock",
+        _ => "fa-circle-exclamation"
+    };
+
+    static string PartChip(string value) => value switch
+    {
+        "Tam" => "background:#DFF5E7;color:#1f7a4d;",
+        "Bekliyor" => "background:#FFF3D6;color:#8a6d1a;",
+        "Kapalı" or "Gerekmiyor" => "background:#EEF1F5;color:#5b6675;",
+        _ => "background:#FBE1E1;color:#8a2a2a;"
+    };
+}
+
+<div class="dh-page">
+    <div class="dh-crumb">
+        <a href="@Url.Action("Index", new { date = dateText, tab = "fis" })">Mutabakat Merkezi</a> / <span>Fiş İnceleme</span>
+    </div>
+
+    <div class="dh-head">
+        <h2 class="dh-title">Fiş İnceleme • @row.CheckNumber</h2>
+        <div class="dh-actions">
+            <a class="dh-btn dh-btn-outline" href="@Url.Action("Index", new { date = dateText, tab = "fis" })"><i class="fa-solid fa-arrow-left"></i> Mutabakata Dön</a>
+            <a class="dh-btn dh-btn-primary" target="_blank" href="@Url.Action("Receipt", "Restaurant", new { id = row.RetailSaleId })">Fişi Gör <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] is string successMsg)
+    {
+        <div class="alert alert-success">@successMsg</div>
+    }
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="alert alert-danger">@errorMsg</div>
+    }
+
+    @if (!Model.MerkezSyncEnabled)
+    {
+        <div class="dh-banner dh-banner-big"><i class="fa-solid fa-circle-info"></i><div><b>Merkez senkronizasyonu kapalı</b><span>Bu fiş için merkez senkronizasyonu kapalıdır. Kayıtlar yalnızca yerel sistemde tutulmaktadır.</span></div></div>
+    }
+
+    <div class="dh-grid2">
+        <div class="dh-panel">
+            <h4><i class="fa-solid fa-database"></i> Sistemdeki Kayıt</h4>
+            <div class="dh-kv"><span>Adisyon No</span><strong>@row.CheckNumber</strong></div>
+            <div class="dh-kv"><span>Fiş No</span><strong>@row.DocumentNumber</strong></div>
+            <div class="dh-kv"><span>Z No</span><strong>@(row.ZNo ?? "—")</strong></div>
+            <div class="dh-kv"><span>Tarih / Saat</span><strong>@row.IssuedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
+            <div class="dh-kv"><span>Tutar</span><strong>@row.GrandTotal.ToString("N2") ₺</strong></div>
+            <div class="dh-kv">
+                <span>Kayıt Durumu</span>
+                <span>
+                    <span class="dh-chip" style="@PartChip(row.LocalStatus)"><i class="fa-solid @ChipIcon(row.LocalStatus)"></i> Yerel: @row.LocalStatus</span>
+                    <span class="dh-chip" style="@PartChip(row.CentralStatus)"><i class="fa-solid @ChipIcon(row.CentralStatus)"></i> Merkez: @row.CentralStatus</span>
+                    <span class="dh-chip" style="@PartChip(row.AccountingStatus)"><i class="fa-solid @ChipIcon(row.AccountingStatus)"></i> Muhasebe: @row.AccountingStatus</span>
+                </span>
+            </div>
+            @if (row.ErrorReasons.Count > 0)
+            {
+                <div class="dh-reasons">
+                    @foreach (var reason in row.ErrorReasons)
+                    {
+                        <div>• @reason</div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="dh-panel">
+            <h4><i class="fa-solid fa-file-lines"></i> Gerçek Fiş Kaynağı</h4>
+            <div class="dh-source">
+                <span class="dh-source-ico"><i class="fa-regular fa-file-lines"></i></span>
+                <a class="dh-btn dh-btn-primary" target="_blank" href="@Url.Action("Receipt", "Restaurant", new { id = row.RetailSaleId })">Fişi Gör <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                <p>Tutar, miktar ve ürün bilgilerini gerçek fiş kaynağından doğrulayın.</p>
+            </div>
+            <div class="dh-banner dh-banner-soft"><i class="fa-solid fa-circle-info"></i><div>Bu bilgiler yalnızca gerçek fiş doğrulandıktan sonra elle düzeltilir; sistem tahmin etmez.</div></div>
+
+            @if (row.CanRepairZReference || row.CanRetransmitToCentral)
+            {
+                <h4 class="mt-3">Onarım</h4>
+                @if (row.CanRepairZReference)
+                {
+                    <form method="post" asp-action="RepairZReference" class="mb-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
+                        <input type="hidden" name="date" value="@dateText" />
+                        <button type="submit" class="dh-btn dh-btn-outline">Z referansını onar</button>
+                    </form>
+                }
+                @if (row.CanRetransmitToCentral)
+                {
+                    <form method="post" asp-action="RetransmitToCentral">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="retailSaleId" value="@row.RetailSaleId" />
+                        <input type="hidden" name="date" value="@dateText" />
+                        <button type="submit" class="dh-btn dh-btn-outline">Merkeze yeniden gönder</button>
+                    </form>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="dh-panel">
+        <h4><i class="fa-regular fa-clock"></i> Onarım Logu</h4>
+        <p class="dh-note">Kayıt değişiklikleri ve işlem geçmişi</p>
+        <div class="dh-table-wrap">
+            <table class="dh-table dh-table-compact">
+                <thead><tr><th>Tarih / Saat</th><th>Kullanıcı</th><th>İşlem</th><th>Kayıt</th><th>Değişiklik</th></tr></thead>
+                <tbody>
+                    @if (Model.SelectedRowAudits.Count == 0)
+                    {
+                        <tr><td colspan="5" class="dh-empty">Bu fişe ait denetim kaydı yok.</td></tr>
+                    }
+                    @foreach (var log in Model.SelectedRowAudits)
+                    {
+                        <tr>
+                            <td>@log.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@log.UserName</td>
+                            <td><span class="dh-chip @(log.Action == "Added" ? "dh-chip-ok" : log.Action == "Modified" ? "dh-chip-info" : "dh-chip-bad")">@(log.Action == "Added" ? "Eklendi" : log.Action == "Modified" ? "Güncellendi" : log.Action)</span></td>
+                            <td>@log.EntityName #@log.EntityId</td>
+                            <td>@(log.Action == "Added" ? "Yeni kayıt oluşturuldu" : log.Action == "Modified" ? "Kayıt güncellendi" : "Kayıt silindi")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dh-page { padding-bottom: 32px; }
+    .dh-crumb { color: #475569; font-size: 15px; margin-bottom: 8px; }
+    .dh-crumb a { color: #475569; text-decoration: none; }
+    .dh-crumb span { color: #0f1f3a; }
+    .dh-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .dh-title { font-size: 32px; font-weight: 800; margin: 0; color: #0f1f3a; letter-spacing: -.01em; }
+    .dh-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .dh-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; height: 46px; border-radius: 10px; border: 1px solid #2563eb; background: #fff; color: #1d4ed8; font-weight: 600; font-size: 16px; text-decoration: none; cursor: pointer; }
+    .dh-btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 2px 6px rgba(37,99,235,.28); }
+    .dh-banner { background: #eef2f7; border: 1px solid #dde4ee; color: #1e293b; border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; font-size: 15px; }
+    .dh-banner-big { display: flex; gap: 16px; align-items: center; padding: 18px 22px; }
+    .dh-banner-big > i { font-size: 26px; color: #64748b; }
+    .dh-banner-big b { display: block; font-size: 18px; color: #0f1f3a; }
+    .dh-banner-big span { font-size: 14px; color: #475569; }
+    .dh-banner-soft { display: flex; gap: 14px; align-items: center; background: #eaf2ff; border-color: #d3e3fb; color: #1d4ed8; margin: 16px 0 0; }
+    .dh-banner-soft > i { font-size: 22px; }
+    .dh-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .dh-panel { border: 1px solid #e6ecf4; border-radius: 12px; padding: 20px 24px; margin-bottom: 18px; background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+    .dh-grid2 .dh-panel { margin-bottom: 0; }
+    .dh-panel h4 { font-size: 22px; font-weight: 700; margin: 0 0 14px; color: #0f1f3a; }
+    .dh-panel h4 i { margin-right: 12px; color: #334155; font-size: 20px; }
+    .dh-kv { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #edf1f7; font-size: 17px; color: #1e293b; }
+    .dh-kv span:first-child { font-weight: 600; color: #0f1f3a; }
+    .dh-kv strong { font-weight: 400; }
+    .dh-chip { display: inline-block; padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; margin: 0 6px 0 0; }
+    .dh-chip i { margin-right: 4px; }
+    .dh-chip-ok { background: #dcfce7; color: #166534; padding: 3px 10px; font-size: 13px; }
+    .dh-chip-info { background: #dbeafe; color: #1d4ed8; padding: 3px 10px; font-size: 13px; }
+    .dh-chip-bad { background: #fee2e2; color: #991b1b; padding: 3px 10px; font-size: 13px; }
+    .dh-reasons { margin-top: 10px; color: #8a2a2a; font-size: 14px; }
+    .dh-source { display: flex; flex-direction: column; gap: 14px; align-items: center; padding-top: 6px; text-align: center; }
+    .dh-source-ico { width: 120px; height: 120px; border-radius: 50%; background: #f1f4f9; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 56px; }
+    .dh-source p { margin: 0; color: #475569; font-size: 15px; }
+    .dh-note { font-size: 15px; color: #475569; margin: -8px 0 14px 34px; }
+    .dh-table-wrap { overflow-x: auto; border: 1px solid #e6ecf4; border-radius: 10px; }
+    .dh-table { width: 100%; border-collapse: collapse; font-size: 15px; color: #1e293b; }
+    .dh-table th { text-align: left; color: #1e293b; font-size: 14px; font-weight: 700; padding: 12px 16px; background: #f5f7fb; border-bottom: 1px solid #e6ecf4; }
+    .dh-table td { padding: 12px 16px; border-bottom: 1px solid #edf1f7; }
+    .dh-table tbody tr:last-child td { border-bottom: 0; }
+    .dh-empty { text-align: center; color: #7a8594; padding: 20px 8px; }
+    @@media (max-width: 900px) { .dh-grid2 { grid-template-columns: 1fr; } }
+</style>

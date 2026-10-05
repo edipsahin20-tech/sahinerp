@@ -27,6 +27,7 @@ public sealed class QuoteStudioSaveLine
     public string Unit { get; set; } = "Adet";
     public decimal Qty { get; set; }
     public decimal Price { get; set; }
+    public decimal? ForeignPrice { get; set; }
     public decimal Kdv { get; set; }
     public decimal Discount { get; set; }
 }
@@ -56,6 +57,7 @@ public sealed class QuoteStudioExistingData
     public string? Address { get; set; }
     public string QuoteDate { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
+    public decimal ExchangeRate { get; set; } = 1;
     public string? Notes { get; set; }
     public decimal AmountDiscount { get; set; }
     public List<QuoteStudioExistingItem> Items { get; set; } = [];
@@ -69,6 +71,7 @@ public sealed class QuoteStudioExistingItem
     public string Unit { get; set; } = string.Empty;
     public decimal Qty { get; set; }
     public decimal Price { get; set; }
+    public decimal? ForeignPrice { get; set; }
     public decimal Kdv { get; set; }
     public decimal Discount { get; set; }
 }

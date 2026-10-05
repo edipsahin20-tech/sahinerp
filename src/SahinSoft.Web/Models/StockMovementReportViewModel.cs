@@ -65,6 +65,8 @@ public sealed class LastPurchasePriceLineViewModel
 
 public sealed class FinancialTransactionReportViewModel
 {
+    public int? BranchId { get; set; }
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> Branches { get; set; } = [];
     public int? FinancialAccountId { get; set; }
     public string? AccountType { get; set; }
     public DateTime? From { get; set; }
@@ -79,6 +81,7 @@ public sealed class FinancialTransactionReportViewModel
 
 public sealed class FinancialTransactionReportLineViewModel
 {
+    public string? BranchName { get; set; }
     public DateTime TransactionDateUtc { get; set; }
     public string AccountName { get; set; } = string.Empty;
     public string TransactionType { get; set; } = string.Empty;

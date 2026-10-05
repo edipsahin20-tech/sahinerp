@@ -111,6 +111,7 @@ public sealed class QuotesController(
                 Address = quote.Customer.Address,
                 QuoteDate = quote.QuoteDateUtc.ToString("yyyy-MM-dd"),
                 CurrencyCode = quote.CurrencyCode,
+                ExchangeRate = quote.ExchangeRate,
                 Notes = quote.Notes,
                 AmountDiscount = quote.AmountDiscount,
                 Items = quote.Lines
@@ -123,6 +124,7 @@ public sealed class QuotesController(
                         Unit = x.UnitSnapshot,
                         Qty = x.Quantity,
                         Price = x.UnitPrice,
+                        ForeignPrice = x.ForeignUnitPrice,
                         Kdv = x.TaxRate,
                         Discount = x.DiscountRate
                     })
@@ -305,6 +307,31 @@ public sealed class QuotesController(
             return Json(new { success = false, message = "Kalemlerdeki miktar 0'dan büyük, birim fiyat 0 veya daha büyük olmalıdır." });
         }
 
+        // Döviz teklifinde (faturadaki gibi) satırın döviz birim fiyatı esastır; TL birim fiyat bu × kur
+        // olarak yeniden hesaplanır ve muhasebe/fiyat listesi/fatura dönüşümü hep TL üzerinden çalışır.
+        request.CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode) ? "TRY" : request.CurrencyCode.Trim().ToUpperInvariant();
+        if (request.CurrencyCode == "TRY")
+        {
+            request.ExchangeRate = 1;
+            foreach (var item in request.Items)
+            {
+                item.ForeignPrice = null;
+            }
+        }
+        else
+        {
+            if (request.ExchangeRate <= 0)
+            {
+                return Json(new { success = false, message = "Döviz teklifi için geçerli bir kur giriniz." });
+            }
+
+            foreach (var item in request.Items)
+            {
+                item.ForeignPrice ??= RoundMoney(item.Price / request.ExchangeRate);
+                item.Price = RoundMoney(item.ForeignPrice.Value * request.ExchangeRate);
+            }
+        }
+
         try
         {
             Customer? customer = request.CustomerId is int customerId
@@ -423,6 +450,7 @@ public sealed class QuotesController(
                     UnitSnapshot = item.Unit,
                     Quantity = item.Qty,
                     UnitPrice = item.Price,
+                    ForeignUnitPrice = item.ForeignPrice,
                     DiscountRate = item.Discount,
                     DiscountAmount = totalDiscAmount,
                     TaxRate = item.Kdv,
@@ -538,6 +566,7 @@ public sealed class QuotesController(
             ValidUntilUtc = quote.ValidUntilUtc,
             CustomerName = quote.Customer.Name,
             CurrencyCode = quote.CurrencyCode,
+            ExchangeRate = quote.ExchangeRate,
             Subtotal = quote.Subtotal,
             DiscountTotal = quote.DiscountTotal,
             AmountDiscount = quote.AmountDiscount,
@@ -554,6 +583,7 @@ public sealed class QuotesController(
                     UnitSnapshot = x.UnitSnapshot,
                     Quantity = x.Quantity,
                     UnitPrice = x.UnitPrice,
+                    ForeignUnitPrice = x.ForeignUnitPrice,
                     DiscountRate = x.DiscountRate,
                     DiscountAmount = x.DiscountAmount,
                     TaxRate = x.TaxRate,
@@ -819,6 +849,7 @@ public sealed class QuotesController(
                 UnitSnapshot = line.UnitSnapshot,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
+                ForeignUnitPrice = line.ForeignUnitPrice,
                 DiscountRate = effectiveDiscountRate,
                 TaxRate = line.TaxRate,
                 Description = line.Description

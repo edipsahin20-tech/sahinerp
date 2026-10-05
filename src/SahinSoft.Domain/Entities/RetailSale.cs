@@ -39,6 +39,11 @@ public sealed class RetailSale : EntityBase
     public int RestaurantCheckId { get; set; }
     public RestaurantCheck RestaurantCheck { get; set; } = null!;
 
+    // Satışın şubesi (fiş numarası şube içinde benzersiz; merkezde şube kimliğiyle ayrılır).
+    // Null = göç öncesi kayıt, göçle atanır.
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
     // Z Dönem Kapatma test talimatı (2026-09-06) - satış finansal olarak kapanırken (bkz.
     // RestaurantPostingService.CloseCheckAsync) o anki AKTİF Z dönemine kalıcı olarak bağlanır;
     // sonradan zaman aralığıyla tahmin edilmez. ZReportNumber (yukarıda, önceden hiç

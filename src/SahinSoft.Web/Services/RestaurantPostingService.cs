@@ -146,6 +146,7 @@ public sealed class RestaurantPostingService(
                     CheckNumber = checkNumber,
                     Status = RestaurantCheckStatus.Open,
                     OpenedAtUtc = DateTime.UtcNow,
+                    BranchId = table.RestaurantSection.BranchId,
                     RestaurantTableSession = session
                 };
                 dbContext.RestaurantChecks.Add(check);
@@ -488,6 +489,7 @@ public sealed class RestaurantPostingService(
             CheckNumber = checkNumber,
             Status = RestaurantCheckStatus.Open,
             OpenedAtUtc = DateTime.UtcNow,
+            BranchId = branchId,
             RestaurantTableSession = session
         };
         dbContext.RestaurantChecks.Add(check);
@@ -609,6 +611,7 @@ public sealed class RestaurantPostingService(
                         CheckNumber = newCheckNumber,
                         Status = RestaurantCheckStatus.Open,
                         OpenedAtUtc = DateTime.UtcNow,
+                        BranchId = targetTable.RestaurantSection.BranchId,
                         RestaurantTableSession = newSession
                     };
                     dbContext.RestaurantChecks.Add(newCheck);
@@ -1818,6 +1821,7 @@ public sealed class RestaurantPostingService(
         string closedByUserId,
         Guid submissionKey,
         FiscalReceiptInfo? fiscalInfo = null,
+        int? branchId = null,
         CancellationToken cancellationToken = default) =>
         DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
         {
@@ -1860,6 +1864,19 @@ public sealed class RestaurantPostingService(
                 {
                     throw new InvalidOperationException("Bu adisyon zaten kapalı veya iptal edilmiş.");
                 }
+
+                // Şube kuralı: işlemin şubesi ADİSYONUN kayıtlı şubesidir (kapanış anındaki kullanıcı ya
+                // da terminal değil). Şubesiz eski adisyon, terminale göre TAHMİNLE atanmaz; terminal farklı
+                // bir şubedeyse işlem açıklamalı olarak engellenir, adisyonun şubesi değiştirilmez.
+                if (check.BranchId is not { } adisyonBranchId)
+                {
+                    throw new InvalidOperationException("Bu adisyonun şubesi kayıtlı değil (eski kayıt). Şube tahmin edilmez; adisyon yeni kayıtla yeniden açılmalı.");
+                }
+                if (branchId is { } terminalBranchId && terminalBranchId != adisyonBranchId)
+                {
+                    throw new InvalidOperationException($"Bu adisyon {adisyonBranchId} numaralı şubede açıldı; bu terminal farklı bir şubede. Adisyonun şubesi değiştirilmez, işlem engellendi.");
+                }
+                branchId = adisyonBranchId;
 
                 // "Cari Ekle" (madde 13) ile önceden bağlanmış bir müşteri varsa ve istemci ayrıca
                 // bir customerId göndermediyse (fatura kesme senaryosu değilse) onu kullan - Açık
@@ -1948,17 +1965,25 @@ public sealed class RestaurantPostingService(
 
                 var effectiveCustomerId = customerId ?? await GetDefaultRetailCustomerIdAsync(cancellationToken);
                 const string tradeType = "Perakende yurtiçi ticaret";
-                var documentNumber = await documentNumberGenerator.GenerateWithinTransactionAsync("RETAIL_SALE", cancellationToken);
+                // Şube bilgisi varsa fiş numarası şubenin kendi sayacından gelir (şubeler arası çakışma yok).
+                var documentNumber = branchId is { } saleBranchId
+                    ? await documentNumberGenerator.GenerateForBranchWithinTransactionAsync("RETAIL_SALE", saleBranchId, cancellationToken)
+                    : await documentNumberGenerator.GenerateWithinTransactionAsync("RETAIL_SALE", cancellationToken);
 
                 var retailSale = new RetailSale
                 {
                     DocumentNumber = documentNumber,
+                    BranchId = branchId,
                     Status = RetailSaleStatus.Issued,
                     IssuedAtUtc = DateTime.UtcNow,
                     SubtotalAmount = subtotal,
                     DiscountAmount = discount,
                     ServiceChargeAmount = 0,
-                    TaxAmount = tax,
+                    // Ödenmez (ikram benzeri): ödenmeyen kısmın KDV'si fişte ciro gibi dışarıda kalır -
+                    // KDV yalnızca tahsil edilen oranda yazılır (tamamen ödenmeyen fişte 0).
+                    TaxAmount = grandTotal > 0 && unpaidTotal > 0
+                        ? Math.Round(tax * (grandTotal - unpaidTotal) / grandTotal, 2, MidpointRounding.AwayFromZero)
+                        : tax,
                     GrandTotal = grandTotal,
                     TradeType = tradeType,
                     CustomerId = effectiveCustomerId,
@@ -1984,7 +2009,7 @@ public sealed class RestaurantPostingService(
                 // burada, o anki aktif (Status=Open) Z dönemine kalıcı FK ile bağlanır. Yoksa
                 // (ilk satış / önceki Z henüz kapatılmamışsa bu asla olmaz ama ilk kurulumda hiç
                 // dönem yoksa) biri burada lazy oluşturulur.
-                var effectiveBranchId = closedByUserBranchId
+                var effectiveBranchId = branchId ?? closedByUserBranchId
                     ?? await dbContext.Branches.Where(x => x.IsHeadOffice).Select(x => x.Id).FirstAsync(cancellationToken);
                 retailSale.RestaurantZPeriodId = await GetOrCreateActiveZPeriodIdAsync(effectiveBranchId, cancellationToken);
 
@@ -2007,11 +2032,12 @@ public sealed class RestaurantPostingService(
                 var trackedLines = lines.Where(x => x.Product.TrackStock).ToList();
                 if (trackedLines.Count > 0)
                 {
+                    // Depo ADİSYONUN şubesinden seçilir (kapatan kullanıcının şubesinden değil). O şubenin aktif
+                    // deposu yoksa merkez deposuna düşülmez - stok hareketi reddedilir (tahmin yok).
                     var warehouse = await dbContext.Warehouses
-                        .Where(x => x.IsActive && (closedByUserBranchId == x.BranchId || x.Branch.IsHeadOffice))
-                        .OrderByDescending(x => closedByUserBranchId == x.BranchId)
+                        .Where(x => x.IsActive && x.BranchId == branchId)
                         .FirstOrDefaultAsync(cancellationToken)
-                        ?? throw new InvalidOperationException("Stok hareketi için aktif bir depo bulunamadı.");
+                        ?? throw new InvalidOperationException("Bu şubenin (adisyon şubesi) aktif deposu yok; stok hareketi yazılamadı.");
 
                     foreach (var line in trackedLines)
                     {
@@ -2062,6 +2088,7 @@ public sealed class RestaurantPostingService(
                         Debit = netSaleTotal,
                         Credit = 0,
                         CustomerId = effectiveCustomerId,
+                        OriginBranchId = branchId,
                         Description = $"Restoran satışı - {check.CheckNumber}"
                     });
                 }
@@ -2078,6 +2105,7 @@ public sealed class RestaurantPostingService(
                         Debit = 0,
                         Credit = netCollectionTotal,
                         CustomerId = effectiveCustomerId,
+                        OriginBranchId = branchId,
                         Description = $"Restoran tahsilatı - {check.CheckNumber}"
                     };
                     dbContext.CurrentAccountTransactions.Add(collectionAccountTransaction);
@@ -2109,6 +2137,7 @@ public sealed class RestaurantPostingService(
                         TransactionDateUtc = DateTime.UtcNow,
                         TransactionType = FinancialTransactionType.Collection,
                         DocumentNumber = documentNumber,
+                        OriginBranchId = branchId,
                         Amount = payment.Amount,
                         ExchangeRate = 1,
                         Description = $"Restoran tahsilatı - {check.CheckNumber}",
@@ -2169,6 +2198,7 @@ public sealed class RestaurantPostingService(
                     PayloadJson = JsonSerializer.Serialize(new RestaurantCheckClosedPayload
                     {
                         RetailSaleRecordId = retailSale.RecordId,
+                        BranchCode = await dbContext.Branches.Where(x => x.Id == retailSale.BranchId).Select(x => x.Code).SingleOrDefaultAsync(cancellationToken),
                         DocumentNumber = retailSale.DocumentNumber,
                         IssuedAtUtc = retailSale.IssuedAtUtc,
                         SubtotalAmount = retailSale.SubtotalAmount,
@@ -2177,7 +2207,9 @@ public sealed class RestaurantPostingService(
                         TradeType = retailSale.TradeType,
                         CheckNumber = check.CheckNumber,
                         RestaurantZPeriodId = retailSale.RestaurantZPeriodId,
-                        RestaurantZNo = retailSale.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
+                        RestaurantZNo = retailSale.RestaurantZPeriodId is { } zId
+                            ? RestaurantZPeriod.LabelFor(zId, await dbContext.RestaurantZPeriods.Where(x => x.Id == zId).Select(x => x.ZNumber).SingleOrDefaultAsync(cancellationToken))
+                            : null
                     })
                 });
 
@@ -2222,10 +2254,14 @@ public sealed class RestaurantPostingService(
     // tutulur (bkz. RestaurantZPeriod.cs yorumu). Bu metod ÇAĞRILDIĞI transaction'ın İÇİNDE
     // çalışır (CloseCheckAsync zaten Serializable bir transaction açmış durumda) - ayrı bir
     // transaction/strategy AÇMAZ, sadece dbContext üzerinde okuma/ekleme yapar.
+    // Şubenin kapanmış Z dönemi sayısı - yeni dönemin "Z-{n}" numarası bundan türetilir (şube bazlı).
+    private Task<int> CountClosedZPeriodsAsync(int branchId, CancellationToken cancellationToken) =>
+        dbContext.RestaurantZPeriods.CountAsync(x => x.BranchId == branchId && x.Status == RestaurantZPeriodStatus.Closed, cancellationToken);
+
     private async Task<int> GetOrCreateActiveZPeriodIdAsync(int branchId, CancellationToken cancellationToken)
     {
         var openPeriodId = await dbContext.RestaurantZPeriods
-            .Where(x => x.Status == RestaurantZPeriodStatus.Open)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Open && x.BranchId == branchId)
             .Select(x => (int?)x.Id)
             .SingleOrDefaultAsync(cancellationToken);
         if (openPeriodId is not null)
@@ -2237,7 +2273,8 @@ public sealed class RestaurantPostingService(
         {
             Status = RestaurantZPeriodStatus.Open,
             OpenedAtUtc = DateTime.UtcNow,
-            BranchId = branchId
+            BranchId = branchId,
+            ZNumber = $"Z-{await CountClosedZPeriodsAsync(branchId, cancellationToken) + 1:D6}"
         };
         dbContext.RestaurantZPeriods.Add(newPeriod);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -2254,6 +2291,7 @@ public sealed class RestaurantPostingService(
     // kez post etmez").
     public Task<RestaurantZPeriod> CloseActiveZPeriodAsync(
         string? closedByUserId,
+        int? branchId = null,
         CancellationToken cancellationToken = default,
         bool isAutomatic = false) =>
         DocumentNumberGeneratorService.ExecuteWithConcurrencyRetryAsync(dbContext, () =>
@@ -2267,7 +2305,7 @@ public sealed class RestaurantPostingService(
                     cancellationToken);
 
                 var openPeriod = await dbContext.RestaurantZPeriods
-                    .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open, cancellationToken)
+                    .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open && (branchId == null || x.BranchId == branchId), cancellationToken)
                     ?? throw new InvalidOperationException("Açık bir Z dönemi bulunamadı.");
 
                 var sales = await dbContext.RetailSales
@@ -2315,6 +2353,12 @@ public sealed class RestaurantPostingService(
                     openPeriod.DiscountTotal = sales.Sum(x => x.DiscountAmount) - complimentaryTotal;
                 }
 
+                // Bu şubenin şu ana kadar kapanmış dönem sayısı (bu dönem henüz sayılmıyor) -
+                // kapanan dönemin numarası ve hemen açılan yeni dönemin numarası buna göre verilir.
+                var closedBeforeThisPeriod = await dbContext.RestaurantZPeriods
+                    .CountAsync(x => x.BranchId == openPeriod.BranchId && x.Status == RestaurantZPeriodStatus.Closed, cancellationToken);
+                openPeriod.ZNumber ??= $"Z-{closedBeforeThisPeriod + 1:D6}";
+
                 openPeriod.Status = RestaurantZPeriodStatus.Closed;
                 openPeriod.ClosedAtUtc = DateTime.UtcNow;
                 openPeriod.ClosedByUserId = closedByUserId;
@@ -2324,7 +2368,8 @@ public sealed class RestaurantPostingService(
                 {
                     Status = RestaurantZPeriodStatus.Open,
                     OpenedAtUtc = openPeriod.ClosedAtUtc.Value,
-                    BranchId = openPeriod.BranchId
+                    BranchId = openPeriod.BranchId,
+                    ZNumber = $"Z-{closedBeforeThisPeriod + 2:D6}"
                 };
                 dbContext.RestaurantZPeriods.Add(newPeriod);
 
@@ -2351,38 +2396,44 @@ public sealed class RestaurantPostingService(
     // çakışmasıyla yeniden dener (ve o noktada dönem zaten kapanmış/yeni dönem boş olduğu için
     // hiçbir şey yapmaz) ya da zaten boş bulur - MANUEL Z ile TAMAMEN AYNI motoru kullanır, ayrı
     // bir "otomatik kapanış" mantığı YOK.
-    public async Task<RestaurantZPeriod?> RunAutomaticZCheckAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<RestaurantZPeriod>> RunAutomaticZCheckAsync(DateTime nowUtc, CancellationToken cancellationToken = default)
     {
         var settings = await dbContext.InventorySettings
             .AsNoTracking()
             .SingleAsync(x => x.Id == 1, cancellationToken);
         if (!settings.AutoZEnabled || settings.AutoZTimeLocal is null)
         {
-            return null;
+            return [];
         }
 
         var nowLocal = nowUtc.ToLocalTime();
         if (nowLocal.TimeOfDay < settings.AutoZTimeLocal.Value)
         {
-            return null;
+            return [];
         }
 
-        var openPeriod = await dbContext.RestaurantZPeriods
+        // Her şubenin kendi açık Z dönemi var - her biri için ayrı değerlendirilir (tek "açık dönem"
+        // varsayımı burada da kaldırıldı; aksi halde iki şube açıkken her tur hata verir).
+        var openPeriodIds = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open, cancellationToken);
-        if (openPeriod is null)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Open)
+            .Select(x => new { x.Id, x.BranchId })
+            .ToListAsync(cancellationToken);
+
+        var closedPeriods = new List<RestaurantZPeriod>();
+        foreach (var openPeriod in openPeriodIds)
         {
-            return null;
+            var hasClosedSales = await dbContext.RetailSales
+                .AnyAsync(x => x.RestaurantZPeriodId == openPeriod.Id && x.Status != RetailSaleStatus.Cancelled, cancellationToken);
+            if (!hasClosedSales)
+            {
+                continue;
+            }
+
+            closedPeriods.Add(await CloseActiveZPeriodAsync(closedByUserId: null, branchId: openPeriod.BranchId, cancellationToken: cancellationToken, isAutomatic: true));
         }
 
-        var hasClosedSales = await dbContext.RetailSales
-            .AnyAsync(x => x.RestaurantZPeriodId == openPeriod.Id && x.Status != RetailSaleStatus.Cancelled, cancellationToken);
-        if (!hasClosedSales)
-        {
-            return null;
-        }
-
-        return await CloseActiveZPeriodAsync(closedByUserId: null, cancellationToken, isAutomatic: true);
+        return closedPeriods;
     }
 
     // Kısmi ödeme (madde 4-8) - "Ödemeyi Al" modalında bir yöntem tuşuna basılınca sunucuya
@@ -2549,8 +2600,15 @@ public sealed class RestaurantPostingService(
                 // iptal edilen bir satışın ürünleri satılmamış sayılmalı. Orijinal StockMovement
                 // satırlarının AYNI depo/ürününe, ters işaretli (Quantity) yeni bir hareket
                 // yazılır - orijinal hareket asla silinmez/değiştirilmez (aynı ters kayıt ilkesi).
+                // Fiş numarası ŞUBELER ARASI AYNI olabilir (PSF.00001 her şubede) - bu yüzden
+                // hareketler yalnızca BU adisyonun satır(lar)ına bağlı olanlarla eşlenir.
+                var checkLineIds = await dbContext.RestaurantOrderLines
+                    .Where(x => x.RestaurantOrder.RestaurantCheckId == retailSale.RestaurantCheckId)
+                    .Select(x => x.Id)
+                    .ToListAsync(cancellationToken);
                 var originalStockMovements = await dbContext.StockMovements
-                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null
+                        && x.RestaurantOrderLineId != null && checkLineIds.Contains(x.RestaurantOrderLineId.Value))
                     .ToListAsync(cancellationToken);
                 foreach (var originalMovement in originalStockMovements)
                 {
@@ -2571,8 +2629,11 @@ public sealed class RestaurantPostingService(
                     product.StockQuantity -= originalMovement.Quantity;
                 }
 
+                // Cari hareketler adisyon numarasıyla (globalde benzersiz) eşlenir - bkz. yukarıdaki not.
+                var checkNumber = retailSale.RestaurantCheck.CheckNumber;
                 var originalAccountTransactions = await dbContext.CurrentAccountTransactions
-                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null
+                        && (x.Description == $"Restoran satışı - {checkNumber}" || x.Description == $"Restoran tahsilatı - {checkNumber}"))
                     .ToListAsync(cancellationToken);
                 foreach (var original in originalAccountTransactions)
                 {
@@ -2588,13 +2649,15 @@ public sealed class RestaurantPostingService(
                         Debit = original.Credit,
                         Credit = original.Debit,
                         CustomerId = original.CustomerId,
+                        OriginBranchId = original.OriginBranchId,
                         Description = $"Restoran fişi iptali - {retailSale.DocumentNumber} - {reason}",
                         ReversalOfId = original.Id
                     });
                 }
 
                 var originalFinancialTransactions = await dbContext.FinancialTransactions
-                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null)
+                    .Where(x => x.DocumentNumber == retailSale.DocumentNumber && x.ReversalOfId == null
+                        && x.OriginBranchId == retailSale.BranchId)
                     .ToListAsync(cancellationToken);
                 foreach (var original in originalFinancialTransactions)
                 {
@@ -2608,6 +2671,7 @@ public sealed class RestaurantPostingService(
                         Description = $"Restoran fişi iptali - {retailSale.DocumentNumber} - {reason}",
                         FinancialAccountId = original.FinancialAccountId,
                         CustomerId = original.CustomerId,
+                        OriginBranchId = original.OriginBranchId,
                         ReversalOfId = original.Id
                     });
                 }
@@ -2689,8 +2753,15 @@ public sealed class RestaurantPostingService(
                 }
 
                 var targetTable = await dbContext.RestaurantTables
+                    .Include(x => x.RestaurantSection)
                     .SingleOrDefaultAsync(x => x.Id == toRestaurantTableId && x.IsActive, cancellationToken)
                     ?? throw new InvalidOperationException("Hedef masa bulunamadı veya pasif.");
+
+                // Oturum kendi şubesinden ayrılmaz: hedef masa başka şubenin bölümündeyse taşıma engellenir.
+                if (targetTable.RestaurantSection.BranchId != session.BranchId)
+                {
+                    throw new InvalidOperationException("Hedef masa farklı bir şubeye ait. Adisyon yalnızca kendi şubesinin masasına taşınabilir.");
+                }
 
                 var targetOccupied = await dbContext.RestaurantTableSessions
                     .AnyAsync(x => x.RestaurantTableId == toRestaurantTableId && x.Status == RestaurantTableSessionStatus.Open, cancellationToken);
@@ -2744,6 +2815,11 @@ public sealed class RestaurantPostingService(
                 var into = await dbContext.RestaurantTableSessions
                     .SingleOrDefaultAsync(x => x.Id == intoRestaurantTableSessionId, cancellationToken)
                     ?? throw new InvalidOperationException("Hedef oturum bulunamadı.");
+
+                if (from.BranchId != into.BranchId)
+                {
+                    throw new InvalidOperationException("Farklı şubelerdeki masalar birleştirilemez.");
+                }
 
                 if (from.Status != RestaurantTableSessionStatus.Open || into.Status != RestaurantTableSessionStatus.Open)
                 {
@@ -2901,6 +2977,7 @@ public sealed class RestaurantPostingService(
                         CheckNumber = newCheckNumber,
                         Status = RestaurantCheckStatus.Open,
                         OpenedAtUtc = DateTime.UtcNow,
+                        BranchId = targetTable.RestaurantSection.BranchId,
                         RestaurantTableSession = newSession
                     };
                     dbContext.RestaurantChecks.Add(newCheck);

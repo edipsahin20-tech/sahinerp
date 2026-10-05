@@ -12,6 +12,7 @@ public sealed class QuoteDetailsViewModel
     public DateTime? ValidUntilUtc { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public string CurrencyCode { get; set; } = "TRY";
+    public decimal ExchangeRate { get; set; } = 1;
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }
     public decimal AmountDiscount { get; set; }
@@ -37,6 +38,7 @@ public sealed class QuoteDetailsLineViewModel
     public string UnitSnapshot { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal? ForeignUnitPrice { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }

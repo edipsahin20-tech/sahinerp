@@ -87,6 +87,9 @@ function loadExistingQuoteIfAny() {
   if (data.currencyCode) {
     document.getElementById('quote-currency').value = data.currencyCode;
     activeCurrency = data.currencyCode;
+    if (activeCurrency !== 'TRY' && data.exchangeRate > 0) {
+      document.getElementById('quote-rate').value = data.exchangeRate;
+    }
   }
 
   currentQuoteItems = (data.items || []).map(i => ({
@@ -97,9 +100,11 @@ function loadExistingQuoteIfAny() {
     unit: i.unit,
     qty: i.qty,
     price: i.price,
+    foreignPrice: i.foreignPrice != null ? i.foreignPrice : null,
     kdv: i.kdv,
     discount: i.discount
   }));
+  syncCurrencyUi();
 }
 
 // --- LIVE ASP.NET CORE SQL DATABASE FETCH ---
@@ -597,7 +602,13 @@ function updateItemQty(index, val) {
 }
 
 function updateItemPrice(index, val) {
-  currentQuoteItems[index].price = Math.max(0, parseFloat(val) || 0);
+  const value = Math.max(0, parseFloat(val) || 0);
+  if (isForeignQuote()) {
+    currentQuoteItems[index].foreignPrice = value;
+    currentQuoteItems[index].price = Math.round(value * getQuoteRate() * 100) / 100;
+  } else {
+    currentQuoteItems[index].price = value;
+  }
   updateCalculations();
   updatePdfPreview();
 }
@@ -609,22 +620,76 @@ function updateItemDiscount(index, val) {
 }
 
 // --- 4. FINANCIAL CALCULATIONS & CURRENCY ---
-function handleCurrencyChange() {
-  activeCurrency = document.getElementById('quote-currency').value;
-  
+// Teklif para birimi TRY dışındaysa (faturadaki gibi) kur elle girilir; satırların döviz birim fiyatı
+// esastır, TL birim fiyat = döviz fiyat × kur olarak hesaplanır.
+function isForeignQuote() {
+  return activeCurrency !== 'TRY';
+}
+
+function getQuoteRate() {
+  if (!isForeignQuote()) return 1;
+  const typed = parseFloat(document.getElementById('quote-rate').value);
+  if (typed > 0) return typed;
+  return (window.globalExchangeRates && window.globalExchangeRates[activeCurrency]) || 1;
+}
+
+// Döviz modunda döviz fiyatı olmayan satırlara (katalogdan TL ile eklenenler) mevcut kurla döviz fiyat atar.
+function ensureForeignPrices() {
+  if (!isForeignQuote()) return;
+  const rate = getQuoteRate();
+  currentQuoteItems.forEach(item => {
+    if (item.foreignPrice == null) {
+      item.foreignPrice = Math.round((item.price / rate) * 100) / 100;
+    }
+  });
+}
+
+function syncCurrencyUi() {
   const symbols = { TRY: '₺', USD: '$', EUR: '€' };
+  const foreign = isForeignQuote();
   document.querySelectorAll('.curr-symbol').forEach(el => {
     el.textContent = symbols[activeCurrency] || '₺';
   });
+  document.getElementById('quote-rate-group').style.display = foreign ? '' : 'none';
+  document.getElementById('quote-rate-code').textContent = activeCurrency;
+  document.getElementById('th-tl-price').style.display = foreign ? '' : 'none';
+  document.getElementById('th-price-label').textContent = foreign ? `Birim Fiyat (${symbols[activeCurrency]})` : 'Birim Fiyat';
+  document.getElementById('calc-tl-block').style.display = foreign ? '' : 'none';
+  document.getElementById('pdf-tl-row').style.display = foreign ? 'flex' : 'none';
+}
 
+function handleCurrencyChange() {
+  const previous = activeCurrency;
+  activeCurrency = document.getElementById('quote-currency').value;
+
+  if (isForeignQuote()) {
+    // Para birimi değiştiğinde (veya ilk kez döviz seçildiğinde) kur alanına canlı kuru öneri olarak yazar; elle değiştirilebilir.
+    const rateInput = document.getElementById('quote-rate');
+    if (previous !== activeCurrency || !(parseFloat(rateInput.value) > 0)) {
+      rateInput.value = (window.globalExchangeRates && window.globalExchangeRates[activeCurrency]) || '';
+    }
+    currentQuoteItems.forEach(item => { item.foreignPrice = null; });
+    ensureForeignPrices();
+  } else {
+    currentQuoteItems.forEach(item => { item.foreignPrice = null; });
+  }
+
+  syncCurrencyUi();
   updateCalculations();
   updatePdfPreview();
 }
 
-function convertPrice(priceInTL) {
-  if (activeCurrency === 'USD') return priceInTL / window.globalExchangeRates.USD;
-  if (activeCurrency === 'EUR') return priceInTL / window.globalExchangeRates.EUR;
-  return priceInTL;
+// Kur elle değiştirildiğinde döviz fiyatlar sabit kalır, TL birim fiyatlar ve toplamlar yeniden hesaplanır.
+function handleRateChange() {
+  if (!isForeignQuote()) return;
+  const rate = getQuoteRate();
+  currentQuoteItems.forEach(item => {
+    if (item.foreignPrice != null) {
+      item.price = Math.round(item.foreignPrice * rate * 100) / 100;
+    }
+  });
+  updateCalculations();
+  updatePdfPreview();
 }
 
 function getCurrencySymbol() {
@@ -640,8 +705,10 @@ function getAmountDiscountInput() {
 // göre orantılı dağıtılır (KDV matrahını doğru düşürmek için) ve KDV bu nihai net üzerinden
 // hesaplanır. Ara Toplam her zaman brüt (hiç iskonto düşülmemiş) kalır.
 function calculateQuoteLineBreakdown() {
+  ensureForeignPrices();
+  const rate = getQuoteRate();
   const rows = currentQuoteItems.map(item => {
-    const itemUnitPrice = convertPrice(item.price);
+    const itemUnitPrice = isForeignQuote() ? item.foreignPrice : item.price;
     const gross = item.qty * itemUnitPrice;
     const lineDiscAmount = gross * (item.discount / 100);
     const netAfterLineDiscount = gross - lineDiscAmount;
@@ -681,7 +748,7 @@ function calculateQuoteLineBreakdown() {
     .sort((a, b) => a[0] - b[0])
     .map(([rate, amount]) => ({ rate, amount }));
 
-  return { rows, subtotal, totalDiscount, totalKdv, kdvBreakdown, grandTotal, amountDiscount };
+  return { rows, subtotal, totalDiscount, totalKdv, kdvBreakdown, grandTotal, amountDiscount, rate };
 }
 
 function updateCalculations() {
@@ -701,6 +768,7 @@ function updateCalculations() {
     document.getElementById('calc-discount-row').style.display = 'none';
     document.getElementById('calc-kdv-breakdown').innerHTML = '';
     document.getElementById('calc-grand-total').textContent = `0.00 ${getCurrencySymbol()}`;
+    ['calc-tl-subtotal', 'calc-tl-kdv', 'calc-tl-grand', 'pdf-val-tl-grand'].forEach(id => { document.getElementById(id).textContent = '0.00 ₺'; });
     return;
   }
 
@@ -726,6 +794,7 @@ function updateCalculations() {
       <td>
         <input type="number" class="form-control" style="width: 90px; padding: 4px;" value="${r.itemUnitPrice.toFixed(2)}" step="0.01" onchange="updateItemPrice(${idx}, this.value)">
       </td>
+      ${isForeignQuote() ? `<td>${formatMoney(r.item.price)} ₺</td>` : ''}
       <td>%${r.item.kdv}</td>
       <td>
         <input type="number" class="form-control" style="width: 60px; padding: 4px;" value="${r.item.discount}" min="0" max="100" onchange="updateItemDiscount(${idx}, this.value)">
@@ -756,6 +825,18 @@ function updateCalculations() {
     </div>
   `).join('');
   document.getElementById('calc-grand-total').textContent = `${formatMoney(grandTotal)} ${symbol}`;
+  updateTlTotals(subtotal - totalDiscount, calculateQuoteLineBreakdown().totalKdv, grandTotal);
+}
+
+// Döviz teklifinde toplamlar hem döviz hem TL (döviz × kur) olarak gösterilir.
+function updateTlTotals(netForeign, kdvForeign, grandForeign) {
+  if (!isForeignQuote()) return;
+  const rate = getQuoteRate();
+  const tl = v => `${formatMoney(Math.round(v * rate * 100) / 100)} ₺`;
+  document.getElementById('calc-tl-subtotal').textContent = tl(netForeign);
+  document.getElementById('calc-tl-kdv').textContent = tl(kdvForeign);
+  document.getElementById('calc-tl-grand').textContent = tl(grandForeign);
+  document.getElementById('pdf-val-tl-grand').textContent = tl(grandForeign);
 }
 
 // --- 5. LIVE PDF PREVIEW SYNCHRONIZER ---
@@ -789,7 +870,9 @@ function updatePdfPreview() {
   document.getElementById('pdf-val-address').textContent = address;
   document.getElementById('pdf-sig-customer-name').textContent = company;
 
-  document.getElementById('pdf-val-currency').textContent = `${activeCurrency} (${getCurrencySymbol()})`;
+  document.getElementById('pdf-val-currency').textContent = isForeignQuote()
+    ? `${activeCurrency} (${getCurrencySymbol()}) — Kur: ${getQuoteRate().toFixed(4)} ₺`
+    : `${activeCurrency} (${getCurrencySymbol()})`;
   document.getElementById('pdf-val-payment').textContent = payment;
   document.getElementById('pdf-val-delivery').textContent = delivery;
 
@@ -849,6 +932,7 @@ function updatePdfPreview() {
     </div>
   `).join('');
   document.getElementById('pdf-val-grand').textContent = `${formatMoney(grandTotal)} ${symbol}`;
+  updateTlTotals(subtotal - totalDiscount, calculateQuoteLineBreakdown().totalKdv, grandTotal);
 }
 
 // --- 6. SAVE & HIGH QUALITY PDF EXPORT ENGINE ---
@@ -957,7 +1041,7 @@ async function saveQuoteToDatabase(status) {
     address: document.getElementById('cust-address').value || '',
     quoteDate: date ? new Date(date).toISOString() : new Date().toISOString(),
     currencyCode: activeCurrency,
-    exchangeRate: window.globalExchangeRates[activeCurrency] || 1,
+    exchangeRate: getQuoteRate(),
     notes: document.getElementById('quote-note').value || '',
     amountDiscount: getAmountDiscountInput(),
     grandTotal: grandTotal,

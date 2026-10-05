@@ -677,7 +677,15 @@
     });
     document.getElementById('line-act-comp').addEventListener('click', function () {
         var line = selectedLine();
-        if (line) { line.isComplimentary = !line.isComplimentary; renderCart(); return; }
+        if (line) {
+            // Ayar açıksa bekleyen (henüz mutfağa gitmemiş) satırda ikram, sunucu tarafında PIN ile
+            // doğrulanamaz; bu yüzden önce mutfağa gönderilir, ikram gönderilmiş satırda PIN ile yapılır.
+            if (requireApprovalComplimentary && !line.isComplimentary) {
+                window.posAlert('Yetkili onayı açık: ikram için önce satırı mutfağa gönderin.');
+                return;
+            }
+            line.isComplimentary = !line.isComplimentary; renderCart(); return;
+        }
         if (selectedSentLineId !== null) submitSentLineComp(selectedSentLineId);
     });
     document.getElementById('line-act-remove').addEventListener('click', function () {

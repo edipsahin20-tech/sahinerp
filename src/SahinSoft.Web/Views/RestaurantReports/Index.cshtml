@@ -669,7 +669,7 @@ else if (Model.ActiveTab == "zlist")
         {
             <a class="rrow2" style="grid-template-columns: 120px 90px 1fr 1fr 90px 90px 90px 90px 90px 90px; text-decoration:none; color:inherit; cursor:pointer;@(Model.SelectedZShiftId == z.ShiftId ? " background:#FFF6DF;" : "")"
                asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@z.ShiftId">
-                <b>@z.ZNumber</b>
+                <b>@z.ZNumber</b><small class="sub">@z.FinancialAccountName</small>
                 <span>@z.Summary.ReceiptCount</span>
                 <span>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                 <span>@z.ClosedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>

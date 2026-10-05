@@ -237,7 +237,9 @@ internal static class DbOperations
     ];
 
     public static void ClearTransactionalData(string server, string user, string password, string databaseName, Action<string> log, bool useWindowsAuth = false) =>
-        RunWipe(server, user, password, databaseName, MovementOnlyTables, resetProductQuantities: false, log,
+        // Hareketler silinince ürün kartındaki stok bakiyesi de sıfırlanmalı - bakiye hareketlerden
+        // türetilmiyor, kartta saklanıyor. Bu olmazsa hareket kalmadığı halde stok eksi/artı kalır.
+        RunWipe(server, user, password, databaseName, MovementOnlyTables, resetProductQuantities: true, log,
             "Hareketler (işlem/movement kayıtları) temizleniyor - stok/cari/tanım kartları korunuyor...",
             "Hareketler temizlendi, numaratörler 1'e sıfırlandı, tanım/kart verileri korundu.", useWindowsAuth);
 

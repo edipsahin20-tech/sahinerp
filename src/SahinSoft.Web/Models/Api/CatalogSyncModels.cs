@@ -76,6 +76,10 @@ public sealed class RestaurantCheckClosedPayload
     // çünkü RestaurantZPeriodId satış KAPANIRKEN (Z'nin açık/kapalı olması fark etmeksizin) atanır.
     public int? RestaurantZPeriodId { get; set; }
     public string? RestaurantZNo { get; set; }
+
+    // Fişin GERÇEK şubesi (Branch.Code). Yerel kurulum tek bir bağlantı kodu taşıyor; iki şubenin
+    // aynı numaralı fişini merkezde ayırmak için belge numarası bu kodla kurulur (bkz. SyncController).
+    public string? BranchCode { get; set; }
 }
 
 public sealed class TransactionSyncRequest
@@ -94,4 +98,27 @@ public sealed class TransactionSyncResult
 {
     public int AcceptedCount { get; set; }
     public int SkippedCount { get; set; }
+}
+
+// Tahsilat/tediye onay ve iptal olaylarının yükü. Merkez müşteri ve hesabı KODLA eşler; bulamazsa
+// olayı atlar (tahmin yok). Şube kodu fişin kaynak şubesidir (OriginBranchId).
+public sealed class PaymentReceiptSyncPayload
+{
+    public Guid ReceiptRecordId { get; set; }
+    public string ReceiptNumber { get; set; } = string.Empty;
+    public int ReceiptType { get; set; }
+    public DateTime ReceiptDateUtc { get; set; }
+    public string CustomerCode { get; set; } = string.Empty;
+    public decimal TotalAmount { get; set; }
+    public string? BranchCode { get; set; }
+    public string? Description { get; set; }
+    public List<PaymentReceiptSyncLine> Lines { get; set; } = [];
+    public string? Reason { get; set; }
+}
+
+public sealed class PaymentReceiptSyncLine
+{
+    public string AccountCode { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string? Description { get; set; }
 }

@@ -114,7 +114,10 @@
                     <tr>
                         <td>@line.ProductNameSnapshot <span class="text-secondary">(@line.UnitSnapshot)</span></td>
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
-                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@if (Model.IsForeign && line.ForeignUnitPrice is not null)
+                        {<div>@line.ForeignUnitPrice.Value.ToString("N2") @Model.CurrencyCode</div><small class="text-secondary">@line.UnitPrice.ToString("N2") ₺</small>}
+                        else
+                        {@line.UnitPrice.ToString("N2")}</td>
                         <td class="text-end">@line.DiscountRate.ToString("N2")</td>
                         <td class="text-end">@line.TaxRate.ToString("N2")</td>
                         <td class="text-end">@line.GrossTotal.ToString("N2")</td>
@@ -138,7 +141,11 @@
                 {
                     <div class="erp-totals-row"><span>KDV %@tax.TaxRate.ToString("0.##")</span><span>@tax.TaxAmount.ToString("N2")</span></div>
                 }
-                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
+                <div class="erp-totals-row erp-grand-total"><span>Genel Toplam</span><span class="erp-total-value">@Model.GrandTotal.ToString("N2") ₺</span></div>
+                @if (Model.IsForeign)
+                {
+                    <div class="erp-totals-row"><span>Genel Toplam (@Model.CurrencyCode)</span><span class="erp-total-value">@Model.ForeignGrandTotal.ToString("N2") @Model.CurrencyCode</span></div>
+                }
             </div>
         </div>
     </div>
@@ -240,7 +247,7 @@
         <div class="pdf-header">
             <div class="pdf-brand">
                 <div class="pdf-logo-box">
-                    <img src="~/images/logo-icon.png" alt="Logo" class="pdf-logo-img">
+                    <img src="~/images/logo.png" alt="Logo" class="pdf-logo-img">
                 </div>
                 <div class="pdf-brand-sub">
                     <strong>@Model.Company.CompanyName</strong><br>
@@ -316,7 +323,10 @@
                             <td>@line.ProductNameSnapshot</td>
                             <td>@line.UnitSnapshot</td>
                             <td style="text-align: center;">@line.Quantity.ToString("N2")</td>
-                            <td style="text-align: right;">@line.UnitPrice.ToString("N2") @Model.CurrencyCode</td>
+                            <td style="text-align: right;">@if (Model.IsForeign && line.ForeignUnitPrice is not null)
+                            {<div>@line.ForeignUnitPrice.Value.ToString("N2") @Model.CurrencyCode</div><small>@line.UnitPrice.ToString("N2") ₺</small>}
+                            else
+                            {@line.UnitPrice.ToString("N2") @Model.CurrencyCode}</td>
                             <td style="text-align: center;">%@line.TaxRate.ToString("N0")</td>
                             <td style="text-align: center;">@(line.DiscountRate > 0 ? "%" + line.DiscountRate.ToString("N0") : "-")</td>
                             <td style="text-align: right;"><strong>@line.LineTotal.ToString("N2") @Model.CurrencyCode</strong></td>
@@ -342,16 +352,20 @@
                 }
             </div>
             <div class="pdf-totals-box">
-                <div class="pdf-total-row"><span>Ara Toplam:</span><strong>@Model.Subtotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                <div class="pdf-total-row"><span>Ara Toplam:</span><strong>@Model.Subtotal.ToString("N2") @(Model.IsForeign ? "₺" : Model.CurrencyCode)</strong></div>
                 @if (Model.DiscountTotal > 0)
                 {
-                    <div class="pdf-total-row discount"><span>İskonto Tutarı:</span><strong>-@Model.DiscountTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                    <div class="pdf-total-row discount"><span>İskonto Tutarı:</span><strong>-@Model.DiscountTotal.ToString("N2") @(Model.IsForeign ? "₺" : Model.CurrencyCode)</strong></div>
                 }
                 @foreach (var tax in Model.TaxBreakdown)
                 {
                     <div class="pdf-total-row"><span>KDV Tutarı (%@tax.TaxRate.ToString("0.##")):</span><strong>@tax.TaxAmount.ToString("N2") @Model.CurrencyCode</strong></div>
                 }
-                <div class="pdf-total-row grand"><span>GENEL TOPLAM:</span><strong>@Model.GrandTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                <div class="pdf-total-row grand"><span>GENEL TOPLAM:</span><strong>@Model.GrandTotal.ToString("N2") ₺</strong></div>
+                @if (Model.IsForeign)
+                {
+                    <div class="pdf-total-row"><span>GENEL TOPLAM (@Model.CurrencyCode):</span><strong>@Model.ForeignGrandTotal.ToString("N2") @Model.CurrencyCode</strong></div>
+                }
             </div>
         </div>
 

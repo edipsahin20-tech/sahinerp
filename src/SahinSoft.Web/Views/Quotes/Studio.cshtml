@@ -17,6 +17,7 @@
             address = Model.Existing.Address,
             quoteDate = Model.Existing.QuoteDate,
             currencyCode = Model.Existing.CurrencyCode,
+            exchangeRate = Model.Existing.ExchangeRate,
             notes = Model.Existing.Notes,
             amountDiscount = Model.Existing.AmountDiscount,
             items = Model.Existing.Items.Select(x => new
@@ -27,6 +28,7 @@
                 unit = x.Unit,
                 qty = x.Qty,
                 price = x.Price,
+                foreignPrice = x.ForeignPrice,
                 kdv = x.Kdv,
                 discount = x.Discount
             })
@@ -156,6 +158,10 @@
                   <option value="EUR">EUR (€ Euro)</option>
                 </select>
               </div>
+              <div class="form-group" id="quote-rate-group" style="display: none;">
+                <label for="quote-rate">Kur (1 <span id="quote-rate-code">USD</span> = ₺)</label>
+                <input type="number" id="quote-rate" class="form-control" step="0.0001" min="0" oninput="handleRateChange()" onkeydown="focusNextOnEnter(event, 'picker-product-search')" title="Kuru elle girebilirsiniz; TL tutarlar bu kura göre hesaplanır">
+              </div>
             </div>
           </div>
 
@@ -251,7 +257,8 @@
                     <th>Ürün Adı / Açıklama</th>
                     <th style="width: 70px;">Birim</th>
                     <th style="width: 70px;">Miktar</th>
-                    <th style="width: 110px;">Birim Fiyat</th>
+                    <th style="width: 110px;" id="th-price"><span id="th-price-label">Birim Fiyat</span></th>
+                    <th style="width: 110px; display: none;" id="th-tl-price">Birim Fiyat (₺)</th>
                     <th style="width: 75px;">KDV</th>
                     <th style="width: 75px;">İsk. %</th>
                     <th style="width: 120px;">Net Toplam</th>
@@ -284,6 +291,11 @@
                 <div class="calc-line grand-total">
                   <span>GENEL TOPLAM:</span>
                   <strong id="calc-grand-total">0.00 ₺</strong>
+                </div>
+                <div id="calc-tl-block" style="display: none;">
+                  <div class="calc-line"><span>Ara Toplam (₺):</span><strong id="calc-tl-subtotal">0.00 ₺</strong></div>
+                  <div class="calc-line"><span>KDV Toplamı (₺):</span><strong id="calc-tl-kdv">0.00 ₺</strong></div>
+                  <div class="calc-line grand-total"><span>GENEL TOPLAM (₺):</span><strong id="calc-tl-grand">0.00 ₺</strong></div>
                 </div>
               </div>
             </div>
@@ -349,7 +361,7 @@
             <div class="pdf-header">
               <div class="pdf-brand">
                 <div class="pdf-logo-box">
-                  <img src="~/images/logo-icon.png" alt="ŞahinSoft Logo" class="pdf-logo-img">
+                  <img src="~/images/logo.png" alt="ŞahinSoft Logo" class="pdf-logo-img">
                 </div>
                 <div class="pdf-brand-sub">
                   <strong>@Model.CompanyName</strong><br>
@@ -451,6 +463,10 @@
                 <div class="pdf-total-row grand">
                   <span>GENEL TOPLAM:</span>
                   <strong id="pdf-val-grand">0.00 ₺</strong>
+                </div>
+                <div class="pdf-total-row grand" id="pdf-tl-row" style="display: none;">
+                  <span>GENEL TOPLAM (₺):</span>
+                  <strong id="pdf-val-tl-grand">0.00 ₺</strong>
                 </div>
               </div>
             </div>

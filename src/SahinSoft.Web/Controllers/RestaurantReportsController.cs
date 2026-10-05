@@ -1,3 +1,4 @@
+using SahinSoft.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ using SahinSoft.Web.Services;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
-public sealed class RestaurantReportsController(ApplicationDbContext dbContext, RestaurantPostingService postingService, SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantReportsController(ApplicationDbContext dbContext, RestaurantPostingService postingService, SahinSoft.Web.Services.Printing.PrintDispatchService printDispatchService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     // Kaynak (Masa/Paket/Self) - RestaurantTableSession.Channel'dan doğrudan okunur (2026-09-29
     // mimari karar öncesi bu, satışın bağlı olduğu sanal/gerçek masanın salon adından TAHMİN
@@ -47,6 +48,37 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         1 => methods[0].ToString().ToLowerInvariant(),
         _ => "mixed"
     };
+
+    // KDV Dökümü - fiş KDV'si (RetailSale.TaxAmount) ile AYNI kaynaktan hesaplanır ki önizleme, Z
+    // Listesi ve fiş üzerindeki KDV birebir eşit olsun. Her fişin KDV'si kendi satırlarının brüt
+    // payına göre oranlara paylaştırılır; yuvarlama farkı fişin son oranına yazılır. Eski yöntem
+    // (tüm dönem brütünden tek seferde KDV çıkarmak) fiş bazı yuvarlamayı kaybettiği için 0,22 ₺
+    // fark üretiyordu.
+    private static List<RestaurantVatRowViewModel> AllocateReceiptVat(IEnumerable<(int SaleId, decimal Rate, decimal Gross)> lines, IReadOnlyDictionary<int, decimal> taxBySale)
+    {
+        var totals = new Dictionary<decimal, (decimal Gross, decimal Vat)>();
+        foreach (var saleGroup in lines.GroupBy(x => x.SaleId))
+        {
+            var perRate = saleGroup.GroupBy(x => x.Rate).Select(g => (Rate: g.Key, Gross: g.Sum(x => x.Gross))).ToList();
+            var saleGross = perRate.Sum(x => x.Gross);
+            var saleTax = taxBySale.GetValueOrDefault(saleGroup.Key);
+            decimal allocated = 0;
+            for (var i = 0; i < perRate.Count; i++)
+            {
+                var part = perRate[i];
+                var vat = i == perRate.Count - 1
+                    ? saleTax - allocated
+                    : saleGross > 0 ? Math.Round(saleTax * part.Gross / saleGross, 2, MidpointRounding.AwayFromZero) : 0m;
+                allocated += vat;
+                var current = totals.GetValueOrDefault(part.Rate);
+                totals[part.Rate] = (current.Gross + part.Gross, current.Vat + vat);
+            }
+        }
+        return totals
+            .OrderByDescending(x => x.Key)
+            .Select(x => new RestaurantVatRowViewModel(x.Key, x.Value.Gross - x.Value.Vat, x.Value.Vat, x.Value.Gross))
+            .ToList();
+    }
 
     private static readonly string[] TurkishMonthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     private static readonly string[] TurkishShortDayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -245,8 +277,12 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             var periodLines = await dbContext.RetailSaleLines
                 .AsNoTracking()
                 .Where(x => periodSaleIds.Contains(x.RetailSaleId))
-                .Select(x => new { x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
+                .Select(x => new { x.RetailSaleId, x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
                 .ToListAsync();
+            var periodTaxBySale = await dbContext.RetailSales
+                .AsNoTracking()
+                .Where(x => periodSaleIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.TaxAmount);
 
             vm.BestSellers = periodLines
                 .GroupBy(x => x.ProductId)
@@ -263,14 +299,9 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                 .OrderByDescending(x => x.Total)
                 .ToList();
 
-            vm.VatBreakdown = periodLines
-                .GroupBy(x => x.TaxRateSnapshot)
-                .Select(g =>
-                {
-                    var gross = g.Sum(x => x.LineTotal);
-                    var (matrah, vatAmount) = RestaurantPricingCalculator.ExtractTax(gross, g.Key);
-                    return new RestaurantVatRowViewModel(g.Key, matrah, vatAmount, gross);
-                })
+            vm.VatBreakdown = AllocateReceiptVat(
+                periodLines.Select(x => (x.RetailSaleId, x.TaxRateSnapshot, x.LineTotal)),
+                periodTaxBySale)
                 .OrderBy(x => x.TaxRate)
                 .ToList();
         }
@@ -418,20 +449,26 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
         // ZAMAN ARALIĞI TAHMİNİ yerine RestaurantZPeriod'un GERÇEK FK ilişkisini kullanıyor
         // (bkz. RestaurantZPeriod.cs/GetOrCreateActiveZPeriodIdAsync yorumu). Vardiya (openShift,
         // yukarıda) BİLEREK dokunulmadı - o hâlâ RestaurantCashShift/kasiyer kasa açılışı.
+        // Her şubenin kendi açık Z dönemi var - X/Z, terminal şubesinin dönemini gösterir
+        // (terminal yoksa kullanıcının şubesi, o da yoksa merkez). Tek "açık dönem" varsayımı yok.
+        var reportBranchId = int.TryParse(Request.Cookies["ss_terminal_branch"], out var reportTerminalBranch)
+            ? (int?)reportTerminalBranch
+            : await dbContext.Users.AsNoTracking().Where(x => x.Id == CurrentUserId).Select(x => x.BranchId).SingleOrDefaultAsync()
+              ?? await dbContext.Branches.AsNoTracking().Where(x => x.IsHeadOffice).Select(x => x.Id).FirstOrDefaultAsync();
         var lastClosedZPeriod = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .Where(x => x.Status == RestaurantZPeriodStatus.Closed)
+            .Where(x => x.Status == RestaurantZPeriodStatus.Closed && x.BranchId == reportBranchId)
             .OrderByDescending(x => x.ClosedAtUtc)
             .FirstOrDefaultAsync();
         var activeZPeriod = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open);
+            .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open && x.BranchId == reportBranchId);
 
         vm.IsShiftOpen = openShift is not null;
         vm.OpenShiftId = openShift?.Id;
         vm.ShiftOpenedAtUtc = openShift?.OpenedAtUtc;
         vm.FinancialAccountName = openShift?.FinancialAccount.Name;
-        vm.LastZNumber = lastClosedZPeriod is null ? null : $"Z-{lastClosedZPeriod.Id:D6}";
+        vm.LastZNumber = lastClosedZPeriod is null ? null : RestaurantZPeriod.LabelFor(lastClosedZPeriod.Id, lastClosedZPeriod.ZNumber);
         vm.LastZClosedAtUtc = lastClosedZPeriod?.ClosedAtUtc;
 
         // X Raporu artık AÇIK VARDİYA ŞART DEĞİL (Edip, 2026-09-03: "X ve Z raporu almak için
@@ -468,8 +505,14 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             : await dbContext.RetailSaleLines
                 .AsNoTracking()
                 .Where(x => periodCheckIdsForX.Contains(x.RetailSale.RestaurantCheckId) && x.RetailSale.Status != RetailSaleStatus.Cancelled)
-                .Select(x => new { x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
+                .Select(x => new { x.RetailSaleId, x.ProductId, x.ProductNameSnapshot, x.Quantity, x.LineTotal, x.TaxRateSnapshot, CategoryName = x.Product.Category.Name })
                 .ToListAsync();
+        var xTaxBySale = xLines.Count == 0
+            ? new Dictionary<int, decimal>()
+            : await dbContext.RetailSales
+                .AsNoTracking()
+                .Where(x => xLines.Select(l => l.RetailSaleId).Distinct().Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.TaxAmount);
 
         var xComplimentaryTotal = periodCheckIdsForX.Count == 0
             ? 0m
@@ -509,14 +552,9 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .Select((x, i) => new RestaurantBestSellerRowViewModel(x.Key, x.Name, x.Qty, x.Total, i + 1))
             .ToList();
 
-        var xVatBreakdown = xLines
-            .GroupBy(x => x.TaxRateSnapshot)
-            .Select(g =>
-            {
-                var gross = g.Sum(x => x.LineTotal);
-                var (matrah, vatAmount) = RestaurantPricingCalculator.ExtractTax(gross, g.Key);
-                return new RestaurantVatRowViewModel(g.Key, matrah, vatAmount, gross);
-            })
+        var xVatBreakdown = AllocateReceiptVat(
+                xLines.Select(x => (x.RetailSaleId, x.TaxRateSnapshot, x.LineTotal)),
+                xTaxBySale)
             .OrderByDescending(x => x.TaxRate)
             .ToList();
 
@@ -559,8 +597,9 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
             .OrderByDescending(x => x.ClosedAtUtc)
             .Take(30)
             .ToListAsync();
+        var branchNameById = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
         vm.ZList = closedPeriodsRaw.Select(p => new RestaurantZListRowViewModel(
-            p.Id, $"Z-{p.Id:D6}", "", p.OpenedAtUtc, p.ClosedAtUtc!.Value, 0, null, null,
+            p.Id, RestaurantZPeriod.LabelFor(p.Id, p.ZNumber), branchNameById.GetValueOrDefault(p.BranchId, "-"), p.OpenedAtUtc, p.ClosedAtUtc!.Value, 0, null, null,
             new RestaurantZSummaryViewModel { ReceiptCount = p.ReceiptCount, GrossTotal = p.GrossTotal, DiscountTotal = p.DiscountTotal, NetTotal = p.NetTotal, TaxTotal = p.TaxTotal, ComplimentaryTotal = p.ComplimentaryTotal }))
             .ToList();
 
@@ -615,7 +654,8 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
                     .ToDictionaryAsync(x => x.RestaurantCheckId, x => new { x.PackageNumber, x.CustomerName });
 
                 vm.SelectedZShiftId = zShiftId;
-                vm.SelectedZNumber = $"Z-{selectedPeriod.Id:D6}";
+                var selectedBranchName = await dbContext.Branches.AsNoTracking().Where(x => x.Id == selectedPeriod.BranchId).Select(x => x.Name).SingleOrDefaultAsync();
+                vm.SelectedZNumber = RestaurantZPeriod.LabelFor(selectedPeriod.Id, selectedPeriod.ZNumber) + " · " + selectedBranchName;
                 vm.SelectedZSummary = new RestaurantZSummaryViewModel
                 {
                     ReceiptCount = selectedPeriod.ReceiptCount,
@@ -990,8 +1030,10 @@ public sealed class RestaurantReportsController(ApplicationDbContext dbContext, 
     {
         try
         {
-            var period = await postingService.CloseActiveZPeriodAsync(CurrentUserId);
-            TempData["Success"] = $"Z-{period.Id:D6} raporu oluşturuldu, gün sıfırlandı.";
+            // Z yalnızca BU terminalin şubesinin açık dönemini kapatır (diğer şubelerin Z'sine dokunmaz).
+            var terminalBranch = int.TryParse(Request.Cookies["ss_terminal_branch"], out var tb) ? (int?)tb : null;
+            var period = await postingService.CloseActiveZPeriodAsync(CurrentUserId, terminalBranch);
+            TempData["Success"] = $"{RestaurantZPeriod.LabelFor(period.Id, period.ZNumber)} raporu oluşturuldu, gün sıfırlandı.";
         }
         catch (InvalidOperationException ex)
         {

@@ -16,6 +16,9 @@ public sealed class CurrentAccountTransaction : EntityBase
     public string? Description { get; set; }
 
     public int CustomerId { get; set; }
+    // Restoran kaynaklı cari hareketin şubesi (satış ve tahsilat). Eski/manuel kayıtlarda null.
+    public int? OriginBranchId { get; set; }
+    public Branch? OriginBranch { get; set; }
     public Customer Customer { get; set; } = null!;
     public int? QuoteId { get; set; }
     public Quote? Quote { get; set; }

@@ -11,7 +11,7 @@ using SahinSoft.Web.Services;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager},{AppRoles.Waiter},{AppRoles.Cashier}")]
-public sealed class RestaurantPackageController(ApplicationDbContext dbContext, RestaurantPostingService postingService) : RestaurantControllerBase(dbContext)
+public sealed class RestaurantPackageController(ApplicationDbContext dbContext, RestaurantPostingService postingService, RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
     private static readonly PackageOrderStatus[] ActiveStatuses =
     [

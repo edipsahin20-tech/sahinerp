@@ -26,6 +26,10 @@ public sealed class PaymentReceipt : EntityBase
 
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
+    // Restoran (terminal) üzerinden girilen tahsilat/tediye fişinin şubesi. Muhasebe ekranından
+    // girilenlerde null kalır. Cari ve kasa hareketlerine aynen yazılır (OriginBranchId).
+    public int? OriginBranchId { get; set; }
+    public Branch? OriginBranch { get; set; }
     public int? CostCenterId { get; set; }
     public CostCenter? CostCenter { get; set; }
     public int? BusinessProjectId { get; set; }

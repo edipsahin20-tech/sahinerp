@@ -1,3 +1,5 @@
+using SahinSoft.Web.Services;
+using SahinSoft.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -141,8 +143,9 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
     // Kasa/Banka Hareketleri — Stok Hareketleri ile aynı desen. accountType ("Cash"/"Bank") verilirse
     // Kasa Hareket / Banka Hareket giriş noktalarından geldiği anlaşılır ve hesap listesi + başlık ona
     // göre daraltılır; financialAccountId ile tek bir hesaba daha da daraltılabilir.
-    public async Task<IActionResult> FinancialTransactions(int? financialAccountId, string? accountType, DateTime? from, DateTime? to)
+    public async Task<IActionResult> FinancialTransactions(int? financialAccountId, string? accountType, DateTime? from, DateTime? to, int? branchId)
     {
+        var zNumberById = await dbContext.RestaurantZPeriods.AsNoTracking().Where(x => x.ZNumber != null).ToDictionaryAsync(x => x.Id, x => x.ZNumber);
         FinancialAccountType? parsedAccountType = accountType switch
         {
             "Cash" => FinancialAccountType.Cash,
@@ -165,6 +168,13 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
         else if (parsedAccountType.HasValue)
         {
             query = query.Where(x => x.FinancialAccount.AccountType == parsedAccountType.Value);
+        }
+
+        // Ortak hesap (ör. tek Yapı Kredi) tüm şubelerde kullanılır; şube filtresi hareketin KAYNAK şubesine
+        // (OriginBranchId) göre süzer. Şube seçilince giriş/çıkış/net o şubenin hareketlerinden hesaplanır.
+        if (branchId.HasValue)
+        {
+            query = query.Where(x => x.OriginBranchId == branchId.Value);
         }
 
         if (from.HasValue)
@@ -192,6 +202,7 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
             .SumAsync(x => (decimal?)x.Amount) ?? 0;
 
         var transactions = await query.Take(500).ToListAsync();
+        var branchNameById = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
 
         // Talimat 1 (2026-09-06) - "muhasebe satış kaydında en az Kaynak Satış ID, Adisyon No,
         // Z Period/Report ID, Z No izlenebilir olmalı; muhasebe tarafından da ADS ve Z'ye geri
@@ -204,17 +215,20 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
         var retailSaleLookup = await dbContext.RetailSales
             .AsNoTracking()
             .Where(x => documentNumbers.Contains(x.DocumentNumber))
-            .Select(x => new { x.DocumentNumber, x.Id, x.RestaurantZPeriodId })
-            .ToDictionaryAsync(x => x.DocumentNumber, x => new { x.Id, x.RestaurantZPeriodId });
+            .Select(x => new { x.DocumentNumber, x.BranchId, x.Id, x.RestaurantZPeriodId })
+            .ToListAsync();
+        var retailSaleByNumber = retailSaleLookup.ToLookup(x => x.DocumentNumber);
 
         var lines = transactions
             .Select(x =>
             {
-                retailSaleLookup.TryGetValue(x.DocumentNumber, out var retailSale);
+                var retailSale = ReceiptLinkResolver.Pick(retailSaleByNumber[x.DocumentNumber],
+                    r => r.BranchId, x.OriginBranchId);
                 return new FinancialTransactionReportLineViewModel
                 {
                     TransactionDateUtc = x.TransactionDateUtc,
                     AccountName = x.FinancialAccount.Name,
+                    BranchName = x.OriginBranchId is { } ob && branchNameById.TryGetValue(ob, out var bn) ? bn : null,
                     TransactionType = x.TransactionType.GetDisplayName(),
                     IsIncoming = x.TransactionType is FinancialTransactionType.Collection or FinancialTransactionType.TransferIn or FinancialTransactionType.Opening,
                     Amount = x.Amount,
@@ -223,7 +237,7 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
                     CustomerName = x.Customer != null ? x.Customer.Name : null,
                     RestaurantRetailSaleId = retailSale?.Id,
                     RestaurantZPeriodId = retailSale?.RestaurantZPeriodId,
-                    RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? $"Z-{zId:D6}" : null
+                    RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? RestaurantZPeriod.LabelFor(zId, zNumberById.GetValueOrDefault(zId)) : null
                 };
             })
             .ToList();
@@ -238,6 +252,9 @@ public sealed class ReportsController(ApplicationDbContext dbContext) : Controll
         {
             FinancialAccountId = financialAccountId,
             AccountType = accountType,
+            BranchId = branchId,
+            Branches = await dbContext.Branches.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
+                .Select(x => new SelectListItem(x.Name, x.Id.ToString(), x.Id == branchId)).ToListAsync(),
             From = from,
             To = to,
             PageTitle = parsedAccountType switch
