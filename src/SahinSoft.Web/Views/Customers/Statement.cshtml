@@ -90,7 +90,7 @@
                     @Model.ClosingBalance.ToString("N2")
                 </div>
                 <div class="text-secondary" style="font-size: 0.68rem;">@(Model.ClosingBalance > 0 ? "CARİ BORÇLU" : Model.ClosingBalance < 0 ? "CARİ ALACAKLI" : "BAKİYE YOK")</div>
-                <div style="font-size: 0.78rem; font-weight: 700; color: @(Model.ClosingBalance > 0 ? "#1f8a4c" : Model.ClosingBalance < 0 ? "#c62828" : "inherit");">Kalan bakiye: @Math.Abs(Model.ClosingBalance).ToString("N2") ₺ @(Model.ClosingBalance > 0 ? "(size borçlu)" : Model.ClosingBalance < 0 ? "(sizin borcunuz)" : "")</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: @(Model.ClosingBalance > 0 ? "#1f8a4c" : Model.ClosingBalance < 0 ? "#c62828" : "inherit");">Kalan bakiye: @Math.Abs(Model.ClosingBalance).ToString("N2") ₺</div>
             </div>
         </div>
 
