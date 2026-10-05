@@ -1164,26 +1164,9 @@ else if (Model.ActiveTab == "zlist")
      alert/confirm/prompt kullanılmayacak" kuralına aykırı, bkz. Check.cshtml/pos-dialog.js'teki
      AYNI kural). posDialogModal + pos-dialog.js Check.cshtml'e ÖZGÜ olduğundan (paylaşılan
      restoran shell layout'unda değil) burada sayfaya özel, bağımsız bir kopyası eklendi. -->
-<div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">ŞahinSoft Restoran</h5>
-            </div>
-            <div class="modal-body">
-                <div id="posDialogMessage" style="white-space:pre-line;"></div>
-                <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
-                <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @section Scripts {
-    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
     <script>
         (function () {
             var zConfirmText = 'Z raporu alınacak ve mevcut satış dönemi kapatılacaktır. Devam etmek istiyor musunuz?';

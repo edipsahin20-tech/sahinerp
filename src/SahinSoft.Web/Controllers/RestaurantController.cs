@@ -432,11 +432,12 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         term = (term ?? string.Empty).Trim();
         if (term.Length == 0) return Json(Array.Empty<object>());
 
+        var matchingIds = mode == "barcode" ? new List<int>() : await TurkishSearch.MatchingProductIdsAsync(dbContext, term);
         var products = await dbContext.Products
             .AsNoTracking()
             .Where(x => x.IsActive && (mode == "barcode"
                 ? (x.Barcode != null && x.Barcode.Contains(term)) || x.Barcodes.Any(b => b.IsActive && b.Barcode.Contains(term))
-                : (x.Name.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term))))
+                : (matchingIds.Contains(x.Id) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term))))
             .Include(x => x.TaxRate)
             .Include(x => x.Portions.Where(p => p.IsActive))
             .Include(x => x.Barcodes.Where(b => b.IsActive))
@@ -483,7 +484,8 @@ public sealed class RestaurantController(ApplicationDbContext dbContext, Restaur
         var query = dbContext.Products.AsNoTracking().Where(x => x.IsActive);
         if (term.Length > 0)
         {
-            query = query.Where(x => x.Name.Contains(term) || x.StockCode.Contains(term) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term));
+            var catalogMatchIds = await TurkishSearch.MatchingProductIdsAsync(dbContext, term);
+            query = query.Where(x => catalogMatchIds.Contains(x.Id) || x.Barcode == term || x.Barcodes.Any(b => b.IsActive && b.Barcode == term));
         }
         if (categoryId.HasValue) query = query.Where(x => x.CategoryId == categoryId.Value);
         if (taxRateId.HasValue) query = query.Where(x => x.TaxRateId == taxRateId.Value);

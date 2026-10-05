@@ -106,7 +106,7 @@
                     <span class="ts-badge @(r.IsActive ? "ok" : "off")">@(r.IsActive ? "Aktif" : "Pasif")</span>
                     <span class="ts-reg-actions">
                         <button type="button" class="ts-btn soft reg-edit-btn"><i class="fa-solid fa-pen"></i> Düzenle</button>
-                        <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
+                        <form method="post" asp-action="DeactivateCashRegister" data-pos-confirm="Bu kasa pasif yapılsın mı?" data-pos-danger>
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="ts-btn danger"><i class="fa-solid fa-pause"></i> Pasif Yap</button>
@@ -139,12 +139,12 @@
                     <span>@r.CreditCardFinancialAccount.Name</span>
                     <span style="display:flex;gap:6px;">
                         <button type="button" class="ts-btn outline reg-edit-btn" style="padding:6px 10px;">Düzenle</button>
-                        <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
+                        <form method="post" asp-action="DeactivateCashRegister" data-pos-confirm="Bu kasa pasif yapılsın mı?" data-pos-danger>
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Pasif Yap</button>
                         </form>
-                        <form method="post" asp-action="DeleteCashRegister" onsubmit="return confirm('Bu kasa KALICI OLARAK silinsin mi? Bu işlem geri alınamaz.');">
+                        <form method="post" asp-action="DeleteCashRegister" data-pos-confirm="Bu kasa KALICI OLARAK silinsin mi? Bu işlem geri alınamaz." data-pos-danger>
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="ts-btn danger" style="padding:6px 10px;">Sil</button>

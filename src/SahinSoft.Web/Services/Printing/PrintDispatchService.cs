@@ -110,6 +110,21 @@ public sealed class PrintDispatchService(ApplicationDbContext dbContext, PrintRe
 
     private async Task<PrintJob> CreateJobAsync(Printer printer, PrintTemplateType templateType, int? sourceId, string sourceDescription, bool isTestPrint, CancellationToken cancellationToken)
     {
+        // Fiş/rapor çıktıları Türkçe sayı biçimiyle (1.250,50) üretilir; uygulamanın istek kültürü (en-US) yalnızca bu iş için değiştirilir.
+        var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("tr-TR");
+        try
+        {
+            return await CreateJobCoreAsync(printer, templateType, sourceId, sourceDescription, isTestPrint, cancellationToken);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previousCulture;
+        }
+    }
+
+    private async Task<PrintJob> CreateJobCoreAsync(Printer printer, PrintTemplateType templateType, int? sourceId, string sourceDescription, bool isTestPrint, CancellationToken cancellationToken)
+    {
         var template = printer.PrintTemplateId.HasValue
             ? await dbContext.PrintTemplates.AsNoTracking().SingleOrDefaultAsync(x => x.Id == printer.PrintTemplateId.Value, cancellationToken)
             : await dbContext.PrintTemplates.AsNoTracking().Where(x => x.TemplateType == templateType && x.IsDefault && x.IsActive).FirstOrDefaultAsync(cancellationToken);

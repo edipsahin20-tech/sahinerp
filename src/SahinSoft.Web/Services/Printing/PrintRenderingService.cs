@@ -180,6 +180,14 @@ public sealed class PrintRenderingService
     {
         var width = CharWidth(paperWidthMm);
         var raster = new EscPosRasterWidth(paperWidthMm >= 80 ? 576 : 384);
+
+        // "₺" termal yazıcı kod sayfasında yoktur ve "TL" (2 karakter) olarak basılır; genişlik hesabı (sağa hizalama/doldurma)
+        // bu dönüşümden SONRA değil ÖNCE yapılmalı, yoksa tutar satırları 48 karakteri aşıp son harf alt satıra taşar.
+        foreach (var key in data.Texts.Keys.ToList())
+        {
+            data.Texts[key] = data.Texts[key].Replace("₺", "TL");
+        }
+
         using var ms = new MemoryStream();
         ms.Write([Esc, 0x40]); // init
 

@@ -60,12 +60,12 @@ else
     <div class="rcard shift-close-panel">
         <h4>Vardiyayı Kapat</h4>
         <p class="sub">Beklenen kasa tutarı: <b>@Model.ExpectedBalance.ToString("N2") ₺</b> (açılış @Model.OpeningBalance.ToString("N2") ₺ + bu vardiyada bu kasaya giren nakit @Model.CashInDuringShift.ToString("N2") ₺)</p>
-        <form method="post" asp-action="Close" class="shift-form">
+        <form method="post" asp-action="Close" class="shift-form" data-pos-confirm="Vardiyayı kapatmak istediğinize emin misiniz?">
             @Html.AntiForgeryToken()
             <input type="hidden" name="shiftId" value="@Model.ShiftId" />
             <label>Sayılan Nakit Tutarı</label>
             <input type="number" name="closingBalanceCounted" step="0.01" min="0" value="@Model.ExpectedBalance.ToString("0.00")" required />
-            <button type="submit" class="rbtn gold" onclick="return confirm('Vardiyayı kapatmak istediğinize emin misiniz?');">Vardiyayı Kapat</button>
+            <button type="submit" class="rbtn gold">Vardiyayı Kapat</button>
         </form>
     </div>
 }

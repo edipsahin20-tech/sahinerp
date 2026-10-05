@@ -144,6 +144,33 @@
     <partial name="_LookupModal" />
     <script src="~/js/lookup-picker.js" asp-append-version="true"></script>
     @await Html.PartialAsync("_SettingsPinModal")
+    <!-- ŞahinSoft masaüstü-hissi onay/uyarı/giriş penceresi: TÜM restoran ekranlarında tek bir yerden (tarayıcının native confirm/alert/prompt'u kullanılmaz). -->
+    <div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">ŞahinSoft Restoran</h5></div>
+                <div class="modal-body">
+                    <div id="posDialogMessage" style="white-space:pre-line;"></div>
+                    <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
+                    <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
+    <script>
+        // data-pos-confirm="mesaj" taşıyan form/butonlar native confirm() yerine ŞahinSoft onay penceresini kullanır.
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var msg = form.getAttribute && form.getAttribute('data-pos-confirm');
+            if (!msg || form.dataset.posConfirmed === 'true' || !window.posConfirm) return;
+            e.preventDefault();
+            window.posConfirm(msg, function () { form.dataset.posConfirmed = 'true'; form.requestSubmit ? form.requestSubmit() : form.submit(); }, null, { danger: form.hasAttribute('data-pos-danger') });
+        }, true);
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

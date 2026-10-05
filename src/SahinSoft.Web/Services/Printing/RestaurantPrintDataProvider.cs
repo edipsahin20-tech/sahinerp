@@ -155,7 +155,7 @@ public sealed class RestaurantPrintDataProvider(ApplicationDbContext dbContext) 
         var ctx = new PrintDataContext();
         FillCommonHeader(ctx, company, branch?.Name ?? "", branch?.Address, branch?.Phone);
         ctx.Texts["report.title"] = "Z RAPORU";
-        ctx.Texts["report.zNo"] = "#" + period.Id;
+        ctx.Texts["report.zNo"] = SahinSoft.Domain.Entities.RestaurantZPeriod.LabelFor(period.Id, period.ZNumber);
         ctx.Texts["report.reportDate"] = (period.ClosedAtUtc ?? period.OpenedAtUtc).ToLocalTime().ToString("dd.MM.yyyy");
         ctx.Texts["report.reportTime"] = (period.ClosedAtUtc ?? period.OpenedAtUtc).ToLocalTime().ToString("HH:mm");
         ctx.Texts["common.dateTime"] = (period.ClosedAtUtc ?? period.OpenedAtUtc).ToLocalTime().ToString("dd.MM.yyyy HH:mm");

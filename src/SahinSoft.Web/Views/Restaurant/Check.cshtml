@@ -104,7 +104,7 @@
                     <!-- Müşteri hiçbir şey almadan gitti / her şey iptal edildi - normal ödeme
                          akışı "Boş adisyon kapatılamaz" diyip masayı DOLU'da tutardı (Edip,
                          2026-09-03: "masa boşaldı ... o iptal hareketleri gelmesin boş gelsin"). -->
-                    <form method="post" asp-action="VoidEmptyCheck" class="d-inline" onsubmit="return confirm('Masa boşaltılsın mı? Bu adisyon iptal edilecek.');">
+                    <form method="post" asp-action="VoidEmptyCheck" class="d-inline" data-pos-confirm="Masa boşaltılsın mı? Bu adisyon iptal edilecek." data-pos-danger>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="checkId" value="@Model.CheckId" />
                         <button type="submit" class="btn btn-erp-outline btn-sm">✕ Masayı Boşalt</button>
@@ -887,23 +887,7 @@
 <!-- ŞahinSoft masaüstü-hissi onay/uyarı/giriş penceresi (bkz. pos-dialog.js) - tarayıcının
      native confirm/alert/prompt'u yerine bu KULLANILIR (Edip, 2026-09-05: "web tarayıcı gibi
      onay istemesin, masaüstü program gibi küçük onay alanı açsın"). -->
-<div class="modal fade" id="posDialogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">ŞahinSoft Restoran</h5>
-            </div>
-            <div class="modal-body">
-                <div id="posDialogMessage" style="white-space:pre-line;"></div>
-                <input type="text" id="posDialogInput" class="form-control mt-2" style="display:none;" />
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-erp-outline" id="posDialogCancelBtn">Vazgeç</button>
-                <button type="button" class="btn btn-erp-primary" id="posDialogOkBtn">Tamam</button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Satır iptal modalı -->
 <div class="modal fade" id="cancelLineModal" tabindex="-1" aria-hidden="true">
@@ -1315,7 +1299,6 @@
     <script id="pos-cancellation-reasons-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CancellationReasonPresets, catalogJsonOptions))</script>
     <script id="pos-quick-notes-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickNotePresets, catalogJsonOptions))</script>
     <script id="pos-pending-payments-data" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PendingPayments, catalogJsonOptions))</script>
-    <script src="~/js/pos-dialog.js" asp-append-version="true"></script>
     <script src="~/js/restaurant-pos.js" asp-append-version="true"></script>
     <script>
         (function () {

@@ -110,7 +110,7 @@
             branchSelect.addEventListener('change', function () { reloadSections(); });
 
             document.getElementById('add-section-btn').addEventListener('click', function () {
-                if (!branchSelect.value) { alert('Önce lokasyon seçin.'); return; }
+                if (!branchSelect.value) { if (window.posAlert) { window.posAlert('Önce lokasyon seçin.'); } else { alert('Önce lokasyon seçin.'); } return; }
                 document.getElementById('new-section-name').value = '';
                 document.getElementById('new-section-error').style.display = 'none';
                 new bootstrap.Modal(document.getElementById('newSectionModal')).show();
