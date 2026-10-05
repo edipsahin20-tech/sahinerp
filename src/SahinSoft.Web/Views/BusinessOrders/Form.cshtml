@@ -47,6 +47,11 @@
         <div class="erp-panel-body">
             <div class="erp-field-grid">
                 <div class="erp-field">
+                    <label asp-for="BranchId"></label>
+                    <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
                     <label asp-for="CustomerId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
                         Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),

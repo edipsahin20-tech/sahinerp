@@ -39,9 +39,11 @@ public sealed class DatabaseProfile
 
 public sealed class DatabaseCatalog
 {
-    private static readonly string ProfilesPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-        "SahinSoft", "baglanti-profilleri.json");
+    // SAHINSOFT_PROFILES_PATH: yalnızca test/geliştirme için dosya konumu geçersiz kılma (varsayılan %ProgramData%).
+    private static readonly string ProfilesPath = Environment.GetEnvironmentVariable("SAHINSOFT_PROFILES_PATH")
+        ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "SahinSoft", "baglanti-profilleri.json");
 
     public IReadOnlyList<DatabaseProfile> All()
     {
@@ -69,6 +71,18 @@ public sealed class DatabaseCatalog
             return null;
         }
         return All().FirstOrDefault(x => x.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    // Masaüstü terminalinin kullanacağı etkin profili değiştirir (ConfigTool "Etkinleştir" ile aynı dosya).
+    public void SetDefault(string name)
+    {
+        var all = All().ToList();
+        foreach (var p in all)
+        {
+            p.IsDefault = p.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase);
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(ProfilesPath)!);
+        File.WriteAllText(ProfilesPath, JsonSerializer.Serialize(all, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     public DatabaseProfile? Default()

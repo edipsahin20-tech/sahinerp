@@ -13,6 +13,8 @@ namespace SahinSoft.Web.Controllers;
 
 [Authorize]
 public sealed class BusinessOrdersController(
+    SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
+    SahinSoft.Web.Services.BranchSelectionService branchSelection,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator) : Controller
 {
@@ -57,6 +59,7 @@ public sealed class BusinessOrdersController(
         ViewBag.Toolbar = new EvrakToolbarViewModel
         {
             Controller = "BusinessOrders",
+            HardDelete = true,
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
         return View("Form", model);
@@ -67,12 +70,14 @@ public sealed class BusinessOrdersController(
     public async Task<IActionResult> Create(BusinessOrderFormViewModel form)
     {
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "BusinessOrders",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.OrderType.ToString() }
             };
             return View("Form", form);
@@ -140,6 +145,7 @@ public sealed class BusinessOrdersController(
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "BusinessOrders",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.OrderType.ToString() }
             };
             return View("Form", form);
@@ -170,6 +176,7 @@ public sealed class BusinessOrdersController(
             OrderType = order.OrderType,
             OrderNumber = order.OrderNumber,
             CustomerId = order.CustomerId,
+            BranchId = order.BranchId,
             OrderDateUtc = order.OrderDateUtc,
             RequestedDeliveryDateUtc = order.RequestedDeliveryDateUtc,
             CurrencyCode = order.CurrencyCode,
@@ -195,6 +202,17 @@ public sealed class BusinessOrdersController(
         await PopulateSelectionsAsync(model);
         await SetToolbarAsync(id, order.OrderType);
         return View("Form", model);
+    }
+
+    // Kalıcı Sil: belgeyi ve bağlı tüm stok/cari/kasa hareketlerini veritabanından siler (bkz. DocumentHardDeleteService).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = SahinSoft.Domain.Constants.AppRoles.Administrator)]
+    public async Task<IActionResult> HardDelete(int id)
+    {
+        var result = await hardDeleteService.DeleteBusinessOrderAsync(id);
+        TempData[result.Ok ? "Success" : "Error"] = result.Message;
+        return result.Ok ? RedirectToAction(nameof(Index)) : RedirectToAction("Details", new { id });
     }
 
     [HttpPost]
@@ -234,7 +252,8 @@ public sealed class BusinessOrdersController(
             PreviousId = previousId,
             NextId = nextId,
             CanDelete = true,
-            HasDetails = true
+            HasDetails = true,
+            HardDelete = true
         };
     }
 
@@ -248,6 +267,7 @@ public sealed class BusinessOrdersController(
         }
 
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
@@ -426,6 +446,7 @@ public sealed class BusinessOrdersController(
     private static void MapHeader(BusinessOrderFormViewModel source, BusinessOrder target)
     {
         target.CustomerId = source.CustomerId!.Value;
+        target.BranchId = source.BranchId;
         target.OrderDateUtc = DateTime.SpecifyKind(source.OrderDateUtc, DateTimeKind.Utc);
         target.RequestedDeliveryDateUtc = source.RequestedDeliveryDateUtc.HasValue
             ? DateTime.SpecifyKind(source.RequestedDeliveryDateUtc.Value, DateTimeKind.Utc)
@@ -501,6 +522,9 @@ public sealed class BusinessOrdersController(
 
     private async Task PopulateSelectionsAsync(BusinessOrderFormViewModel model)
     {
+        model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+
         if (model.CustomerId is int customerId)
         {
             model.CustomerDisplay = await dbContext.Customers

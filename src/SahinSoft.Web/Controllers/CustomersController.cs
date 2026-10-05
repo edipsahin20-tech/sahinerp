@@ -278,7 +278,7 @@ public sealed class CustomersController(
         return RedirectToAction(nameof(Create));
     }
 
-    public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to)
+    public async Task<IActionResult> Statement(int id, DateTime? from, DateTime? to, bool detail = false)
     {
         var zNumberById = await dbContext.RestaurantZPeriods.AsNoTracking().Where(x => x.ZNumber != null).ToDictionaryAsync(x => x.Id, x => x.ZNumber);
         var customer = await dbContext.Customers
@@ -323,6 +323,9 @@ public sealed class CustomersController(
             .ToListAsync();
         var statementRetailSaleByNumber = statementRetailSaleLookup.ToLookup(x => x.DocumentNumber);
 
+        var branchNamesForLines = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
+        var detailsByCariId = detail ? await BuildStatementDetailsAsync(transactions) : new Dictionary<int, List<StatementDetailRow>>();
+
         var runningBalance = openingBalance;
         var lines = new List<CustomerStatementLineViewModel>();
         foreach (var transaction in transactions)
@@ -340,6 +343,8 @@ public sealed class CustomersController(
                 Debit = transaction.Debit,
                 Credit = transaction.Credit,
                 RunningBalance = runningBalance,
+                BranchName = transaction.OriginBranchId is { } obid ? branchNamesForLines.GetValueOrDefault(obid) : null,
+                Details = detailsByCariId.GetValueOrDefault(transaction.Id) ?? [],
                 RestaurantRetailSaleId = retailSale?.Id,
                 RestaurantZPeriodId = retailSale?.RestaurantZPeriodId,
                 RestaurantZNo = retailSale?.RestaurantZPeriodId is { } zId ? RestaurantZPeriod.LabelFor(zId, zNumberById.GetValueOrDefault(zId)) : null
@@ -355,6 +360,7 @@ public sealed class CustomersController(
             To = to,
             OpeningBalance = openingBalance,
             ClosingBalance = runningBalance,
+            Detailed = detail,
             Lines = lines
         };
 
@@ -369,6 +375,51 @@ public sealed class CustomersController(
             .ToList();
 
         return View(model);
+    }
+
+
+    // Detaylı ekstre: hareketin belgesine göre fatura satırları, makbuz satırları (ödeme yöntemi/hesap) veya
+    // restoran fişi satırları. Numara önekleri (DUZ-/IPTAL-) ayıklanarak asıl belgeye bağlanır.
+    private async Task<Dictionary<int, List<StatementDetailRow>>> BuildStatementDetailsAsync(List<CurrentAccountTransaction> transactions)
+    {
+        static string Core(string n) => n.StartsWith("DUZ-", StringComparison.Ordinal) ? n[4..] : n.StartsWith("IPTAL-", StringComparison.Ordinal) ? n[6..] : n;
+        var result = new Dictionary<int, List<StatementDetailRow>>();
+        var invoiceIds = transactions.Where(x => x.InvoiceId != null).Select(x => x.InvoiceId!.Value).Distinct().ToList();
+        var invoiceLines = (await dbContext.InvoiceLines.AsNoTracking().Where(x => invoiceIds.Contains(x.InvoiceId)).OrderBy(x => x.LineNumber).ToListAsync())
+            .ToLookup(x => x.InvoiceId);
+        var coreNumbers = transactions.Select(x => Core(x.DocumentNumber)).Distinct().ToList();
+        var receipts = await dbContext.PaymentReceipts.AsNoTracking().Where(x => coreNumbers.Contains(x.ReceiptNumber)).Select(x => new { x.Id, x.ReceiptNumber }).ToListAsync();
+        var receiptIds = receipts.Select(x => x.Id).ToList();
+        var receiptLines = (await dbContext.PaymentReceiptLines.AsNoTracking().Include(x => x.FinancialAccount).Where(x => receiptIds.Contains(x.PaymentReceiptId)).OrderBy(x => x.LineNumber).ToListAsync())
+            .ToLookup(x => x.PaymentReceiptId);
+        var receiptByNumber = receipts.ToDictionary(x => x.ReceiptNumber, x => x.Id);
+        var saleLines = await dbContext.RetailSaleLines.AsNoTracking()
+            .Where(x => coreNumbers.Contains(x.RetailSale.DocumentNumber))
+            .Select(x => new { x.RetailSale.DocumentNumber, x.RetailSale.BranchId, x.ProductNameSnapshot, x.Quantity, x.UnitPriceSnapshot, x.LineTotal })
+            .ToListAsync();
+
+        foreach (var t in transactions)
+        {
+            var rows = new List<StatementDetailRow>();
+            if (t.InvoiceId is int invId)
+            {
+                rows.AddRange(invoiceLines[invId].Select(l => new StatementDetailRow(
+                    l.ProductNameSnapshot, $"{l.Quantity:N2} {l.UnitSnapshot}", $"{l.UnitPrice:N2}" + (l.TaxRate > 0 ? $" (KDV %{l.TaxRate:0.##})" : ""), l.LineTotal.ToString("N2"))));
+            }
+            else if (receiptByNumber.TryGetValue(Core(t.DocumentNumber), out var rid))
+            {
+                rows.AddRange(receiptLines[rid].Select(l => new StatementDetailRow(
+                    $"{l.PaymentMethod.GetDisplayName()}" + (l.FinancialAccount is null ? "" : " — " + l.FinancialAccount.Name) + (string.IsNullOrWhiteSpace(l.ReferenceNumber) ? "" : " · " + l.ReferenceNumber),
+                    "", "", l.Amount.ToString("N2"))));
+            }
+            else
+            {
+                rows.AddRange(saleLines.Where(x => x.DocumentNumber == Core(t.DocumentNumber) && (t.OriginBranchId == null || x.BranchId == t.OriginBranchId))
+                    .Select(x => new StatementDetailRow(x.ProductNameSnapshot, x.Quantity.ToString("N2"), x.UnitPriceSnapshot.ToString("N2"), x.LineTotal.ToString("N2"))));
+            }
+            if (rows.Count > 0) { result[t.Id] = rows; }
+        }
+        return result;
     }
 
     public async Task<IActionResult> PriceList(int id)

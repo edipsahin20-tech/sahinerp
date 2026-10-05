@@ -17,6 +17,8 @@ namespace SahinSoft.Web.Controllers;
 // Garson ve mutfak erişemez. İptal yalnızca Administrator (aşağıda ayrıca kısıtlı).
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.Staff},{AppRoles.RestaurantManager},{AppRoles.Cashier}")]
 public sealed class PaymentReceiptsController(
+    SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
+    SahinSoft.Web.Services.BranchSelectionService branchSelection,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     PaymentReceiptPostingService paymentReceiptPostingService,
@@ -107,6 +109,7 @@ public sealed class PaymentReceiptsController(
         ViewBag.Toolbar = new EvrakToolbarViewModel
         {
             Controller = "PaymentReceipts",
+            HardDelete = true,
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
         return View("Form", model);
@@ -136,6 +139,21 @@ public sealed class PaymentReceiptsController(
                 }
             }
         }
+        else
+        {
+            // Muhasebe ekranından girilen makbuz: şube formdaki "Şube" alanından gelir (boşsa varsayılan şube).
+            originBranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+            if (originBranchId is not null)
+            {
+                var accountError = await paymentReceiptPostingService.CheckBranchAccountsAsync(
+                    originBranchId.Value, form.Lines.Where(x => x.FinancialAccountId is not null).Select(x => x.FinancialAccountId!.Value));
+                if (accountError is not null)
+                {
+                    ModelState.AddModelError(nameof(form.BranchId), accountError);
+                }
+            }
+            form.BranchId = originBranchId;
+        }
 
         if (!ModelState.IsValid)
         {
@@ -143,6 +161,7 @@ public sealed class PaymentReceiptsController(
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "PaymentReceipts",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.ReceiptType.ToString() }
             };
             return View("Form", form);
@@ -210,6 +229,7 @@ public sealed class PaymentReceiptsController(
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "PaymentReceipts",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.ReceiptType.ToString() }
             };
             return View("Form", form);
@@ -309,6 +329,7 @@ public sealed class PaymentReceiptsController(
             ReceiptType = receipt.ReceiptType,
             ReceiptNumber = receipt.ReceiptNumber,
             CustomerId = receipt.CustomerId,
+            BranchId = receipt.OriginBranchId,
             ReceiptDateUtc = receipt.ReceiptDateUtc,
             CurrencyCode = receipt.CurrencyCode,
             ExchangeRate = receipt.ExchangeRate,
@@ -334,6 +355,17 @@ public sealed class PaymentReceiptsController(
         await PopulateSelectionsAsync(model);
         await SetToolbarAsync(id, receipt.ReceiptType);
         return View("Form", model);
+    }
+
+    // Kalıcı Sil: belgeyi ve bağlı tüm stok/cari/kasa hareketlerini veritabanından siler (bkz. DocumentHardDeleteService).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = SahinSoft.Domain.Constants.AppRoles.Administrator)]
+    public async Task<IActionResult> HardDelete(int id)
+    {
+        var result = await hardDeleteService.DeletePaymentReceiptAsync(id);
+        TempData[result.Ok ? "Success" : "Error"] = result.Message;
+        return result.Ok ? RedirectToAction(nameof(Index)) : RedirectToAction("Details", new { id });
     }
 
     [HttpPost]
@@ -373,7 +405,8 @@ public sealed class PaymentReceiptsController(
             PreviousId = previousId,
             NextId = nextId,
             CanDelete = true,
-            HasDetails = true
+            HasDetails = true,
+            HardDelete = true
         };
     }
 
@@ -409,6 +442,11 @@ public sealed class PaymentReceiptsController(
 
         // Kaynak şube kayıtta damgalanır ve düzenlemede DEĞİŞMEZ; hesap uygunluğu ise her düzenlemede
         // yeniden denetlenir (terminal ayarı kayıttan sonra değişmiş olabilir).
+        if (form.BranchId is not null)
+        {
+            receipt.OriginBranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        }
+
         if (receipt.OriginBranchId is { } originBranch)
         {
             var accountError = await paymentReceiptPostingService.CheckBranchAccountsAsync(
@@ -585,6 +623,9 @@ public sealed class PaymentReceiptsController(
 
     private async Task PopulateSelectionsAsync(PaymentReceiptFormViewModel model)
     {
+        model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+
         if (model.CustomerId is int customerId)
         {
             model.CustomerDisplay = await dbContext.Customers

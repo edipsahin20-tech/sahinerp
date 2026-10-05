@@ -492,6 +492,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<Invoice>(entity =>
         {
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.InvoiceNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
             entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
@@ -1045,6 +1046,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<BusinessOrder>(entity =>
         {
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.OrderNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
             entity.Property(x => x.ExchangeRate).HasPrecision(18, 6);
@@ -1083,6 +1085,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<DispatchNote>(entity =>
         {
+            entity.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.DispatchNumber).HasMaxLength(30).IsRequired();
             entity.Property(x => x.VehiclePlate).HasMaxLength(20);
             entity.Property(x => x.CarrierName).HasMaxLength(150);

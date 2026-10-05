@@ -145,10 +145,10 @@
             }
             else
             {
-                <p class="text-secondary small mb-2">Teklif satırlarından taslak bir satış faturası oluşturulur; depo seçmeniz gerekir.</p>
+                <p class="text-secondary small mb-2">Teklif satırlarından taslak bir satış faturası oluşturulur; şube seçmeniz gerekir (stok şubeye bağlı depodan düşer).</p>
                 <form method="post" asp-action="ConvertToInvoice" asp-route-id="@Model.Id" class="d-flex gap-2">
-                    <select name="warehouseId" class="form-select" style="max-width: 260px;" required>
-                        <option value="">Depo seçin</option>
+                    <select name="branchId" class="form-select" style="max-width: 260px;" required>
+                        <option value="">Şube seçin</option>
                         @foreach (var warehouse in Model.Warehouses)
                         {
                             <option value="@warehouse.Value">@warehouse.Text</option>

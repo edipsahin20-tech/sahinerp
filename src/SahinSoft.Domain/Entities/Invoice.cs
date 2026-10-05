@@ -43,6 +43,9 @@ public sealed class Invoice : EntityBase
 
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
+    // Belgenin ait olduğu şube (cari hareketine OriginBranchId olarak yazılır; "Şube atanmamış" görünmesin diye).
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
     public int WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     public int? QuoteId { get; set; }

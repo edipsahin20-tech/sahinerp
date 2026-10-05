@@ -11746,3 +11746,106 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [Invoices] ADD [BranchId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [DispatchNotes] ADD [BranchId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [BusinessOrders] ADD [BranchId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    CREATE INDEX [IX_Invoices_BranchId] ON [Invoices] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    CREATE INDEX [IX_DispatchNotes_BranchId] ON [DispatchNotes] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessOrders_BranchId] ON [BusinessOrders] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [BusinessOrders] ADD CONSTRAINT [FK_BusinessOrders_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [DispatchNotes] ADD CONSTRAINT [FK_DispatchNotes_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    ALTER TABLE [Invoices] ADD CONSTRAINT [FK_Invoices_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+
+    DECLARE @head int = (SELECT TOP 1 Id FROM Branches ORDER BY IsHeadOffice DESC, Id);
+    IF @head IS NOT NULL
+    BEGIN
+        UPDATE Invoices SET BranchId = @head WHERE BranchId IS NULL;
+        UPDATE DispatchNotes SET BranchId = @head WHERE BranchId IS NULL;
+        UPDATE BusinessOrders SET BranchId = @head WHERE BranchId IS NULL;
+        UPDATE PaymentReceipts SET OriginBranchId = @head WHERE OriginBranchId IS NULL AND Status <> 1;
+        UPDATE CurrentAccountTransactions SET OriginBranchId = @head WHERE OriginBranchId IS NULL;
+        UPDATE FinancialTransactions SET OriginBranchId = @head WHERE OriginBranchId IS NULL;
+    END
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005191819_AddBranchToDocuments'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005191819_AddBranchToDocuments', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

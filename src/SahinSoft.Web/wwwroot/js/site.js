@@ -60,12 +60,12 @@
 // üzerinden toplamını gösterir — sayfalamadan bağımsızdır (tüm eşleşen sayfaların toplamı),
 // ama arama filtresine göre her 'erp:rowschange' olayında yeniden hesaplanır.
 (function () {
-    // Sunucu tarafında toplam/tutar kolonları her zaman "N2" (en-US kültürü: virgül binlik,
-    // nokta ondalık — bkz. Program.cs RequestLocalizationOptions) ile basılıyor; ayraçları buna
-    // göre ayıklıyoruz, Türkçe (nokta binlik/virgül ondalık) değil.
+    // Sunucu tarafında toplam/tutar kolonları tr-TR kültürüyle (nokta binlik, virgül ondalık —
+    // bkz. Program.cs RequestLocalizationOptions) basılıyor; ayraçları buna göre ayıklıyoruz.
     function parseNumber(text) {
         var cleaned = String(text || '')
-            .replace(/,/g, '')
+            .replace(/\./g, '')
+            .replace(',', '.')
             .replace(/[^\d.-]/g, '');
         return parseFloat(cleaned) || 0;
     }
@@ -138,8 +138,8 @@
                     var rowCell = row.cells[index];
                     return acc + (rowCell ? parseNumber(rowCell.textContent) : 0);
                 }, 0);
-                // Toplam satırı da tablodaki diğer tutarlarla aynı (en-US/"N2") biçimde gösterilsin.
-                cell.textContent = sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                // Toplam satırı da tablodaki diğer tutarlarla aynı (tr-TR/"N2") biçimde gösterilsin.
+                cell.textContent = sum.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             });
         }
 

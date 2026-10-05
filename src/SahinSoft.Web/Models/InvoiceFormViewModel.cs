@@ -33,7 +33,12 @@ public sealed class InvoiceFormViewModel
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }
 
-    [Required(ErrorMessage = "Depo seçilmelidir.")]
+    [Display(Name = "Şube")]
+    public int? BranchId { get; set; }
+
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+
+    // Depo artık seçilmez: şubeye bağlı depodan sunucuda türetilir (BranchSelectionService.WarehouseForBranchAsync).
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }
 
@@ -50,7 +55,7 @@ public sealed class InvoiceFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(typeof(decimal), "0.000001", "999999")]
+    [Range(typeof(decimal), "0.000001", "999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Döviz kuru")]
     public decimal ExchangeRate { get; set; } = 1;
 
@@ -89,7 +94,7 @@ public sealed class InvoiceFormViewModel
     public int? SettlementFinancialAccountId { get; set; }
     public string? SettlementFinancialAccountDisplay { get; set; }
 
-    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Tutar iskontosu 0 veya daha büyük olmalıdır.")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Tutar iskontosu 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Tutar İskontosu")]
     public decimal AmountDiscount { get; set; }
 
@@ -111,21 +116,21 @@ public sealed class InvoiceLineFormViewModel
     // Negatif miktara izin verilir (iade satırı: aynı fatura içinde -1, -2 gibi bir satırla iade
     // düşülebilir — bkz. InvoicePostingService.ValidateLine); yalnızca tam sıfır anlamsız olduğu
     // için InvoicesController.ValidateLines içinde ayrıca reddedilir.
-    [Range(typeof(decimal), "-999999999", "999999999", ErrorMessage = "Miktar geçerli bir aralıkta olmalıdır.")]
+    [Range(typeof(decimal), "-999999999", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Miktar geçerli bir aralıkta olmalıdır.")]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
 
-    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Birim fiyat 0 veya daha büyük olmalıdır.")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Birim fiyat 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Birim fiyat")]
     public decimal UnitPrice { get; set; }
     // Döviz faturasında satırın fatura para birimindeki birim fiyatı (düzenleme ekranında gösterim için).
     public decimal? ForeignUnitPrice { get; set; }
 
-    [Range(typeof(decimal), "0", "100", ErrorMessage = "İskonto % 0 ile 100 arasında olmalıdır.")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true, ErrorMessage = "İskonto % 0 ile 100 arasında olmalıdır.")]
     [Display(Name = "İskonto %")]
     public decimal DiscountRate { get; set; }
 
-    [Range(typeof(decimal), "0", "100", ErrorMessage = "KDV % 0 ile 100 arasında olmalıdır.")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true, ErrorMessage = "KDV % 0 ile 100 arasında olmalıdır.")]
     [Display(Name = "KDV %")]
     public decimal TaxRate { get; set; }
 

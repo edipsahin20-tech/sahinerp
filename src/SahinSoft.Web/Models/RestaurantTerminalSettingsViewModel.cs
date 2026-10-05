@@ -1,5 +1,6 @@
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
+using SahinSoft.Web.Services;
 
 namespace SahinSoft.Web.Models;
 
@@ -19,4 +20,7 @@ public sealed class RestaurantTerminalSettingsViewModel
     public string? FiscalAgentUrl { get; set; }
     public int? TerminalBranchId { get; set; }
     public int? TerminalRegisterId { get; set; }
+    public List<DatabaseProfile> DatabaseProfiles { get; set; } = [];
+    public string? CurrentDatabaseName { get; set; }
+    public bool IsDesktopTerminal { get; set; }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ namespace SahinSoft.Web.Controllers;
 // merkez senkronu) bu kaldırmayla birlikte ŞU AN HİÇBİR YERDEN AYARLANAMIYOR - Edip'e açıkça
 // soruldu, bilerek bu şekilde onayladı.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
-public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, SahinSoft.Web.Services.RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
+public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, SahinSoft.Web.Services.RestaurantShellService shellService, SahinSoft.Web.Services.DatabaseCatalog databaseCatalog) : RestaurantControllerBase(dbContext, shellService)
 {
     private readonly ApplicationDbContext dbContext = dbContext;
 
@@ -46,8 +47,14 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
                 .ToListAsync(),
             FinancialAccounts = await dbContext.FinancialAccounts.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync(),
             FiscalDeviceType = settings.FiscalDeviceType,
-            FiscalAgentUrl = settings.FiscalAgentUrl
+            FiscalAgentUrl = settings.FiscalAgentUrl,
+            DatabaseProfiles = databaseCatalog.All().ToList(),
+            IsDesktopTerminal = SahinSoft.Web.Services.DatabaseRouter.IsDesktop(HttpContext)
         };
+        // Şu an çalışılan veritabanı: masaüstünde etkin (varsayılan) profil; tarayıcıda ss_db çerezi, yoksa varsayılan.
+        vm.CurrentDatabaseName = vm.IsDesktopTerminal
+            ? databaseCatalog.Default()?.Name
+            : (databaseCatalog.Find(Request.Cookies[SahinSoft.Web.Services.DatabaseRouter.SelectionKey])?.Name ?? databaseCatalog.Default()?.Name);
 
         // Bu tarayıcının (terminalin) mevcut şube ve kasa seçimi - çerezlerden okunur.
         vm.TerminalBranchId = int.TryParse(Request.Cookies[TerminalBranchCookie], out var tb) ? tb : null;
@@ -221,5 +228,56 @@ public sealed class RestaurantTerminalSettingsController(ApplicationDbContext db
 
         TempData["Success"] = "Yazar kasa ayarları güncellendi.";
         return RedirectToAction(nameof(Index));
+    }
+
+    // Çalışılacak veritabanı seçimi (Edip, 2026-10-05: "şubenin girişinde ayarlar bölümüne hangi
+    // veritabanıyla çalışacağını seçelim, ayrıca koy"). Profil listesi ConfigTool ile AYNI dosyadan
+    // (baglanti-profilleri.json) gelir. Masaüstü terminali her zaman etkin (varsayılan) profili kullanır
+    // (DatabaseRouter) - orada seçim varsayılanı değiştirir; tarayıcıda yalnızca bu tarayıcının ss_db
+    // çerezi değişir. Veritabanı değişince mevcut oturum yeni veritabanında geçerli olmayabileceğinden çıkış yapılır.
+    [Authorize(Roles = AppRoles.Administrator)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveDatabase(string? profile)
+    {
+        var selected = databaseCatalog.Find(profile);
+        if (selected is null)
+        {
+            TempData["Error"] = "Seçilen veritabanı profili bulunamadı.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            await using (var connection = new Microsoft.Data.SqlClient.SqlConnection(selected.BuildConnectionString()))
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await connection.OpenAsync(cts.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = "Bu veritabanına bağlanılamadı, seçim değiştirilmedi: " + ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (SahinSoft.Web.Services.DatabaseRouter.IsDesktop(HttpContext))
+        {
+            databaseCatalog.SetDefault(selected.Name);
+        }
+        else
+        {
+            Response.Cookies.Append(SahinSoft.Web.Services.DatabaseRouter.SelectionKey, selected.Name, new CookieOptions
+            {
+                Expires = DateTimeOffset.UtcNow.AddYears(1),
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax
+            });
+        }
+
+        await HttpContext.SignOutAsync(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme);
+        TempData["Success"] = $"Çalışılacak veritabanı: {selected.Name}. Lütfen yeniden giriş yapın.";
+        return RedirectToAction("Login", "RestaurantAuth");
     }
 }

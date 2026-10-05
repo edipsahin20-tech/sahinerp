@@ -17,6 +17,8 @@ namespace SahinSoft.Web.Controllers;
 
 [Authorize]
 public sealed class InvoicesController(
+    SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
+    SahinSoft.Web.Services.BranchSelectionService branchSelection,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     InvoicePostingService invoicePostingService,
@@ -136,6 +138,7 @@ public sealed class InvoicesController(
         ViewBag.Toolbar = new EvrakToolbarViewModel
         {
             Controller = "Invoices",
+            HardDelete = true,
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
         var conversionSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
@@ -149,6 +152,13 @@ public sealed class InvoicesController(
     public async Task<IActionResult> Create(InvoiceFormViewModel form)
     {
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        ModelState.Remove(nameof(form.WarehouseId));
+        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+        }
         ValidateSettlement(form);
         // Belge numarası (Seri/Sıra) çözümlemesi gerçek bir DB yazımı ve bir sayaç tüketimidir —
         // bu yüzden yalnızca form BAŞKA hiçbir sebeple geçersiz DEĞİLSE denenir. Aksi halde (örn.
@@ -355,9 +365,15 @@ public sealed class InvoicesController(
     public async Task<IActionResult> CreateFromOrder(CreateInvoiceFromOrderViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.QuantityToInvoice > 0).ToList();
-        if (form.WarehouseId is null)
         {
-            ModelState.AddModelError(nameof(form.WarehouseId), "Depo seçilmelidir.");
+            ModelState.Remove(nameof(form.WarehouseId));
+            var orderBranch = await dbContext.BusinessOrders.Where(o => o.Id == form.OrderId).Select(o => o.BranchId).FirstOrDefaultAsync()
+                ?? await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+            form.WarehouseId = await branchSelection.WarehouseForBranchAsync(orderBranch);
+            if (form.WarehouseId is null)
+            {
+                ModelState.AddModelError(string.Empty, SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+            }
         }
 
         if (form.Lines.Count == 0)
@@ -406,6 +422,7 @@ public sealed class InvoicesController(
                         SubmissionKey = form.SubmissionKey,
                         CustomerId = form.CustomerId,
                         WarehouseId = form.WarehouseId!.Value,
+                        BranchId = await dbContext.BusinessOrders.Where(o => o.Id == form.OrderId).Select(o => o.BranchId).FirstOrDefaultAsync() ?? await branchSelection.DefaultBranchIdAsync(userId),
                         InvoiceDateUtc = DateTime.SpecifyKind(form.InvoiceDateUtc, DateTimeKind.Utc),
                         CurrencyCode = form.CurrencyCode,
                         ExchangeRate = form.ExchangeRate,
@@ -549,6 +566,7 @@ public sealed class InvoicesController(
                 dispatchNumber = dispatch.DispatchNumber,
                 dateUtc = dispatch.DispatchDateUtc.ToString("dd.MM.yyyy"),
                 warehouseId = dispatch.WarehouseId,
+                branchId = dispatch.BranchId,
                 warehouseDisplay = $"{dispatch.Warehouse.Code} - {dispatch.Warehouse.Name}",
                 orderCurrency = dispatch.BusinessOrder?.CurrencyCode,
                 orderExchangeRate = dispatch.BusinessOrder?.ExchangeRate ?? 1m,
@@ -615,6 +633,7 @@ public sealed class InvoicesController(
             DocumentSequence = sequencePart,
             CustomerId = invoice.CustomerId,
             WarehouseId = invoice.WarehouseId,
+            BranchId = invoice.BranchId,
             InvoiceDateUtc = invoice.InvoiceDateUtc,
             DueDateUtc = invoice.DueDateUtc,
             CurrencyCode = invoice.CurrencyCode,
@@ -660,6 +679,17 @@ public sealed class InvoicesController(
         return View("Form", model);
     }
 
+    // Kalıcı Sil: belgeyi ve bağlı tüm stok/cari/kasa hareketlerini veritabanından siler (bkz. DocumentHardDeleteService).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = SahinSoft.Domain.Constants.AppRoles.Administrator)]
+    public async Task<IActionResult> HardDelete(int id)
+    {
+        var result = await hardDeleteService.DeleteInvoiceAsync(id);
+        TempData[result.Ok ? "Success" : "Error"] = result.Message;
+        return result.Ok ? RedirectToAction(nameof(Index)) : RedirectToAction("Details", new { id });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
@@ -698,6 +728,7 @@ public sealed class InvoicesController(
         ViewBag.Toolbar = new EvrakToolbarViewModel
         {
             Controller = "Invoices",
+            HardDelete = true,
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
     }
@@ -715,7 +746,8 @@ public sealed class InvoicesController(
             PreviousId = previousId,
             NextId = nextId,
             CanDelete = true,
-            HasDetails = true
+            HasDetails = true,
+            HardDelete = true
         };
     }
 
@@ -729,6 +761,13 @@ public sealed class InvoicesController(
         }
 
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        ModelState.Remove(nameof(form.WarehouseId));
+        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+        }
         ValidateSettlement(form);
 
         var invoice = await dbContext.Invoices
@@ -1163,6 +1202,7 @@ public sealed class InvoicesController(
     {
         target.CustomerId = source.CustomerId!.Value;
         target.WarehouseId = source.WarehouseId!.Value;
+        target.BranchId = source.BranchId;
         target.InvoiceDateUtc = DateTime.SpecifyKind(source.InvoiceDateUtc, DateTimeKind.Utc);
         target.DueDateUtc = source.DueDateUtc.HasValue
             ? DateTime.SpecifyKind(source.DueDateUtc.Value, DateTimeKind.Utc)
@@ -1347,6 +1387,9 @@ public sealed class InvoicesController(
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {
+        model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
+        model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+
         if (model.CustomerId is int customerId)
         {
             model.CustomerDisplay = await dbContext.Customers

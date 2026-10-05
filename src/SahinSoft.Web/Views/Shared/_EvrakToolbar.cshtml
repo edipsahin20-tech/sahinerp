@@ -6,6 +6,8 @@
 }
 
 <div class="erp-evrak-toolbar">
+    @if (!Model.HardDelete)
+    {
     <form method="post" asp-controller="@Model.Controller" asp-action="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Bu kaydı silmek istediğinize emin misiniz?');">
         @if (Model.Id is null || !Model.CanDelete)
         {
@@ -22,6 +24,7 @@
             </button>
         }
     </form>
+    }
 
     @if (Model.PreviousId is int previousId)
     {
@@ -83,6 +86,22 @@
          değişiklik varsa önce kaydetmeyi ister (evrak-close-guard.js, dirty-check formu #evrak-form
          üzerinden yapar). _EvrakToolbar TEK yerden değiştiği için bu buton tüm Form.cshtml
          ekranlarına (Cari, Ürün, Fatura, vb.) otomatik yayılır. -->
+    <!-- Vazgeç (Edip, 2026-10-05): ekrandaki işlemi "Evet/Hayır" onayıyla iptal eder; ekran temizlenir, kayıt YAPILMAZ. -->
+    <button type="button" id="evrak-cancel-btn" class="erp-evrak-btn" data-cancel-confirm="Ekrandaki işlem iptal edilecek ve kaydedilmeyecek. Emin misiniz?">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
+        <span>Vazgeç</span>
+    </button>
+
+    @if (Model.HardDelete && Model.Id is int hardDeleteId && User.IsInRole("Administrator"))
+    {
+        <form method="post" asp-controller="@Model.Controller" asp-action="HardDelete" asp-route-id="@hardDeleteId" id="evrak-harddelete-form" data-evrak-confirm="Bu kayıt ve bağlı TÜM hareketleri (stok, cari, kasa) veritabanından KALICI olarak silinecek. Geri alınamaz. Emin misiniz?" style="display:inline;">
+            <button type="submit" class="erp-evrak-btn erp-evrak-btn-danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                <span>Sil</span>
+            </button>
+        </form>
+    }
+
     <button type="button" id="evrak-close-btn" class="erp-evrak-btn erp-evrak-btn-close" data-close-url="@Url.Action("Index", Model.Controller)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="M6 6l12 12" /></svg>
         <span>Kapat</span>

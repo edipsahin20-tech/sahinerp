@@ -58,19 +58,19 @@ public sealed class ProductFormViewModel : IValidatableObject
     public bool TrackSerialNumbers { get; set; }
 
     [Display(Name = "Alış fiyatı")]
-    [Range(typeof(decimal), "0", "999999999999")]
+    [Range(typeof(decimal), "0", "999999999999", ParseLimitsInInvariantCulture = true)]
     public decimal PurchasePrice { get; set; }
 
     [Display(Name = "Satış fiyatı")]
-    [Range(typeof(decimal), "0", "999999999999")]
+    [Range(typeof(decimal), "0", "999999999999", ParseLimitsInInvariantCulture = true)]
     public decimal SalePrice { get; set; }
 
     [Display(Name = "Stok miktarı")]
-    [Range(typeof(decimal), "0", "999999999999")]
+    [Range(typeof(decimal), "0", "999999999999", ParseLimitsInInvariantCulture = true)]
     public decimal StockQuantity { get; set; }
 
     [Display(Name = "Minimum stok")]
-    [Range(typeof(decimal), "0", "999999999999")]
+    [Range(typeof(decimal), "0", "999999999999", ParseLimitsInInvariantCulture = true)]
     public decimal MinimumStockQuantity { get; set; }
 
     [Display(Name = "Stok takip edilsin")]

@@ -37,7 +37,7 @@ public sealed class CustomerFormViewModel
     [Display(Name = "Cari grup")]
     public string? CustomerGroup { get; set; }
 
-    [Range(typeof(decimal), "0", "999999999")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Risk limiti")]
     public decimal RiskLimit { get; set; }
 
@@ -49,7 +49,7 @@ public sealed class CustomerFormViewModel
     [Display(Name = "Yetkili kişi")]
     public string? AuthorizedPerson { get; set; }
 
-    [Range(typeof(decimal), "-999999999", "999999999")]
+    [Range(typeof(decimal), "-999999999", "999999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Açılış bakiyesi")]
     public decimal OpeningBalance { get; set; }
 

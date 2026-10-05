@@ -204,6 +204,8 @@ builder.Services.AddScoped<BarcodeGeneratorService>();
 builder.Services.AddScoped<StockCodeGeneratorService>();
 builder.Services.AddScoped<DocumentNumberGeneratorService>();
 builder.Services.AddScoped<InvoicePostingService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.DocumentHardDeleteService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.BranchSelectionService>();
 builder.Services.AddScoped<StockSlipPostingService>();
 builder.Services.AddScoped<InventoryCountPostingService>();
 builder.Services.AddScoped<InventoryBalanceService>();
@@ -252,8 +254,8 @@ else
 
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
-    DefaultRequestCulture = new RequestCulture(culture: "en-US", uiCulture: "tr-TR"),
-    SupportedCultures = [new CultureInfo("en-US")],
+    DefaultRequestCulture = new RequestCulture(culture: "tr-TR", uiCulture: "tr-TR"),
+    SupportedCultures = [new CultureInfo("tr-TR")],
     SupportedUICultures = [new CultureInfo("tr-TR")]
 });
 

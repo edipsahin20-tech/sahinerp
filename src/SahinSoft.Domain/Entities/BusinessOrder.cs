@@ -21,6 +21,8 @@ public sealed class BusinessOrder : EntityBase
 
     // Çift tıklama/mükerrer POST koruması — bkz. StockSlip.SubmissionKey.
     public Guid? SubmissionKey { get; set; }
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
     public int? QuoteId { get; set; }

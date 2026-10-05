@@ -14,6 +14,11 @@ public sealed class BusinessOrderFormViewModel
 
     public string? OrderNumber { get; set; }
 
+    [Display(Name = "Şube")]
+    public int? BranchId { get; set; }
+
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }
@@ -31,7 +36,7 @@ public sealed class BusinessOrderFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(typeof(decimal), "0.000001", "999999")]
+    [Range(typeof(decimal), "0.000001", "999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Döviz kuru")]
     public decimal ExchangeRate { get; set; } = 1;
 
@@ -52,19 +57,19 @@ public sealed class BusinessOrderLineFormViewModel
 
     public string? ProductDisplay { get; set; }
 
-    [Range(typeof(decimal), "0.001", "999999999", ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
+    [Range(typeof(decimal), "0.001", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
 
-    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Birim fiyat 0 veya daha büyük olmalıdır.")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Birim fiyat 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Birim Fiyat")]
     public decimal UnitPrice { get; set; }
 
-    [Range(typeof(decimal), "0", "100", ErrorMessage = "İskonto % 0 ile 100 arasında olmalıdır.")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true, ErrorMessage = "İskonto % 0 ile 100 arasında olmalıdır.")]
     [Display(Name = "İskonto %")]
     public decimal DiscountRate { get; set; }
 
-    [Range(typeof(decimal), "0", "100", ErrorMessage = "KDV % 0 ile 100 arasında olmalıdır.")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true, ErrorMessage = "KDV % 0 ile 100 arasında olmalıdır.")]
     [Display(Name = "KDV %")]
     public decimal TaxRate { get; set; }
 }

@@ -10,4 +10,7 @@ public sealed class EvrakToolbarViewModel
     public bool CanDelete { get; set; }
     public string? DeleteBlockedReason { get; set; }
     public bool HasDetails { get; set; }
+
+    // Fatura/makbuz/irsaliye/sipariş: "Sil" belgeyi ve bağlı tüm hareketleri veritabanından KALICI siler (HardDelete aksiyonu, yalnız Administrator).
+    public bool HardDelete { get; set; }
 }

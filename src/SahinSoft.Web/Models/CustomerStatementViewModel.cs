@@ -10,7 +10,12 @@ public sealed class CustomerStatementViewModel
     public decimal OpeningBalance { get; set; }
     public decimal ClosingBalance { get; set; }
     public IReadOnlyList<CustomerStatementLineViewModel> Lines { get; set; } = [];
+
+    // Detaylı ekstre: fatura/makbuz/fiş satırları hareketin altında gösterilir.
+    public bool Detailed { get; set; }
 }
+
+public sealed record StatementDetailRow(string Name, string Quantity, string UnitPrice, string Total);
 
 public sealed class CustomerStatementLineViewModel
 {
@@ -21,6 +26,8 @@ public sealed class CustomerStatementLineViewModel
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public decimal RunningBalance { get; set; }
+    public string? BranchName { get; set; }
+    public List<StatementDetailRow> Details { get; set; } = [];
 
     // Talimat 1 (2026-09-06) - "muhasebe tarafından da ADS ve Z'ye geri gidilebilmeli" (bkz.
     // FinancialTransactionReportLineViewModel'deki AYNI alanların yorumu).

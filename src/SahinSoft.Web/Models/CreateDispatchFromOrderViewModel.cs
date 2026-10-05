@@ -21,7 +21,7 @@ public sealed class CreateDispatchFromOrderViewModel
     // oluşturulacak" / "Kaydedilecek ve otomatik onaylanacak" bilgisini göstermek için.
     public bool WillAutoApprove { get; set; }
 
-    [Required(ErrorMessage = "Depo seçilmelidir.")]
+    // Depo artık seçilmez: şubeye bağlı depodan sunucuda türetilir (BranchSelectionService.WarehouseForBranchAsync).
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }
     public string? WarehouseDisplay { get; set; }
@@ -50,7 +50,7 @@ public sealed class CreateDispatchFromOrderLineViewModel
     public decimal OrderedQuantity { get; set; }
     public decimal RemainingQuantity { get; set; }
 
-    [Range(typeof(decimal), "0", "999999999")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Sevk edilecek miktar")]
     public decimal QuantityToShip { get; set; }
 }

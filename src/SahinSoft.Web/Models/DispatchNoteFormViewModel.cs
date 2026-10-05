@@ -14,11 +14,16 @@ public sealed class DispatchNoteFormViewModel
 
     public string? DispatchNumber { get; set; }
 
+    [Display(Name = "Şube")]
+    public int? BranchId { get; set; }
+
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }
 
-    [Required(ErrorMessage = "Depo seçilmelidir.")]
+    // Depo artık seçilmez: şubeye bağlı depodan sunucuda türetilir (BranchSelectionService.WarehouseForBranchAsync).
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }
 
@@ -53,7 +58,7 @@ public sealed class DispatchNoteLineFormViewModel
 
     public string? ProductDisplay { get; set; }
 
-    [Range(typeof(decimal), "0.001", "999999999", ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
+    [Range(typeof(decimal), "0.001", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
 

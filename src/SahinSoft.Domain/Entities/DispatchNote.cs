@@ -23,6 +23,8 @@ public sealed class DispatchNote : EntityBase
     public string? CancellationReason { get; set; }
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
     public int WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     public int? BusinessOrderId { get; set; }

@@ -23,7 +23,7 @@ public sealed class CreateInvoiceFromOrderViewModel
     // oluşturulacak" / "Kaydedilecek ve otomatik onaylanacak" bilgisini göstermek için.
     public bool WillAutoApprove { get; set; }
 
-    [Required(ErrorMessage = "Depo seçilmelidir.")]
+    // Depo artık seçilmez: şubeye bağlı depodan sunucuda türetilir (BranchSelectionService.WarehouseForBranchAsync).
     [Display(Name = "Depo")]
     public int? WarehouseId { get; set; }
     public string? WarehouseDisplay { get; set; }
@@ -47,7 +47,7 @@ public sealed class CreateInvoiceFromOrderLineViewModel
     public decimal DiscountRate { get; set; }
     public decimal TaxRate { get; set; }
 
-    [Range(typeof(decimal), "0", "999999999")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Faturalanacak miktar")]
     public decimal QuantityToInvoice { get; set; }
 }

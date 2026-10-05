@@ -132,8 +132,7 @@ public sealed class RestaurantPermissionService(ApplicationDbContext dbContext, 
     // RestaurantAuthController'daki aynı VerifyHashedPassword deseni). Eşleşen kullanıcı bulunsa
     // bile, o kullanıcı bu SPESİFİK işlem için yetkili değilse onay reddedilir. Başarılıysa
     // onaylayan kullanıcının Id'sini döner.
-    // performedByUserId: işlemi yapan kullanıcı. İkinci onay FARKLI bir yetkiliden gelmelidir; yapanın kendi PIN'i kabul edilmez.
-    public async Task<string?> VerifyApproverPinAsync(string? pin, Func<RestaurantPermissionProfile, bool> requiredFlag, string? performedByUserId = null, CancellationToken cancellationToken = default)
+    public async Task<string?> VerifyApproverPinAsync(string? pin, Func<RestaurantPermissionProfile, bool> requiredFlag, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(pin))
         {
@@ -149,11 +148,6 @@ public sealed class RestaurantPermissionService(ApplicationDbContext dbContext, 
             var result = passwordHasher.VerifyHashedPassword(candidate, candidate.RestaurantPinHash!, pin.Trim());
             if (result != PasswordVerificationResult.Failed)
             {
-                if (performedByUserId is not null && candidate.Id == performedByUserId)
-                {
-                    return null;
-                }
-
                 var authorized = await HasPermissionAsync(candidate.Id, requiredFlag, cancellationToken);
                 return authorized ? candidate.Id : null;
             }

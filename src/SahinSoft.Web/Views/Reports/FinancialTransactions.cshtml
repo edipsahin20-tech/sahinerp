@@ -115,12 +115,12 @@
             var netEl = document.getElementById('summary-net');
 
             function parseAmount(text) {
-                var cleaned = String(text || '').replace(/,/g, '').replace(/[^\d.+-]/g, '');
+                var cleaned = String(text || '').replace(/\./g, '').replace(',', '.').replace(/[^\d.+-]/g, '');
                 return parseFloat(cleaned) || 0;
             }
 
             function fmt(n) {
-                return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
             function recalc() {

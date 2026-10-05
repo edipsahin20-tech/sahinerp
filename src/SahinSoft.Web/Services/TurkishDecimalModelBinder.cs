@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace SahinSoft.Web.Services;
 
-// Sunucu kültürü en-US olduğundan "125,50" varsayılan binder'da 12550 oluyordu (virgül binlik ayırıcı sayılır) —
+// Kültürden bağımsız: eski en-US kültüründe "125,50" varsayılan binder’da 12550 oluyordu (virgül binlik sayılır) —
 // istemci betiği değeri normalleştirmeyen her formda 100 kat büyüme riski. Bu binder Türkçe girişi doğru okur:
 //   "1.250,50" -> 1250.50 · "125,50" -> 125.50 · "1250.50" -> 1250.50 (betiğin normalleştirdiği biçim) · "1250" -> 1250
 // Kural: iki ayırıcı da varsa SONUNCUSU ondalıktır; yalnız virgül varsa ondalık virgüldür; yalnız nokta varsa ondalık noktadır.

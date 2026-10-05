@@ -784,11 +784,11 @@ function updateCalculations() {
         </td>
       </tr>
     `;
-    document.getElementById('calc-subtotal').textContent = `0.00 ${getCurrencySymbol()}`;
+    document.getElementById('calc-subtotal').textContent = `0,00 ${getCurrencySymbol()}`;
     document.getElementById('calc-discount-row').style.display = 'none';
     document.getElementById('calc-kdv-breakdown').innerHTML = '';
-    document.getElementById('calc-grand-total').textContent = `0.00 ${getCurrencySymbol()}`;
-    ['calc-tl-subtotal', 'calc-tl-kdv', 'calc-tl-grand'].forEach(id => { document.getElementById(id).textContent = '0.00 ₺'; });
+    document.getElementById('calc-grand-total').textContent = `0,00 ${getCurrencySymbol()}`;
+    ['calc-tl-subtotal', 'calc-tl-kdv', 'calc-tl-grand'].forEach(id => { document.getElementById(id).textContent = '0,00 ₺'; });
     return;
   }
 
@@ -890,7 +890,7 @@ function updatePdfPreview() {
   document.getElementById('pdf-sig-customer-name').textContent = company;
 
   document.getElementById('pdf-val-currency').textContent = isForeignQuote()
-    ? `${activeCurrency} (${getCurrencySymbol()}) — Kur: ${getQuoteRate().toFixed(4)} ₺`
+    ? `${activeCurrency} (${getCurrencySymbol()}) — Kur: ${getQuoteRate().toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ₺`
     : `${activeCurrency} (${getCurrencySymbol()})`;
   document.getElementById('pdf-val-payment').textContent = payment;
   document.getElementById('pdf-val-delivery').textContent = delivery;

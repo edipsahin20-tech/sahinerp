@@ -63,14 +63,9 @@
                     </div>
                 </div>
                 <div class="erp-field">
-                    <label asp-for="WarehouseId"></label>
-                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                        Name = nameof(Model.WarehouseId), Id = nameof(Model.WarehouseId),
-                        Value = Model.WarehouseId?.ToString(),
-                        DisplayValue = Model.WarehouseDisplay,
-                        Endpoint = Url.Action("Warehouses", "Lookup")!,
-                        Title = "Depo Seç", Placeholder = "Depo seçin" })" />
-                    <span asp-validation-for="WarehouseId" class="text-danger small"></span>
+                    <label asp-for="BranchId"></label>
+                    <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">
                     <label asp-for="VehiclePlate"></label>

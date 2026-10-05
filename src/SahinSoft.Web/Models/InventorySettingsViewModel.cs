@@ -45,7 +45,7 @@ public sealed class InventorySettingsViewModel
     public bool IsRestaurantModuleEnabled { get; set; }
 
     [Display(Name = "Günlük Ciro Hedefi")]
-    [Range(typeof(decimal), "0", "999999999999")]
+    [Range(typeof(decimal), "0", "999999999999", ParseLimitsInInvariantCulture = true)]
     public decimal? DailyRevenueTarget { get; set; }
 
     [Display(Name = "Satış İçin Açık Vardiya Şart")]

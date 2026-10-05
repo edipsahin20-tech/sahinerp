@@ -90,11 +90,11 @@ public sealed class PersonnelFormViewModel
     public string? Pin { get; set; }
 
     [Display(Name = "İndirim Alt Limit %")]
-    [Range(typeof(decimal), "0", "100")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true)]
     public decimal DiscountLowerLimitPercent { get; set; }
 
     [Display(Name = "İndirim Üst Limit %")]
-    [Range(typeof(decimal), "0", "100")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true)]
     public decimal DiscountUpperLimitPercent { get; set; }
 
     public List<SelectListItem> Roles { get; set; } = [];

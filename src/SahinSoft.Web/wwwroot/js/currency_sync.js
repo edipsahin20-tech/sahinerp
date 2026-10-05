@@ -85,8 +85,8 @@
 
   // 2. EKRANDAKİ TÜM KURLARI GÜNCELLEME (navbar, anasayfa, teklif sayfası - kaç tane olursa olsun)
   function updateAllRateDisplays() {
-    const usdVal = `${window.globalExchangeRates.USD.toFixed(2)} ₺`;
-    const eurVal = `${window.globalExchangeRates.EUR.toFixed(2)} ₺`;
+    const usdVal = `${window.globalExchangeRates.USD.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+    const eurVal = `${window.globalExchangeRates.EUR.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
 
     document.querySelectorAll('.rate-value-usd, #global-rate-usd, #rate-usd').forEach(el => { el.textContent = usdVal; });
     document.querySelectorAll('.rate-value-eur, #global-rate-eur, #rate-eur').forEach(el => { el.textContent = eurVal; });

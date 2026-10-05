@@ -45,7 +45,7 @@
         <div id="quote-bulk-bar" class="quote-bulk-bar">
             <span><strong id="quote-bulk-count">0</strong> onaylı teklif seçildi</span>
             <select id="quote-bulk-warehouse" class="form-select form-select-sm" asp-items="(IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Warehouses">
-                <option value="">Depo seçin</option>
+                <option value="">Şube seçin</option>
             </select>
             <button type="button" id="quote-bulk-submit" class="btn btn-erp-primary btn-sm">Seçilenleri Satış Faturasına Dönüştür</button>
         </div>
@@ -153,7 +153,7 @@
                     return;
                 }
                 if (!warehouseSelect.value) {
-                    alert('Lütfen depo seçin.');
+                    alert('Lütfen şube seçin.');
                     return;
                 }
                 if (!confirm(checked.length + ' teklifi satış faturasına dönüştürmek istediğinize emin misiniz?')) {
@@ -173,7 +173,7 @@
                 });
                 var warehouseInput = document.createElement('input');
                 warehouseInput.type = 'hidden';
-                warehouseInput.name = 'warehouseId';
+                warehouseInput.name = 'branchId';
                 warehouseInput.value = warehouseSelect.value;
                 warehouseInput.className = 'quote-bulk-dynamic-input';
                 bulkForm.appendChild(warehouseInput);

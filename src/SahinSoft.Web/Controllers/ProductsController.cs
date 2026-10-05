@@ -570,6 +570,10 @@ public sealed class ProductsController(
             return BadRequest();
         }
 
+        // Düzenlemede stok miktarı salt okunur ve yok sayılır (aşağıda mevcut değer korunur); satışla eksiye
+        // düşmüş ürünün formu "Stok miktarı >= 0" kuralına takılıp kaydedilemiyordu.
+        ModelState.Remove(nameof(ProductFormViewModel.StockQuantity));
+
         await ApplyIdentifierPolicyAsync(form);
         await ValidateUniqueFieldsAsync(form);
 

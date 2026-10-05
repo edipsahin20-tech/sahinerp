@@ -96,14 +96,9 @@
                     </div>
                 </div>
                 <div class="erp-field">
-                    <label asp-for="WarehouseId"></label>
-                    <partial name="_LookupField" model="@(new LookupFieldViewModel {
-                        Name = nameof(Model.WarehouseId), Id = nameof(Model.WarehouseId),
-                        Value = Model.WarehouseId?.ToString(),
-                        DisplayValue = Model.WarehouseDisplay,
-                        Endpoint = Url.Action("Warehouses", "Lookup")!,
-                        Title = "Depo Seç", Placeholder = "Depo seçin" })" />
-                    <span asp-validation-for="WarehouseId" class="text-danger small"></span>
+                    <label asp-for="BranchId"></label>
+                    <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
+                    <span asp-validation-for="BranchId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">
                     <label asp-for="DueDateUtc"></label>
@@ -248,8 +243,8 @@
                             <td class="kdv-col text-end"><span class="line-unit-net">0,00</span></td>
                             <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control discount-input" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
-                            <td class="text-end line-gross">0.00</td>
-                            <td class="text-end fw-semibold line-net">0.00</td>
+                            <td class="text-end line-gross">0,00</td>
+                            <td class="text-end fw-semibold line-net">0,00</td>
                             <td><input type="text" name="Lines[@i].Description" value="@Model.Lines[i].Description" class="form-control description-input" /></td>
                             <td class="source-cell"><small class="text-muted">@Model.Lines[i].SourceDisplay</small></td>
                             <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
@@ -262,15 +257,15 @@
         <div class="erp-panel-body pt-0">
             <div class="d-flex justify-content-end">
                 <div class="erp-totals">
-                    <div class="erp-totals-row"><span>Ara toplam</span><span id="totals-subtotal">0.00</span></div>
+                    <div class="erp-totals-row"><span>Ara toplam</span><span id="totals-subtotal">0,00</span></div>
                     <div class="erp-totals-row">
                         <label asp-for="AmountDiscount" class="mb-0"></label>
                         <input asp-for="AmountDiscount" class="form-control" style="width: 140px; padding: 4px; text-align: right;" id="amount-discount-input" />
                     </div>
-                    <div class="erp-totals-row"><span>İskonto (satır + tutar)</span><span id="totals-discount">0.00</span></div>
+                    <div class="erp-totals-row"><span>İskonto (satır + tutar)</span><span id="totals-discount">0,00</span></div>
                     <div id="totals-kdv-breakdown"></div>
-                    <div class="erp-totals-row erp-grand-total"><span>Genel Toplam (TL)</span><span class="erp-total-value" id="totals-grand">0.00</span></div>
-                    <div class="erp-totals-row" id="totals-foreign-row" style="display:none;"><span>Genel Toplam (<span id="totals-currency-label">USD</span>)</span><span class="erp-total-value" id="totals-grand-foreign">0.00</span></div>
+                    <div class="erp-totals-row erp-grand-total"><span>Genel Toplam (TL)</span><span class="erp-total-value" id="totals-grand">0,00</span></div>
+                    <div class="erp-totals-row" id="totals-foreign-row" style="display:none;"><span>Genel Toplam (<span id="totals-currency-label">USD</span>)</span><span class="erp-total-value" id="totals-grand-foreign">0,00</span></div>
                 </div>
             </div>
         </div>
@@ -317,8 +312,8 @@
         <td class="kdv-col text-end"><span class="line-unit-net">0,00</span></td>
         <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control discount-input" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
-        <td class="text-end line-gross">0.00</td>
-        <td class="text-end fw-semibold line-net">0.00</td>
+        <td class="text-end line-gross">0,00</td>
+        <td class="text-end fw-semibold line-net">0,00</td>
         <td><input type="text" name="Lines[__index__].Description" value="" class="form-control description-input" /></td>
         <td class="source-cell"></td>
         <td><button type="button" class="btn btn-erp-danger remove-line" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;">Sil</button></td>
@@ -541,7 +536,7 @@
             }
 
             // Gönderimde sayılar sunucunun okuyabileceği biçime (nokta ondalık) çevrilir. Sunucu istek kültürü
-            // en-US olduğu için "26319,8" gönderilirse binlik ayraç sayılıp yanlış kaydedilebilir.
+            // Sunucudaki TurkishDecimalModelBinder iki biçimi de okur; yine de nokta ondalık gönderilir.
             document.getElementById('evrak-form').addEventListener('submit', function () {
                 linesBody.querySelectorAll('.quantity-input, .price-input, .discount-input, .tax-input').forEach(function (input) {
                     input.value = String(parseTrNumber(input.value));
@@ -771,14 +766,9 @@
                             row.querySelector('.tax-input').value = line.taxRate;
                             row.querySelector('.source-cell').innerHTML = '<small class="text-muted">İrsaliye ' + escapeHtml(dispatch.dispatchNumber) + '</small>';
                         });
-                        // Depo ilk seçilen irsaliyeden aktarılır (fatura tek bir depo taşır) — henüz
-                        // seçilmemişse.
-                        var warehouseHidden = document.getElementById('WarehouseId');
-                        if (warehouseHidden && !warehouseHidden.value) {
-                            warehouseHidden.value = dispatch.warehouseId;
-                            var warehouseDisplay = document.getElementById('WarehouseId_display');
-                            if (warehouseDisplay) warehouseDisplay.value = dispatch.warehouseDisplay;
-                        }
+                        // Şube (ve ona bağlı depo) irsaliyeden aktarılır: fatura irsaliyenin şubesiyle aynı olmalıdır.
+                        var branchSelect = document.getElementById('BranchId');
+                        if (branchSelect && dispatch.branchId) { branchSelect.value = String(dispatch.branchId); }
                     });
                     recalcTotals();
                     if (bsModal) bsModal.hide();

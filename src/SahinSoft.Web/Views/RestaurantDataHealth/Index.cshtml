@@ -151,15 +151,15 @@
                                 string SortUrl(string col) => Url.Action("Index", new { date = dateText, tab = "fis", q = Model.Search, branchId = Model.BranchId, sort = col, dir = Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc" })!;
                                 string Arrow(string col) => Model.SortBy == col ? (Model.SortDir == "asc" ? " ▲" : " ▼") : " ⇅";
                             }
-                            <th><a class="dh-sort" href="@SortUrl("saat")">Saat@Arrow("saat")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("adisyon")">Adisyon No@Arrow("adisyon")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("sube")">Şube@Arrow("sube")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("z")">Z No@Arrow("z")</a></th>
-                            <th class="num"><a class="dh-sort" href="@SortUrl("tutar")">Tutar@Arrow("tutar")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("yerel")">Yerel@Arrow("yerel")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("merkez")">Merkez@Arrow("merkez")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("muhasebe")">Muhasebe@Arrow("muhasebe")</a></th>
-                            <th><a class="dh-sort" href="@SortUrl("durum")">Durum@Arrow("durum")</a></th><th></th>
+                            <th><a class="dh-sort" href="@SortUrl("saat")">Saat<span></span>@Arrow("saat")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("adisyon")">Adisyon No<span></span>@Arrow("adisyon")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("sube")">Şube<span></span>@Arrow("sube")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("z")">Z No<span></span>@Arrow("z")</a></th>
+                            <th class="num"><a class="dh-sort" href="@SortUrl("tutar")">Tutar<span></span>@Arrow("tutar")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("yerel")">Yerel<span></span>@Arrow("yerel")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("merkez")">Merkez<span></span>@Arrow("merkez")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("muhasebe")">Muhasebe<span></span>@Arrow("muhasebe")</a></th>
+                            <th><a class="dh-sort" href="@SortUrl("durum")">Durum<span></span>@Arrow("durum")</a></th><th></th>
                         </tr>
                     </thead>
                     <tbody>

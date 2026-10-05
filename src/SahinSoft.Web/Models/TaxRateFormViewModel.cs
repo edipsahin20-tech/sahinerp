@@ -14,7 +14,7 @@ public sealed class TaxRateFormViewModel
     [Display(Name = "KDV adı")]
     public string Name { get; set; } = string.Empty;
 
-    [Range(typeof(decimal), "0", "100")]
+    [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Oran (%)")]
     public decimal Rate { get; set; }
 

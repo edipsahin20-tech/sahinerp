@@ -14,6 +14,8 @@ namespace SahinSoft.Web.Controllers;
 
 [Authorize]
 public sealed class DispatchNotesController(
+    SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
+    SahinSoft.Web.Services.BranchSelectionService branchSelection,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     DispatchNotePostingService dispatchNotePostingService) : Controller
@@ -59,6 +61,7 @@ public sealed class DispatchNotesController(
         ViewBag.Toolbar = new EvrakToolbarViewModel
         {
             Controller = "DispatchNotes",
+            HardDelete = true,
             CreateRouteValues = new Dictionary<string, string> { ["type"] = type.ToString() }
         };
         var conversionSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
@@ -72,12 +75,20 @@ public sealed class DispatchNotesController(
     public async Task<IActionResult> Create(DispatchNoteFormViewModel form)
     {
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        ModelState.Remove(nameof(form.WarehouseId));
+        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+        }
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "DispatchNotes",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.DispatchType.ToString() }
             };
             return View("Form", form);
@@ -145,6 +156,7 @@ public sealed class DispatchNotesController(
             ViewBag.Toolbar = new EvrakToolbarViewModel
             {
                 Controller = "DispatchNotes",
+            HardDelete = true,
                 CreateRouteValues = new Dictionary<string, string> { ["type"] = form.DispatchType.ToString() }
             };
             return View("Form", form);
@@ -225,9 +237,15 @@ public sealed class DispatchNotesController(
     public async Task<IActionResult> CreateFromOrder(CreateDispatchFromOrderViewModel form)
     {
         form.Lines = form.Lines.Where(x => x.QuantityToShip > 0).ToList();
-        if (form.WarehouseId is null)
         {
-            ModelState.AddModelError(nameof(form.WarehouseId), "Depo seçilmelidir.");
+            ModelState.Remove(nameof(form.WarehouseId));
+            var orderBranch = await dbContext.BusinessOrders.Where(o => o.Id == form.OrderId).Select(o => o.BranchId).FirstOrDefaultAsync()
+                ?? await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+            form.WarehouseId = await branchSelection.WarehouseForBranchAsync(orderBranch);
+            if (form.WarehouseId is null)
+            {
+                ModelState.AddModelError(string.Empty, SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+            }
         }
 
         if (form.Lines.Count == 0)
@@ -277,6 +295,7 @@ public sealed class DispatchNotesController(
                         SubmissionKey = form.SubmissionKey,
                         CustomerId = form.CustomerId,
                         WarehouseId = form.WarehouseId!.Value,
+                        BranchId = await dbContext.BusinessOrders.Where(o => o.Id == form.OrderId).Select(o => o.BranchId).FirstOrDefaultAsync() ?? await branchSelection.DefaultBranchIdAsync(userId),
                         DispatchDateUtc = DateTime.SpecifyKind(form.DispatchDateUtc, DateTimeKind.Utc),
                         VehiclePlate = form.VehiclePlate?.Trim(),
                         CarrierName = form.CarrierName?.Trim(),
@@ -445,6 +464,7 @@ public sealed class DispatchNotesController(
             DispatchNumber = dispatch.DispatchNumber,
             CustomerId = dispatch.CustomerId,
             WarehouseId = dispatch.WarehouseId,
+            BranchId = dispatch.BranchId,
             DispatchDateUtc = dispatch.DispatchDateUtc,
             VehiclePlate = dispatch.VehiclePlate,
             CarrierName = dispatch.CarrierName,
@@ -468,6 +488,17 @@ public sealed class DispatchNotesController(
         await PopulateSelectionsAsync(model);
         await SetToolbarAsync(id, dispatch.DispatchType);
         return View("Form", model);
+    }
+
+    // Kalıcı Sil: belgeyi ve bağlı tüm stok/cari/kasa hareketlerini veritabanından siler (bkz. DocumentHardDeleteService).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = SahinSoft.Domain.Constants.AppRoles.Administrator)]
+    public async Task<IActionResult> HardDelete(int id)
+    {
+        var result = await hardDeleteService.DeleteDispatchNoteAsync(id);
+        TempData[result.Ok ? "Success" : "Error"] = result.Message;
+        return result.Ok ? RedirectToAction(nameof(Index)) : RedirectToAction("Details", new { id });
     }
 
     [HttpPost]
@@ -507,7 +538,8 @@ public sealed class DispatchNotesController(
             PreviousId = previousId,
             NextId = nextId,
             CanDelete = true,
-            HasDetails = true
+            HasDetails = true,
+            HardDelete = true
         };
     }
 
@@ -521,6 +553,13 @@ public sealed class DispatchNotesController(
         }
 
         ValidateLines(form);
+        form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        ModelState.Remove(nameof(form.WarehouseId));
+        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        if (form.WarehouseId is null)
+        {
+            ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
+        }
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);
@@ -690,6 +729,7 @@ public sealed class DispatchNotesController(
     {
         target.CustomerId = source.CustomerId!.Value;
         target.WarehouseId = source.WarehouseId!.Value;
+        target.BranchId = source.BranchId;
         target.DispatchDateUtc = DateTime.SpecifyKind(source.DispatchDateUtc, DateTimeKind.Utc);
         target.VehiclePlate = source.VehiclePlate?.Trim();
         target.CarrierName = source.CarrierName?.Trim();
@@ -721,6 +761,9 @@ public sealed class DispatchNotesController(
 
     private async Task PopulateSelectionsAsync(DispatchNoteFormViewModel model)
     {
+        model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+
         if (model.CustomerId is int customerId)
         {
             model.CustomerDisplay = await dbContext.Customers

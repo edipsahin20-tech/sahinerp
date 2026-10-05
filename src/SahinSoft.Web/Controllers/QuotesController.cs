@@ -15,7 +15,8 @@ namespace SahinSoft.Web.Controllers;
 public sealed class QuotesController(
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
-    BarcodeGeneratorService barcodeGenerator) : Controller
+    BarcodeGeneratorService barcodeGenerator,
+    SahinSoft.Web.Services.BranchSelectionService branchSelection) : Controller
 {
     public async Task<IActionResult> Index(QuoteStatus? status, string? search)
     {
@@ -45,12 +46,7 @@ public sealed class QuotesController(
 
             var quotes = await query.ToListAsync();
 
-            ViewBag.Warehouses = await dbContext.Warehouses
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.Name)
-                .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-                .ToListAsync();
+            ViewBag.Warehouses = await branchSelection.OptionsAsync(await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)));
 
             return View(quotes);
         }
@@ -598,12 +594,7 @@ public sealed class QuotesController(
                 .OrderBy(g => g.Key)
                 .Select(g => new QuoteTaxBreakdownViewModel { TaxRate = g.Key, TaxAmount = g.Sum(x => x.TaxAmount) })
                 .ToList(),
-            Warehouses = await dbContext.Warehouses
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.Name)
-                .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-                .ToListAsync()
+            Warehouses = await branchSelection.OptionsAsync(await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)))
         };
 
         return View(model);
@@ -752,7 +743,7 @@ public sealed class QuotesController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConvertToInvoice(int id, int warehouseId)
+    public async Task<IActionResult> ConvertToInvoice(int id, int branchId)
     {
         var quote = await dbContext.Quotes
             .Include(x => x.Lines)
@@ -775,7 +766,7 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        var invoice = await BuildInvoiceFromQuoteAsync(quote, warehouseId);
+        var invoice = await BuildInvoiceFromQuoteAsync(quote, branchId);
         dbContext.Invoices.Add(invoice);
         await dbContext.SaveChangesAsync();
 
@@ -785,7 +776,7 @@ public sealed class QuotesController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BulkConvertToInvoice(int[] ids, int warehouseId)
+    public async Task<IActionResult> BulkConvertToInvoice(int[] ids, int branchId)
     {
         if (ids is null || ids.Length == 0)
         {
@@ -805,7 +796,7 @@ public sealed class QuotesController(
         var createdCount = 0;
         foreach (var quote in quotes)
         {
-            var invoice = await BuildInvoiceFromQuoteAsync(quote, warehouseId);
+            var invoice = await BuildInvoiceFromQuoteAsync(quote, branchId);
             dbContext.Invoices.Add(invoice);
             createdCount++;
         }
@@ -822,8 +813,10 @@ public sealed class QuotesController(
         return RedirectToAction("Index", "Invoices", new { type = InvoiceType.Sales });
     }
 
-    private async Task<Invoice> BuildInvoiceFromQuoteAsync(Quote quote, int warehouseId)
+    private async Task<Invoice> BuildInvoiceFromQuoteAsync(Quote quote, int branchId)
     {
+        var warehouseId = await branchSelection.WarehouseForBranchAsync(branchId)
+            ?? throw new InvalidOperationException(SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
         var invoice = new Invoice
         {
             InvoiceType = InvoiceType.Sales,
@@ -832,6 +825,7 @@ public sealed class QuotesController(
             CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
             CustomerId = quote.CustomerId,
             WarehouseId = warehouseId,
+            BranchId = branchId,
             InvoiceDateUtc = DateTime.UtcNow,
             CurrencyCode = quote.CurrencyCode,
             ExchangeRate = quote.ExchangeRate,

@@ -192,7 +192,7 @@
                         <label asp-for="StockQuantity" class="form-label"></label>
                         @if (isEdit)
                         {
-                            <input asp-for="StockQuantity" class="form-control" readonly />
+                            <input asp-for="StockQuantity" class="form-control" readonly data-val="false" />
                             <div class="form-text">Mevcut stok yalnızca stok fişi, fatura, sevk veya sayım ile değişir.</div>
                         }
                         else

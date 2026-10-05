@@ -21,6 +21,12 @@ public sealed class PaymentReceiptFormViewModel
 
     public string? ReceiptNumber { get; set; }
 
+    [Display(Name = "Şube")]
+    public int? BranchId { get; set; }
+
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+
+
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]
     public int? CustomerId { get; set; }
@@ -34,7 +40,7 @@ public sealed class PaymentReceiptFormViewModel
     [Display(Name = "Para birimi")]
     public string CurrencyCode { get; set; } = "TRY";
 
-    [Range(typeof(decimal), "0.000001", "999999")]
+    [Range(typeof(decimal), "0.000001", "999999", ParseLimitsInInvariantCulture = true)]
     [Display(Name = "Döviz kuru")]
     public decimal ExchangeRate { get; set; } = 1;
 
@@ -60,7 +66,7 @@ public sealed class PaymentReceiptLineFormViewModel
     [DataType(DataType.Date)]
     public DateTime? DueDateUtc { get; set; }
 
-    [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "Tutar 0'dan büyük olmalıdır.")]
+    [Range(typeof(decimal), "0.01", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Tutar 0'dan büyük olmalıdır.")]
     [Display(Name = "Tutar")]
     public decimal Amount { get; set; }
 

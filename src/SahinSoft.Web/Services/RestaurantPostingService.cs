@@ -238,7 +238,7 @@ public sealed class RestaurantPostingService(
         string? approverUserId = null;
         if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
         {
-            approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, performedByUserId, cancellationToken)
+            approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken: cancellationToken)
                 ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
         }
 
@@ -576,6 +576,20 @@ public sealed class RestaurantPostingService(
                 if (!targetTable.IsActive)
                 {
                     throw new InvalidOperationException("Hedef masa pasif durumda.");
+                }
+
+                // Adisyon kendi şubesinden ayrılmaz (MoveTableSessionAsync ile aynı kural).
+                var selfBranchId = selfCheck.BranchId ?? selfCheck.RestaurantTableSession.BranchId;
+                if (targetTable.RestaurantSection.BranchId != selfBranchId)
+                {
+                    throw new InvalidOperationException("Hedef masa farklı bir şubeye ait. Sepet yalnızca kendi şubesinin masasına aktarılabilir.");
+                }
+
+                var hasActiveLines = await dbContext.RestaurantOrderLines
+                    .AnyAsync(x => x.RestaurantOrder.RestaurantCheckId == selfCheck.Id && x.Status != RestaurantOrderLineStatus.Cancelled, cancellationToken);
+                if (!hasActiveLines)
+                {
+                    throw new InvalidOperationException("Boş sepet bir masaya aktarılamaz.");
                 }
 
                 var targetSession = await dbContext.RestaurantTableSessions
@@ -1192,7 +1206,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancelledByUserId, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken: cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz, bu işlem için yetkisiz veya işlemi yapanla aynı kişi.");
                 }
 
@@ -1305,7 +1319,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForCancelOrderLineAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, performedByUserId, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanCancelOrderLine, cancellationToken: cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1418,7 +1432,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForEditKitchenSentLinesAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, performedByUserId, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanEditKitchenSentLines, cancellationToken: cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1488,7 +1502,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForDiscountAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, performedByUserId, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyDiscount, cancellationToken: cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 
@@ -1553,7 +1567,7 @@ public sealed class RestaurantPostingService(
                 string? approverUserId = null;
                 if (await permissionService.RequiresSecondApprovalForComplimentaryAsync(cancellationToken))
                 {
-                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyComplimentary, performedByUserId, cancellationToken)
+                    approverUserId = await permissionService.VerifyApproverPinAsync(approverPin, p => p.CanApplyComplimentary, cancellationToken: cancellationToken)
                         ?? throw new InvalidOperationException("İkinci yetkili onayı gerekli - PIN geçersiz veya bu işlem için yetkisiz.");
                 }
 

@@ -460,6 +460,7 @@ public sealed class InvoicePostingService(
                 Credit = lastAccountTransaction.Debit,
                 CustomerId = invoice.CustomerId,
                 InvoiceId = invoice.Id,
+                OriginBranchId = lastAccountTransaction.OriginBranchId ?? invoice.BranchId,
                 Description = description,
                 ReversalOfId = lastAccountTransaction.Id
             });
@@ -582,6 +583,7 @@ public sealed class InvoicePostingService(
             DueDateUtc = invoice.DueDateUtc,
             CustomerId = invoice.CustomerId,
             InvoiceId = invoice.Id,
+            OriginBranchId = invoice.BranchId,
             Description = invoice.Notes
         };
         dbContext.CurrentAccountTransactions.Add(accountTransaction);

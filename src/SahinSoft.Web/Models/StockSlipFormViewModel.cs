@@ -40,11 +40,11 @@ public sealed class StockSlipLineFormViewModel
 
     public string? ProductDisplay { get; set; }
 
-    [Range(typeof(decimal), "0.001", "999999999", ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
+    [Range(typeof(decimal), "0.001", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Miktar 0'dan büyük olmalıdır.")]
     [Display(Name = "Miktar")]
     public decimal Quantity { get; set; } = 1;
 
-    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Birim maliyet 0 veya daha büyük olmalıdır.")]
+    [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ErrorMessage = "Birim maliyet 0 veya daha büyük olmalıdır.")]
     [Display(Name = "Birim Maliyet")]
     public decimal UnitCost { get; set; }
 

@@ -18,6 +18,7 @@
             <button type="button" class="ts-tab" data-tab="kasa"><i class="fa-solid fa-cash-register"></i> Kasa Tanımları</button>
             <button type="button" class="ts-tab" data-tab="hesaplar"><i class="fa-regular fa-credit-card"></i> Hesaplar</button>
             <button type="button" class="ts-tab" data-tab="yazarkasa"><i class="fa-solid fa-print"></i> Yazar Kasa</button>
+            <button type="button" class="ts-tab" data-tab="veritabani"><i class="fa-solid fa-database"></i> Veritabanı</button>
         </div>
 
         <div class="ts-tab-panel active" data-tab-panel="terminal">
@@ -226,6 +227,34 @@
             </form>
         </div>
 
+        </div>
+
+        <div class="ts-tab-panel" data-tab-panel="veritabani">
+        <!-- 6 · Çalışılacak veritabanı (ayrı bölüm) -->
+        <div class="ts-card">
+            <h2><span class="ts-ico"><i class="fa-solid fa-database"></i></span> Çalışılacak Veritabanı</h2>
+            <p class="ts-card-sub">@(Model.IsDesktopTerminal ? "Bu masaüstü terminali seçilen veritabanıyla çalışır." : "Bu tarayıcı seçilen veritabanıyla çalışır.") Değişince oturum kapanır, yeniden giriş yapılır.</p>
+            @if (Model.DatabaseProfiles.Count == 0)
+            {
+                <div class="ts-empty">Kayıtlı veritabanı profili yok. Profilleri "Veritabanı Ayarları" aracından (SahinSoftVeritabaniAyarlari.exe) ekleyin.</div>
+            }
+            else
+            {
+                <form method="post" asp-action="SaveDatabase">
+                    @Html.AntiForgeryToken()
+                    <div class="ts-field">
+                        <label>Veritabanı</label>
+                        <select name="profile" id="db-profile-select">
+                            @foreach (var dbp in Model.DatabaseProfiles)
+                            {
+                                <option value="@dbp.Name" selected="@(string.Equals(dbp.Name, Model.CurrentDatabaseName, StringComparison.CurrentCultureIgnoreCase))">@dbp.Name — @dbp.Server / @dbp.Database@(string.Equals(dbp.Name, Model.CurrentDatabaseName, StringComparison.CurrentCultureIgnoreCase) ? " (şu an)" : "")</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="ts-btn gold" data-pos-confirm="Veritabanı değiştirilsin mi? Oturum kapanacak ve yeniden giriş istenecek.">Veritabanını Değiştir</button>
+                </form>
+            }
+        </div>
         </div>
     </div>
     <script type="application/json" id="accounts-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts.Select(a => new { id = a.Id, name = a.Name, branchId = a.BranchId, shared = a.IsShared })))</script>
