@@ -63,7 +63,7 @@
                     <td class="text-end">@item.Debit.ToString("N2") ₺</td>
                     <td class="text-end">@item.Credit.ToString("N2") ₺</td>
                     <td class="text-end fw-semibold">
-                        <a asp-action="Statement" asp-route-id="@item.Id" class="text-decoration-none" title="Cari Hareket Föyünü Görüntüle" style="color: @(item.Balance > 0 ? "#c62828" : item.Balance < 0 ? "#1f8a4c" : "inherit");">@item.Balance.ToString("N2") ₺</a>
+                        <a asp-action="Statement" asp-route-id="@item.Id" class="text-decoration-none" title="Cari Hareket Föyünü Görüntüle" style="color: @(item.Balance > 0 ? "#1f8a4c" : item.Balance < 0 ? "#c62828" : "inherit");">@item.Balance.ToString("N2") ₺</a>
                     </td>
                     <td>
                         @if (!item.IsActive)

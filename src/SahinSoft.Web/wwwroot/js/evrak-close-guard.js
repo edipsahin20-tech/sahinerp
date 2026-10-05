@@ -84,6 +84,11 @@
         var cancelBtn = document.getElementById('evrak-cancel-btn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function () {
+                // Ekranda hiçbir değişiklik yoksa (ör. eski evrağı Düzenle ile açıp dokunmadan Vazgeç) ekran doğrudan kapanır.
+                if (!isDirty()) {
+                    goClose();
+                    return;
+                }
                 evrakConfirm(cancelBtn.getAttribute('data-cancel-confirm') || 'İşlem iptal edilsin mi?', function () {
                     window.location.assign(window.location.pathname + window.location.search);
                 });

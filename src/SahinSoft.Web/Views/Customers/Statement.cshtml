@@ -58,10 +58,11 @@
             </div>
             <div class="erp-summary-box" style="border-color: var(--erp-gold);">
                 <div class="erp-summary-label">Bakiye</div>
-                <div class="erp-summary-value" style="color: @(Model.ClosingBalance > 0 ? "#c62828" : Model.ClosingBalance < 0 ? "#1f8a4c" : "inherit");">
+                <div class="erp-summary-value" style="color: @(Model.ClosingBalance > 0 ? "#1f8a4c" : Model.ClosingBalance < 0 ? "#c62828" : "inherit");">
                     @Model.ClosingBalance.ToString("N2")
                 </div>
-                <div class="text-secondary" style="font-size: 0.68rem;">@(Model.ClosingBalance >= 0 ? "CARİ BORÇLU" : "CARİ ALACAKLI")</div>
+                <div class="text-secondary" style="font-size: 0.68rem;">@(Model.ClosingBalance > 0 ? "CARİ BORÇLU" : Model.ClosingBalance < 0 ? "CARİ ALACAKLI" : "BAKİYE YOK")</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: @(Model.ClosingBalance > 0 ? "#1f8a4c" : Model.ClosingBalance < 0 ? "#c62828" : "inherit");">Kalan bakiye: @Math.Abs(Model.ClosingBalance).ToString("N2") ₺ @(Model.ClosingBalance > 0 ? "(size borçlu)" : Model.ClosingBalance < 0 ? "(sizin borcunuz)" : "")</div>
             </div>
         </div>
 
@@ -79,6 +80,10 @@
                         <th data-sort="text">Belge No</th>
                         <th data-sort="text">Şube</th>
                         <th data-sort="text">Z No</th>
+                        @if (Model.Detailed)
+                        {
+                            <th>Stok İsmi / Ödeme</th>
+                        }
                         <th data-sort="text">Açıklama</th>
                         <th class="text-end" data-sort="number">Borç</th>
                         <th class="text-end" data-sort="number">Alacak</th>
@@ -89,7 +94,7 @@
                 @if (Model.OpeningBalance != 0)
                 {
                     <tr style="background: var(--erp-header-bg); font-weight: 700;" data-live-search-empty>
-                        <td colspan="8">Devreden Bakiye</td>
+                        <td colspan="@(Model.Detailed ? 9 : 8)">Devreden Bakiye</td>
                         <td class="text-end">@Model.OpeningBalance.ToString("N2")</td>
                     </tr>
                 }
@@ -106,11 +111,12 @@
                                 <a asp-controller="RestaurantReports" asp-action="Index" asp-route-tab="zlist" asp-route-zShiftId="@line.RestaurantZPeriodId" asp-route-selected="@line.RestaurantRetailSaleId" class="erp-code-badge" style="text-decoration:none;" title="Z Detay ve fişe git">@line.RestaurantZNo</a>
                             }
                         </td>
-                        <td>
-                            @line.Description
-                            @if (Model.Detailed && line.Details.Count > 0)
-                            {
-                                <table class="erp-statement-detail" style="width:100%;font-size:.78rem;color:#475569;margin-top:4px;border-top:1px dashed #cbd5e1;">
+                        @if (Model.Detailed)
+                        {
+                            <td>
+                                @if (line.Details.Count > 0)
+                                {
+                                    <table class="erp-statement-detail" style="width:100%;font-size:.78rem;color:#475569;margin-top:4px;border-top:1px dashed #cbd5e1;">
                                     @foreach (var d in line.Details)
                                     {
                                         <tr>
@@ -121,17 +127,19 @@
                                         </tr>
                                     }
                                 </table>
-                            }
-                        </td>
+                                }
+                            </td>
+                        }
+                        <td>@line.Description</td>
                         <td class="text-end">@(line.Debit > 0 ? line.Debit.ToString("N2") : "")</td>
                         <td class="text-end">@(line.Credit > 0 ? line.Credit.ToString("N2") : "")</td>
-                        <td class="text-end fw-semibold" style="color: @(line.RunningBalance > 0 ? "#c62828" : line.RunningBalance < 0 ? "#1f8a4c" : "inherit");">@line.RunningBalance.ToString("N2")</td>
+                        <td class="text-end fw-semibold" style="color: @(line.RunningBalance > 0 ? "#1f8a4c" : line.RunningBalance < 0 ? "#c62828" : "inherit");">@line.RunningBalance.ToString("N2")</td>
                     </tr>
                 }
                 @if (Model.Lines.Count == 0)
                 {
                     <tr data-live-search-empty>
-                        <td colspan="9" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
+                        <td colspan="@(Model.Detailed ? 10 : 9)" class="text-center text-secondary py-4">Bu tarih aralığında hareket bulunmuyor.</td>
                     </tr>
                 }
                 </tbody>
@@ -139,9 +147,9 @@
                 {
                     <tfoot>
                         <tr>
-                            <td colspan="6" class="text-end">Toplam</td>
-                            <td class="text-end" data-sum-col="6"></td>
-                            <td class="text-end" data-sum-col="7"></td>
+                            <td colspan="@(Model.Detailed ? 7 : 6)" class="text-end">Toplam</td>
+                            <td class="text-end" data-sum-col="@(Model.Detailed ? 7 : 6)"></td>
+                            <td class="text-end" data-sum-col="@(Model.Detailed ? 8 : 7)"></td>
                             <td></td>
                         </tr>
                     </tfoot>

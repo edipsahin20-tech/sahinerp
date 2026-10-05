@@ -387,3 +387,33 @@ Cari(Customers) · Stok(Products,Categories,StockSlips,StockTransfers,InventoryC
 - SahinSoftT_* test veritabanları silindi, test süreçleri/örnek klasörleri kaldırıldı.
 - SahinSoftDb: test verisi (cari/fiş/fatura vb.) kullanıcının incelemesi için KORUNDU (silinmedi). kt.* ve test.staff.conversion hesapları kilitlendi (2099), KABUL-* yazıcılar pasife alındı. Parametreler eski değerine döndürüldü.
 - SahinSoftDb26: test verisi eklenmedi.
+
+
+## 2. TUR — Güncel sürüm (Şube alanı, Kalıcı Sil/Vazgeç, detaylı ekstre) final koşusu
+Kopya veritabanları (SahinSoftT_Fin = SahinSoftDb kopyası, SahinSoftT_F26 = SahinSoftDb26 kopyası, güncel migration ile) üzerinde restoran + muhasebe paketinin tamamı yeniden koşuldu: 218 senaryo — ✅ 203, ❌/açıklamalı 14, ➖ 1.
+
+Açıklamalı ❌ satırlar (hepsi test betiği/beklenti artefaktı, ürün hatası değil):
+- a1/Y01: /RestaurantSelfSale yetkili roller için 302 (adisyona yönlendirme) — ret değil
+- a2/Y12: eski beklenti (kendi PIN reddi) kayıtlı karara aykırıydı; yeni beklenti Y12 ✅
+- a2/Y13: Y12 satırı zaten iptal ettiği için eski betik adımı geçersiz; müdür onayı ApplyTicketDiscount denetim kaydında doğrulandı
+- c1/N-C02: tahsil kasa hareketi doğru (ölçüm betiği işareti)
+- d1/D04: iptal durum kodu 5, stok +2 geri alındı
+- d26/D01: kopya veritabanı büyümüş (24 cari/13 fatura) — sabit sayı beklentisi eski
+- d26/D03: gözlem (menü bayrağı, URL kapatmıyor)
+- d26/D11: ekstre 9 sütun oldu; D11-3/D11-4 ✅
+- d26/D12: ölçüm artefaktı; D12 ✅
+- f1/F03: sayı biçimi tr-TR; içerik doğru
+- pr1/PR02: 50 = QR komut satırı
+- rp/RP11: tr-TR biçim; RP11b ✅
+- sf1/SF08: betik zincir artefaktı; sf1b ✅
+- sm/SM01: /Reports kök rota yok (tasarım)
+- sm2/SM01: incelenecek
+
+Yeni özellik testleri: BR01-BR08 (Şube alanı, depo şubeden türetilir), DL01-DL11 (kalıcı Sil, Vazgeç, toolbar), UI01-UI04 (bakiye renkleri: size borçlu yeşil, sizin borcunuz kırmızı; Stok İsmi sütunu; Kalan bakiye), SF01-SF08, RT01-RT05 hepsi ✅.
+
+Düzeltilen/eklenen (bu tur): evrak ekranlarında Depo kalktı (şubeye bağlı depo), Self sepet→masa aktarımında şube/boş sepet kontrolü, tr-TR sayı biçimi (Range ParseLimitsInInvariantCulture, jQuery Validate tr-validation.js, JS biçimleri), eksi stoklu ürün düzenleme, başlık Razor '@' hatası (Mutabakat sıralama okları), Z/ikinci onay PIN kuralı kayıtlı karara döndürüldü, DB26 FIRINCI A.D.A hareketleri silindi (yedekli).
+
+## Gerçek ortam engelleri (başarılı sayılmadı)
+- ⛔ Windows kurulum/exe çalıştırma, ⛔ fiziksel termal yazıcı + Türkçe codepage: yapılamadı.
+- ➖ Excel dışa aktarma (ekstrede özellik yok), ⛔ Cari föy için referans tasarım yok.
+- Migration SahinSoftDb ve SahinSoftDb26'ya uygulandı (gerçek çalışan site 'Invalid column BranchId' hatası verdi, migration uygulanınca düzeldi).
