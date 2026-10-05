@@ -11667,3 +11667,82 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005154023_AddInvoiceAutoApproveAndServiceStockSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [PurchaseInvoiceAutoApproveOnSave] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005154023_AddInvoiceAutoApproveAndServiceStockSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [SalesInvoiceAutoApproveOnSave] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005154023_AddInvoiceAutoApproveAndServiceStockSettings'
+)
+BEGIN
+    ALTER TABLE [InventorySettings] ADD [StockMovementForServiceItems] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005154023_AddInvoiceAutoApproveAndServiceStockSettings'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005154023_AddInvoiceAutoApproveAndServiceStockSettings', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005155924_AddBusinessOrderLineForeignUnitPrice'
+)
+BEGIN
+    ALTER TABLE [BusinessOrderLines] ADD [ForeignUnitPrice] decimal(18,4) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005155924_AddBusinessOrderLineForeignUnitPrice'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005155924_AddBusinessOrderLineForeignUnitPrice', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005163325_SeedDefaultCashAccountBranch'
+)
+BEGIN
+    UPDATE [FinancialAccounts] SET [BranchId] = 1 WHERE [Id] = 1 AND [BranchId] IS NULL AND [IsShared] = 0 AND EXISTS (SELECT 1 FROM [Branches] WHERE [Id] = 1);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005163325_SeedDefaultCashAccountBranch'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005163325_SeedDefaultCashAccountBranch', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
