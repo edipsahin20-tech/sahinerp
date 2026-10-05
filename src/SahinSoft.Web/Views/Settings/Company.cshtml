@@ -59,6 +59,16 @@
                     <label asp-for="Iban"></label>
                     <input asp-for="Iban" class="form-control" />
                 </div>
+                <div class="erp-field">
+                    <label asp-for="DefaultBranchId"></label>
+                    <select asp-for="DefaultBranchId" asp-items="Model.BranchOptions" class="form-select"><option value="">(Kullanıcının şubesi)</option></select>
+                    <div class="form-text">Fatura, irsaliye, sipariş ve makbuz ekranlarında varsayılan gelir; evrakta değiştirilebilir.</div>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="DefaultWarehouseId"></label>
+                    <select asp-for="DefaultWarehouseId" asp-items="Model.WarehouseOptions" class="form-select"><option value="">(Şubenin deposu)</option></select>
+                    <div class="form-text">Fatura ve irsaliyede varsayılan gelir; evrakta değiştirilebilir.</div>
+                </div>
                 <div class="erp-field" style="grid-column: 1 / -1;">
                     <label asp-for="LogoPath"></label>
                     <input asp-for="LogoPath" class="form-control" placeholder="/images/logo.png" />

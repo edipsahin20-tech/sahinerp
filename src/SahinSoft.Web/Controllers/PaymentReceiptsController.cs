@@ -76,8 +76,8 @@ public sealed class PaymentReceiptsController(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(x =>
-                x.ReceiptNumber.Contains(search) ||
-                x.Customer.Name.Contains(search));
+                EF.Functions.Like(x.ReceiptNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Type = type;

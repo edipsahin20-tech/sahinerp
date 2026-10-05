@@ -14,4 +14,9 @@ public sealed class CompanySettings : EntityBase
     public string? BankName { get; set; }
     public string? Iban { get; set; }
     public string? LogoPath { get; set; }
+
+    // Muhasebe evrak ekranlarında (fatura, irsaliye, sipariş, makbuz) varsayılan gelen şube/depo; evrakta değiştirilebilir.
+    // Restoran/POS bunlardan etkilenmez.
+    public int? DefaultBranchId { get; set; }
+    public int? DefaultWarehouseId { get; set; }
 }

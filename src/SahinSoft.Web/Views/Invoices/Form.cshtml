@@ -79,14 +79,14 @@
         </div>
         <div class="erp-panel-body">
             <div class="erp-field-grid">
-                <div class="erp-field">
+                <div class="erp-field erp-field-wide">
                     <label asp-for="CustomerId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
                         Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
                         Value = Model.CustomerId?.ToString(),
                         DisplayValue = Model.CustomerDisplay,
                         Endpoint = Url.Action("Customers", "Lookup", new { type = isSales ? "Customer" : "Supplier" })!,
-                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        Title = "Cari Seç", Placeholder = "Cari seçin", AllowQuickSearch = true })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field d-flex align-items-center" style="padding-top: 1.7rem;">
@@ -99,6 +99,16 @@
                     <label asp-for="BranchId"></label>
                     <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
                     <span asp-validation-for="BranchId" class="text-danger small"></span>
+                </div>
+                <div class="erp-field">
+                    <label asp-for="WarehouseId"></label>
+                    <select asp-for="WarehouseId" class="form-select" id="WarehouseId">
+                        @foreach (var w in Model.WarehouseOptions)
+                        {
+                            <option value="@w.Id" data-branch-id="@w.BranchId" data-default="@(w.IsDefault ? "1" : "0")" selected="@(w.Id == Model.WarehouseId)">@w.Text</option>
+                        }
+                    </select>
+                    <span asp-validation-for="WarehouseId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">
                     <label asp-for="DueDateUtc"></label>
@@ -346,6 +356,19 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // Şube değişince depoyu o şubenin varsayılan deposuna çevirir (kullanıcı depoyu elle değiştirmediyse).
+        (function () {
+            var branch = document.getElementById('BranchId'), wh = document.getElementById('WarehouseId');
+            if (!branch || !wh) return;
+            var touched = false;
+            wh.addEventListener('change', function () { touched = true; });
+            branch.addEventListener('change', function () {
+                if (touched) return;
+                var opts = Array.from(wh.options).filter(function (o) { return o.getAttribute('data-branch-id') === branch.value; });
+                var pick = opts.find(function (o) { return o.getAttribute('data-default') === '1'; }) || opts[0];
+                if (pick) wh.value = pick.value;
+            });
+        })();
         // "Kapalı Fatura mı?" işaretliyken Ödeme Yöntemi/Kapanacak Kasa alanlarını gösterir —
         // bu alanlar yalnızca Kapalı işaretliyken zorunludur (bkz. InvoicesController.ValidateSettlement).
         (function () {

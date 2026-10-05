@@ -79,8 +79,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -111,8 +111,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.InvoiceNumber, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Customer.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.InvoiceNumber, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Customer.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
         if (from.HasValue)
         {
@@ -149,8 +149,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -168,8 +168,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -187,8 +187,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -206,8 +206,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -225,8 +225,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -244,8 +244,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -263,8 +263,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -282,8 +282,8 @@ public sealed class LookupController(
         if (!string.IsNullOrWhiteSpace(q))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.Code, TurkishInsensitive).Contains(q) ||
-                EF.Functions.Collate(x.Name, TurkishInsensitive).Contains(q));
+                EF.Functions.Like(EF.Functions.Collate(x.Code, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = await query
@@ -300,7 +300,7 @@ public sealed class LookupController(
         var query = roleManager.Roles.AsQueryable();
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(x => EF.Functions.Collate(x.Name!, TurkishInsensitive).Contains(q));
+            query = query.Where(x => EF.Functions.Like(EF.Functions.Collate(x.Name!, TurkishInsensitive), SahinSoft.Web.Services.SearchPattern.ToLike(q)));
         }
 
         var items = query
@@ -322,6 +322,11 @@ public sealed class LookupController(
     // Sonuç her zaman baştan/sondan esnek eşleşir (örn. "hii*9" -> "%hii%9%").
     private static string BuildLikePattern(string token)
     {
+        // "150*" = 150 ile başlayan, "*150" = biten (baştaki/sondaki yıldız konuma sabitler); araya konan yıldız eskisi gibi serbest joker.
+        if (token.StartsWith('*') || token.EndsWith('*'))
+        {
+            return SahinSoft.Web.Services.SearchPattern.ToLike(token);
+        }
         var escaped = token.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
         return "%" + escaped.Replace("*", "%") + "%";
     }

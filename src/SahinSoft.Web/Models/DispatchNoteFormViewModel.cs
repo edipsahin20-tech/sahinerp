@@ -18,6 +18,7 @@ public sealed class DispatchNoteFormViewModel
     public int? BranchId { get; set; }
 
     public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+    public List<WarehouseOption> WarehouseOptions { get; set; } = [];
 
     [Required(ErrorMessage = "Cari seçilmelidir.")]
     [Display(Name = "Cari")]

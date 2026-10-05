@@ -10,7 +10,7 @@ using SahinSoft.Web.Services;
 namespace SahinSoft.Web.Controllers;
 
 [Authorize(Roles = AppRoles.Administrator)]
-public sealed class SettingsController(ApplicationDbContext dbContext) : Controller
+public sealed class SettingsController(ApplicationDbContext dbContext, SahinSoft.Web.Services.BranchSelectionService branchSelection) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Company()
@@ -27,7 +27,11 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
             Website = settings.Website,
             BankName = settings.BankName,
             Iban = settings.Iban,
-            LogoPath = settings.LogoPath
+            LogoPath = settings.LogoPath,
+            DefaultBranchId = settings.DefaultBranchId,
+            DefaultWarehouseId = settings.DefaultWarehouseId,
+            BranchOptions = await branchSelection.OptionsAsync(settings.DefaultBranchId),
+            WarehouseOptions = await branchSelection.WarehouseSelectItemsAsync(settings.DefaultWarehouseId)
         });
     }
 
@@ -37,10 +41,14 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
     {
         if (!ModelState.IsValid)
         {
+            model.BranchOptions = await branchSelection.OptionsAsync(model.DefaultBranchId);
+            model.WarehouseOptions = await branchSelection.WarehouseSelectItemsAsync(model.DefaultWarehouseId);
             return View(model);
         }
 
         var settings = await dbContext.CompanySettings.SingleAsync(x => x.Id == 1);
+        settings.DefaultBranchId = model.DefaultBranchId;
+        settings.DefaultWarehouseId = model.DefaultWarehouseId;
         settings.CompanyName = model.CompanyName.Trim();
         settings.TaxOffice = model.TaxOffice?.Trim();
         settings.TaxNumber = model.TaxNumber?.Trim();

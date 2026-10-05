@@ -34,7 +34,7 @@ public sealed class StockTransfersController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.TransferNumber.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.TransferNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Status = status;

@@ -76,14 +76,14 @@
                         Endpoint = Url.Action("TaxRates", "Lookup")!,
                         Title = "KDV Oranı Seç", Placeholder = "KDV oranı yok" })" />
                 </div>
-                <div class="erp-field">
+                <div class="erp-field erp-field-wide">
                     <label asp-for="CustomerId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
                         Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
                         Value = Model.CustomerId?.ToString(),
                         DisplayValue = Model.CustomerDisplay,
                         Endpoint = Url.Action("Customers", "Lookup")!,
-                        Title = "Cari Seç", Placeholder = "Cari yok" })" />
+                        Title = "Cari Seç", Placeholder = "Cari yok", AllowQuickSearch = true })" />
                 </div>
                 <div class="erp-field">
                     <label asp-for="FinancialAccountId"></label>

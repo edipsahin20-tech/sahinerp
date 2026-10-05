@@ -403,8 +403,8 @@
         var input = e.target.closest(".lookup-quicksearch");
         if (!input) return;
         clearTimeout(quickSearchTimer);
-        var value = input.value.trim().replace(/\*+$/, "");
-        if (!value) { hideQuickDropdown(); return; }
+        var value = input.value.trim();
+        if (!value || value === "*") { hideQuickDropdown(); return; }
 
         quickSearchTimer = setTimeout(function () {
             var endpoint = input.getAttribute("data-lookup-endpoint");
@@ -463,8 +463,8 @@
         // Bu alan bir <form> içindeyse Enter'ın formu erken göndermesini her durumda engelle
         // (arama kutusu boş olsa bile) — aksi halde taslak satır girilirken kazara kaydedilir.
         e.preventDefault();
-        var value = input.value.trim().replace(/\*+$/, "");
-        if (!value) return;
+        var value = input.value.trim();
+        if (!value || value === "*") return;
         hideQuickDropdown();
 
         if (e.key === "Enter") {

@@ -31,7 +31,7 @@ public sealed class ExpensesController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.DocumentNumber.Contains(search) || x.Description.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.DocumentNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) || EF.Functions.Like(x.Description, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.CategoryId = categoryId;

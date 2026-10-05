@@ -37,6 +37,7 @@ public sealed class InvoiceFormViewModel
     public int? BranchId { get; set; }
 
     public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+    public List<WarehouseOption> WarehouseOptions { get; set; } = [];
 
     // Depo artık seçilmez: şubeye bağlı depodan sunucuda türetilir (BranchSelectionService.WarehouseForBranchAsync).
     [Display(Name = "Depo")]

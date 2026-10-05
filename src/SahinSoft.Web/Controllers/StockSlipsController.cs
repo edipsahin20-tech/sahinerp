@@ -38,7 +38,7 @@ public sealed class StockSlipsController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.SlipNumber.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.SlipNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Type = type;

@@ -353,6 +353,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<CompanySettings>(entity =>
         {
+            entity.HasOne<Branch>().WithMany().HasForeignKey(x => x.DefaultBranchId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.DefaultWarehouseId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.CompanyName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.TaxOffice).HasMaxLength(100);
             entity.Property(x => x.TaxNumber).HasMaxLength(11);

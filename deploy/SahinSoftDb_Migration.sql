@@ -11849,3 +11849,74 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD [DefaultBranchId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD [DefaultWarehouseId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    EXEC(N'UPDATE [CompanySettings] SET [DefaultBranchId] = NULL, [DefaultWarehouseId] = NULL
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    CREATE INDEX [IX_CompanySettings_DefaultBranchId] ON [CompanySettings] ([DefaultBranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    CREATE INDEX [IX_CompanySettings_DefaultWarehouseId] ON [CompanySettings] ([DefaultWarehouseId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD CONSTRAINT [FK_CompanySettings_Branches_DefaultBranchId] FOREIGN KEY ([DefaultBranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD CONSTRAINT [FK_CompanySettings_Warehouses_DefaultWarehouseId] FOREIGN KEY ([DefaultWarehouseId]) REFERENCES [Warehouses] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005213224_AddCompanyDefaultBranchWarehouse'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005213224_AddCompanyDefaultBranchWarehouse', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

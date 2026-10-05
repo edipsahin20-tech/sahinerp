@@ -63,14 +63,14 @@ else
                     <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
                     <span asp-validation-for="BranchId" class="text-danger small"></span>
                 </div>
-                <div class="erp-field">
+                <div class="erp-field erp-field-wide">
                     <label asp-for="CustomerId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
                         Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
                         Value = Model.CustomerId?.ToString(),
                         DisplayValue = Model.CustomerDisplay,
                         Endpoint = Url.Action("Customers", "Lookup")!,
-                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        Title = "Cari Seç", Placeholder = "Cari seçin", AllowQuickSearch = true })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">
@@ -196,6 +196,25 @@ else
                 wrapper.innerHTML = html;
                 linesBody.appendChild(wrapper.firstElementChild);
                 nextIndex++;
+            });
+
+            // Enter formu GÖNDERMEZ: sıradaki alana, satır sonunda alt satıra geçer (son satırda yeni satır açılır).
+            // Kayıt yalnızca "Sakla" ile yapılır.
+            document.getElementById('evrak-form').addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON' || e.target.closest('.lookup-modal-content')) { return; }
+                var row = e.target.closest('tr.line-row');
+                e.preventDefault();
+                if (!row) { return; }
+                var fields = Array.from(row.querySelectorAll('input[type=text]:not([readonly]), select'));
+                var i = fields.indexOf(e.target);
+                if (i < 0 && fields.length) { fields[0].focus(); return; }
+                if (i >= 0 && i < fields.length - 1) { fields[i + 1].focus(); if (fields[i + 1].select) { fields[i + 1].select(); } return; }
+                var nextRow = row.nextElementSibling;
+                if (!nextRow) { addButton.click(); nextRow = row.nextElementSibling; }
+                if (nextRow) {
+                    var first = nextRow.querySelector('input[type=text]:not([readonly]), select');
+                    if (first) { first.focus(); }
+                }
             });
 
             linesBody.addEventListener('click', function (event) {

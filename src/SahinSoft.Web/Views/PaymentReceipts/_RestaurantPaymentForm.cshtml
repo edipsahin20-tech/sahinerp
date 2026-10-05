@@ -74,7 +74,7 @@
                         Value = Model.CustomerId?.ToString(),
                         DisplayValue = Model.CustomerDisplay,
                         Endpoint = Url.Action("Customers", "Lookup")!,
-                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        Title = "Cari Seç", Placeholder = "Cari seçin", AllowQuickSearch = true })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                     <div class="rp-balance @(isCollection ? "" : "payable")" id="rp-balance-box">
                         <small id="rp-balance-label">@(isCollection ? "Açık alacak" : "Cariye borcumuz")</small>

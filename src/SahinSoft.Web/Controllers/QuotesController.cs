@@ -41,7 +41,7 @@ public sealed class QuotesController(
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(x => x.QuoteNumber.Contains(search) || x.Customer.Name.Contains(search));
+                query = query.Where(x => EF.Functions.Like(x.QuoteNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) || EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
             }
 
             var quotes = await query.ToListAsync();

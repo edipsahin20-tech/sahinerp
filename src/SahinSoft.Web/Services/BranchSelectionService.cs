@@ -20,6 +20,8 @@ public sealed class BranchSelectionService(ApplicationDbContext db)
 
     public async Task<int?> DefaultBranchIdAsync(string? userId)
     {
+        var companyDefault = await db.CompanySettings.AsNoTracking().Where(x => x.Id == 1).Select(x => x.DefaultBranchId).SingleOrDefaultAsync();
+        if (companyDefault is int cd && await db.Branches.AnyAsync(x => x.Id == cd && x.IsActive)) { return cd; }
         if (!string.IsNullOrEmpty(userId))
         {
             var userBranch = await db.Users.AsNoTracking().Where(x => x.Id == userId).Select(x => x.BranchId).SingleOrDefaultAsync();
@@ -38,6 +40,30 @@ public sealed class BranchSelectionService(ApplicationDbContext db)
             .Where(x => x.BranchId == id && x.IsActive)
             .OrderByDescending(x => x.IsDefault).ThenBy(x => x.Id)
             .Select(x => (int?)x.Id).FirstOrDefaultAsync();
+    }
+
+    // Evraktaki varsayılan depo: şube şirket varsayılan şubesiyse şirketin varsayılan deposu, değilse şubenin deposu.
+    public async Task<int?> DefaultWarehouseIdAsync(int? branchId)
+    {
+        var company = await db.CompanySettings.AsNoTracking().Where(x => x.Id == 1).Select(x => new { x.DefaultBranchId, x.DefaultWarehouseId }).SingleOrDefaultAsync();
+        if (company?.DefaultWarehouseId is int dw && (branchId is null || company.DefaultBranchId == branchId || company.DefaultBranchId is null)
+            && await db.Warehouses.AnyAsync(x => x.Id == dw && x.IsActive)) { return dw; }
+        return await WarehouseForBranchAsync(branchId);
+    }
+
+    public async Task<List<SahinSoft.Web.Models.WarehouseOption>> WarehouseOptionsAsync(int? selected = null)
+    {
+        return await db.Warehouses.AsNoTracking()
+            .Where(x => x.IsActive || x.Id == selected)
+            .OrderBy(x => x.Branch.Name).ThenByDescending(x => x.IsDefault).ThenBy(x => x.Name)
+            .Select(x => new SahinSoft.Web.Models.WarehouseOption(x.Id, x.Code + " - " + x.Name + " (" + x.Branch.Name + ")", x.BranchId, x.IsDefault))
+            .ToListAsync();
+    }
+
+    public async Task<List<SelectListItem>> WarehouseSelectItemsAsync(int? selected = null)
+    {
+        var all = await WarehouseOptionsAsync(selected);
+        return all.Select(x => new SelectListItem(x.Text, x.Id.ToString(), x.Id == selected)).ToList();
     }
 
     public const string NoWarehouseMessage = "Seçilen şubeye bağlı aktif bir depo yok. Önce Stok > Depolar'dan bu şubeye bir depo tanımlayın.";

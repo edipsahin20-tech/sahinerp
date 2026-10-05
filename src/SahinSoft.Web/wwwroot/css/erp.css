@@ -1612,3 +1612,7 @@ table.erp-table .form-select {
 .erp-page-hidden {
     display: none;
 }
+
+/* Cari gibi uzun metin içeren seçim alanları: iki sütun genişliği (yazarak arama için) */
+.erp-field-grid > .erp-field-wide { grid-column: span 2; }
+@media (max-width: 768px) { .erp-field-grid > .erp-field-wide { grid-column: span 1; } }

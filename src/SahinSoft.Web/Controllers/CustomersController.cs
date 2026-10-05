@@ -26,9 +26,9 @@ public sealed class CustomersController(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(x =>
-                x.Code.Contains(search) ||
-                x.Name.Contains(search) ||
-                (x.TaxNumber != null && x.TaxNumber.Contains(search)));
+                EF.Functions.Like(x.Code, SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                EF.Functions.Like(x.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                (x.TaxNumber != null && EF.Functions.Like(x.TaxNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search))));
         }
 
         if (isActive.HasValue)

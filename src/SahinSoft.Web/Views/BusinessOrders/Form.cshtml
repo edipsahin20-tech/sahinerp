@@ -51,14 +51,14 @@
                     <select asp-for="BranchId" asp-items="Model.BranchOptions" class="form-select"></select>
                     <span asp-validation-for="BranchId" class="text-danger small"></span>
                 </div>
-                <div class="erp-field">
+                <div class="erp-field erp-field-wide">
                     <label asp-for="CustomerId"></label>
                     <partial name="_LookupField" model="@(new LookupFieldViewModel {
                         Name = nameof(Model.CustomerId), Id = nameof(Model.CustomerId),
                         Value = Model.CustomerId?.ToString(),
                         DisplayValue = Model.CustomerDisplay,
                         Endpoint = Url.Action("Customers", "Lookup", new { type = isSales ? "Customer" : "Supplier" })!,
-                        Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                        Title = "Cari Seç", Placeholder = "Cari seçin", AllowQuickSearch = true })" />
                     <span asp-validation-for="CustomerId" class="text-danger small"></span>
                 </div>
                 <div class="erp-field">

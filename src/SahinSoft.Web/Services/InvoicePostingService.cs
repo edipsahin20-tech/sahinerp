@@ -347,8 +347,9 @@ public sealed class InvoicePostingService(
             throw new InvalidOperationException("Tahsilatı/ödemesi yapılmış fatura düzenlenemez. Önce tahsilatı iptal edin.");
         }
 
-        var reversalDocumentNumber = $"DUZ-{invoice.InvoiceNumber}";
-        await ReversePostingsAsync(invoice, reversalDocumentNumber, "Fatura düzenleme - eski stok/cari hareketi düzeltmesi", cancellationToken);
+        // Onaylı fatura düzenlemesi YERİNDE yapılır (Edip, 2026-10-06): eski stok/cari hareketi ters kayıt ("DUZ-")
+        // üretilmeden kaldırılır, yeni satırlara göre aynı fatura numarasıyla yeniden yazılır.
+        await RemoveOwnPostingsAsync(invoice, cancellationToken);
 
         dbContext.InvoicePaymentSchedules.RemoveRange(invoice.PaymentSchedules);
 
@@ -383,6 +384,39 @@ public sealed class InvoicePostingService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+
+    // Faturanın kendi (ters kaydı olmayan) stok ve cari hareketini siler; ürün stok kartını geri alır.
+    private async Task RemoveOwnPostingsAsync(Invoice invoice, CancellationToken cancellationToken)
+    {
+        var stockSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
+        foreach (var line in invoice.Lines)
+        {
+            if (line.ProductId is null || line.Product is null || !StockPolicy.MovesStock(line.Product, stockSettings))
+            {
+                continue;
+            }
+
+            var ownMovements = await dbContext.StockMovements
+                .Where(x => x.InvoiceLineId == line.Id && x.ReversalOfId == null)
+                .ToListAsync(cancellationToken);
+            foreach (var movement in ownMovements)
+            {
+                line.Product.StockQuantity -= movement.Quantity;
+                dbContext.StockMovements.Remove(movement);
+            }
+            line.Product.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        var ownAccountTransaction = invoice.AccountTransactions
+            .Where(x => x.DocumentNumber == invoice.InvoiceNumber && x.ReversalOfId is null)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefault();
+        if (ownAccountTransaction is not null)
+        {
+            dbContext.CurrentAccountTransactions.Remove(ownAccountTransaction);
+        }
     }
 
     // Bir faturanın o anki (onaylı) satırlarına karşılık gelen stok/cari hareketlerini ters kayıtla

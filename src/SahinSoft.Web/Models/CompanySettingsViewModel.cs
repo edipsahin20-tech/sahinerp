@@ -35,4 +35,13 @@ public sealed class CompanySettingsViewModel
 
     [Display(Name = "Logo yolu")]
     public string? LogoPath { get; set; }
+
+    [Display(Name = "Varsayılan şube")]
+    public int? DefaultBranchId { get; set; }
+
+    [Display(Name = "Varsayılan depo")]
+    public int? DefaultWarehouseId { get; set; }
+
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> BranchOptions { get; set; } = [];
+    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> WarehouseOptions { get; set; } = [];
 }

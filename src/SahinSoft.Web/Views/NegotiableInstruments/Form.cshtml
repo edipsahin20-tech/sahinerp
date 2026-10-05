@@ -50,7 +50,7 @@
                         <input class="form-control" value="@(Model.Direction == InstrumentDirection.Received ? "Alınan" : "Verilen")" readonly title="Kayıt oluşturulduktan sonra yön değiştirilemez." />
                         <input type="hidden" asp-for="Direction" />
                     </div>
-                    <div class="erp-field">
+                    <div class="erp-field erp-field-wide">
                         <label asp-for="CustomerId"></label>
                         <input class="form-control" value="@Model.CustomerDisplay" readonly title="Kayıt oluşturulduktan sonra cari değiştirilemez." />
                         <input type="hidden" asp-for="CustomerId" />
@@ -69,7 +69,7 @@
                             Value = Model.CustomerId?.ToString(),
                             DisplayValue = Model.CustomerDisplay,
                             Endpoint = Url.Action("Customers", "Lookup")!,
-                            Title = "Cari Seç", Placeholder = "Cari seçin" })" />
+                            Title = "Cari Seç", Placeholder = "Cari seçin", AllowQuickSearch = true })" />
                         <span asp-validation-for="CustomerId" class="text-danger small"></span>
                     </div>
                 }

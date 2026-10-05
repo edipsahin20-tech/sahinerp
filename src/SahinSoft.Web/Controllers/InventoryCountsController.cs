@@ -33,7 +33,7 @@ public sealed class InventoryCountsController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.CountNumber.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.CountNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Status = status;

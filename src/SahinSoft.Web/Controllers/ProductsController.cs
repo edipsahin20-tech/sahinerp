@@ -136,10 +136,10 @@ public sealed class ProductsController(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(x =>
-                EF.Functions.Collate(x.StockCode, "Turkish_CI_AI").Contains(search) ||
-                EF.Functions.Collate(x.Name, "Turkish_CI_AI").Contains(search) ||
-                (x.Brand != null && EF.Functions.Collate(x.Brand, "Turkish_CI_AI").Contains(search)) ||
-                (x.Barcode != null && x.Barcode.Contains(search)));
+                EF.Functions.Like(EF.Functions.Collate(x.StockCode, "Turkish_CI_AI"), SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                EF.Functions.Like(EF.Functions.Collate(x.Name, "Turkish_CI_AI"), SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                (x.Brand != null && EF.Functions.Like(EF.Functions.Collate(x.Brand, "Turkish_CI_AI"), SahinSoft.Web.Services.SearchPattern.ToLike(search))) ||
+                (x.Barcode != null && EF.Functions.Like(x.Barcode, SahinSoft.Web.Services.SearchPattern.ToLike(search))));
         }
 
         ViewBag.Search = search;

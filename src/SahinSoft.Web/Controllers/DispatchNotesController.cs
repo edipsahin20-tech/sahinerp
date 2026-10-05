@@ -41,7 +41,7 @@ public sealed class DispatchNotesController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.DispatchNumber.Contains(search) || x.Customer.Name.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.DispatchNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) || EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Type = type;
@@ -77,7 +77,11 @@ public sealed class DispatchNotesController(
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         ModelState.Remove(nameof(form.WarehouseId));
-        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
+        if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
+        {
+            form.WarehouseId = await branchSelection.DefaultWarehouseIdAsync(form.BranchId);
+        }
         if (form.WarehouseId is null)
         {
             ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
@@ -555,7 +559,11 @@ public sealed class DispatchNotesController(
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         ModelState.Remove(nameof(form.WarehouseId));
-        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
+        if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
+        {
+            form.WarehouseId = await branchSelection.DefaultWarehouseIdAsync(form.BranchId);
+        }
         if (form.WarehouseId is null)
         {
             ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
@@ -763,6 +771,8 @@ public sealed class DispatchNotesController(
     {
         model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+        model.WarehouseId ??= await branchSelection.DefaultWarehouseIdAsync(model.BranchId);
+        model.WarehouseOptions = await branchSelection.WarehouseOptionsAsync(model.WarehouseId);
 
         if (model.CustomerId is int customerId)
         {

@@ -36,7 +36,7 @@ public sealed class NegotiableInstrumentsController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.InstrumentNumber.Contains(search) || x.Customer.Name.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.InstrumentNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) || EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Type = type;

@@ -75,8 +75,8 @@ public sealed class InvoicesController(
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(x =>
-                x.InvoiceNumber.Contains(search) ||
-                x.Customer.Name.Contains(search));
+                EF.Functions.Like(x.InvoiceNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) ||
+                EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         // "Gelişmiş" panelindeki açık from/to tarihleri, üstteki hızlı "Dönem" seçiminden önceliklidir.
@@ -131,7 +131,6 @@ public sealed class InvoicesController(
             InvoiceType = type,
             DocumentSeries = peek.Prefix,
             DocumentSequence = peek.NextNumber.ToString($"D{peek.Padding}"),
-            WarehouseId = defaultWarehouseId,
             Lines = [new InvoiceLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
@@ -154,7 +153,11 @@ public sealed class InvoicesController(
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         ModelState.Remove(nameof(form.WarehouseId));
-        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
+        if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
+        {
+            form.WarehouseId = await branchSelection.DefaultWarehouseIdAsync(form.BranchId);
+        }
         if (form.WarehouseId is null)
         {
             ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
@@ -763,7 +766,11 @@ public sealed class InvoicesController(
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
         ModelState.Remove(nameof(form.WarehouseId));
-        form.WarehouseId = await branchSelection.WarehouseForBranchAsync(form.BranchId);
+        // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
+        if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
+        {
+            form.WarehouseId = await branchSelection.DefaultWarehouseIdAsync(form.BranchId);
+        }
         if (form.WarehouseId is null)
         {
             ModelState.AddModelError(nameof(form.BranchId), SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
@@ -1389,6 +1396,8 @@ public sealed class InvoicesController(
     {
         model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
         model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
+        model.WarehouseId ??= await branchSelection.DefaultWarehouseIdAsync(model.BranchId);
+        model.WarehouseOptions = await branchSelection.WarehouseOptionsAsync(model.WarehouseId);
 
         if (model.CustomerId is int customerId)
         {

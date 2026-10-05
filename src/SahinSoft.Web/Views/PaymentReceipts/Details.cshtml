@@ -116,3 +116,17 @@
         </div>
     </div>
 }
+
+@if (User.IsInRole(SahinSoft.Domain.Constants.AppRoles.Administrator))
+{
+    <div class="erp-panel">
+        <div class="erp-panel-header">Kalıcı Sil</div>
+        <div class="erp-panel-body">
+            <p class="text-secondary small mb-2">Kaydı ve bağlı TÜM hareketleri (stok, cari, kasa, iptal/düzeltme kayıtları dahil) veritabanından komple siler. Geri alınamaz.</p>
+            <form method="post" asp-action="HardDelete" asp-route-id="@Model.Id" onsubmit="return confirm('Bu makbuz ve bağlı TÜM hareketleri veritabanından KALICI olarak silinecek. Geri alınamaz. Emin misiniz?');">
+                <button type="submit" class="btn btn-erp-danger">Kalıcı Olarak Sil</button>
+            </form>
+        </div>
+    </div>
+}
+

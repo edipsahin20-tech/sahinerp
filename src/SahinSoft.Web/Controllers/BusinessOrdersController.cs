@@ -39,7 +39,7 @@ public sealed class BusinessOrdersController(
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(x => x.OrderNumber.Contains(search) || x.Customer.Name.Contains(search));
+            query = query.Where(x => EF.Functions.Like(x.OrderNumber, SahinSoft.Web.Services.SearchPattern.ToLike(search)) || EF.Functions.Like(x.Customer.Name, SahinSoft.Web.Services.SearchPattern.ToLike(search)));
         }
 
         ViewBag.Type = type;
