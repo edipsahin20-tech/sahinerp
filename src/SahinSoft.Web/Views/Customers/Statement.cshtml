@@ -156,7 +156,7 @@
                             <td>
                                 @if (line.Details.Count > 0)
                                 {
-                                    @if (!string.IsNullOrWhiteSpace(line.Description))
+                                    @if (!string.IsNullOrWhiteSpace(line.Description) && !line.DescriptionFromLines)
                                     {
                                         <div style="font-size:.78rem;font-weight:700;color:#334155;">@line.Description</div>
                                     }
@@ -175,7 +175,7 @@
                                 }
                             </td>
                         }
-                        <td>@line.Description</td>
+                        <td>@((Model.Detailed && line.DescriptionFromLines) ? null : line.Description)</td>
                         <td class="text-end">@(line.Debit > 0 ? line.Debit.ToString("N2") : "")</td>
                         <td class="text-end">@(line.Credit > 0 ? line.Credit.ToString("N2") : "")</td>
                         <td class="text-end fw-semibold" style="color: @(line.RunningBalance > 0 ? "#1f8a4c" : line.RunningBalance < 0 ? "#c62828" : "inherit");">@line.RunningBalance.ToString("N2")</td>

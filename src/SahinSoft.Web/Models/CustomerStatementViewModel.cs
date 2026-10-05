@@ -27,6 +27,8 @@ public sealed class CustomerStatementLineViewModel
     public decimal Credit { get; set; }
     public decimal RunningBalance { get; set; }
     public string? BranchName { get; set; }
+    // Açıklama fatura satır açıklamalarından türetildiyse true (detaylı ekstrede satır yanında zaten gösterilir).
+    public bool DescriptionFromLines { get; set; }
     public List<StatementDetailRow> Details { get; set; } = [];
 
     // Talimat 1 (2026-09-06) - "muhasebe tarafından da ADS ve Z'ye geri gidilebilmeli" (bkz.

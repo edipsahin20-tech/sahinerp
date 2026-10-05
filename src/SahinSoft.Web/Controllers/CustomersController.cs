@@ -351,6 +351,7 @@ public sealed class CustomersController(
                 Description = !string.IsNullOrWhiteSpace(transaction.Description)
                     ? transaction.Description
                     : (transaction.InvoiceId is int stmtInv && invoiceLineNotes.TryGetValue(stmtInv, out var stmtNote) ? stmtNote : null),
+                DescriptionFromLines = string.IsNullOrWhiteSpace(transaction.Description) && transaction.InvoiceId is int stmtInv2 && invoiceLineNotes.ContainsKey(stmtInv2),
                 Debit = transaction.Debit,
                 Credit = transaction.Credit,
                 RunningBalance = runningBalance,
