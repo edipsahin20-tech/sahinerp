@@ -360,11 +360,14 @@
    doğrudan bir prompt() ile "kör" ekleme yapılmaz. *@
 <div class="modal fade" id="optionPickerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content" style="border-radius:20px;">
+        <div class="modal-content op-modal">
             <div class="modal-header" style="border-bottom:0;">
-                <div>
-                    <h5 class="modal-title mb-0" id="optionPickerTitle">Liste</h5>
-                    <small class="text-secondary" id="optionPickerSubtitle">Kayıtları yönetin ve seçin.</small>
+                <div class="op-head">
+                    <i class="fa-regular fa-folder-open op-head-ico" id="optionPickerIcon"></i>
+                    <div>
+                        <h5 class="modal-title mb-0" id="optionPickerTitle">Liste</h5>
+                        <small class="text-secondary" id="optionPickerSubtitle">Kayıtları yönetin ve seçin.</small>
+                    </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
@@ -374,19 +377,20 @@
                     <input type="text" id="optionPickerSearch" class="form-control" placeholder="Ara..." autocomplete="off" />
                     <span class="input-group-text small text-secondary" id="optionPickerCount">0 kayıt</span>
                 </div>
-                <div class="p-3 mb-3 rounded-3" style="background:#EEF5FD;border:1px solid #CFE2F7;">
-                    <label class="form-label small fw-bold mb-1">Yeni kayıt</label>
+                <div class="p-3 mb-3 rounded-3 op-new">
+                    <label class="form-label fw-bold mb-1" id="optionPickerNewLabel">Yeni kayıt</label>
                     <div class="input-group">
                         <input type="text" id="optionPickerNewValue" class="form-control" placeholder="Yeni değer yazın" />
-                        <button type="button" class="btn btn-erp-primary" id="optionPickerAddBtn">+ Ekle</button>
+                        <button type="button" class="btn op-navy" id="optionPickerAddBtn"><i class="fa-solid fa-plus"></i> Ekle</button>
                     </div>
                 </div>
-                <div class="list-group" id="optionPickerList"></div>
+                <div class="op-list-head"><span id="optionPickerColName">Ad</span><span>İşlemler</span></div>
+                <div class="list-group op-list" id="optionPickerList"></div>
             </div>
             <div class="modal-footer" style="border-top:1px solid #E3E8EF;">
-                <div class="me-auto small text-secondary">Seçili: <strong id="optionPickerSelected">—</strong></div>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
-                <button type="button" class="btn btn-erp-primary" id="optionPickerApplyBtn">✓ Seçimi Uygula</button>
+                <div class="me-auto text-secondary">Seçili: <strong id="optionPickerSelected">—</strong></div>
+                <button type="button" class="btn op-cancel" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn op-navy" id="optionPickerApplyBtn"><i class="fa-solid fa-check"></i> Seçimi Uygula</button>
             </div>
         </div>
     </div>
@@ -533,10 +537,15 @@
                     shown++;
                     var isSelected = option.value === String(currentValue);
                     var row = document.createElement('div');
-                    row.className = 'list-group-item d-flex align-items-center justify-content-between' + (isSelected ? ' active' : '');
+                    row.className = 'list-group-item op-row d-flex align-items-center justify-content-between' + (isSelected ? ' op-selected' : '');
                     row.style.cursor = 'pointer';
                     var label = document.createElement('span');
-                    label.textContent = (isSelected ? '✓ ' : '') + option.textContent;
+                    label.className = 'op-label';
+                    label.innerHTML = (isSelected ? '<i class="fa-solid fa-circle-check op-check"></i>' : '<i class="op-check-gap"></i>') +
+                        '<i class="fa-regular ' + (activeConfig.serverBacked ? 'fa-folder' : 'fa-bookmark') + ' op-folder"></i>';
+                    var text = document.createElement('span');
+                    text.textContent = option.textContent;
+                    label.appendChild(text);
                     row.appendChild(label);
                     row.addEventListener('click', function (e) {
                         if (e.target.closest('[data-action]')) return;
@@ -545,18 +554,18 @@
                     });
                     if (activeConfig.serverBacked) {
                         var actions = document.createElement('span');
-                        actions.className = 'd-flex gap-2';
+                        actions.className = 'd-flex gap-3 op-actions';
                         var edit = document.createElement('a');
                         edit.href = '@Url.Action("Edit", "Categories")/' + option.value;
                         edit.target = '_blank';
                         edit.setAttribute('data-action', 'edit');
-                        edit.className = 'btn btn-sm btn-outline-secondary';
-                        edit.textContent = '✎';
+                        edit.title = 'Düzenle';
+                        edit.innerHTML = '<i class="fa-solid fa-pencil"></i>';
                         var del = document.createElement('button');
                         del.type = 'button';
                         del.setAttribute('data-action', 'delete');
-                        del.className = 'btn btn-sm btn-outline-danger';
-                        del.textContent = '🗑';
+                        del.title = 'Sil';
+                        del.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
                         del.addEventListener('click', function () { deleteOption(option); });
                         actions.appendChild(edit);
                         actions.appendChild(del);
@@ -564,7 +573,7 @@
                     }
                     listEl.appendChild(row);
                 });
-                document.getElementById('optionPickerCount').textContent = shown + ' kayıt';
+                document.getElementById('optionPickerCount').textContent = shown + ' ' + (activeConfig.serverBacked ? 'kategori' : 'kayıt');
                 var selectedOpt = Array.from(select.options).find(function (o) { return o.value === String(currentValue); });
                 document.getElementById('optionPickerSelected').textContent = selectedOpt && selectedOpt.value ? selectedOpt.textContent : '—';
                 if (!listEl.children.length) {
@@ -608,7 +617,14 @@
                         targetSelectId: btn.getAttribute('data-target'),
                         serverBacked: btn.getAttribute('data-server-backed') === 'true'
                     };
-                    titleEl.textContent = btn.getAttribute('data-title') || 'Liste';
+                    var listTitle = btn.getAttribute('data-title') || 'Liste';
+                    titleEl.textContent = listTitle;
+                    var singular = { 'Kategoriler': 'Kategori', 'Markalar': 'Marka', 'Modeller': 'Model' }[listTitle] || 'Kayıt';
+                    document.getElementById('optionPickerSubtitle').textContent = listTitle === 'Kategoriler' ? 'Stok kartlarınız için kategorileri yönetin.' : 'Kayıtları yönetin ve seçin.';
+                    document.getElementById('optionPickerColName').textContent = singular + ' adı';
+                    document.getElementById('optionPickerNewLabel').textContent = 'Yeni ' + singular.toLowerCase();
+                    document.getElementById('optionPickerNewValue').placeholder = singular + ' adı yazın';
+                    document.getElementById('optionPickerSearch').placeholder = singular + ' ara...';
                     newValueInput.value = '';
                     pendingValue = null;
                     document.getElementById('optionPickerSearch').value = '';
@@ -660,3 +676,35 @@
         })();
     </script>
 }
+
+<style>
+    .op-modal { border-radius: 14px; border: 0; box-shadow: 0 20px 60px rgba(15,31,58,.28); }
+    #optionPickerModal .modal-dialog { max-width: 740px; }
+    #optionPickerModal .modal-header { padding: 22px 28px 6px; }
+    #optionPickerModal .modal-body { padding: 8px 28px 16px; }
+    .op-head { display: flex; gap: 16px; align-items: center; }
+    .op-head-ico { font-size: 34px; color: #12305a; }
+    #optionPickerTitle { font-size: 26px; font-weight: 800; color: #0f1f3a; }
+    #optionPickerSubtitle { font-size: 16px; }
+    #optionPickerSearch { height: 46px; font-size: 16px; }
+    #optionPickerModal .input-group-text { background: #fff; color: #64748b; }
+    .op-new { background: #eaf3fd; border: 1px solid #cfe2f7; }
+    .op-new label { font-size: 17px; color: #0f1f3a; }
+    #optionPickerNewValue { height: 46px; font-size: 16px; }
+    .op-navy { background: #12305a; color: #fff; border: 0; height: 46px; padding: 0 22px; font-weight: 700; font-size: 16px; border-radius: 8px; }
+    .op-navy:hover { background: #0d2547; color: #fff; }
+    .op-cancel { background: #fff; color: #0f1f3a; border: 1px solid #12305a; height: 46px; padding: 0 28px; font-weight: 600; font-size: 16px; border-radius: 8px; }
+    .op-list-head { display: flex; justify-content: space-between; background: #eef2f8; padding: 14px 20px 14px 52px; font-weight: 700; color: #1e293b; border-radius: 8px 8px 0 0; }
+    .op-list { border: 1px solid #e6ecf4; border-top: 0; border-radius: 0 0 8px 8px; max-height: 380px; overflow: auto; }
+    .op-row { border: 0; border-bottom: 1px solid #edf1f7; padding: 13px 20px; font-size: 17px; color: #0f1f3a; }
+    .op-row:last-child { border-bottom: 0; }
+    .op-row.op-selected { background: #e6f0fc; }
+    .op-label { display: flex; align-items: center; gap: 14px; }
+    .op-check { color: #12305a; font-size: 24px; width: 24px; }
+    .op-check-gap { display: inline-block; width: 24px; }
+    .op-folder { font-size: 22px; color: #334155; }
+    .op-actions a, .op-actions button { background: none; border: 0; color: #334155; font-size: 18px; padding: 2px 6px; cursor: pointer; text-decoration: none; }
+    .op-actions a:hover, .op-actions button:hover { color: #12305a; }
+    #optionPickerModal .modal-footer { padding: 16px 28px; font-size: 17px; }
+    #optionPickerModal .modal-footer strong { color: #0f1f3a; }
+</style>
