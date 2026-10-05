@@ -721,31 +721,34 @@ function getAmountDiscountInput() {
 // Satır iskontosu (%) uygulandıktan sonra, genel Tutar İskontosu her satırın net tutar payına
 // göre orantılı dağıtılır (KDV matrahını doğru düşürmek için) ve KDV bu nihai net üzerinden
 // hesaplanır. Ara Toplam her zaman brüt (hiç iskonto düşülmemiş) kalır.
-function calculateQuoteLineBreakdown() {
+// useTl=true: döviz teklifin TL karşılığı — sunucudaki kayıt hesabıyla aynı (TL birim fiyat üzerinden, her tutar 2 haneye yuvarlanır).
+function calculateQuoteLineBreakdown(useTl) {
   ensureForeignPrices();
   const rate = getQuoteRate();
+  const tlMode = !!useTl && isForeignQuote();
+  const r2 = tlMode ? (v => Math.round(v * 100) / 100) : (v => v);
   const rows = currentQuoteItems.map(item => {
-    const itemUnitPrice = isForeignQuote() ? item.foreignPrice : item.price;
-    const gross = item.qty * itemUnitPrice;
-    const lineDiscAmount = gross * (item.discount / 100);
+    const itemUnitPrice = isForeignQuote() && !tlMode ? item.foreignPrice : item.price;
+    const gross = r2(item.qty * itemUnitPrice);
+    const lineDiscAmount = r2(gross * (item.discount / 100));
     const netAfterLineDiscount = gross - lineDiscAmount;
     return { item, itemUnitPrice, gross, lineDiscAmount, netAfterLineDiscount };
   });
 
   const netAfterLineDiscountTotal = rows.reduce((sum, r) => sum + r.netAfterLineDiscount, 0);
-  const rawAmountDiscount = getAmountDiscountInput();
+  const rawAmountDiscount = getAmountDiscountInput() * (tlMode ? rate : 1);
   const amountDiscount = Math.min(Math.max(rawAmountDiscount, 0), Math.max(netAfterLineDiscountTotal, 0));
 
   let allocated = 0;
   rows.forEach((r, idx) => {
     const share = idx === rows.length - 1
-      ? (amountDiscount - allocated)
-      : (netAfterLineDiscountTotal > 0 ? amountDiscount * (r.netAfterLineDiscount / netAfterLineDiscountTotal) : 0);
+      ? r2(amountDiscount - allocated)
+      : (netAfterLineDiscountTotal > 0 ? r2(amountDiscount * (r.netAfterLineDiscount / netAfterLineDiscountTotal)) : 0);
     allocated += share;
     r.amountDiscShare = share;
     r.totalDiscAmount = r.lineDiscAmount + share;
     r.net = r.gross - r.totalDiscAmount;
-    r.kdvAmount = r.net * (r.item.kdv / 100);
+    r.kdvAmount = r2(r.net * (r.item.kdv / 100));
     r.lineTotal = r.net + r.kdvAmount;
   });
 
@@ -785,7 +788,7 @@ function updateCalculations() {
     document.getElementById('calc-discount-row').style.display = 'none';
     document.getElementById('calc-kdv-breakdown').innerHTML = '';
     document.getElementById('calc-grand-total').textContent = `0.00 ${getCurrencySymbol()}`;
-    ['calc-tl-subtotal', 'calc-tl-kdv', 'calc-tl-grand', 'pdf-val-tl-grand'].forEach(id => { document.getElementById(id).textContent = '0.00 ₺'; });
+    ['calc-tl-subtotal', 'calc-tl-kdv', 'calc-tl-grand'].forEach(id => { document.getElementById(id).textContent = '0.00 ₺'; });
     return;
   }
 
@@ -842,18 +845,17 @@ function updateCalculations() {
     </div>
   `).join('');
   document.getElementById('calc-grand-total').textContent = `${formatMoney(grandTotal)} ${symbol}`;
-  updateTlTotals(subtotal - totalDiscount, calculateQuoteLineBreakdown().totalKdv, grandTotal);
+  updateTlTotals();
 }
 
-// Döviz teklifinde toplamlar hem döviz hem TL (döviz × kur) olarak gösterilir.
-function updateTlTotals(netForeign, kdvForeign, grandForeign) {
+// Döviz teklifinde toplamlar hem döviz hem TL olarak gösterilir (TL, kayıtla birebir aynı hesaptan).
+function updateTlTotals() {
   if (!isForeignQuote()) return;
-  const rate = getQuoteRate();
-  const tl = v => `${formatMoney(Math.round(v * rate * 100) / 100)} ₺`;
-  document.getElementById('calc-tl-subtotal').textContent = tl(netForeign);
-  document.getElementById('calc-tl-kdv').textContent = tl(kdvForeign);
-  document.getElementById('calc-tl-grand').textContent = tl(grandForeign);
-  document.getElementById('pdf-val-tl-grand').textContent = tl(grandForeign);
+  const tl = calculateQuoteLineBreakdown(true);
+  const fmt = v => `${formatMoney(v)} ₺`;
+  document.getElementById('calc-tl-subtotal').textContent = fmt(tl.subtotal - tl.totalDiscount);
+  document.getElementById('calc-tl-kdv').textContent = fmt(tl.totalKdv);
+  document.getElementById('calc-tl-grand').textContent = fmt(tl.grandTotal);
 }
 
 // --- 5. LIVE PDF PREVIEW SYNCHRONIZER ---
@@ -904,10 +906,13 @@ function updatePdfPreview() {
   const pdfTbody = document.getElementById('pdf-items-body');
   pdfTbody.innerHTML = '';
 
+  const foreign = isForeignQuote();
+  const fx = calculateQuoteLineBreakdown(false);       // teklif para birimi (ör. USD)
+  const tlc = foreign ? calculateQuoteLineBreakdown(true) : fx;  // TL karşılığı
   const symbol = getCurrencySymbol();
-  const { rows, subtotal, totalDiscount, kdvBreakdown, grandTotal } = calculateQuoteLineBreakdown();
+  const secondary = (v, sym) => `<div style="font-size:9px;color:#64748b;font-weight:400;">(${formatMoney(v)} ${sym})</div>`;
 
-  if (rows.length === 0) {
+  if (fx.rows.length === 0) {
     pdfTbody.innerHTML = `
       <tr>
         <td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">
@@ -916,7 +921,15 @@ function updatePdfPreview() {
       </tr>
     `;
   } else {
-    rows.forEach((r, idx) => {
+    fx.rows.forEach((r, idx) => {
+      const t = tlc.rows[idx];
+      // Döviz teklifte: birim fiyat döviz (altında TL), tutar TL (altında döviz) — her satırda iki para birimi birlikte.
+      const unitCell = foreign
+        ? `<strong>${formatMoney(r.itemUnitPrice)} ${symbol}</strong>${secondary(t.itemUnitPrice, '₺')}`
+        : `${formatMoney(r.itemUnitPrice)} ${symbol}`;
+      const totalCell = foreign
+        ? `<strong>${formatMoney(t.net)} ₺</strong>${secondary(r.net, symbol)}`
+        : `<strong>${formatMoney(r.net)} ${symbol}</strong>`;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="text-align: center;">${idx + 1}</td>
@@ -924,32 +937,38 @@ function updatePdfPreview() {
         <td>${escapeHtml(r.item.name)}</td>
         <td>${r.item.unit}</td>
         <td style="text-align: center;">${r.item.qty}</td>
-        <td style="text-align: right;">${formatMoney(r.itemUnitPrice)} ${symbol}</td>
+        <td style="text-align: right;">${unitCell}</td>
         <td style="text-align: center;">%${r.item.kdv}</td>
         <td style="text-align: center;">${r.item.discount > 0 ? '%' + r.item.discount : '-'}</td>
-        <td style="text-align: right;"><strong>${formatMoney(r.net)} ${symbol}</strong></td>
+        <td style="text-align: right;">${totalCell}</td>
       `;
       pdfTbody.appendChild(tr);
     });
   }
 
-  document.getElementById('pdf-val-subtotal').textContent = `${formatMoney(subtotal)} ${symbol}`;
-  
-  if (totalDiscount > 0) {
+  // Toplamlar: döviz teklifte ana tutar TL, altında "Toplam Dolar Karşılığı".
+  const main = tlc;
+  const mainSym = foreign ? '₺' : symbol;
+  document.getElementById('pdf-val-subtotal').textContent = `${formatMoney(main.subtotal)} ${mainSym}`;
+  if (main.totalDiscount > 0) {
     document.getElementById('pdf-discount-row').style.display = 'flex';
-    document.getElementById('pdf-val-discount').textContent = `-${formatMoney(totalDiscount)} ${symbol}`;
+    document.getElementById('pdf-val-discount').textContent = `-${formatMoney(main.totalDiscount)} ${mainSym}`;
   } else {
     document.getElementById('pdf-discount-row').style.display = 'none';
   }
-
-  document.getElementById('pdf-kdv-breakdown').innerHTML = kdvBreakdown.map(k => `
+  document.getElementById('pdf-kdv-breakdown').innerHTML = main.kdvBreakdown.map(k => `
     <div class="pdf-total-row">
       <span>KDV Tutarı (%${k.rate}):</span>
-      <strong>${formatMoney(k.amount)} ${symbol}</strong>
+      <strong>${formatMoney(k.amount)} ${mainSym}</strong>
     </div>
   `).join('');
-  document.getElementById('pdf-val-grand').textContent = `${formatMoney(grandTotal)} ${symbol}`;
-  updateTlTotals(subtotal - totalDiscount, calculateQuoteLineBreakdown().totalKdv, grandTotal);
+  document.getElementById('pdf-grand-label').textContent = foreign ? 'GENEL TOPLAM (KDV Dahil):' : 'GENEL TOPLAM:';
+  document.getElementById('pdf-val-grand').textContent = `${formatMoney(main.grandTotal)} ${mainSym}`;
+  if (foreign) {
+    document.getElementById('pdf-tl-label').textContent = 'Toplam Dolar Karşılığı:'.replace('Dolar', activeCurrency === 'EUR' ? 'Euro' : 'Dolar');
+    document.getElementById('pdf-val-tl-grand').textContent = `${symbol}${formatMoney(fx.grandTotal)} (${symbol}1 = ${formatMoney(getQuoteRate())} ₺)`;
+  }
+  updateTlTotals();
 }
 
 // --- 6. SAVE & HIGH QUALITY PDF EXPORT ENGINE ---
