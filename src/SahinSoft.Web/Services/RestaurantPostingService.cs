@@ -2308,6 +2308,13 @@ public sealed class RestaurantPostingService(
                     .SingleOrDefaultAsync(x => x.Status == RestaurantZPeriodStatus.Open && (branchId == null || x.BranchId == branchId), cancellationToken)
                     ?? throw new InvalidOperationException("Açık bir Z dönemi bulunamadı.");
 
+                // Satışsız (boş) dönem kapatılamaz: ardışık veya eşzamanlı iki Z isteğinde ikinci istek, ilkinin
+                // hemen açtığı BOŞ yeni dönemi bulur - boş bir Z üretmek yerine reddedilir (tek kapanış).
+                if (!await dbContext.RetailSales.AnyAsync(x => x.RestaurantZPeriodId == openPeriod.Id, cancellationToken))
+                {
+                    throw new InvalidOperationException("Bu dönemde kapatılacak satış yok; Z yalnızca satış içeren dönem için alınabilir.");
+                }
+
                 var sales = await dbContext.RetailSales
                     .Where(x => x.RestaurantZPeriodId == openPeriod.Id && x.Status != RetailSaleStatus.Cancelled)
                     .Select(x => new { x.SubtotalAmount, x.DiscountAmount, x.TaxAmount, x.GrandTotal, x.RestaurantCheckId })

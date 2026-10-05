@@ -224,6 +224,7 @@ public sealed class ProductsController(
         var model = new ProductStatementViewModel
         {
             ProductId = product.Id,
+            TrackStock = product.TrackStock,
             ProductName = product.Name,
             StockCode = product.StockCode,
             From = from,

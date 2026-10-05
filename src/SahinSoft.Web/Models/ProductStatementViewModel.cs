@@ -2,6 +2,7 @@ namespace SahinSoft.Web.Models;
 
 public sealed class ProductStatementViewModel
 {
+    public bool TrackStock { get; set; } = true;
     public int ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string StockCode { get; set; } = string.Empty;

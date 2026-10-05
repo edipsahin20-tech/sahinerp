@@ -175,7 +175,11 @@ builder.Services.PostConfigure<CookieAuthenticationOptions>(IdentityConstants.Ap
 
 builder.Services.AddScoped<SahinSoft.Web.Services.RestaurantShellService>();
 builder.Services.AddControllersWithViews(options =>
-    options.Filters.Add<ConcurrencyExceptionFilter>());
+{
+    options.Filters.Add<ConcurrencyExceptionFilter>();
+    // Türkçe ondalık virgül ("125,50") 100 kat büyümesin: tüm decimal form alanları bu binder'dan geçer.
+    options.ModelBinderProviders.Insert(0, new SahinSoft.Web.Services.TurkishDecimalModelBinderProvider());
+});
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 
 // Data Protection anahtarları KALICI bir konuma yazılır - varsayılan otomatik konum tahmini,

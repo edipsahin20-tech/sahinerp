@@ -200,15 +200,16 @@
                     <thead>
                         <tr>
                             <th style="width: 140px;">Stok Kodu</th>
-                            <th style="min-width: 220px;">Ürün Adı</th>
+                            <th style="width: 280px;">Ürün Adı</th>
                             <th style="width: 90px;">Miktar</th>
-                            <th style="width: 110px;"><span id="price-header">Birim Fiyat (TL)</span></th>
+                            <th style="width: 150px;"><span id="price-header">Birim Fiyat (TL)</span></th>
                             <th style="width: 120px;" class="fx-col">Birim Fiyat (TL)</th>
+                            <th style="width: 130px;" class="kdv-col">Birim Fiyat (KDV Hariç)</th>
                             <th style="width: 80px;">İsk. %</th>
                             <th style="width: 80px;">KDV %</th>
                             <th style="width: 100px;">Tutar</th>
                             <th style="width: 100px;">Net Tutar</th>
-                            <th>Açıklama</th>
+                            <th style="width: 200px;">Açıklama</th>
                             <th style="width: 110px;">Kaynak</th>
                             <th style="width: 40px;"></th>
                         </tr>
@@ -243,7 +244,8 @@
                             <td><input type="text" name="Lines[@i].Quantity" value="@Model.Lines[i].Quantity" class="form-control quantity-input" /></td>
                             <td><input type="text" name="Lines[@i].UnitPrice" value="@(Model.Lines[i].ForeignUnitPrice ?? Model.Lines[i].UnitPrice)" class="form-control price-input" /></td>
 
-                            <td class="fx-col"><span class="line-unit-tl">0,00</span></td>
+                            <td class="fx-col text-end"><span class="line-unit-tl">0,00</span></td>
+                            <td class="kdv-col text-end"><span class="line-unit-net">0,00</span></td>
                             <td><input type="text" name="Lines[@i].DiscountRate" value="@Model.Lines[i].DiscountRate" class="form-control discount-input" /></td>
                             <td><input type="text" name="Lines[@i].TaxRate" value="@Model.Lines[i].TaxRate" class="form-control tax-input" /></td>
                             <td class="text-end line-gross">0.00</td>
@@ -311,7 +313,8 @@
         <td><input type="text" name="Lines[__index__].Quantity" value="1" class="form-control quantity-input" /></td>
         <td><input type="text" name="Lines[__index__].UnitPrice" value="0" class="form-control price-input" /></td>
 
-        <td class="fx-col"><span class="line-unit-tl">0,00</span></td>
+        <td class="fx-col text-end"><span class="line-unit-tl">0,00</span></td>
+        <td class="kdv-col text-end"><span class="line-unit-net">0,00</span></td>
         <td><input type="text" name="Lines[__index__].DiscountRate" value="0" class="form-control discount-input" /></td>
         <td><input type="text" name="Lines[__index__].TaxRate" value="0" class="form-control tax-input" /></td>
         <td class="text-end line-gross">0.00</td>
@@ -435,6 +438,7 @@
                 var row = wrapper.firstElementChild;
                 linesBody.appendChild(row);
                 nextIndex++;
+                syncPriceColumns();
                 return row;
             }
 
@@ -556,11 +560,23 @@
                 return isForeignCurrency() ? (parseTrNumber(document.getElementById('exchange-rate-input').value) || 0) : 1;
             }
 
+            // Sütun görünürlüğü TABLO sınıflarıyla yönetilir (yeni eklenen satırlar da otomatik uyar; satır başına
+            // inline style yok) - aksi halde gizli sütun yeni satırda görünür kalıp kolonları kaydırıyordu.
+            function syncPriceColumns() {
+                var table = document.getElementById('lines-table');
+                var foreign = isForeignCurrency();
+                var incl = pricesIncludeTax.checked;
+                var code = document.getElementById('currency-select').value;
+                table.classList.toggle('fx-on', foreign);
+                table.classList.toggle('kdv-on', incl);
+                var cur = foreign ? code : 'TL';
+                document.getElementById('price-header').textContent = incl ? 'Birim Fiyat (KDV Dahil · ' + cur + ')' : 'Birim Fiyat (' + cur + ')';
+            }
+
             function syncCurrencyUi() {
                 var foreign = isForeignCurrency();
                 var code = document.getElementById('currency-select').value;
-                document.getElementById('price-header').textContent = foreign ? 'Birim Fiyat (' + code + ')' : 'Birim Fiyat (TL)';
-                document.querySelectorAll('.fx-col').forEach(function (c) { c.style.display = foreign ? '' : 'none'; });
+                syncPriceColumns();
                 document.getElementById('totals-currency-label').textContent = code;
                 document.getElementById('totals-foreign-row').style.display = foreign ? '' : 'none';
                 document.getElementById('exchange-rate-input').disabled = !foreign;
@@ -581,6 +597,8 @@
                         : price;
                     // Döviz faturasında satır fiyatı fatura para birimindedir; TL karşılığı kurla çarpılır.
                     var gross = qty * netUnitPrice * rate;
+                    var unitNetEl = row.querySelector('.line-unit-net');
+                    if (unitNetEl) { unitNetEl.textContent = formatMoney(netUnitPrice); }
                     var unitTlEl = row.querySelector('.line-unit-tl');
                     if (unitTlEl) { unitTlEl.textContent = formatMoney(price * rate); }
                     var lineDiscAmount = gross * discRate / 100;
@@ -625,7 +643,7 @@
             }
 
             document.getElementById('amount-discount-input').addEventListener('input', recalcTotals);
-            pricesIncludeTax.addEventListener('change', recalcTotals);
+            pricesIncludeTax.addEventListener('change', function () { syncPriceColumns(); recalcTotals(); });
 
             linesBody.addEventListener('input', recalcTotals);
             document.getElementById('currency-select').addEventListener('change', function () { syncCurrencyUi(); recalcTotals(); });
@@ -777,3 +795,15 @@
         })();
     </script>
 }
+
+<style>
+    /* Fatura satır tablosu: sabit kolon genişlikleri - satır eklenince/para birimi veya KDV modu değişince kolonlar kaymaz. */
+    #lines-table { table-layout: fixed; min-width: 1180px; }
+    #lines-table th, #lines-table td { overflow: hidden; vertical-align: middle; }
+    #lines-table .fx-col, #lines-table .kdv-col { display: none; }
+    #lines-table.fx-on .fx-col { display: table-cell; }
+    #lines-table.kdv-on .kdv-col { display: table-cell; }
+    #lines-table td .form-control { min-width: 0; width: 100%; }
+    #lines-table td .input-group { flex-wrap: nowrap; }
+    #lines-table .description-input { min-width: 0; }
+</style>

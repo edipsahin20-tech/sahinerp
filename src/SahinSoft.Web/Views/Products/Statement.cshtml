@@ -22,6 +22,10 @@
     </div>
     <div class="erp-list-body">
         <span class="text-secondary d-block mb-3">@Model.StockCode &middot; @Model.ProductName</span>
+        @if (!Model.TrackStock)
+        {
+            <div class="alert alert-warning py-2">Bu ürünün <strong>stok takibi kapalı</strong> (hizmet / stok tutulmayan kalem). Satış ve alış faturaları bu ürün için stok hareketi oluşturmaz. Stok düşmesini istiyorsanız Stok Tanıtım Kartı'nda "Stok takip edilsin" seçeneğini açın.</div>
+        }
 
         <div class="erp-tabs no-print">
             <button type="button" class="active" data-tab-btn="hareketler">Hareketler</button>

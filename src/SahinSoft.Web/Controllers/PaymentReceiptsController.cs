@@ -577,6 +577,10 @@ public sealed class PaymentReceiptsController(
                 FinancialAccountId = line.FinancialAccountId!.Value
             });
         }
+
+        // Taslakta da başlık tutarı satırların toplamını göstersin (liste/detayda 0,00 görünmesin);
+        // onayda aynı toplam yeniden hesaplanıp kesinleşir.
+        target.TotalAmount = Math.Round(target.Lines.Sum(x => x.Amount), 2, MidpointRounding.AwayFromZero);
     }
 
     private async Task PopulateSelectionsAsync(PaymentReceiptFormViewModel model)
