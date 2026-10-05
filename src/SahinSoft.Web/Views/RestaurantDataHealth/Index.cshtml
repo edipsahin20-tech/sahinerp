@@ -82,6 +82,21 @@
         </div>
     }
 
+    @if (Model.ActiveTab == "z")
+    {
+        var zTotal = Model.ZSummary.Count;
+        var zMatched = Model.ZSummary.Count(z => !z.IsMismatched);
+        var zDiffCount = zTotal - zMatched;
+        var zAmountDiff = Model.ZSummary.Sum(z => z.LocalTotal - z.AccountingTotal);
+        <div class="dh-kpis dh-kpis-4">
+            <div class="dh-kpi dh-kpi-big"><span class="dh-kpi-circle" style="background:#EAF1FB;color:#2563eb;"><i class="fa-solid fa-file-lines"></i></span><div><small>Toplam Z</small><strong>@zTotal</strong></div></div>
+            <div class="dh-kpi dh-kpi-big"><span class="dh-kpi-circle" style="background:#E6F6EC;color:#16a34a;"><i class="fa-solid fa-check"></i></span><div><small>Eşleşen Z</small><strong style="color:#16a34a;">@zMatched</strong></div></div>
+            <div class="dh-kpi dh-kpi-big"><span class="dh-kpi-circle" style="background:#FBE4E4;color:#dc2626;"><i class="fa-solid fa-exclamation"></i></span><div><small>Farklı Z</small><strong style="color:@(zDiffCount > 0 ? "#dc2626" : "#13233a");">@zDiffCount</strong></div></div>
+            <div class="dh-kpi dh-kpi-big"><span class="dh-kpi-circle" style="background:#EAF1FB;color:#2563eb;"><i class="fa-solid fa-coins"></i></span><div><small>Tutar Farkı</small><strong>@zAmountDiff.ToString("N2") ₺</strong></div></div>
+        </div>
+    }
+    else
+    {
     <div class="dh-kpis">
         <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-receipt" style="color:#2456a8;"></i><small>Toplam Fiş</small></div><strong>@Model.TotalCount</strong><span class="dh-kpi-orb" style="background:#EAF1FB;"></span></div>
         <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-circle-check" style="color:#1f7a4d;"></i><small>Eşleşen</small></div><strong style="color:#1f7a4d;">@Model.MatchedCount</strong><span class="dh-kpi-orb" style="background:#E6F6EC;"></span></div>
@@ -101,6 +116,7 @@
         </div>
         <div class="dh-kpi"><div class="dh-kpi-top"><i class="fa-solid fa-file-lines" style="color:#5b6675;"></i><small>Eksik Muhasebe</small></div><strong style="color:@(Model.MissingAccountingCount > 0 ? "#c53030" : "#13233a");">@Model.MissingAccountingCount</strong><span class="dh-kpi-orb" style="background:#FBE4E4;"></span></div>
     </div>
+    }
 
     <div class="dh-card">
         <div class="dh-tabs">
@@ -110,7 +126,7 @@
             <form method="get" asp-action="Index" class="dh-search">
                 <input type="hidden" name="date" value="@dateText" />
                 <input type="hidden" name="tab" value="@Model.ActiveTab" />
-                <input type="search" name="q" value="@Model.Search" placeholder="Fiş veya Z no ara" class="form-control" />
+                <input type="search" name="q" value="@Model.Search" placeholder="@(Model.ActiveTab == "z" ? "Z no ara" : "Fiş veya Z no ara")" class="form-control" />
             </form>
         </div>
 
@@ -188,6 +204,10 @@
                     </tbody>
                 </table>
             </div>
+            <div class="dh-foot dh-foot-split">
+                <span>@Model.ZSummary.Count Z raporu • @Model.ZSummary.Sum(z => z.BranchCount) fiş</span>
+                <span>Toplam: <strong>@Model.ZSummary.Sum(z => z.LocalTotal).ToString("N2") ₺</strong></span>
+            </div>
 
             @if (Model.ZDetail is { } zd)
             {
@@ -196,7 +216,7 @@
                     <div class="dh-zdetail-head">
                         <div>
                             <h3>Z Detayı • @zd.ZNo</h3>
-                            <p>@zd.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                            <p>@zd.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")@(string.IsNullOrEmpty(zd.BranchName) ? "" : " • " + zd.BranchName)</p>
                         </div>
                         <a class="dh-btn dh-btn-outline" target="_blank" href="@Url.Action("Detail", "ZPeriods", new { id = zd.ZPeriodId })"><i class="fa-solid fa-file-lines"></i> Z Raporunu Gör</a>
                     </div>
@@ -215,7 +235,7 @@
                             <p class="dh-note">
                                 @if (zDiff == 0 && zd.Rows.All(x => x.LocalStatus == "Tam" && x.AccountingStatus is "Tam" or "Gerekmiyor"))
                                 {
-                                    <span class="text-success">✓ Yerel ve muhasebe kayıtları eşleşiyor.</span>
+                                    <span class="dh-ok"><i class="fa-solid fa-circle-check"></i> Yerel ve muhasebe kayıtları eşleşiyor.</span>
                                 }
                                 else
                                 {
@@ -229,8 +249,8 @@
                                 <h4>Mutabakat Sonucu</h4>
                                 <span class="dh-chip" style="@StatusChip(zDiff == 0 ? "YESIL" : "KIRMIZI")">@(zDiff == 0 ? "Fark yok" : "Fark var")</span>
                             </div>
-                            <div class="dh-kv"><span>Fiş farkı</span><strong>@(zd.LocalCount - zd.Rows.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor"))</strong></div>
-                            <div class="dh-kv"><span>Tutar farkı</span><strong>@zDiff.ToString("N2") ₺</strong></div>
+                            <div class="dh-kv"><span>Fiş farkı:</span><strong>@(zd.LocalCount - zd.Rows.Count(x => x.AccountingStatus is "Tam" or "Gerekmiyor"))</strong></div>
+                            <div class="dh-kv"><span>Tutar farkı:</span><strong>@zDiff.ToString("N2") ₺</strong></div>
                             <p class="dh-note">Merkez karşılaştırması @(Model.MerkezSyncEnabled ? "açık." : "kapalı.")</p>
                         </div>
                     </div>
@@ -238,7 +258,7 @@
                     <div class="dh-panel">
                         <div class="dh-panel-head">
                             <h4>Bu Z'ye Bağlı Fişler</h4>
-                            <a class="dh-btn dh-btn-outline dh-btn-sm" href="@Url.Action("Index", new { date = dateText, tab = "fis" })">Fiş Bazında Gör</a>
+                            <a class="dh-btn dh-btn-outline dh-btn-sm" href="@Url.Action("Index", new { date = dateText, tab = "fis" })"><i class="fa-solid fa-list"></i> Fiş Bazında Gör</a>
                         </div>
                         <table class="dh-table dh-table-compact">
                             <thead><tr><th>Saat</th><th>Adisyon No</th><th class="num">Tutar</th><th>Yerel</th><th>Muhasebe</th><th></th></tr></thead>
@@ -371,6 +391,13 @@
     .dh-table-compact td, .dh-table-compact th { padding: 9px 10px; font-size: 14px; }
     .dh-foot { display: flex; align-items: center; gap: 48px; padding: 14px 6px 0; color: #475569; font-size: 15px; }
     .dh-foot strong { color: #0f1f3a; font-size: 16px; margin-left: 6px; }
+    .dh-kpis-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dh-kpi-big { display: flex; align-items: center; gap: 18px; min-height: 96px; padding: 18px 22px; }
+    .dh-kpi-big small { display: block; font-size: 16px; }
+    .dh-kpi-big strong { margin-top: 4px; font-size: 32px; }
+    .dh-kpi-circle { flex: 0 0 56px; height: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
+    .dh-foot-split { justify-content: space-between; gap: 16px; }
+    .dh-ok { color: #15803d; font-weight: 600; font-size: 15px; }
     .dh-summary { padding-top: 16px; }
     .dh-summary h3 { font-size: 20px; font-weight: 700; margin: 0 0 14px; color: #0f1f3a; }
     .dh-summary h3 i { margin-right: 8px; color: #475569; }
@@ -388,13 +415,13 @@
     .dh-link { color: #2563eb; font-weight: 600; text-decoration: none; }
     .dh-zdetail { margin-top: 18px; border-top: 1px solid #e3e9f2; padding-top: 16px; }
     .dh-zdetail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-    .dh-zdetail-head h3 { margin: 0; font-size: 20px; color: #13233a; }
+    .dh-zdetail-head h3 { margin: 0; font-size: 24px; font-weight: 800; color: #0f1f3a; }
     .dh-zdetail-head p { margin: 2px 0 0; color: #5b6675; font-size: 13px; }
     .dh-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-    .dh-panel { border: 1px solid #e3e9f2; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-    .dh-panel h4 { font-size: 15px; margin: 0 0 10px; color: #13233a; }
+    .dh-panel { border: 1px solid #e3e9f2; border-radius: 12px; padding: 18px 22px; margin-bottom: 12px; }
+    .dh-panel h4 { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: #0f1f3a; }
     .dh-panel-head { display: flex; justify-content: space-between; align-items: center; }
-    .dh-kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f3f8; font-size: 14px; }
+    .dh-kv { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f3f8; font-size: 16px; color: #1e293b; }
     .dh-note { font-size: 13px; color: #5b6675; margin: 10px 0 0; }
     @@media (max-width: 1100px) { .dh-summary-grid { grid-template-columns: 1fr; gap: 14px; } .dh-sum-item { border-left: 0; padding: 0; } .dh-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dh-grid2 { grid-template-columns: 1fr; } }
     @@media (max-width: 640px) { .dh-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dh-search input { width: 100%; } }

@@ -45,6 +45,7 @@ public sealed class RestaurantDataHealthZDetail
 {
     public int ZPeriodId { get; set; }
     public string ZNo { get; set; } = string.Empty;
+    public string? BranchName { get; set; }
     public DateTime OpenedAtUtc { get; set; }
     public DateTime? ClosedAtUtc { get; set; }
     public int LocalCount { get; set; }

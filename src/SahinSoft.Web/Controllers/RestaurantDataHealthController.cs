@@ -318,7 +318,8 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
         // hareketi yok ama Z'de sayılır), bu yüzden Fark yalnızca eksik muhasebe kayıtlarını gösterir.
         var zPeriodMeta = await dbContext.RestaurantZPeriods
             .AsNoTracking()
-            .ToDictionaryAsync(x => x.Id, x => new { x.OpenedAtUtc, x.ClosedAtUtc });
+            .ToDictionaryAsync(x => x.Id, x => new { x.OpenedAtUtc, x.ClosedAtUtc, x.BranchId });
+        var branchNames = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
 
         var zGroups = rows
             .Where(x => x.ZPeriodId is not null)
@@ -359,6 +360,7 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
             {
                 ZPeriodId = zSummary.ZPeriodId,
                 ZNo = zSummary.ZNo,
+                BranchName = zPeriodMeta.GetValueOrDefault(zSummary.ZPeriodId) is { } zm ? branchNames.GetValueOrDefault(zm.BranchId) : null,
                 OpenedAtUtc = zSummary.OpenedAtUtc,
                 ClosedAtUtc = zSummary.ClosedAtUtc,
                 LocalCount = zSummary.BranchCount,
