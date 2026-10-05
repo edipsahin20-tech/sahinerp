@@ -281,7 +281,7 @@ function selectProductFromSearch(prodId) {
   selectedCatalogItem = item;
   document.getElementById('picker-product-value').value = item.id;
   document.getElementById('picker-product-search').value = `${item.id} - ${item.name}`;
-  document.getElementById('item-price').value = item.unitPrice != null ? item.unitPrice : item.price;
+  fillPickerPrice();
   document.getElementById('item-unit').value = item.unit || 'Adet';
   document.getElementById('item-kdv').value = item.kdv || 20;
 
@@ -482,6 +482,20 @@ document.addEventListener('click', function (e) {
   }
 });
 
+// Katalog fiyatı TL'dir; teklif dövizliyse giriş alanına seçili para birimindeki karşılığı yazılır.
+function fillPickerPrice() {
+  if (!selectedCatalogItem) return;
+  const tl = selectedCatalogItem.unitPrice != null ? selectedCatalogItem.unitPrice : selectedCatalogItem.price;
+  const value = isForeignQuote() ? tl / getQuoteRate() : tl;
+  document.getElementById('item-price').value = Math.round(value * 100) / 100;
+}
+
+// Giriş alanındaki fiyat teklifin para biriminde girilir; TL karşılığı kurla hesaplanır.
+function buildItemPrices(enteredPrice) {
+  if (!isForeignQuote()) return { price: enteredPrice, foreignPrice: null };
+  return { price: Math.round(enteredPrice * getQuoteRate() * 100) / 100, foreignPrice: enteredPrice };
+}
+
 // --- 3. ITEM ADDITION & TABLE MANAGEMENT ---
 function addItemToQuote() {
   const prodId = document.getElementById('picker-product-value').value;
@@ -503,7 +517,7 @@ function addItemToQuote() {
     name: selectedCatalogItem.name,
     unit: unit,
     qty: qty,
-    price: price,
+    ...buildItemPrices(price),
     kdv: kdv,
     discount: discount
   });
@@ -528,8 +542,9 @@ async function addCustomLineItem() {
   const name = prompt('Özel Kalem / Hizmet Açıklamasını Giriniz:', 'Özel Yazılım Entegrasyonu & Saha Montaj Hizmeti');
   if (!name) return;
 
-  const priceStr = prompt('Birim Fiyatı Giriniz (TL):', '2500');
-  const price = parseFloat(priceStr) || 0;
+  const priceStr = prompt(`Birim Fiyatı Giriniz (${getCurrencySymbol()}):`, '2500');
+  const enteredPrice = parseFloat(priceStr) || 0;
+  const price = buildItemPrices(enteredPrice).price; // stok kartı ve katalog her zaman TL
 
   let newProduct = null;
   try {
@@ -573,7 +588,7 @@ async function addCustomLineItem() {
     name: name,
     unit: catalogEntry.unit,
     qty: 1,
-    price: price,
+    ...buildItemPrices(enteredPrice),
     kdv: catalogEntry.kdv,
     discount: 0
   });
@@ -675,6 +690,7 @@ function handleCurrencyChange() {
   }
 
   syncCurrencyUi();
+  fillPickerPrice();
   updateCalculations();
   updatePdfPreview();
 }
@@ -682,6 +698,7 @@ function handleCurrencyChange() {
 // Kur elle değiştirildiğinde döviz fiyatlar sabit kalır, TL birim fiyatlar ve toplamlar yeniden hesaplanır.
 function handleRateChange() {
   if (!isForeignQuote()) return;
+  fillPickerPrice();
   const rate = getQuoteRate();
   currentQuoteItems.forEach(item => {
     if (item.foreignPrice != null) {
