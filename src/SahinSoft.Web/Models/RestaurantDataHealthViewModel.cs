@@ -19,6 +19,17 @@ public sealed class RestaurantDataHealthViewModel
     public int MissingCentralCount { get; set; }
     public int MissingAccountingCount { get; set; }
 
+    // Şube filtresi, sıralama ve sayfalama (Fiş Bazında sekmesi)
+    public int? BranchId { get; set; }
+    public List<(int Id, string Name)> Branches { get; set; } = [];
+    public string SortBy { get; set; } = "saat";
+    public string SortDir { get; set; } = "desc";
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+    public int TotalRows { get; set; }
+    public int PageCount => Math.Max(1, (int)Math.Ceiling(TotalRows / (double)PageSize));
+    public decimal TotalAmount { get; set; }
+
     public List<RestaurantDataHealthZSummaryRow> ZSummary { get; set; } = [];
     public List<RestaurantDataHealthRow> Rows { get; set; } = [];
     public List<RestaurantDataHealthAuditRow> RecentRepairs { get; set; } = [];
@@ -60,6 +71,8 @@ public sealed class RestaurantDataHealthRow
     public int RetailSaleId { get; set; }
     public string DocumentNumber { get; set; } = string.Empty;
     public string CheckNumber { get; set; } = string.Empty;
+    public int? BranchId { get; set; }
+    public string? BranchName { get; set; }
     public int? ZPeriodId { get; set; }
     public string? ZNo { get; set; }
     public DateTime IssuedAtUtc { get; set; }

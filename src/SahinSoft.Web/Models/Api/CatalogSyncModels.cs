@@ -44,6 +44,10 @@ public sealed class ProductSyncItem
     public bool IsActive { get; set; }
     public Guid CategoryRecordId { get; set; }
     public Guid TaxRateRecordId { get; set; }
+
+    // Şubede RecordId farklı olan (kodla eşleşen) kategori/KDV kayıtlarını bulabilmek için merkez kodları da taşınır.
+    public string? CategoryCode { get; set; }
+    public string? TaxRateCode { get; set; }
 }
 
 /// <summary>

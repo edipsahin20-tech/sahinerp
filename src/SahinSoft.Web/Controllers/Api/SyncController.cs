@@ -74,7 +74,9 @@ public sealed class SyncController(ApplicationDbContext dbContext) : ControllerB
                 TrackStock = x.TrackStock,
                 IsActive = x.IsActive,
                 CategoryRecordId = x.Category.RecordId,
-                TaxRateRecordId = x.TaxRate.RecordId
+                TaxRateRecordId = x.TaxRate.RecordId,
+                CategoryCode = x.Category.Code,
+                TaxRateCode = x.TaxRate.Code
             })
             .ToListAsync(cancellationToken);
 

@@ -143,13 +143,36 @@ public sealed class BranchSyncBackgroundService(
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        // Merkez RecordId -> yerel Id eşlemesi. Yerelde kodla eşleşen kayıtların (ör. KDV10) RecordId'si merkezinkinden
+        // farklı kalabilir (RecordId mevcut satırda güncellenmez); bu yüzden ürünler RecordId yerine bu eşlemeyle bağlanır.
+        var categoryMap = new Dictionary<Guid, ProductCategory>();
+        foreach (var item in payload.Categories)
+        {
+            var match = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.RecordId == item.RecordId || x.Code == item.Code, cancellationToken);
+            if (match is not null) { categoryMap[item.RecordId] = match; }
+        }
+        var taxMap = new Dictionary<Guid, TaxRate>();
+        foreach (var item in payload.TaxRates)
+        {
+            var match = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.RecordId == item.RecordId || x.Code == item.Code, cancellationToken);
+            if (match is not null) { taxMap[item.RecordId] = match; }
+        }
+
+        var skippedProducts = 0;
         foreach (var item in payload.Products)
         {
-            var category = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.RecordId == item.CategoryRecordId, cancellationToken);
-            var taxRate = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.RecordId == item.TaxRateRecordId, cancellationToken);
+            if (!categoryMap.TryGetValue(item.CategoryRecordId, out var category))
+            {
+                category = await dbContext.ProductCategories.FirstOrDefaultAsync(x => x.RecordId == item.CategoryRecordId || (item.CategoryCode != null && x.Code == item.CategoryCode), cancellationToken);
+            }
+            if (!taxMap.TryGetValue(item.TaxRateRecordId, out var taxRate))
+            {
+                taxRate = await dbContext.TaxRates.FirstOrDefaultAsync(x => x.RecordId == item.TaxRateRecordId || (item.TaxRateCode != null && x.Code == item.TaxRateCode), cancellationToken);
+            }
             if (category is null || taxRate is null)
             {
                 logger.LogWarning("Ürün {StockCode} için kategori/KDV yerelde bulunamadı, bu turda atlandı.", item.StockCode);
+                skippedProducts++;
                 continue;
             }
 
@@ -194,8 +217,12 @@ public sealed class BranchSyncBackgroundService(
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        state.LastCatalogSyncUtc = payload.ServerTimeUtc;
-        state.Save();
+        // Atlanan ürün varsa senkron zamanı ilerletilmez: bir sonraki turda aynı değişiklikler yeniden denenir.
+        if (skippedProducts == 0)
+        {
+            state.LastCatalogSyncUtc = payload.ServerTimeUtc;
+            state.Save();
+        }
 
         if (appliedCount > 0)
         {
