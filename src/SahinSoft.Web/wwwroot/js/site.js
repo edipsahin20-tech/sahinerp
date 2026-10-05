@@ -294,3 +294,40 @@
         URL.revokeObjectURL(url);
     });
 })();
+
+
+// Ctrl+D: evrakın kayıt bilgisi (kim girdi, ne zaman, kim değiştirdi/onayladı/iptal etti) — Mikro "kayıt bilgisi" mantığı.
+// Sayfada #doc-log-anchor (data-entity, data-id) varsa çalışır; yoksa tarayıcının kendi Ctrl+D (yer imi) davranışı bozulmaz.
+(function () {
+    document.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || (e.key !== 'd' && e.key !== 'D')) { return; }
+        var anchor = document.getElementById('doc-log-anchor');
+        if (!anchor) { return; }
+        e.preventDefault();
+        fetch('/DocumentLogs/Info?entity=' + encodeURIComponent(anchor.getAttribute('data-entity')) + '&id=' + encodeURIComponent(anchor.getAttribute('data-id')))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var old = document.getElementById('doc-log-overlay'); if (old) { old.remove(); }
+                var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+                var rows = (d.entries || []).map(function (x) {
+                    return '<tr><td style="white-space:nowrap;padding:4px 8px;">' + esc(x.time) + '</td><td style="padding:4px 8px;font-weight:600;">' + esc(x.action) + '</td><td style="padding:4px 8px;">' + esc(x.user) + '</td><td style="padding:4px 8px;color:#64748b;">' + esc(x.details || '') + '</td></tr>';
+                }).join('') || '<tr><td colspan="4" style="padding:10px;color:#64748b;">Bu evrak için kayıt bilgisi yok (günlük tutulmadan önce girilmiş olabilir).</td></tr>';
+                var o = document.createElement('div');
+                o.id = 'doc-log-overlay';
+                o.style.cssText = 'position:fixed;inset:0;background:rgba(11,21,36,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+                o.innerHTML = '<div style="background:#fff;border-radius:16px;padding:22px 24px;width:min(720px,94vw);max-height:84vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);font-family:Inter,\'Segoe UI\',system-ui,sans-serif;">' +
+                    '<div style="font-weight:800;font-size:15px;color:#132238;margin-bottom:4px;">Kayıt Bilgisi — ' + esc(d.title) + ' ' + esc(d.number) + '</div>' +
+                    '<div style="font-size:13px;color:#334155;margin-bottom:12px;line-height:1.6;">' +
+                    '<div><b>Kaydı giren:</b> ' + esc(d.createdBy || '—') + ' &nbsp; <b>Saat:</b> ' + esc(d.createdAt || '—') + '</div>' +
+                    '<div><b>Son değiştiren:</b> ' + esc(d.lastBy || '—') + ' &nbsp; <b>Saat:</b> ' + esc(d.lastAt || '—') + '</div></div>' +
+                    '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:4px 8px;">Tarih / Saat</th><th style="padding:4px 8px;">İşlem</th><th style="padding:4px 8px;">Kullanıcı</th><th style="padding:4px 8px;">Not</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+                    '<div style="text-align:right;margin-top:14px;"><button type="button" id="doc-log-close" style="padding:8px 18px;border:0;border-radius:10px;background:linear-gradient(90deg,#f0cf73,#e9bd46);font-weight:800;cursor:pointer;">Kapat</button></div></div>';
+                document.body.appendChild(o);
+                var close = function () { o.remove(); document.removeEventListener('keydown', onKey, true); };
+                var onKey = function (ev) { if (ev.key === 'Escape') { close(); } };
+                document.addEventListener('keydown', onKey, true);
+                o.querySelector('#doc-log-close').addEventListener('click', close);
+                o.addEventListener('click', function (ev) { if (ev.target === o) { close(); } });
+            });
+    });
+})();

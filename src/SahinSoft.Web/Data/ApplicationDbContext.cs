@@ -24,6 +24,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<QuoteLine> QuoteLines => Set<QuoteLine>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DocumentLog> DocumentLogs => Set<DocumentLog>();
     public DbSet<PurchasePriceList> PurchasePriceLists => Set<PurchasePriceList>();
     public DbSet<PurchasePriceListItem> PurchasePriceListItems => Set<PurchasePriceListItem>();
     public DbSet<CurrentAccountTransaction> CurrentAccountTransactions => Set<CurrentAccountTransaction>();
@@ -364,6 +365,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.BankName).HasMaxLength(150);
             entity.Property(x => x.Iban).HasMaxLength(34);
             entity.Property(x => x.LogoPath).HasMaxLength(500);
+        });
+
+        builder.Entity<DocumentLog>(entity =>
+        {
+            entity.Property(x => x.EntityName).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.DocumentNumber).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Action).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.UserName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Details).HasMaxLength(1000);
+            entity.Property(x => x.IpAddress).HasMaxLength(64);
+            entity.HasIndex(x => new { x.EntityName, x.EntityId });
+            entity.HasIndex(x => x.CreatedAtUtc);
         });
 
         builder.Entity<AuditLog>(entity =>
@@ -2121,7 +2135,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var pendingAudits = CapturePendingAudits();
+        var pendingDocLogs = CaptureDocumentLogs();
         var result = await base.SaveChangesAsync(cancellationToken);
+        var wroteDocLogs = await WriteDocumentLogsAsync(pendingDocLogs, cancellationToken);
 
         if (pendingAudits.Count > 0)
         {
@@ -2148,9 +2164,133 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             await base.SaveChangesAsync(cancellationToken);
         }
+        else if (wroteDocLogs)
+        {
+            await base.SaveChangesAsync(cancellationToken);
+        }
 
         return result;
     }
+
+    // ---- Evrak kayıt günlüğü (DocumentLogs) ----
+    private sealed record PendingDocLog(EntityEntry? Entry, string EntityName, int EntityId, string Number, string Action, string? Details);
+
+    private static readonly Dictionary<Type, (string Name, string NumberProp)> DocTypes = new()
+    {
+        [typeof(Invoice)] = ("Invoice", nameof(Invoice.InvoiceNumber)),
+        [typeof(PaymentReceipt)] = ("PaymentReceipt", nameof(PaymentReceipt.ReceiptNumber)),
+        [typeof(DispatchNote)] = ("DispatchNote", nameof(DispatchNote.DispatchNumber)),
+        [typeof(BusinessOrder)] = ("BusinessOrder", nameof(BusinessOrder.OrderNumber)),
+        [typeof(Expense)] = ("Expense", nameof(Expense.DocumentNumber)),
+        [typeof(Quote)] = ("Quote", nameof(Quote.QuoteNumber)),
+    };
+
+    // Satır varlığı -> (bağlı evrak tipi, evrakın Id'sini taşıyan alan)
+    private static readonly Dictionary<Type, (Type Parent, string Fk)> DocLineTypes = new()
+    {
+        [typeof(InvoiceLine)] = (typeof(Invoice), nameof(InvoiceLine.InvoiceId)),
+        [typeof(PaymentReceiptLine)] = (typeof(PaymentReceipt), nameof(PaymentReceiptLine.PaymentReceiptId)),
+        [typeof(DispatchNoteLine)] = (typeof(DispatchNote), nameof(DispatchNoteLine.DispatchNoteId)),
+        [typeof(BusinessOrderLine)] = (typeof(BusinessOrder), nameof(BusinessOrderLine.BusinessOrderId)),
+        [typeof(QuoteLine)] = (typeof(Quote), nameof(Quote.Id)),
+    };
+
+    private List<PendingDocLog> CaptureDocumentLogs()
+    {
+        var result = new List<PendingDocLog>();
+        var handled = new HashSet<(string, int)>();
+        var entries = ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
+
+        foreach (var entry in entries.Where(e => DocTypes.ContainsKey(e.Entity.GetType())))
+        {
+            var (name, numberProp) = DocTypes[entry.Entity.GetType()];
+            var number = entry.Property(numberProp).CurrentValue?.ToString() ?? string.Empty;
+            if (entry.State == EntityState.Added)
+            {
+                result.Add(new PendingDocLog(entry, name, 0, number, "Created", null));
+                continue;
+            }
+            var id = (int)entry.Property(nameof(EntityBase.Id)).CurrentValue!;
+            if (entry.State == EntityState.Deleted)
+            {
+                result.Add(new PendingDocLog(null, name, id, number, "Deleted", null));
+                handled.Add((name, id));
+                continue;
+            }
+
+            var changed = entry.Properties.Where(p => p.IsModified && p.Metadata.Name is not (nameof(EntityBase.UpdatedAtUtc) or nameof(EntityBase.RowVersion))).Select(p => p.Metadata.Name).ToList();
+            var statusProp = entry.Metadata.FindProperty("Status");
+            var action = "Updated";
+            if (statusProp is not null && entry.Property("Status").IsModified)
+            {
+                var newStatus = entry.Property("Status").CurrentValue?.ToString();
+                var oldStatus = entry.Property("Status").OriginalValue?.ToString();
+                if (newStatus != oldStatus)
+                {
+                    if (newStatus == "Approved") { action = "Approved"; }
+                    else if (newStatus == "Cancelled") { action = "Cancelled"; }
+                    else if (newStatus is "PartiallyFulfilled" or "Fulfilled" or "Draft" && changed.All(c => c == "Status")) { continue; }
+                }
+            }
+            if (action == "Updated" && changed.Count == 0) { continue; }
+            handled.Add((name, id));
+            result.Add(new PendingDocLog(entry, name, id, number, action, action == "Updated" ? "Değişen alanlar: " + string.Join(", ", changed.Take(10)) : null));
+        }
+
+        // Yalnızca satırı değişen evrak da "Değiştirildi" sayılır.
+        foreach (var line in entries.Where(e => DocLineTypes.ContainsKey(e.Entity.GetType())))
+        {
+            var (parentType, fk) = DocLineTypes[line.Entity.GetType()];
+            var parentName = DocTypes[parentType].Name;
+            var parentId = (int)(line.Property(fk).CurrentValue ?? 0);
+            if (parentId == 0 || handled.Contains((parentName, parentId))) { continue; }
+            if (entries.Any(e => e.Entity.GetType() == parentType && e.State == EntityState.Added)) { continue; }
+            handled.Add((parentName, parentId));
+            result.Add(new PendingDocLog(null, parentName, parentId, string.Empty, "Updated", "Satırlar değişti"));
+        }
+
+        return result;
+    }
+
+    private async Task<bool> WriteDocumentLogsAsync(List<PendingDocLog> pending, CancellationToken cancellationToken)
+    {
+        if (pending.Count == 0) { return false; }
+        var http = httpContextAccessor.HttpContext;
+        var userId = http?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var ip = http?.Connection.RemoteIpAddress?.ToString();
+        var userName = "Sistem";
+        if (!string.IsNullOrEmpty(userId))
+        {
+            userName = await Users.AsNoTracking().Where(x => x.Id == userId).Select(x => x.FullName).FirstOrDefaultAsync(cancellationToken)
+                ?? http?.User?.Identity?.Name ?? userId;
+        }
+
+        foreach (var p in pending)
+        {
+            var id = p.Entry is not null ? (int)p.Entry.Property(nameof(EntityBase.Id)).CurrentValue! : p.EntityId;
+            var number = p.Number;
+            if (string.IsNullOrEmpty(number) && p.Action == "Updated")
+            {
+                number = await LookupDocumentNumberAsync(p.EntityName, id, cancellationToken);
+            }
+            DocumentLogs.Add(new DocumentLog
+            {
+                EntityName = p.EntityName, EntityId = id, DocumentNumber = number ?? string.Empty, Action = p.Action,
+                UserId = userId, UserName = userName, Details = p.Details, IpAddress = ip
+            });
+        }
+        return true;
+    }
+
+    private async Task<string?> LookupDocumentNumberAsync(string entityName, int id, CancellationToken ct) => entityName switch
+    {
+        "Invoice" => await Invoices.AsNoTracking().Where(x => x.Id == id).Select(x => x.InvoiceNumber).FirstOrDefaultAsync(ct),
+        "PaymentReceipt" => await PaymentReceipts.AsNoTracking().Where(x => x.Id == id).Select(x => x.ReceiptNumber).FirstOrDefaultAsync(ct),
+        "DispatchNote" => await DispatchNotes.AsNoTracking().Where(x => x.Id == id).Select(x => x.DispatchNumber).FirstOrDefaultAsync(ct),
+        "BusinessOrder" => await BusinessOrders.AsNoTracking().Where(x => x.Id == id).Select(x => x.OrderNumber).FirstOrDefaultAsync(ct),
+        "Quote" => await Quotes.AsNoTracking().Where(x => x.Id == id).Select(x => x.QuoteNumber).FirstOrDefaultAsync(ct),
+        _ => null
+    };
 
     private List<PendingAudit> CapturePendingAudits()
     {

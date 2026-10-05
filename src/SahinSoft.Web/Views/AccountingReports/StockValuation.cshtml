@@ -8,7 +8,7 @@
         <div class="d-flex gap-2 no-print"><button type="button" class="btn-erp-list-new" onclick="window.print()">Yazdır</button></div>
     </div>
     <div class="erp-list-body">
-        <p class="text-secondary small">Maliyet: giriş hareketlerinin ağırlıklı ortalaması (alış faturası net birim fiyatı, iskonto düşülmüş). Satış değeri KDV hariç satış fiyatıyla hesaplanır.</p>
+        <p class="text-secondary small">Maliyet (muhasebe): giriş hareketlerinin ağırlıklı ortalaması — alış faturası iskonto düşülmüş KDV hariç net birim fiyatı. KDV dahil sütunlar bilgi içindir (indirilebilir KDV maliyete girmez). Satış değeri KDV hariç satış fiyatıyla hesaplanır.</p>
         <form method="get" class="erp-filter-bar">
             <div class="erp-field"><label>Depo</label><select name="warehouseId" class="form-select" asp-items="Model.Warehouses"><option value="">Tüm depolar</option></select></div>
             <div class="erp-field"><label>Kategori</label><select name="categoryId" class="form-select" asp-items="Model.Categories"><option value="">Tüm kategoriler</option></select></div>
@@ -24,17 +24,17 @@
         <div class="erp-list-search mb-2" style="max-width: 320px;"><i class="fa-solid fa-magnifying-glass"></i><input type="text" class="form-control" autocomplete="off" placeholder="Stok ara..." data-live-search="#valuationTable"></div>
         <div class="erp-table-wrap">
             <table class="erp-table" id="valuationTable" data-sortable>
-                <thead><tr><th data-sort="text">Stok Kodu</th><th data-sort="text">Stok Adı</th><th data-sort="text">Kategori</th><th class="text-end" data-sort="number">Miktar</th><th class="text-end" data-sort="number">Ort. Maliyet</th><th class="text-end" data-sort="number">Maliyet Değeri</th><th class="text-end" data-sort="number">Satış Fiyatı (KDV hariç)</th><th class="text-end" data-sort="number">Satış Değeri</th></tr></thead>
+                <thead><tr><th data-sort="text">Stok Kodu</th><th data-sort="text">Stok Adı</th><th data-sort="text">Kategori</th><th class="text-end" data-sort="number">Miktar</th><th class="text-end" data-sort="number">Ort. Maliyet (KDV hariç)</th><th class="text-end" data-sort="number">Maliyet Değeri (KDV hariç)</th><th class="text-end" data-sort="number">Ort. Maliyet (KDV dahil)</th><th class="text-end" data-sort="number">Maliyet Değeri (KDV dahil)</th><th class="text-end" data-sort="number">Satış Fiyatı (KDV hariç)</th><th class="text-end" data-sort="number">Satış Değeri</th></tr></thead>
                 <tbody>
                 @foreach (var r in Model.Rows)
                 {
                     <tr><td><span class="erp-code-badge">@r.StockCode</span></td><td>@r.Name</td><td>@r.Category</td>
-                        <td class="text-end">@r.Quantity.ToString("N3")</td><td class="text-end">@r.AverageCost.ToString("N4")</td><td class="text-end fw-semibold">@r.Value.ToString("N2")</td>
+                        <td class="text-end">@r.Quantity.ToString("N3")</td><td class="text-end">@r.AverageCost.ToString("N4")</td><td class="text-end fw-semibold">@r.Value.ToString("N2")</td><td class="text-end">@r.AverageCostInclTax.ToString("N4")</td><td class="text-end">@r.ValueInclTax.ToString("N2")</td>
                         <td class="text-end">@r.SaleNet.ToString("N2")</td><td class="text-end">@r.SaleValue.ToString("N2")</td></tr>
                 }
-                @if (Model.Rows.Count == 0) { <tr data-live-search-empty><td colspan="8" class="text-center text-secondary py-4">Kayıt yok.</td></tr> }
+                @if (Model.Rows.Count == 0) { <tr data-live-search-empty><td colspan="10" class="text-center text-secondary py-4">Kayıt yok.</td></tr> }
                 </tbody>
-                @if (Model.Rows.Count > 0) { <tfoot><tr><td colspan="3" class="text-end fw-bold">Toplam</td><td class="text-end fw-bold">@Model.TotalQuantity.ToString("N3")</td><td></td><td class="text-end fw-bold">@Model.TotalValue.ToString("N2")</td><td></td><td class="text-end fw-bold">@Model.TotalSaleValue.ToString("N2")</td></tr></tfoot> }
+                @if (Model.Rows.Count > 0) { <tfoot><tr><td colspan="3" class="text-end fw-bold">Toplam</td><td class="text-end fw-bold">@Model.TotalQuantity.ToString("N3")</td><td></td><td class="text-end fw-bold">@Model.TotalValue.ToString("N2")</td><td></td><td class="text-end fw-bold">@Model.TotalValueInclTax.ToString("N2")</td><td></td><td class="text-end fw-bold">@Model.TotalSaleValue.ToString("N2")</td></tr></tfoot> }
             </table>
         </div>
     </div>

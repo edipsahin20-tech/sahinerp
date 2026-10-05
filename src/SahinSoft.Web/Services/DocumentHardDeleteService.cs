@@ -167,6 +167,14 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db, PeriodLoc
     private async Task WriteAuditAsync(string entityName, int id, string number, object summary, CancellationToken ct)
     {
         var http = httpContextAccessor.HttpContext;
+        db.DocumentLogs.Add(new DocumentLog
+        {
+            EntityName = entityName, EntityId = id, DocumentNumber = number, Action = "Deleted",
+            UserId = http?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty,
+            UserName = http?.User.Identity?.Name ?? "Sistem",
+            Details = "Evrak ve bağlı tüm hareketleri kalıcı silindi",
+            IpAddress = http?.Connection.RemoteIpAddress?.ToString()
+        });
         db.AuditLogs.Add(new AuditLog
         {
             UserId = http?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty,

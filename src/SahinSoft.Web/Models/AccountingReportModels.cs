@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace SahinSoft.Web.Models;
 
-public sealed record StockValuationRow(string StockCode, string Name, string Category, decimal Quantity, decimal AverageCost, decimal Value, decimal SaleNet, decimal SaleValue);
+public sealed record StockValuationRow(string StockCode, string Name, string Category, decimal Quantity, decimal AverageCost, decimal Value, decimal SaleNet, decimal SaleValue, decimal AverageCostInclTax = 0, decimal ValueInclTax = 0);
 
 public sealed class StockValuationViewModel
 {
@@ -15,6 +15,7 @@ public sealed class StockValuationViewModel
     public decimal TotalQuantity => Rows.Sum(x => x.Quantity);
     public decimal TotalValue => Rows.Sum(x => x.Value);
     public decimal TotalSaleValue => Rows.Sum(x => x.SaleValue);
+    public decimal TotalValueInclTax => Rows.Sum(x => x.ValueInclTax);
 }
 
 public sealed record GrossProfitRow(string StockCode, string Name, decimal Quantity, decimal NetSales, decimal Cost)

@@ -241,6 +241,7 @@
 <div style="@(showSystemGroup ? "" : "display:none")" class="@CollapseClass("Branches", "Warehouses", "TaxRates", "KitchenStations", "FinancialAccounts", "Settings", "Personnel", "Roles", "PriceLists", "UnitsOfMeasure", "NumberSequences")" id="@Id("group-tanimlar")" data-bs-parent="#@Id("sidebar-accordion")">
     <div class="erp-sidebar-subnav">
         <a class="nav-link" asp-controller="Settings" asp-action="Company">Parametreler</a>
+        <a class="nav-link" asp-controller="DocumentLogs" asp-action="Index">Evrak Kayıt Günlüğü</a>
         <a class="nav-link" asp-controller="Personnel" asp-action="Index">Personel Yönetimi</a>
         <a class="nav-link" asp-controller="Roles" asp-action="Index">Yetkiler</a>
         <a class="nav-link" asp-controller="PriceLists" asp-action="Index">Fiyat Tanımları</a>

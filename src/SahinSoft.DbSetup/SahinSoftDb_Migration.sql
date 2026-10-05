@@ -11959,3 +11959,118 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+    CREATE TABLE [DocumentLogs] (
+        [Id] int NOT NULL IDENTITY,
+        [EntityName] nvarchar(50) NOT NULL,
+        [EntityId] int NOT NULL,
+        [DocumentNumber] nvarchar(60) NOT NULL,
+        [Action] nvarchar(30) NOT NULL,
+        [UserId] nvarchar(450) NOT NULL,
+        [UserName] nvarchar(200) NOT NULL,
+        [Details] nvarchar(1000) NULL,
+        [IpAddress] nvarchar(64) NULL,
+        [RecordId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_DocumentLogs] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+    CREATE INDEX [IX_DocumentLogs_CreatedAtUtc] ON [DocumentLogs] ([CreatedAtUtc]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+    CREATE INDEX [IX_DocumentLogs_EntityName_EntityId] ON [DocumentLogs] ([EntityName], [EntityId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_DocumentLogs_RecordId] ON [DocumentLogs] ([RecordId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+
+    INSERT INTO DocumentLogs (RecordId, CreatedAtUtc, EntityName, EntityId, DocumentNumber, Action, UserId, UserName, Details)
+    SELECT NEWID(), d.CreatedAtUtc, N'Invoice', d.Id, ISNULL(d.InvoiceNumber, N''), N'Created', ISNULL(d.CreatedByUserId, N''), ISNULL(u.FullName, N'—'), N'Mevcut kayıttan'
+    FROM Invoices d LEFT JOIN AspNetUsers u ON u.Id = d.CreatedByUserId;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+
+    INSERT INTO DocumentLogs (RecordId, CreatedAtUtc, EntityName, EntityId, DocumentNumber, Action, UserId, UserName, Details)
+    SELECT NEWID(), d.CreatedAtUtc, N'PaymentReceipt', d.Id, ISNULL(d.ReceiptNumber, N''), N'Created', ISNULL(d.CreatedByUserId, N''), ISNULL(u.FullName, N'—'), N'Mevcut kayıttan'
+    FROM PaymentReceipts d LEFT JOIN AspNetUsers u ON u.Id = d.CreatedByUserId;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+
+    INSERT INTO DocumentLogs (RecordId, CreatedAtUtc, EntityName, EntityId, DocumentNumber, Action, UserId, UserName, Details)
+    SELECT NEWID(), d.CreatedAtUtc, N'DispatchNote', d.Id, ISNULL(d.DispatchNumber, N''), N'Created', ISNULL(d.CreatedByUserId, N''), ISNULL(u.FullName, N'—'), N'Mevcut kayıttan'
+    FROM DispatchNotes d LEFT JOIN AspNetUsers u ON u.Id = d.CreatedByUserId;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+
+    INSERT INTO DocumentLogs (RecordId, CreatedAtUtc, EntityName, EntityId, DocumentNumber, Action, UserId, UserName, Details)
+    SELECT NEWID(), d.CreatedAtUtc, N'BusinessOrder', d.Id, ISNULL(d.OrderNumber, N''), N'Created', ISNULL(d.CreatedByUserId, N''), ISNULL(u.FullName, N'—'), N'Mevcut kayıttan'
+    FROM BusinessOrders d LEFT JOIN AspNetUsers u ON u.Id = d.CreatedByUserId;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+
+    INSERT INTO DocumentLogs (RecordId, CreatedAtUtc, EntityName, EntityId, DocumentNumber, Action, UserId, UserName, Details)
+    SELECT NEWID(), d.CreatedAtUtc, N'Expense', d.Id, ISNULL(d.DocumentNumber, N''), N'Created', ISNULL(d.CreatedByUserId, N''), ISNULL(u.FullName, N'—'), N'Mevcut kayıttan'
+    FROM Expenses d LEFT JOIN AspNetUsers u ON u.Id = d.CreatedByUserId;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005224314_AddDocumentLogs'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005224314_AddDocumentLogs', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

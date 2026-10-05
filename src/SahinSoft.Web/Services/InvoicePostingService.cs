@@ -602,8 +602,10 @@ public sealed class InvoicePostingService(
             // tekrar KDV dahile çevrilerek ürünün Alış Fiyatı'na yansıtılır.
             if (invoice.InvoiceType == InvoiceType.Purchase)
             {
+                // Stok kartı alış fiyatı = iskonto düşülmüş net birim fiyat + KDV (KDV dahil net alış fiyatı).
+                var netUnitAfterDiscount = line.Quantity == 0 ? line.UnitPrice : (line.LineTotal - line.TaxAmount) / Math.Abs(line.Quantity);
                 line.Product.PurchasePrice = Math.Round(
-                    line.UnitPrice * (1 + line.TaxRate / 100),
+                    netUnitAfterDiscount * (1 + line.TaxRate / 100),
                     2,
                     MidpointRounding.AwayFromZero);
             }

@@ -5,6 +5,13 @@
     return;
 }
 
+@{
+    var docLogEntity = Model.Controller switch { "Invoices" => "Invoice", "PaymentReceipts" => "PaymentReceipt", "DispatchNotes" => "DispatchNote", "BusinessOrders" => "BusinessOrder", "Expenses" => "Expense", _ => null };
+}
+@if (docLogEntity is not null && Model.Id is int docLogId)
+{
+    <span id="doc-log-anchor" data-entity="@docLogEntity" data-id="@docLogId" hidden></span>
+}
 <div class="erp-evrak-toolbar">
     @if (!Model.HardDelete)
     {

@@ -33,7 +33,8 @@ public sealed class AccountingReportsController(ApplicationDbContext db, Costing
             if (onlyInStock && qty == 0) { continue; }
             var cost = avg.GetValueOrDefault(p.Id);
             var saleNet = Math.Round(p.SalePrice / (1 + p.Rate / 100), 4, MidpointRounding.AwayFromZero);
-            rows.Add(new StockValuationRow(p.StockCode, p.Name, p.Category, qty, cost, Math.Round(qty * cost, 2, MidpointRounding.AwayFromZero), saleNet, Math.Round(qty * saleNet, 2, MidpointRounding.AwayFromZero)));
+            var costIncl = Math.Round(cost * (1 + p.Rate / 100), 4, MidpointRounding.AwayFromZero);
+            rows.Add(new StockValuationRow(p.StockCode, p.Name, p.Category, qty, cost, Math.Round(qty * cost, 2, MidpointRounding.AwayFromZero), saleNet, Math.Round(qty * saleNet, 2, MidpointRounding.AwayFromZero), costIncl, Math.Round(qty * costIncl, 2, MidpointRounding.AwayFromZero)));
         }
 
         return View(new StockValuationViewModel
