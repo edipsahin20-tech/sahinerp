@@ -3,6 +3,33 @@
     ViewData["Title"] = "Cari Hareket Föyü";
 }
 
+
+<style media="print">
+    @@page { size: A4 @(Model.Detailed ? "landscape" : "portrait"); margin: 8mm; }
+    html, body { width: auto !important; background: #fff !important; }
+    .erp-list-panel { box-shadow: none !important; border: 0 !important; border-radius: 0 !important; margin: 0 !important; }
+    .erp-list-header { display: none !important; }
+    .erp-list-body { padding: 0 !important; }
+    .erp-table-wrap { overflow: visible !important; max-height: none !important; box-shadow: none !important; border: 0 !important; }
+    #statementTable { width: 100% !important; min-width: 0 !important; table-layout: auto; }
+    #statementTable th, #statementTable td { padding: 2px 3px !important; vertical-align: top; }
+    #statementTable td:nth-child(1), #statementTable td:nth-child(3) { white-space: nowrap; }
+    #statementTable td.text-end, #statementTable th.text-end { white-space: nowrap; }
+    #statementTable thead { display: table-header-group; }
+    #statementTable tr { page-break-inside: avoid; }
+    .erp-statement-detail { font-size: 7pt !important; }
+    .erp-statement-detail td.text-end { white-space: normal !important; }
+    .erp-code-badge { font-size: 7pt !important; padding: 1px 3px !important; }
+    @(Model.Lines.Any(x => x.RestaurantZNo != null) ? "" : "#statementTable th:nth-child(5), #statementTable td:nth-child(5) { display: none !important; }")
+    #statementTable { font-size: 7.5pt; }
+    .erp-statement-detail td { padding: 1px 4px !important; white-space: normal; }
+    .erp-summary-row { margin-bottom: 6px !important; }
+    .erp-summary-box { padding: 4px 8px !important; }
+    .erp-summary-value { font-size: 11pt !important; }
+    .card { box-shadow: none !important; }
+    *::-webkit-scrollbar { display: none !important; }
+</style>
+
 <div class="print-only mb-3">
     <h2 class="mb-1">Cari Hareket Föyü</h2>
     <div>@Model.CustomerCode &middot; @Model.CustomerName</div>
