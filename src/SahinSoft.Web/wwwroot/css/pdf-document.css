@@ -324,15 +324,18 @@
 }
 
 @media print {
+  /* @page kenar boşluğu 0: tarayıcının yazdırma başlığı/altlığı (tarih, sayfa başlığı, adres) basılmaz.
+     Kenar boşluğu bunun yerine belgenin kendi iç boşluğuyla verilir. */
   @page {
     size: A4;
-    margin: 10mm;
+    margin: 0;
   }
   .pdf-export-scope .pdf-document{
     width: 100% !important;
     min-height: 0 !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    padding: 12mm 12mm !important;
+    box-sizing: border-box !important;
   }
   .pdf-export-scope .pdf-wrapper{
     background: transparent !important;
