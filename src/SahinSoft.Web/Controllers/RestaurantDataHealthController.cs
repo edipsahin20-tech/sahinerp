@@ -337,7 +337,8 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
                     g.Sum(x => x.GrandTotal),
                     g.Where(x => x.AccountingStatus is "Tam" or "Gerekmiyor").Sum(x => x.GrandTotal),
                     meta?.OpenedAtUtc ?? g.Min(x => x.IssuedAtUtc),
-                    meta?.ClosedAtUtc);
+                    meta?.ClosedAtUtc,
+                    meta is null ? null : branchNames.GetValueOrDefault(meta.BranchId));
             })
             .OrderByDescending(x => x.ZPeriodId)
             .ToList();
@@ -360,7 +361,7 @@ public sealed class RestaurantDataHealthController(ApplicationDbContext dbContex
             {
                 ZPeriodId = zSummary.ZPeriodId,
                 ZNo = zSummary.ZNo,
-                BranchName = zPeriodMeta.GetValueOrDefault(zSummary.ZPeriodId) is { } zm ? branchNames.GetValueOrDefault(zm.BranchId) : null,
+                BranchName = zSummary.BranchName,
                 OpenedAtUtc = zSummary.OpenedAtUtc,
                 ClosedAtUtc = zSummary.ClosedAtUtc,
                 LocalCount = zSummary.BranchCount,

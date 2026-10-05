@@ -175,20 +175,21 @@
                 <table class="dh-table">
                     <thead>
                         <tr>
-                            <th>Z No</th><th>Tarih</th><th class="num">Fiş Sayısı</th><th class="num">Yerel Toplam</th>
+                            <th>Z No</th><th>Şube</th><th>Tarih</th><th class="num">Fiş Sayısı</th><th class="num">Yerel Toplam</th>
                             <th>Merkez Toplam</th><th class="num">Muhasebe Toplam</th><th class="num">Fark</th><th>Durum</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Model.ZSummary.Count == 0)
                         {
-                            <tr><td colspan="9" class="dh-empty">Bu tarihte Z kaydı bulunamadı.</td></tr>
+                            <tr><td colspan="10" class="dh-empty">Bu tarihte Z kaydı bulunamadı.</td></tr>
                         }
                         @foreach (var z in Model.ZSummary)
                         {
                             var diff = z.LocalTotal - z.AccountingTotal;
                             <tr class="@(Model.ZDetail?.ZPeriodId == z.ZPeriodId ? "dh-selected" : "")">
                                 <td><a class="dh-link" href="@Url.Action("Index", new { date = dateText, tab = "z", zId = z.ZPeriodId })">@z.ZNo</a></td>
+                                <td><span class="dh-branch">@(z.BranchName ?? "—")</span></td>
                                 <td>@z.OpenedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</td>
                                 <td class="num">@z.BranchCount</td>
                                 <td class="num">@z.LocalTotal.ToString("N2") ₺</td>
@@ -408,6 +409,7 @@
     .dh-sum-item small { color: #64748b; font-size: 14px; }
     .dh-sum-ico { flex: 0 0 38px; height: 38px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
     .dh-sum-ico.ok { background: #22a55b; } .dh-sum-ico.bad { background: #dc2626; } .dh-sum-ico.off { background: #94a3b8; }
+    .dh-branch { background: #e8f0fb; color: #1d4f9c; border-radius: 8px; padding: 3px 10px; font-size: 13px; font-weight: 600; }
     .dh-selected { background: #eaf2ff; }
     .dh-empty { text-align: center; color: #7a8594; padding: 24px 8px; }
     .dh-chip { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }

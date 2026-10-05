@@ -38,7 +38,8 @@ public sealed record RestaurantDataHealthZSummaryRow(
     decimal LocalTotal,
     decimal AccountingTotal,
     DateTime OpenedAtUtc,
-    DateTime? ClosedAtUtc);
+    DateTime? ClosedAtUtc,
+    string? BranchName = null);
 
 // Z Detayı paneli - seçilen Z'nin Yerel/Merkez/Muhasebe karşılaştırması ve bağlı fişler.
 public sealed class RestaurantDataHealthZDetail
