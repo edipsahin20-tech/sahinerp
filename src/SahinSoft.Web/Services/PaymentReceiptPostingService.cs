@@ -8,7 +8,7 @@ using SahinSoft.Web.Models.Api;
 
 namespace SahinSoft.Web.Services;
 
-public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
+public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext, PeriodLockService periodLock)
 {
     public Task ApproveAsync(
         int paymentReceiptId,
@@ -36,6 +36,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             .Include(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == paymentReceiptId, cancellationToken)
             ?? throw new InvalidOperationException("Tahsilat/tediye fişi bulunamadı.");
+        await periodLock.EnsureOpenAsync(receipt.ReceiptDateUtc, cancellationToken);
 
         if (receipt.Status != PaymentReceiptStatus.Draft || receipt.Lines.Count == 0)
         {
@@ -234,6 +235,7 @@ public sealed class PaymentReceiptPostingService(ApplicationDbContext dbContext)
             .Include(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == paymentReceiptId, cancellationToken)
             ?? throw new InvalidOperationException("Tahsilat/tediye fişi bulunamadı.");
+        await periodLock.EnsureOpenAsync(receipt.ReceiptDateUtc, cancellationToken);
 
         if (receipt.Status != PaymentReceiptStatus.Approved)
         {

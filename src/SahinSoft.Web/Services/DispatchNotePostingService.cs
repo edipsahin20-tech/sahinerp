@@ -8,7 +8,8 @@ namespace SahinSoft.Web.Services;
 
 public sealed class DispatchNotePostingService(
     ApplicationDbContext dbContext,
-    InventoryBalanceService inventoryBalance)
+    InventoryBalanceService inventoryBalance,
+    PeriodLockService periodLock)
 {
     public Task ApproveAsync(
         int dispatchNoteId,
@@ -47,6 +48,7 @@ public sealed class DispatchNotePostingService(
             .ThenInclude(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == dispatchNoteId, cancellationToken)
             ?? throw new InvalidOperationException("İrsaliye bulunamadı.");
+        await periodLock.EnsureOpenAsync(dispatch.DispatchDateUtc, cancellationToken);
 
         if (dispatch.Status != BusinessDocumentStatus.Draft)
         {
@@ -191,6 +193,7 @@ public sealed class DispatchNotePostingService(
             .ThenInclude(x => x.Lines)
             .SingleOrDefaultAsync(x => x.Id == dispatchNoteId, cancellationToken)
             ?? throw new InvalidOperationException("İrsaliye bulunamadı.");
+        await periodLock.EnsureOpenAsync(dispatch.DispatchDateUtc, cancellationToken);
 
         if (dispatch.Status != BusinessDocumentStatus.Approved)
         {

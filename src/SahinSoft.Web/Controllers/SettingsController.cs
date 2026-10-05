@@ -28,6 +28,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext, SahinSoft
             BankName = settings.BankName,
             Iban = settings.Iban,
             LogoPath = settings.LogoPath,
+            ClosedPeriodUntil = settings.ClosedPeriodUntil,
             DefaultBranchId = settings.DefaultBranchId,
             DefaultWarehouseId = settings.DefaultWarehouseId,
             BranchOptions = await branchSelection.OptionsAsync(settings.DefaultBranchId),
@@ -47,6 +48,7 @@ public sealed class SettingsController(ApplicationDbContext dbContext, SahinSoft
         }
 
         var settings = await dbContext.CompanySettings.SingleAsync(x => x.Id == 1);
+        settings.ClosedPeriodUntil = model.ClosedPeriodUntil?.Date;
         settings.DefaultBranchId = model.DefaultBranchId;
         settings.DefaultWarehouseId = model.DefaultWarehouseId;
         settings.CompanyName = model.CompanyName.Trim();

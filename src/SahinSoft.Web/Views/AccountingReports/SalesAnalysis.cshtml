@@ -1,0 +1,40 @@
+@model SahinSoft.Web.Models.SalesAnalysisViewModel
+@{
+    ViewData["Title"] = "Satış Analizi";
+}
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-chart-pie"></i> Satış Analizi</h2>
+        <div class="d-flex gap-2 no-print"><button type="button" class="btn-erp-list-new" onclick="window.print()">Yazdır</button></div>
+    </div>
+    <div class="erp-list-body">
+        <p class="text-secondary small">Onaylı satış faturaları, KDV hariç net tutar. En çok satan @(Model.By == "product" ? "ürünler" : "cariler") yukarıda.</p>
+        <form method="get" class="erp-filter-bar">
+            <div class="erp-field"><label>İlk Tarih</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" class="form-control" /></div>
+            <div class="erp-field"><label>Son Tarih</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" class="form-control" /></div>
+            <div class="erp-field"><label>Grupla</label><select name="by" class="form-select"><option value="customer" selected="@(Model.By == "customer")">Cari bazında</option><option value="product" selected="@(Model.By == "product")">Stok bazında</option></select></div>
+            <div class="erp-field"><label>Şube</label><select name="branchId" class="form-select" asp-items="Model.Branches"><option value="">Tüm şubeler</option></select></div>
+            <button class="btn btn-erp-primary">Filtrele</button>
+        </form>
+        <div class="erp-summary-row"><div class="erp-summary-box"><div class="erp-summary-label">Toplam Net Satış</div><div class="erp-summary-value">@Model.TotalNet.ToString("N2") ₺</div></div></div>
+        <div class="erp-table-wrap">
+            <table class="erp-table" data-sortable>
+                <thead><tr><th data-sort="text">Kod</th><th data-sort="text">@(Model.By == "product" ? "Stok Adı" : "Cari Ünvan")</th><th class="text-end" data-sort="number">Fatura Sayısı</th><th class="text-end" data-sort="number">Miktar</th><th class="text-end" data-sort="number">Net Satış</th><th class="text-end" data-sort="number">KDV</th><th class="text-end" data-sort="number">Pay %</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr><td><span class="erp-code-badge">@r.Code</span></td><td>@r.Name</td><td class="text-end">@r.DocumentCount</td><td class="text-end">@r.Quantity.ToString("N3")</td><td class="text-end fw-semibold">@r.NetSales.ToString("N2")</td><td class="text-end">@r.TaxAmount.ToString("N2")</td><td class="text-end">@((Model.TotalNet == 0 ? 0 : Math.Round(r.NetSales / Model.TotalNet * 100, 2)).ToString("N2"))</td></tr>
+                }
+                @if (Model.Rows.Count == 0) { <tr data-live-search-empty><td colspan="7" class="text-center text-secondary py-4">Bu aralıkta satış yok.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<style media="print">
+    @@page { size: A4 landscape; margin: 8mm; }
+    .erp-list-header .no-print, .erp-filter-bar, .erp-list-search { display: none !important; }
+    .erp-table-wrap { overflow: visible !important; }
+    .erp-table { font-size: 8pt; }
+    .erp-table th, .erp-table td { padding: 2px 4px !important; }
+</style>

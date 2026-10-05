@@ -19,6 +19,7 @@ namespace SahinSoft.Web.Controllers;
 public sealed class InvoicesController(
     SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
     SahinSoft.Web.Services.BranchSelectionService branchSelection,
+    SahinSoft.Web.Services.PeriodLockService periodLock,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     InvoicePostingService invoicePostingService,
@@ -152,6 +153,7 @@ public sealed class InvoicesController(
     {
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        if (await periodLock.CheckAsync(form.InvoiceDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.InvoiceDateUtc), periodLockMessage); }
         ModelState.Remove(nameof(form.WarehouseId));
         // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
         if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
@@ -651,13 +653,14 @@ public sealed class InvoicesController(
             SettlementPaymentMethod = invoice.SettlementPaymentMethod,
             SettlementFinancialAccountId = invoice.SettlementFinancialAccountId,
             AmountDiscount = invoice.AmountDiscount,
+            PricesIncludeTax = invoice.Lines.Count > 0 && invoice.Lines.All(x => x.UnitPriceInclTax != null),
             Lines = invoice.Lines
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new InvoiceLineFormViewModel
                 {
                     ProductId = x.ProductId,
                     Quantity = x.Quantity,
-                    UnitPrice = x.UnitPrice,
+                    UnitPrice = x.UnitPriceInclTax ?? x.UnitPrice,
                     ForeignUnitPrice = x.ForeignUnitPrice,
                     DiscountRate = x.DiscountRate,
                     TaxRate = x.TaxRate,
@@ -765,6 +768,7 @@ public sealed class InvoicesController(
 
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        if (await periodLock.CheckAsync(form.InvoiceDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.InvoiceDateUtc), periodLockMessage); }
         ModelState.Remove(nameof(form.WarehouseId));
         // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
         if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
@@ -1277,6 +1281,7 @@ public sealed class InvoicesController(
                 UnitSnapshot = product.Unit,
                 Quantity = line.Quantity,
                 UnitPrice = unitTl,
+                UnitPriceInclTax = source.PricesIncludeTax && !isForeign ? line.UnitPrice : null,
                 ForeignUnitPrice = isForeign ? foreignNet : null,
                 DiscountRate = line.DiscountRate,
                 TaxRate = line.TaxRate,

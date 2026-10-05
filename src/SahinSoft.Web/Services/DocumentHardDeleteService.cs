@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SahinSoft.Domain.Entities;
 using SahinSoft.Domain.Enums;
@@ -10,7 +11,7 @@ namespace SahinSoft.Web.Services;
 // Kaynak belgenin (sipariş/irsaliye) karşılanan miktarı geri alınır; belgeye bağlı BAŞKA bir belge varsa
 // (ör. irsaliyeden kesilmiş fatura) silme reddedilir. Her şey tek transaction'dır, hata olursa hiçbir şey silinmez.
 // Silinen belge numarası sayacı, kalan en büyük numaraya göre GERİ alınır (numara yeniden kullanılır).
-public sealed class DocumentHardDeleteService(ApplicationDbContext db)
+public sealed class DocumentHardDeleteService(ApplicationDbContext db, PeriodLockService periodLock, Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor)
 {
     public sealed record Result(bool Ok, string Message);
 
@@ -21,6 +22,8 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db)
             .Include(x => x.Lines).ThenInclude(l => l.BusinessOrderLine!).ThenInclude(o => o.BusinessOrder).ThenInclude(o => o.Lines)
             .SingleOrDefaultAsync(x => x.Id == id, ct);
         if (invoice is null) { return new Result(false, "Fatura bulunamadı."); }
+        if (await periodLock.CheckAsync(invoice.InvoiceDateUtc, ct) is { } lockMessage) { return new Result(false, lockMessage); }
+        await WriteAuditAsync("Invoice", invoice.Id, invoice.InvoiceNumber, new { invoice.InvoiceType, invoice.Status, invoice.CustomerId, invoice.BranchId, invoice.WarehouseId, invoice.InvoiceDateUtc, invoice.GrandTotal, LineCount = invoice.Lines.Count }, ct);
 
         if (invoice.Status == InvoiceStatus.Approved)
         {
@@ -48,6 +51,8 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db)
     {
         var receipt = await db.PaymentReceipts.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (receipt is null) { return new Result(false, "Makbuz bulunamadı."); }
+        if (await periodLock.CheckAsync(receipt.ReceiptDateUtc, ct) is { } lockMessage) { return new Result(false, lockMessage); }
+        await WriteAuditAsync("PaymentReceipt", receipt.Id, receipt.ReceiptNumber, new { receipt.ReceiptType, receipt.Status, receipt.CustomerId, receipt.OriginBranchId, receipt.ReceiptDateUtc, receipt.TotalAmount }, ct);
 
         var lineIds = await db.PaymentReceiptLines.Where(x => x.PaymentReceiptId == id).Select(x => x.Id).ToListAsync(ct);
         var nums = Numbers(receipt.ReceiptNumber);
@@ -70,6 +75,8 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db)
             .Include(x => x.Lines).ThenInclude(l => l.BusinessOrderLine!).ThenInclude(o => o.BusinessOrder).ThenInclude(o => o.Lines)
             .SingleOrDefaultAsync(x => x.Id == id, ct);
         if (dispatch is null) { return new Result(false, "İrsaliye bulunamadı."); }
+        if (await periodLock.CheckAsync(dispatch.DispatchDateUtc, ct) is { } lockMessage) { return new Result(false, lockMessage); }
+        await WriteAuditAsync("DispatchNote", dispatch.Id, dispatch.DispatchNumber, new { dispatch.DispatchType, dispatch.Status, dispatch.CustomerId, dispatch.BranchId, dispatch.WarehouseId, dispatch.DispatchDateUtc, LineCount = dispatch.Lines.Count }, ct);
 
         var lineIds = dispatch.Lines.Select(x => x.Id).ToList();
         var invoiced = dispatch.InvoiceId is not null
@@ -107,6 +114,8 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db)
     {
         var order = await db.BusinessOrders.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id, ct);
         if (order is null) { return new Result(false, "Sipariş bulunamadı."); }
+        if (await periodLock.CheckAsync(order.OrderDateUtc, ct) is { } lockMessage) { return new Result(false, lockMessage); }
+        await WriteAuditAsync("BusinessOrder", order.Id, order.OrderNumber, new { order.OrderType, order.Status, order.CustomerId, order.BranchId, order.OrderDateUtc, order.GrandTotal, LineCount = order.Lines.Count }, ct);
 
         var lineIds = order.Lines.Select(x => x.Id).ToList();
         if (lineIds.Count > 0)
@@ -152,6 +161,23 @@ public sealed class DocumentHardDeleteService(ApplicationDbContext db)
             d.Status = FulfillmentStatusCalculator.Calculate(d.Lines.Select(x => (x.Quantity, x.InvoicedQuantity)));
             d.UpdatedAtUtc = DateTime.UtcNow;
         }
+    }
+
+    // Kalıcı silme denetim günlüğü: kim, neyi, ne zaman sildi (belge özeti JSON olarak saklanır). Silme geri alınırsa (hata) bu kayıt da geri alınır.
+    private async Task WriteAuditAsync(string entityName, int id, string number, object summary, CancellationToken ct)
+    {
+        var http = httpContextAccessor.HttpContext;
+        db.AuditLogs.Add(new AuditLog
+        {
+            UserId = http?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty,
+            Action = "HardDelete",
+            EntityName = entityName,
+            EntityId = id.ToString(),
+            OldValuesJson = JsonSerializer.Serialize(new { Number = number, Summary = summary }),
+            IpAddress = http?.Connection.RemoteIpAddress?.ToString(),
+            UserAgent = http?.Request.Headers.UserAgent.ToString()
+        });
+        await db.SaveChangesAsync(ct);
     }
 
     private static string[] Numbers(string number) => [number, "DUZ-" + number, "IPTAL-" + number];

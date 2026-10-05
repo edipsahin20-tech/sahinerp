@@ -36,6 +36,10 @@ public sealed class CompanySettingsViewModel
     [Display(Name = "Logo yolu")]
     public string? LogoPath { get; set; }
 
+    [Display(Name = "Kapalı dönem sonu (bu tarihe kadar işlem yapılamaz)")]
+    [DataType(DataType.Date)]
+    public DateTime? ClosedPeriodUntil { get; set; }
+
     [Display(Name = "Varsayılan şube")]
     public int? DefaultBranchId { get; set; }
 

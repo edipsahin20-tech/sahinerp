@@ -13,6 +13,9 @@ public sealed class InvoiceLine : EntityBase
     // Döviz faturasında satırın fatura para birimindeki (ör. USD) KDV hariç birim fiyatı. UnitPrice ise
     // bu × ExchangeRate ile hesaplanan TL'dir; muhasebe/stok her zaman TL üzerinden çalışır.
     public decimal? ForeignUnitPrice { get; set; }
+    // "Fiyatlara KDV Dahil" ile girilen (TL) birim fiyat. Doluysa satır tutarı bu fiyattan hesaplanır: KDV dahil satır toplamı
+    // = miktar × bu fiyat (2 hane), KDV hariç matrah ve KDV bundan türetilir (kuruş sapması olmaz). UnitPrice (KDV hariç) türetilmiş görünümdür.
+    public decimal? UnitPriceInclTax { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }

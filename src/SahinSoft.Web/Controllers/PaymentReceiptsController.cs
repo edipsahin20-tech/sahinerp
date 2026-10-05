@@ -19,6 +19,7 @@ namespace SahinSoft.Web.Controllers;
 public sealed class PaymentReceiptsController(
     SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
     SahinSoft.Web.Services.BranchSelectionService branchSelection,
+    SahinSoft.Web.Services.PeriodLockService periodLock,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     PaymentReceiptPostingService paymentReceiptPostingService,
@@ -120,6 +121,7 @@ public sealed class PaymentReceiptsController(
     public async Task<IActionResult> Create(PaymentReceiptFormViewModel form)
     {
         ValidateLines(form);
+        if (await periodLock.CheckAsync(form.ReceiptDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.ReceiptDateUtc), periodLockMessage); }
 
         int? originBranchId = null;
         if (form.FromRestaurant)
@@ -420,6 +422,7 @@ public sealed class PaymentReceiptsController(
         }
 
         ValidateLines(form);
+        if (await periodLock.CheckAsync(form.ReceiptDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.ReceiptDateUtc), periodLockMessage); }
         if (!ModelState.IsValid)
         {
             await PopulateSelectionsAsync(form);

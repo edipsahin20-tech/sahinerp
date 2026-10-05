@@ -59,6 +59,11 @@
                     <label asp-for="Iban"></label>
                     <input asp-for="Iban" class="form-control" />
                 </div>
+                <div class="erp-field" style="grid-column: span 2;">
+                    <label asp-for="ClosedPeriodUntil"></label>
+                    <input asp-for="ClosedPeriodUntil" type="date" class="form-control" style="max-width: 220px;" />
+                    <div class="form-text">Bu tarihe (dahil) kadar fatura, makbuz ve irsaliye eklenemez, değiştirilemez, onaylanamaz, iptal edilemez ve silinemez. Boş bırakılırsa kilit yoktur. Restoran satışları etkilenmez.</div>
+                </div>
                 <div class="erp-field">
                     <label asp-for="DefaultBranchId"></label>
                     <select asp-for="DefaultBranchId" asp-items="Model.BranchOptions" class="form-select"><option value="">(Kullanıcının şubesi)</option></select>

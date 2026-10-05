@@ -553,6 +553,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<InvoiceLine>(entity =>
         {
             entity.Property(x => x.ForeignUnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.UnitPriceInclTax).HasPrecision(18, 4);
             entity.Property(x => x.ProductCodeSnapshot).HasMaxLength(40).IsRequired();
             entity.Property(x => x.ProductNameSnapshot).HasMaxLength(200).IsRequired();
             entity.Property(x => x.UnitSnapshot).HasMaxLength(20).IsRequired();

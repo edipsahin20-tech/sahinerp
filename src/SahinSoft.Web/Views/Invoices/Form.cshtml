@@ -601,9 +601,50 @@
                 if (!foreign) { document.getElementById('exchange-rate-input').value = '1'; }
             }
 
+            function r2(x) { return Math.round((x + (x >= 0 ? 1 : -1) * 1e-9) * 100) / 100; }
+
+            // KDV dahil (TL) hat: sunucudaki InvoiceTotalsCalculator.CalculateInclusive ile aynı sonuç — satır toplamı = miktar × girilen fiyat (2 hane),
+            // KDV hariç matrah ve KDV bundan türetilir.
+            function recalcInclusive() {
+                var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
+                    var qty = parseTrNumber(row.querySelector('.quantity-input').value);
+                    var price = parseTrNumber(row.querySelector('.price-input').value);
+                    var discRate = parseTrNumber(row.querySelector('.discount-input').value);
+                    var taxRate = parseTrNumber(row.querySelector('.tax-input').value);
+                    var grossIncl = r2(qty * price);
+                    var netIncl = grossIncl - r2(grossIncl * discRate / 100);
+                    var unitNetEl = row.querySelector('.line-unit-net');
+                    if (unitNetEl) { unitNetEl.textContent = formatMoney(price / (1 + taxRate / 100)); }
+                    var unitTlEl = row.querySelector('.line-unit-tl');
+                    if (unitTlEl) { unitTlEl.textContent = formatMoney(price); }
+                    return { row: row, grossIncl: grossIncl, netIncl: netIncl, taxRate: taxRate };
+                });
+                var netInclTotal = rows.reduce(function (s, r) { return s + r.netIncl; }, 0);
+                var amountDiscount = Math.min(Math.max(parseTrNumber(document.getElementById('amount-discount-input').value), 0), Math.max(netInclTotal, 0));
+                var subtotal = 0, discountTotal = 0, grandTotal = 0, allocated = 0, kdvByRate = {};
+                rows.forEach(function (r, idx) {
+                    var share = idx === rows.length - 1 ? r2(amountDiscount - allocated) : r2(netInclTotal > 0 ? amountDiscount * (r.netIncl / netInclTotal) : 0);
+                    allocated += share;
+                    var d = 1 + r.taxRate / 100;
+                    var lineTotal = r.netIncl - share;
+                    var net = r2(lineTotal / d), grossExcl = r2(r.grossIncl / d), tax = lineTotal - net;
+                    r.row.querySelector('.line-gross').textContent = formatMoney(grossExcl);
+                    r.row.querySelector('.line-net').textContent = formatMoney(net);
+                    subtotal += grossExcl; discountTotal += grossExcl - net; grandTotal += lineTotal;
+                    kdvByRate[r.taxRate] = (kdvByRate[r.taxRate] || 0) + tax;
+                });
+                document.getElementById('totals-subtotal').textContent = formatMoney(subtotal);
+                document.getElementById('totals-discount').textContent = formatMoney(discountTotal);
+                document.getElementById('totals-grand').textContent = formatMoney(grandTotal);
+                document.getElementById('totals-kdv-breakdown').innerHTML = Object.keys(kdvByRate).sort(function (a, b) { return a - b; }).map(function (rt) {
+                    return '<div class="erp-totals-row"><span>KDV %' + rt + '</span><span>' + formatMoney(kdvByRate[rt]) + '</span></div>';
+                }).join('');
+            }
+
             function recalcTotals() {
                 var rate = currentRate();
                 var foreign = isForeignCurrency();
+                if (pricesIncludeTax.checked && !foreign) { recalcInclusive(); return; }
                 var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
                     var qty = parseTrNumber(row.querySelector('.quantity-input').value);
                     var price = parseTrNumber(row.querySelector('.price-input').value);

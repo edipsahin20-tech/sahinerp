@@ -16,6 +16,7 @@ namespace SahinSoft.Web.Controllers;
 public sealed class DispatchNotesController(
     SahinSoft.Web.Services.DocumentHardDeleteService hardDeleteService,
     SahinSoft.Web.Services.BranchSelectionService branchSelection,
+    SahinSoft.Web.Services.PeriodLockService periodLock,
     ApplicationDbContext dbContext,
     DocumentNumberGeneratorService documentNumberGenerator,
     DispatchNotePostingService dispatchNotePostingService) : Controller
@@ -76,6 +77,7 @@ public sealed class DispatchNotesController(
     {
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        if (await periodLock.CheckAsync(form.DispatchDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.DispatchDateUtc), periodLockMessage); }
         ModelState.Remove(nameof(form.WarehouseId));
         // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
         if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))
@@ -558,6 +560,7 @@ public sealed class DispatchNotesController(
 
         ValidateLines(form);
         form.BranchId = await branchSelection.ResolveAsync(form.BranchId, User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier));
+        if (await periodLock.CheckAsync(form.DispatchDateUtc) is { } periodLockMessage) { ModelState.AddModelError(nameof(form.DispatchDateUtc), periodLockMessage); }
         ModelState.Remove(nameof(form.WarehouseId));
         // Depo evrakta seçilebilir; seçilmediyse (veya geçersizse) şirket/şube varsayılanı kullanılır.
         if (form.WarehouseId is not int postedWarehouse || !await dbContext.Warehouses.AnyAsync(x => x.Id == postedWarehouse))

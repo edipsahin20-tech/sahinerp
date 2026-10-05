@@ -11,6 +11,8 @@ public sealed class InvoicePostingService(
     ApplicationDbContext dbContext,
     InventoryBalanceService inventoryBalance,
     PaymentReceiptPostingService paymentReceiptPosting,
+    PeriodLockService periodLock,
+    CostingService costing,
     DocumentNumberGeneratorService documentNumberGenerator)
 {
     public Task ApproveAsync(
@@ -56,6 +58,7 @@ public sealed class InvoicePostingService(
             .Include(x => x.PaymentSchedules)
             .SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
             ?? throw new InvalidOperationException("Fatura bulunamadı.");
+        await periodLock.EnsureOpenAsync(invoice.InvoiceDateUtc, cancellationToken);
 
         if (invoice.Status != InvoiceStatus.Draft)
         {
@@ -152,6 +155,7 @@ public sealed class InvoicePostingService(
             .Include(x => x.AccountTransactions)
             .SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
             ?? throw new InvalidOperationException("Fatura bulunamadı.");
+        await periodLock.EnsureOpenAsync(invoice.InvoiceDateUtc, cancellationToken);
 
         if (invoice.Status != InvoiceStatus.Approved)
         {
@@ -336,6 +340,7 @@ public sealed class InvoicePostingService(
             .Include(x => x.AccountTransactions)
             .SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
             ?? throw new InvalidOperationException("Fatura bulunamadı.");
+        await periodLock.EnsureOpenAsync(invoice.InvoiceDateUtc, cancellationToken);
 
         if (invoice.Status != InvoiceStatus.Approved)
         {
@@ -576,7 +581,10 @@ public sealed class InvoicePostingService(
                         ? StockMovementType.Sale
                         : StockMovementType.Purchase,
                     Quantity = signedQuantity,
-                    UnitCost = invoice.InvoiceType == InvoiceType.Purchase ? line.UnitPrice : 0,
+                    // Alışta maliyet = iskonto düşülmüş KDV hariç net birim fiyat; satışta o anki ağırlıklı ortalama maliyet.
+                    UnitCost = invoice.InvoiceType == InvoiceType.Purchase
+                        ? Math.Round((line.LineTotal - line.TaxAmount) / Math.Abs(line.Quantity), 4, MidpointRounding.AwayFromZero)
+                        : await costing.GetAverageCostAsync(line.ProductId.Value, cancellationToken),
                     DocumentNumber = invoice.InvoiceNumber,
                     ProductId = line.ProductId.Value,
                     ProductVariantId = line.ProductVariantId,

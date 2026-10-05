@@ -206,6 +206,8 @@ builder.Services.AddScoped<DocumentNumberGeneratorService>();
 builder.Services.AddScoped<InvoicePostingService>();
 builder.Services.AddScoped<SahinSoft.Web.Services.DocumentHardDeleteService>();
 builder.Services.AddScoped<SahinSoft.Web.Services.BranchSelectionService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.PeriodLockService>();
+builder.Services.AddScoped<SahinSoft.Web.Services.CostingService>();
 builder.Services.AddScoped<StockSlipPostingService>();
 builder.Services.AddScoped<InventoryCountPostingService>();
 builder.Services.AddScoped<InventoryBalanceService>();

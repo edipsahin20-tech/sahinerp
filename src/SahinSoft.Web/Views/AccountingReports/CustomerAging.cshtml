@@ -1,0 +1,53 @@
+@model SahinSoft.Web.Models.CustomerAgingViewModel
+@{
+    ViewData["Title"] = "Cari Yaşlandırma";
+}
+<div class="erp-list-panel">
+    <div class="erp-list-header">
+        <h2><i class="fa-solid fa-hourglass-half"></i> Cari Yaşlandırma</h2>
+        <div class="d-flex gap-2 no-print"><button type="button" class="btn-erp-list-new" onclick="window.print()">Yazdır</button></div>
+    </div>
+    <div class="erp-list-body">
+        <p class="text-secondary small">Açık kalemler FIFO ile eşleştirilir (ödeme/tahsilat en eski kalemi kapatır). Gün sayısı vade tarihine (yoksa belge tarihine) göre hesaplanır.</p>
+        <form method="get" class="erp-filter-bar"><div class="erp-field"><label>Rapor Tarihi</label><input type="date" name="asOf" value="@Model.AsOf.ToString("yyyy-MM-dd")" class="form-control" /></div><button class="btn btn-erp-primary">Göster</button></form>
+        <h5 class="mt-3" style="color:#1f8a4c;">Alacaklarımız (müşteriler bize borçlu)</h5>
+        <div class="erp-table-wrap">
+            <table class="erp-table" data-sortable>
+                <thead><tr><th data-sort="text">Cari Kodu</th><th data-sort="text">Cari Ünvan</th><th class="text-end" data-sort="number">Vadesi Gelmemiş</th><th class="text-end" data-sort="number">1-30 Gün</th><th class="text-end" data-sort="number">31-60 Gün</th><th class="text-end" data-sort="number">61-90 Gün</th><th class="text-end" data-sort="number">90+ Gün</th><th class="text-end" data-sort="number">Toplam</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Receivables)
+                {
+                    <tr><td><span class="erp-code-badge">@r.Code</span></td><td>@r.Name</td>
+                        <td class="text-end">@r.NotDue.ToString("N2")</td><td class="text-end">@r.D1To30.ToString("N2")</td><td class="text-end">@r.D31To60.ToString("N2")</td><td class="text-end">@r.D61To90.ToString("N2")</td>
+                        <td class="text-end" style="@(r.D90Plus > 0 ? "color:#c62828;font-weight:700;" : "")">@r.D90Plus.ToString("N2")</td><td class="text-end fw-semibold">@r.Total.ToString("N2")</td></tr>
+                }
+                @if (Model.Receivables.Count == 0) { <tr data-live-search-empty><td colspan="8" class="text-center text-secondary py-3">Kayıt yok.</td></tr> }
+                </tbody>
+                @if (Model.Receivables.Count > 0) { <tfoot><tr><td colspan="2" class="text-end fw-bold">Toplam</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.NotDue).ToString("N2")</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.D1To30).ToString("N2")</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.D31To60).ToString("N2")</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.D61To90).ToString("N2")</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.D90Plus).ToString("N2")</td><td class="text-end fw-bold">@Model.Receivables.Sum(x => x.Total).ToString("N2")</td></tr></tfoot> }
+            </table>
+        </div>
+        <h5 class="mt-3" style="color:#c62828;">Borçlarımız (biz tedarikçilere borçluyuz)</h5>
+        <div class="erp-table-wrap">
+            <table class="erp-table" data-sortable>
+                <thead><tr><th data-sort="text">Cari Kodu</th><th data-sort="text">Cari Ünvan</th><th class="text-end" data-sort="number">Vadesi Gelmemiş</th><th class="text-end" data-sort="number">1-30 Gün</th><th class="text-end" data-sort="number">31-60 Gün</th><th class="text-end" data-sort="number">61-90 Gün</th><th class="text-end" data-sort="number">90+ Gün</th><th class="text-end" data-sort="number">Toplam</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Payables)
+                {
+                    <tr><td><span class="erp-code-badge">@r.Code</span></td><td>@r.Name</td>
+                        <td class="text-end">@r.NotDue.ToString("N2")</td><td class="text-end">@r.D1To30.ToString("N2")</td><td class="text-end">@r.D31To60.ToString("N2")</td><td class="text-end">@r.D61To90.ToString("N2")</td>
+                        <td class="text-end" style="@(r.D90Plus > 0 ? "color:#c62828;font-weight:700;" : "")">@r.D90Plus.ToString("N2")</td><td class="text-end fw-semibold">@r.Total.ToString("N2")</td></tr>
+                }
+                @if (Model.Payables.Count == 0) { <tr data-live-search-empty><td colspan="8" class="text-center text-secondary py-3">Kayıt yok.</td></tr> }
+                </tbody>
+                @if (Model.Payables.Count > 0) { <tfoot><tr><td colspan="2" class="text-end fw-bold">Toplam</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.NotDue).ToString("N2")</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.D1To30).ToString("N2")</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.D31To60).ToString("N2")</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.D61To90).ToString("N2")</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.D90Plus).ToString("N2")</td><td class="text-end fw-bold">@Model.Payables.Sum(x => x.Total).ToString("N2")</td></tr></tfoot> }
+            </table>
+        </div>
+    </div>
+</div>
+<style media="print">
+    @@page { size: A4 landscape; margin: 8mm; }
+    .erp-list-header .no-print, .erp-filter-bar, .erp-list-search { display: none !important; }
+    .erp-table-wrap { overflow: visible !important; }
+    .erp-table { font-size: 8pt; }
+    .erp-table th, .erp-table td { padding: 2px 4px !important; }
+</style>

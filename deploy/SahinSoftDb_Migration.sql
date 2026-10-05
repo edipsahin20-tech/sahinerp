@@ -11920,3 +11920,42 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005222406_AddPeriodLockAndInclTaxPrice'
+)
+BEGIN
+    ALTER TABLE [InvoiceLines] ADD [UnitPriceInclTax] decimal(18,4) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005222406_AddPeriodLockAndInclTaxPrice'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD [ClosedPeriodUntil] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005222406_AddPeriodLockAndInclTaxPrice'
+)
+BEGIN
+    EXEC(N'UPDATE [CompanySettings] SET [ClosedPeriodUntil] = NULL
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005222406_AddPeriodLockAndInclTaxPrice'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005222406_AddPeriodLockAndInclTaxPrice', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

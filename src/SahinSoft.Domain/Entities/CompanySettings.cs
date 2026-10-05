@@ -17,6 +17,9 @@ public sealed class CompanySettings : EntityBase
 
     // Muhasebe evrak ekranlarında (fatura, irsaliye, sipariş, makbuz) varsayılan gelen şube/depo; evrakta değiştirilebilir.
     // Restoran/POS bunlardan etkilenmez.
+    // Kapalı dönem: bu tarihe (dahil) kadar fatura/makbuz/irsaliye eklenemez, değiştirilemez, onaylanamaz, iptal/silinemez. Boş = kilit yok.
+    public DateTime? ClosedPeriodUntil { get; set; }
+
     public int? DefaultBranchId { get; set; }
     public int? DefaultWarehouseId { get; set; }
 }
