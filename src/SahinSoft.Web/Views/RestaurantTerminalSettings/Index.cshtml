@@ -1,91 +1,12 @@
 @model SahinSoft.Web.Models.RestaurantTerminalSettingsViewModel
 @using SahinSoft.Domain.Enums
 @{
-    Layout = null;
-    ViewData["Title"] = "Terminal Ayarları";
+    Layout = "_RestaurantShellLayout";
+    ViewData["Title"] = "Terminal ve Kasa Ayarları";
 }
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Terminal Ayarları — ŞahinSoft Restoran</title>
-    <style>
-        :root {
-            --ts-navy: #0B1524;
-            --ts-navy2: #0F2033;
-            --ts-gold: #E2A400;
-            --ts-gold-light: #F2B813;
-            --ts-bg: #F4F7FB;
-            --ts-surface: #FFFFFF;
-            --ts-border: #E3E8EF;
-            --ts-text: #132238;
-            --ts-text-2: #6F7F92;
-            --ts-danger: #D94A4A;
-            --ts-ok: #1F9D55;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: Inter, "Segoe UI", system-ui, sans-serif; background: var(--ts-bg); color: var(--ts-text); }
-        .ts-topbar { background: linear-gradient(90deg, var(--ts-navy), var(--ts-navy2)); color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-        .ts-topbar h1 { font-size: 17px; margin: 0; }
-        .ts-topbar .sub { font-size: 12px; color: #9FB0C4; margin-top: 2px; }
-        .ts-back { color: var(--ts-gold-light); text-decoration: none; font-weight: 700; font-size: 13px; border: 1px solid rgba(226,164,0,.4); padding: 8px 14px; border-radius: 10px; }
-        .ts-back:hover { background: rgba(226,164,0,.1); }
-        .ts-body { max-width: 900px; margin: 0 auto; padding: 24px; }
-        .ts-flash { border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 13.5px; font-weight: 600; }
-        .ts-flash.ok { background: #E8F6EE; color: var(--ts-ok); }
-        .ts-flash.err { background: #FDEDF0; color: var(--ts-danger); }
-        .ts-card { background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 16px; padding: 20px 22px; margin-bottom: 20px; box-shadow: 0 6px 18px rgba(15,35,55,.05); }
-        .ts-card h2 { font-size: 15px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
-        .ts-card .ts-card-sub { font-size: 12.5px; color: var(--ts-text-2); margin: 0 0 16px; }
-        .ts-field { margin-bottom: 12px; }
-        .ts-field label { display: block; font-size: 12px; font-weight: 700; color: var(--ts-text-2); margin-bottom: 4px; }
-        .ts-field input, .ts-field select { width: 100%; padding: 10px 12px; border: 1px solid var(--ts-border); border-radius: 9px; font-size: 13.5px; font-family: inherit; }
-        .ts-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .ts-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        .ts-btn { padding: 10px 18px; border: 0; border-radius: 10px; background: linear-gradient(90deg,#f0cf73,#e9bd46); font-weight: 800; cursor: pointer; font-size: 13.5px; }
-        .ts-btn.outline { background: #fff; border: 1px solid var(--ts-border); color: var(--ts-text); }
-        .ts-btn.danger { background: #FDEDF0; color: var(--ts-danger); }
-        .ts-register-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ts-border); font-size: 13px; }
-        .ts-register-row:last-child { border-bottom: none; }
-        .ts-register-head { font-weight: 800; color: var(--ts-text-2); font-size: 11px; text-transform: uppercase; }
-        .ts-empty { color: var(--ts-text-2); font-size: 13px; padding: 10px 0; }
-        .ts-branch-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .ts-branch-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ts-border); background: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-        .ts-branch-tab.active { background: var(--ts-navy); color: #fff; border-color: var(--ts-navy); }
-        .ts-branch-panel { display: none; }
-        .ts-branch-panel.active { display: block; }
-        .ts-step { margin-bottom: 20px; }
-        .ts-step-title { font-size: 12px; font-weight: 800; color: var(--ts-gold); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 6px; }
-        .ts-chip { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #EEF3FA; color: #1d4f9c; font-size: 12px; font-weight: 700; margin-left: 6px; }
-        .ts-chip.shared { background: #FFF6DB; color: #8a6400; }
-        .ts-current { font-size: 12.5px; color: var(--ts-text-2); margin-bottom: 12px; }
-        .ts-hidden { display: none !important; }
-        .ts-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-        .ts-tab { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--ts-border); background: #fff; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--ts-text); }
-        .ts-tab.active { background: var(--ts-navy); color: #fff; border-color: var(--ts-navy); }
-        .ts-tab-panel { display: none; }
-        .ts-tab-panel.active { display: block; }
-        @@media (max-width: 760px) { .ts-tabs { grid-template-columns: 1fr 1fr; } .ts-grid2, .ts-grid3 { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-    <div class="ts-topbar">
-        <div>
-            <h1>⚙ Terminal Ayarları</h1>
-            <div class="sub">Şube, kasa ve yazar kasa ayarları — bu terminale özel</div>
-        </div>
-        <a class="ts-back" href="@Url.Action("Login", "RestaurantAuth")">← Giriş Ekranına Dön</a>
-    </div>
-    <div class="ts-body">
-        @if (TempData["Success"] is string ok)
-        {
-            <div class="ts-flash ok">✓ @ok</div>
-        }
-        @if (TempData["Error"] is string err)
-        {
-            <div class="ts-flash err">⚠ @err</div>
-        }
+<div class="ts-body">
+    <h1 class="ts-title">Terminal ve Kasa Ayarları</h1>
+    <p class="ts-sub">Bu terminalin şubesini ve ödeme hesaplarını düzenleyin.</p>
 
         @if (Model.Branches.Count == 0)
         {
@@ -93,25 +14,18 @@
         }
 
         <div class="ts-tabs" role="tablist">
-            <button type="button" class="ts-tab active" data-tab="terminal">🏢 Terminal ve Şube</button>
-            <button type="button" class="ts-tab" data-tab="kasa">🖨 Kasa Tanımları</button>
-            <button type="button" class="ts-tab" data-tab="hesaplar">💳 Hesaplar</button>
-            <button type="button" class="ts-tab" data-tab="yazarkasa">🧾 Yazar Kasa</button>
+            <button type="button" class="ts-tab active" data-tab="terminal"><i class="fa-regular fa-building"></i> Terminal ve Şube</button>
+            <button type="button" class="ts-tab" data-tab="kasa"><i class="fa-solid fa-cash-register"></i> Kasa Tanımları</button>
+            <button type="button" class="ts-tab" data-tab="hesaplar"><i class="fa-regular fa-credit-card"></i> Hesaplar</button>
+            <button type="button" class="ts-tab" data-tab="yazarkasa"><i class="fa-solid fa-print"></i> Yazar Kasa</button>
         </div>
 
         <div class="ts-tab-panel active" data-tab-panel="terminal">
-        <!-- 1 · Terminal şubesi ve kasası -->
+        <div class="ts-cols">
+        <div class="ts-col">
         <div class="ts-card">
-            <div class="ts-step-title">1 · Bu terminal hangi şubede çalışacak?</div>
-            <h2>🖥 Terminal Şubesi ve Kasası</h2>
-            <p class="ts-card-sub">Bu tarayıcının çalıştığı şube ve çalışan kasa. Üst çubukta bu seçim görünür.</p>
-            <div class="ts-current">
-                Şu an: <b>@(Model.TerminalBranchId is { } tbid ? Model.Branches.FirstOrDefault(x => x.Id == tbid)?.Name ?? "—" : "Seçilmedi")</b>
-                @if (Model.TerminalRegisterId is { } trid)
-                {
-                    <span class="ts-chip">Kasa: @(Model.CashRegisters.FirstOrDefault(x => x.Id == trid)?.Name)</span>
-                }
-            </div>
+            <h2><span class="ts-ico"><i class="fa-regular fa-building"></i></span> Bu terminalin çalışma ayarları</h2>
+            <p class="ts-card-sub">Seçim bu tarayıcı için kaydedilir. Üst çubukta bu seçim görünür.</p>
             <form method="post" asp-action="SetTerminal" id="terminal-form">
                 @Html.AntiForgeryToken()
                 <div class="ts-grid2">
@@ -126,35 +40,81 @@
                         </select>
                     </div>
                     <div class="ts-field">
-                        <label>Çalışan kasa (bu şubenin kasaları)</label>
+                        <label>Çalışan kasa</label>
                         <select name="registerId" id="term-register">
                             <option value="">— Kasa seçilmedi —</option>
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="ts-btn">Terminali Kaydet</button>
+                <button type="submit" class="ts-btn gold"><i class="fa-regular fa-floppy-disk"></i> Terminali Kaydet</button>
             </form>
         </div>
 
-        <!-- 2 · Seçili şubenin bilgileri -->
-        <div class="ts-card" id="branch-info-card">
-            <div class="ts-step-title">2 · Seçili şubenin bilgileri</div>
-            <h2>📍 Şube Bilgileri</h2>
-            <p class="ts-card-sub">Yukarıda seçili şubenin ad, adres ve telefon bilgileri.</p>
+        <div class="ts-card ts-info" id="branch-info-card">
+            <h2><span class="ts-ico round"><i class="fa-solid fa-circle-info"></i></span> Seçili şube</h2>
             @for (var i = 0; i < Model.Branches.Count; i++)
             {
                 var b = Model.Branches[i];
                 <form method="post" asp-action="SaveBranch" class="ts-branch-panel" data-branch-panel="@b.Id">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@b.Id" />
+                    <div class="ts-branch-name"><span class="ts-code">@b.Code</span> <span>@b.Name</span></div>
                     <div class="ts-grid2">
-                        <div class="ts-field"><label>Şube Adı</label><input name="name" value="@b.Name" required /></div>
-                        <div class="ts-field"><label>Telefon</label><input name="phone" value="@b.Phone" /></div>
+                        <div class="ts-field"><label><i class="fa-solid fa-location-dot"></i> Şube Adı</label><input name="name" value="@b.Name" required /></div>
+                        <div class="ts-field"><label><i class="fa-solid fa-phone"></i> Telefon</label><input name="phone" value="@b.Phone" placeholder="Telefon tanımlanmamış" /></div>
                     </div>
-                    <div class="ts-field"><label>Adres</label><input name="address" value="@b.Address" /></div>
-                    <button type="submit" class="ts-btn">Şube Bilgilerini Kaydet</button>
+                    <div class="ts-field"><label><i class="fa-solid fa-location-dot"></i> Adres</label><input name="address" value="@b.Address" placeholder="Şube adresi tanımlanmamış" /></div>
+                    <button type="submit" class="ts-btn outline">Şube Bilgilerini Kaydet</button>
                 </form>
             }
+        </div>
+        </div>
+
+        <div class="ts-col">
+        <div class="ts-card" id="map-card">
+            <div class="ts-card-head">
+                <h2><span class="ts-ico"><i class="fa-solid fa-cash-register"></i></span> <span id="map-title">Hesap eşleştirmeleri</span></h2>
+                <span class="ts-badge ok" id="map-active">Aktif</span>
+            </div>
+            <div id="map-rows"></div>
+            <button type="button" class="ts-btn outline wide" id="map-edit-btn"><i class="fa-solid fa-pen"></i> Kasayı Düzenle</button>
+        </div>
+
+        <div class="ts-card">
+            <div class="ts-card-head">
+                <h2><span class="ts-ico"><i class="fa-solid fa-print"></i></span> Yazar kasa bağlantısı</h2>
+                <span class="ts-badge @(Model.FiscalDeviceType == FiscalDeviceType.None ? "off" : "ok")">@(Model.FiscalDeviceType == FiscalDeviceType.None ? "Kapalı" : "Açık")</span>
+            </div>
+            <div class="ts-field ts-inline"><label>Cihaz</label><input readonly value="@(Model.FiscalDeviceType == FiscalDeviceType.None ? "Tanımlı değil" : "İnpos M530")" /></div>
+            <button type="button" class="ts-btn outline wide" data-goto-tab="yazarkasa"><i class="fa-solid fa-gear"></i> Yazar Kasa Ayarları</button>
+        </div>
+        </div>
+        </div>
+
+        <div class="ts-card">
+            <h2><span class="ts-ico"><i class="fa-solid fa-cash-register"></i></span> Kayıtlı kasalar</h2>
+            <div class="ts-empty ts-hidden" id="reg-empty-note-2">Bu şubede henüz kasa tanımı yok.</div>
+            @foreach (var r in Model.CashRegisters)
+            {
+                <div class="ts-reg-line reg-row" data-register-branch="@r.BranchId"
+                     data-reg-id="@r.Id" data-reg-branch="@r.BranchId" data-reg-name="@r.Name"
+                     data-reg-cash="@r.CashFinancialAccountId" data-reg-credit="@r.CreditCardFinancialAccountId"
+                     data-reg-meal="@r.MealCardFinancialAccountId">
+                    <span class="ts-reg-ico"><i class="fa-solid fa-cash-register"></i></span>
+                    <b class="ts-reg-name">@r.Name</b>
+                    <span class="ts-reg-branch">@r.Branch.Name</span>
+                    <span class="ts-badge @(r.IsActive ? "ok" : "off")">@(r.IsActive ? "Aktif" : "Pasif")</span>
+                    <span class="ts-reg-actions">
+                        <button type="button" class="ts-btn soft reg-edit-btn"><i class="fa-solid fa-pen"></i> Düzenle</button>
+                        <form method="post" asp-action="DeactivateCashRegister" onsubmit="return confirm('Bu kasa pasif yapılsın mı?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="ts-btn danger"><i class="fa-solid fa-pause"></i> Pasif Yap</button>
+                        </form>
+                    </span>
+                </div>
+            }
+            <div class="ts-reg-new"><button type="button" class="ts-btn gold" id="reg-new-btn"><i class="fa-solid fa-plus"></i> Yeni Kasa</button></div>
         </div>
 
         </div>
@@ -162,8 +122,7 @@
         <div class="ts-tab-panel" data-tab-panel="kasa">
         <!-- 3 · Kasa tanımı -->
         <div class="ts-card">
-            <div class="ts-step-title">3 · Kasa tanımla</div>
-            <h2>🧾 Kasa Tanımları</h2>
+            <h2><span class="ts-ico"><i class="fa-solid fa-cash-register"></i></span> Kasa Tanımları</h2>
             <p class="ts-card-sub">Kasanın adını yazın. Şube, yukarıda seçili şubedir; kasa ve hesap seçenekleri yalnızca o şubenin hesaplarıdır (ortak hesaplar her şubede görünür).</p>
             <div class="ts-register-row ts-register-head" id="reg-list-head">
                 <span>Kasa</span><span>Şube</span><span>Nakit Hesabı</span><span>Kredi Kartı Hesabı</span><span></span>
@@ -224,7 +183,7 @@
                         <select name="mealCardFinancialAccountId" id="reg-meal-select"></select>
                     </div>
                 </div>
-                <button type="submit" class="ts-btn">Kasayı Kaydet</button>
+                <button type="submit" class="ts-btn gold">Kasayı Kaydet</button>
                 <button type="button" class="ts-btn outline" id="reg-cancel-edit-btn" style="display:none;">Vazgeç / Yeni Ekle</button>
             </form>
         </div>
@@ -234,8 +193,7 @@
         <div class="ts-tab-panel" data-tab-panel="hesaplar">
         <!-- 4 · Seçili şubenin hesapları -->
         <div class="ts-card">
-            <div class="ts-step-title">4 · Şubenin kayıtlı hesapları</div>
-            <h2>🏦 Kasa ve Banka Hesapları</h2>
+            <h2><span class="ts-ico"><i class="fa-regular fa-credit-card"></i></span> Kasa ve Banka Hesapları</h2>
             <p class="ts-card-sub">Seçili şubenin hesapları ve ortak hesaplar. Yeni hesap tanımı Ayarlar › Finans Hesapları ekranından yapılır.</p>
             <div id="account-list"></div>
         </div>
@@ -245,7 +203,7 @@
         <div class="ts-tab-panel" data-tab-panel="yazarkasa">
         <!-- 5 · Yazar kasa -->
         <div class="ts-card">
-            <h2>🖨 Yazar Kasa Ayarları</h2>
+            <h2><span class="ts-ico"><i class="fa-solid fa-print"></i></span> Yazar Kasa Ayarları</h2>
             <p class="ts-card-sub">Fiskal cihaz (yazar kasa) bağlantısı — kapalıyken satışlar cihaza hiç gönderilmez.</p>
             <form method="post" asp-action="SaveFiscal">
                 @Html.AntiForgeryToken()
@@ -264,14 +222,14 @@
                         <input name="fiscalAgentUrl" id="fiscal-url-input" value="@Model.FiscalAgentUrl" placeholder="http://localhost:9200" @(Model.FiscalDeviceType == FiscalDeviceType.None ? "disabled" : "") />
                     </div>
                 </div>
-                <button type="submit" class="ts-btn">Yazar Kasa Ayarlarını Kaydet</button>
+                <button type="submit" class="ts-btn gold">Yazar Kasa Ayarlarını Kaydet</button>
             </form>
         </div>
 
         </div>
     </div>
     <script type="application/json" id="accounts-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FinancialAccounts.Select(a => new { id = a.Id, name = a.Name, branchId = a.BranchId, shared = a.IsShared })))</script>
-    <script type="application/json" id="registers-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CashRegisters.Select(r => new { id = r.Id, name = r.Name, branchId = r.BranchId, cash = r.CashFinancialAccountId, credit = r.CreditCardFinancialAccountId, meal = r.MealCardFinancialAccountId })))</script>
+    <script type="application/json" id="registers-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CashRegisters.Select(r => new { id = r.Id, active = r.IsActive, name = r.Name, branchId = r.BranchId, cash = r.CashFinancialAccountId, credit = r.CreditCardFinancialAccountId, meal = r.MealCardFinancialAccountId })))</script>
     <script type="application/json" id="branches-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Branches.Select(b => new { id = b.Id, name = b.Name })))</script>
     <script>
         (function () {
@@ -335,6 +293,8 @@
                     row.classList.toggle('ts-hidden', String(row.getAttribute('data-register-branch')) !== String(branchId));
                 });
                 document.getElementById('reg-empty-note').classList.toggle('ts-hidden', regs.length > 0);
+                document.getElementById('reg-empty-note-2').classList.toggle('ts-hidden', regs.length > 0);
+                renderMap(branchId, keepRegisterId);
                 document.getElementById('reg-list-head').classList.toggle('ts-hidden', regs.length === 0);
 
                 // Şube bilgisi formu
@@ -362,6 +322,56 @@
             }
 
             termBranch.addEventListener('change', function () { renderBranch(termBranch.value, ''); });
+            termRegister.addEventListener('change', function () { renderMap(termBranch.value, termRegister.value); });
+
+            function accountName(id) {
+                var a = accounts.find(function (x) { return String(x.id) === String(id); });
+                return a ? a : null;
+            }
+
+            // Sağ üst kart: seçili (yoksa şubenin ilk) kasanın nakit / kredi kartı / yemek kartı hesap eşleştirmeleri.
+            var mapRegisterId = null;
+            function renderMap(branchId, preferredRegisterId) {
+                var regs = registers.filter(function (r) { return String(r.branchId) === String(branchId); });
+                var reg = regs.find(function (r) { return String(r.id) === String(preferredRegisterId); }) || regs[0];
+                var rows = document.getElementById('map-rows');
+                mapRegisterId = reg ? reg.id : null;
+                document.getElementById('map-title').textContent = reg ? reg.name + ' • Hesap eşleştirmeleri' : 'Hesap eşleştirmeleri';
+                var badge = document.getElementById('map-active');
+                badge.textContent = reg && reg.active ? 'Aktif' : 'Pasif';
+                badge.className = 'ts-badge ' + (reg && reg.active ? 'ok' : 'off');
+                document.getElementById('map-edit-btn').style.display = reg ? '' : 'none';
+                rows.innerHTML = '';
+                if (!reg) { rows.innerHTML = '<div class="ts-empty">Bu şubede kasa tanımı yok.</div>'; return; }
+                [['Nakit', 'fa-money-bill-wave', 'cash', reg.cash], ['Kredi kartı', 'fa-credit-card', 'credit', reg.credit], ['Yemek kartı', 'fa-utensils', 'meal', reg.meal]].forEach(function (m) {
+                    var acc = accountName(m[3]);
+                    var d = document.createElement('div');
+                    d.className = 'ts-map-row';
+                    d.innerHTML = '<span class="ts-map-ico ' + m[2] + '"><i class="fa-solid ' + m[1] + '"></i></span><span class="ts-map-label">' + m[0] + '</span>' +
+                        '<span class="ts-map-acc">' + (acc ? acc.name.replace(/</g, '&lt;') : (m[2] === 'meal' ? 'Kredi kartı hesabı kullanılır' : '—')) + '</span>' +
+                        (acc ? '<span class="ts-chip' + (acc.shared ? ' shared' : '') + '">' + (acc.shared ? 'Ortak' : branchName(acc.branchId)) + '</span>' : '');
+                    rows.appendChild(d);
+                });
+            }
+
+            function activateTab(key) {
+                document.querySelectorAll('.ts-tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-tab') === key); });
+                document.querySelectorAll('[data-tab-panel]').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-tab-panel') === key); });
+            }
+            document.querySelectorAll('[data-goto-tab]').forEach(function (b) {
+                b.addEventListener('click', function () { activateTab(b.getAttribute('data-goto-tab')); });
+            });
+            document.getElementById('map-edit-btn').addEventListener('click', function () {
+                if (mapRegisterId === null) return;
+                var row = document.querySelector('.reg-edit-btn');
+                var target = document.querySelector('[data-reg-id="' + mapRegisterId + '"] .reg-edit-btn');
+                if (target) target.click();
+            });
+            document.getElementById('reg-new-btn').addEventListener('click', function () {
+                activateTab('kasa');
+                if (regCancel) regCancel.click();
+                regForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
 
             // Düzenle: satırdaki değerleri forma taşır
             document.querySelectorAll('.reg-edit-btn').forEach(function (btn) {
@@ -376,6 +386,7 @@
                     regMeal.value = row.getAttribute('data-reg-meal') || '';
                     regTitle.textContent = 'Kasayı Düzenle';
                     regCancel.style.display = '';
+                    activateTab('kasa');
                     regForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 });
             });
@@ -394,11 +405,7 @@
             renderBranch(initialBranch, currentTerminalRegister || '');
 
             document.querySelectorAll('.ts-tab').forEach(function (tab) {
-                tab.addEventListener('click', function () {
-                    var key = tab.getAttribute('data-tab');
-                    document.querySelectorAll('.ts-tab').forEach(function (t) { t.classList.toggle('active', t === tab); });
-                    document.querySelectorAll('[data-tab-panel]').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-tab-panel') === key); });
-                });
+                tab.addEventListener('click', function () { activateTab(tab.getAttribute('data-tab')); });
             });
 
             var fiscalSelect = document.getElementById('fiscal-device-select');
@@ -408,5 +415,67 @@
             }
         })();
     </script>
-</body>
-</html>
+
+<style>
+    .ts-body { max-width: 1180px; padding-bottom: 28px; color: #0f1f3a; }
+    .ts-title { font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+    .ts-sub { margin: 4px 0 18px; font-size: 17px; color: #475569; }
+    .ts-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+    .ts-tab { display: flex; align-items: center; justify-content: center; gap: 12px; height: 56px; border-radius: 12px; border: 1px solid #e3e9f2; background: #fff; font-weight: 600; font-size: 16px; cursor: pointer; color: #0f1f3a; box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+    .ts-tab i { font-size: 20px; }
+    .ts-tab.active { background: #12305a; color: #fff; border-color: #12305a; box-shadow: 0 4px 10px rgba(18,48,90,.3); }
+    .ts-tab-panel { display: none; }
+    .ts-tab-panel.active { display: block; }
+    .ts-cols { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; margin-bottom: 18px; align-items: start; }
+    .ts-col { display: flex; flex-direction: column; gap: 18px; }
+    .ts-card { background: #fff; border: 1px solid #e6ecf4; border-radius: 12px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(16,24,40,.06); margin-bottom: 0; }
+    .ts-tab-panel > .ts-card { margin-bottom: 18px; }
+    .ts-card h2 { font-size: 19px; font-weight: 700; margin: 0 0 4px; display: flex; align-items: center; gap: 12px; }
+    .ts-card-sub { font-size: 15px; color: #64748b; margin: 0 0 16px 50px; }
+    .ts-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .ts-card-head h2 { margin: 0; }
+    .ts-ico { width: 38px; height: 38px; border-radius: 10px; background: #e8f0fb; color: #1d4f9c; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; flex: 0 0 38px; }
+    .ts-ico.round { border-radius: 50%; background: #dbeafe; color: #2563eb; width: 32px; height: 32px; flex-basis: 32px; font-size: 18px; }
+    .ts-field { margin-bottom: 12px; }
+    .ts-field label { display: block; font-size: 16px; font-weight: 500; color: #1e293b; margin-bottom: 6px; }
+    .ts-field label i { color: #2563eb; margin-right: 6px; }
+    .ts-field input, .ts-field select { width: 100%; height: 48px; padding: 0 14px; border: 1px solid #d8e0ec; border-radius: 10px; font-size: 16px; font-family: inherit; background: #fff; color: #0f1f3a; }
+    .ts-field input[readonly], .ts-field input:disabled { background: #f1f4f9; color: #64748b; }
+    .ts-inline { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 12px; }
+    .ts-inline label { margin: 0; }
+    .ts-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ts-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .ts-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 22px; height: 46px; border: 1px solid transparent; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 16px; background: #fff; color: #0f1f3a; }
+    .ts-btn.gold { background: #eab53b; color: #0f1f3a; box-shadow: 0 2px 6px rgba(234,181,59,.4); }
+    .ts-btn.outline { background: #fff; border-color: #12305a; color: #12305a; }
+    .ts-btn.outline.wide { width: 100%; margin-top: 12px; }
+    .ts-btn.soft { background: #eef2f8; border-color: #d8e0ec; height: 44px; }
+    .ts-btn.danger { background: #fde4e4; color: #c53030; height: 44px; }
+    .ts-badge { padding: 4px 14px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+    .ts-badge.ok { background: #dcfce7; color: #166534; }
+    .ts-badge.ok::before { content: "● "; font-size: 11px; }
+    .ts-badge.off { background: #e5e7eb; color: #475569; }
+    .ts-badge.off::before { content: "● "; font-size: 11px; }
+    .ts-info { background: #eef5ff; border-color: #dbe7fb; }
+    .ts-branch-name { display: flex; align-items: center; gap: 14px; font-size: 24px; font-weight: 800; margin: 8px 0 14px; }
+    .ts-code { background: #dbeafe; color: #1d4ed8; font-size: 14px; font-weight: 700; padding: 4px 12px; border-radius: 8px; }
+    .ts-map-row { display: grid; grid-template-columns: 46px 100px 1fr auto; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 16px; }
+    .ts-map-ico { width: 46px; height: 46px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
+    .ts-map-ico.cash { background: #dcfce7; color: #16a34a; } .ts-map-ico.credit { background: #dbeafe; color: #2563eb; } .ts-map-ico.meal { background: #ffedd5; color: #ea580c; }
+    .ts-map-acc { border: 1px solid #d8e0ec; border-radius: 10px; padding: 12px 14px; background: #fff; }
+    .ts-chip { display: inline-block; padding: 4px 12px; border-radius: 8px; background: #e8f0fb; color: #1d4f9c; font-size: 14px; font-weight: 600; }
+    .ts-chip.shared { background: #fdeccb; color: #8a5a00; }
+    .ts-reg-line { display: grid; grid-template-columns: 52px 160px 1fr auto auto; align-items: center; gap: 16px; padding: 12px 0; border-top: 1px solid #edf1f7; margin-top: 12px; }
+    .ts-reg-ico { width: 46px; height: 46px; border-radius: 10px; background: #eef2f8; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
+    .ts-reg-name { font-size: 19px; } .ts-reg-branch { color: #475569; font-size: 16px; }
+    .ts-reg-actions { display: flex; gap: 10px; }
+    .ts-reg-new { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .ts-register-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf1f7; font-size: 15px; }
+    .ts-register-row:last-child { border-bottom: none; }
+    .ts-register-head { font-weight: 700; color: #475569; font-size: 13px; text-transform: uppercase; }
+    .ts-register-row .ts-btn { height: 38px; font-size: 14px; padding: 0 14px; }
+    .ts-empty { color: #64748b; font-size: 15px; padding: 10px 0; }
+    .ts-hidden { display: none !important; }
+    .ts-branch-panel .ts-btn { height: 42px; }
+    @@media (max-width: 1100px) { .ts-cols { grid-template-columns: 1fr; } .ts-tabs { grid-template-columns: 1fr 1fr; } .ts-grid2, .ts-grid3 { grid-template-columns: 1fr; } .ts-reg-line { grid-template-columns: 52px 1fr auto; } .ts-reg-actions { grid-column: 1 / -1; } }
+</style>

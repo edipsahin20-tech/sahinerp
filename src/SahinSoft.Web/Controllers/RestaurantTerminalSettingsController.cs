@@ -25,10 +25,13 @@ namespace SahinSoft.Web.Controllers;
 // merkez senkronu) bu kaldırmayla birlikte ŞU AN HİÇBİR YERDEN AYARLANAMIYOR - Edip'e açıkça
 // soruldu, bilerek bu şekilde onayladı.
 [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.RestaurantManager}")]
-public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext) : Controller
+public sealed class RestaurantTerminalSettingsController(ApplicationDbContext dbContext, SahinSoft.Web.Services.RestaurantShellService shellService) : RestaurantControllerBase(dbContext, shellService)
 {
+    private readonly ApplicationDbContext dbContext = dbContext;
+
     public async Task<IActionResult> Index()
     {
+        ActivePage = "settings";
         var settings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1);
         var vm = new RestaurantTerminalSettingsViewModel
         {
