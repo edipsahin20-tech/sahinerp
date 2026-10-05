@@ -64,6 +64,10 @@
                     <input asp-for="ClosedPeriodUntil" type="date" class="form-control" style="max-width: 220px;" />
                     <div class="form-text">Bu tarihe (dahil) kadar fatura, makbuz ve irsaliye eklenemez, değiştirilemez, onaylanamaz, iptal edilemez ve silinemez. Boş bırakılırsa kilit yoktur. Restoran satışları etkilenmez.</div>
                 </div>
+                <div class="erp-field" style="grid-column: span 2;">
+                    <div class="form-check form-switch"><input asp-for="MikroCompatibleAmounts" class="form-check-input" /><label asp-for="MikroCompatibleAmounts" class="form-check-label"></label></div>
+                    <div class="form-text">Yalnızca Mikro ile çalışan kurulumlarda açın. Yeni faturalar Mikro'nun hesap kuralıyla hesaplanır (satır tutarı 2 hane yuvarlanır; KDV ve iskonto yuvarlanmaz; toplam bunların toplamının yuvarlaması) — ekrandaki tutar Mikro'daki tutarla aynı olur. Mevcut faturaların hesabı değişmez.</div>
+                </div>
                 <div class="erp-field">
                     <label asp-for="DefaultBranchId"></label>
                     <select asp-for="DefaultBranchId" asp-items="Model.BranchOptions" class="form-select"><option value="">(Kullanıcının şubesi)</option></select>

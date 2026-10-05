@@ -37,6 +37,9 @@ public sealed class Invoice : EntityBase
     public bool IsReturn { get; set; }
     public string? SalespersonUserId { get; set; }
     public bool IsClosedInvoice { get; set; }
+
+    // Fatura oluşturulurken Mikro uyumlu hesap açıksa true (sonradan ayar değişse bile bu faturanın hesabı değişmez).
+    public bool MikroAmounts { get; set; }
     public PaymentMethod? SettlementPaymentMethod { get; set; }
     public int? SettlementFinancialAccountId { get; set; }
     public FinancialAccount? SettlementFinancialAccount { get; set; }

@@ -819,6 +819,7 @@ public sealed class QuotesController(
             ?? throw new InvalidOperationException(SahinSoft.Web.Services.BranchSelectionService.NoWarehouseMessage);
         var invoice = new Invoice
         {
+            MikroAmounts = await branchSelection.MikroAmountsAsync(),
             InvoiceType = InvoiceType.Sales,
             Status = InvoiceStatus.Draft,
             InvoiceNumber = await documentNumberGenerator.GenerateAsync("SALES_INVOICE"),

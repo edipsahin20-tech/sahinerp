@@ -7,6 +7,7 @@
 }
 
 <form id="evrak-form" method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input type="hidden" id="mikro-amounts" value="@(Model.MikroAmounts ? "true" : "false")" />
     <input asp-for="Id" type="hidden" />
     <input asp-for="SubmissionKey" type="hidden" />
     <input asp-for="InvoiceType" type="hidden" />
@@ -641,9 +642,44 @@
                 }).join('');
             }
 
+            // Mikro uyumlu hesap: sunucudaki InvoiceTotalsCalculator.CalculateMikro ile aynı kural (satır tutarı 2 hane yuvarlanır; KDV/iskonto yuvarlanmaz; toplam yuvarlanmamışların toplamı).
+            function recalcMikro() {
+                var incl = pricesIncludeTax.checked;
+                var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
+                    var qty = parseTrNumber(row.querySelector('.quantity-input').value);
+                    var price = parseTrNumber(row.querySelector('.price-input').value);
+                    var discRate = parseTrNumber(row.querySelector('.discount-input').value);
+                    var taxRate = parseTrNumber(row.querySelector('.tax-input').value);
+                    var netUnit = incl ? price / (1 + taxRate / 100) : price;
+                    var tutar = r2(qty * netUnit);
+                    var unitNetEl = row.querySelector('.line-unit-net'); if (unitNetEl) { unitNetEl.textContent = formatMoney(netUnit); }
+                    var unitTlEl = row.querySelector('.line-unit-tl'); if (unitTlEl) { unitTlEl.textContent = formatMoney(price); }
+                    var disc = tutar * discRate / 100;
+                    return { row: row, tutar: tutar, disc: disc, net0: tutar - disc, taxRate: taxRate };
+                });
+                var netTotal = rows.reduce(function (s, r) { return s + r.net0; }, 0);
+                var amountDiscount = Math.min(Math.max(parseTrNumber(document.getElementById('amount-discount-input').value), 0), Math.max(netTotal, 0));
+                var subtotal = 0, discountTotal = 0, taxTotal = 0, grandTotal = 0, kdvByRate = {};
+                rows.forEach(function (r) {
+                    var share = netTotal > 0 ? amountDiscount * (r.net0 / netTotal) : 0;
+                    var net = r.net0 - share, kdv = net * r.taxRate / 100;
+                    r.row.querySelector('.line-gross').textContent = formatMoney(r.tutar);
+                    r.row.querySelector('.line-net').textContent = formatMoney(net + kdv);
+                    subtotal += r.tutar; discountTotal += r.disc + share; taxTotal += kdv; grandTotal += net + kdv;
+                    kdvByRate[r.taxRate] = (kdvByRate[r.taxRate] || 0) + kdv;
+                });
+                document.getElementById('totals-subtotal').textContent = formatMoney(r2(subtotal));
+                document.getElementById('totals-discount').textContent = formatMoney(r2(discountTotal));
+                document.getElementById('totals-grand').textContent = formatMoney(r2(grandTotal));
+                document.getElementById('totals-kdv-breakdown').innerHTML = Object.keys(kdvByRate).sort(function (a, b) { return a - b; }).map(function (rt) {
+                    return '<div class="erp-totals-row"><span>KDV %' + rt + '</span><span>' + formatMoney(r2(kdvByRate[rt])) + '</span></div>';
+                }).join('');
+            }
+
             function recalcTotals() {
                 var rate = currentRate();
                 var foreign = isForeignCurrency();
+                if (!foreign && document.getElementById('mikro-amounts').value === 'true') { recalcMikro(); return; }
                 if (pricesIncludeTax.checked && !foreign) { recalcInclusive(); return; }
                 var rows = Array.from(linesBody.querySelectorAll('.line-row')).map(function (row) {
                     var qty = parseTrNumber(row.querySelector('.quantity-input').value);

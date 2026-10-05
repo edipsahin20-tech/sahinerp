@@ -40,6 +40,9 @@ public sealed class CompanySettingsViewModel
     [DataType(DataType.Date)]
     public DateTime? ClosedPeriodUntil { get; set; }
 
+    [Display(Name = "Mikro uyumlu tutar hesabı")]
+    public bool MikroCompatibleAmounts { get; set; }
+
     [Display(Name = "Varsayılan şube")]
     public int? DefaultBranchId { get; set; }
 

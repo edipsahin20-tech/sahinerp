@@ -71,6 +71,9 @@ public sealed class InvoiceFormViewModel
     [Display(Name = "Fiyatlara KDV Dahil")]
     public bool PricesIncludeTax { get; set; }
 
+    // Ekranda önizleme Mikro uyumlu hesapla yapılır (sunucudan gelir, formdan gönderilmez).
+    public bool MikroAmounts { get; set; }
+
     [StringLength(100)]
     [Display(Name = "Ödeme Şekli")]
     public string? PaymentTerm { get; set; }

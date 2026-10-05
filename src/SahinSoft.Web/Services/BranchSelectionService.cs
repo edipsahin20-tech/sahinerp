@@ -66,6 +66,9 @@ public sealed class BranchSelectionService(ApplicationDbContext db)
         return all.Select(x => new SelectListItem(x.Text, x.Id.ToString(), x.Id == selected)).ToList();
     }
 
+    public async Task<bool> MikroAmountsAsync() =>
+        await db.CompanySettings.AsNoTracking().Where(x => x.Id == 1).Select(x => x.MikroCompatibleAmounts).SingleOrDefaultAsync();
+
     public const string NoWarehouseMessage = "Seçilen şubeye bağlı aktif bir depo yok. Önce Stok > Depolar'dan bu şubeye bir depo tanımlayın.";
 
     // Gönderilen şube geçerliyse onu, değilse varsayılanı döner.

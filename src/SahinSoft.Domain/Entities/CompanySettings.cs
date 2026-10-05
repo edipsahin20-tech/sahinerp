@@ -20,6 +20,9 @@ public sealed class CompanySettings : EntityBase
     // Kapalı dönem: bu tarihe (dahil) kadar fatura/makbuz/irsaliye eklenemez, değiştirilemez, onaylanamaz, iptal/silinemez. Boş = kilit yok.
     public DateTime? ClosedPeriodUntil { get; set; }
 
+    // Mikro ile çalışan kurulumlarda faturalar Mikro'nun hesap kuralıyla hesaplanır (ekrandaki tutar Mikro'daki tutarla aynı olsun diye).
+    public bool MikroCompatibleAmounts { get; set; }
+
     public int? DefaultBranchId { get; set; }
     public int? DefaultWarehouseId { get; set; }
 }

@@ -12074,3 +12074,42 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005231051_AddMikroAmounts'
+)
+BEGIN
+    ALTER TABLE [Invoices] ADD [MikroAmounts] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005231051_AddMikroAmounts'
+)
+BEGIN
+    ALTER TABLE [CompanySettings] ADD [MikroCompatibleAmounts] bit NOT NULL DEFAULT CAST(0 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005231051_AddMikroAmounts'
+)
+BEGIN
+    EXEC(N'UPDATE [CompanySettings] SET [MikroCompatibleAmounts] = CAST(0 AS bit)
+    WHERE [Id] = 1;
+    SELECT @@ROWCOUNT');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261005231051_AddMikroAmounts'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261005231051_AddMikroAmounts', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

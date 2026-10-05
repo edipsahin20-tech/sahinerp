@@ -132,6 +132,7 @@ public sealed class InvoicesController(
             InvoiceType = type,
             DocumentSeries = peek.Prefix,
             DocumentSequence = peek.NextNumber.ToString($"D{peek.Padding}"),
+            MikroAmounts = await branchSelection.MikroAmountsAsync(),
             Lines = [new InvoiceLineFormViewModel()]
         };
         await PopulateSelectionsAsync(model);
@@ -218,6 +219,7 @@ public sealed class InvoicesController(
 
                         var newInvoice = new Invoice
                         {
+                            MikroAmounts = await branchSelection.MikroAmountsAsync(),
                             InvoiceType = form.InvoiceType,
                             Status = InvoiceStatus.Draft,
                             InvoiceNumber = invoiceNumber,
@@ -420,6 +422,7 @@ public sealed class InvoicesController(
 
                     var newInvoice = new Invoice
                     {
+                        MikroAmounts = await branchSelection.MikroAmountsAsync(),
                         InvoiceType = form.InvoiceType,
                         Status = InvoiceStatus.Draft,
                         InvoiceNumber = await documentNumberGenerator.GenerateWithinTransactionAsync(sequenceKey),
@@ -654,6 +657,7 @@ public sealed class InvoicesController(
             SettlementFinancialAccountId = invoice.SettlementFinancialAccountId,
             AmountDiscount = invoice.AmountDiscount,
             PricesIncludeTax = invoice.Lines.Count > 0 && invoice.Lines.All(x => x.UnitPriceInclTax != null),
+            MikroAmounts = invoice.MikroAmounts,
             Lines = invoice.Lines
                 .OrderBy(x => x.LineNumber)
                 .Select(x => new InvoiceLineFormViewModel
@@ -1399,6 +1403,7 @@ public sealed class InvoicesController(
 
     private async Task PopulateSelectionsAsync(InvoiceFormViewModel model)
     {
+        if (model.Id == 0) { model.MikroAmounts = await branchSelection.MikroAmountsAsync(); }
         model.BranchId ??= await branchSelection.DefaultBranchIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
         model.BranchOptions = await branchSelection.OptionsAsync(model.BranchId);
         model.WarehouseId ??= await branchSelection.DefaultWarehouseIdAsync(model.BranchId);

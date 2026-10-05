@@ -10,6 +10,12 @@ public static class InvoiceTotalsCalculator
 {
     public static void Calculate(Invoice invoice)
     {
+        if (invoice.MikroAmounts && invoice.Lines.Count > 0)
+        {
+            CalculateMikro(invoice);
+            return;
+        }
+
         // "Fiyatlara KDV Dahil" ile girilmiş (TL) faturalar KDV DAHİL hesaplanır: satır toplamı = miktar × girilen fiyat (2 hane);
         // KDV hariç matrah ve KDV bundan türetilir, böylece ekranda girilen = faturadaki = cari tutarı birebir aynı olur.
         if (invoice.Lines.Count > 0 && invoice.Lines.All(x => x.UnitPriceInclTax is not null))
@@ -64,6 +70,45 @@ public static class InvoiceTotalsCalculator
         invoice.DiscountTotal = RoundMoney(discountTotal);
         invoice.TaxTotal = RoundMoney(taxTotal);
         invoice.GrandTotal = RoundMoney(grandTotal);
+    }
+
+    // Mikro uyumlu hesap (Mikro'daki test faturalarından çıkarılan kural):
+    //  - KDV dahil fiyat girildiyse KDV hariç birim fiyat = dahil fiyat / (1 + oran) (yuvarlanmaz)
+    //  - satır tutarı (brüt) = miktar × KDV hariç birim fiyat, 2 hane yuvarlanır (0,5 yukarı)
+    //  - satır iskontosu = tutar × oran / 100 (yuvarlanmaz); genel tutar iskontosu satırlara net paya göre dağıtılır (yuvarlanmaz)
+    //  - KDV = (tutar − iskonto) × KDV oranı / 100 (yuvarlanmaz); satır toplamı = net + KDV (yuvarlanmaz)
+    //  - fatura toplamları yuvarlanmamış satır toplamlarının TOPLAMININ 2 haneye yuvarlanmışıdır (Mikro'daki gibi, ekranda aynı rakam)
+    private static void CalculateMikro(Invoice invoice)
+    {
+        var lines = invoice.Lines.OrderBy(x => x.LineNumber).ToList();
+        var calc = lines.Select(line =>
+        {
+            var netUnit = line.UnitPriceInclTax is decimal incl ? incl / (1 + line.TaxRate / 100) : line.UnitPrice;
+            var tutar = RoundMoney(line.Quantity * netUnit);
+            var lineDisc = tutar * line.DiscountRate / 100;
+            return (line, tutar, lineDisc, net: tutar - lineDisc);
+        }).ToList();
+
+        var netTotal = calc.Sum(x => x.net);
+        var amountDiscount = Math.Clamp(invoice.AmountDiscount, 0, Math.Max(netTotal, 0));
+
+        decimal subtotal = 0, discount = 0, tax = 0, grand = 0;
+        foreach (var (line, tutar, lineDisc, net0) in calc)
+        {
+            var share = netTotal > 0 ? amountDiscount * (net0 / netTotal) : 0;
+            var net = net0 - share;
+            var kdv = net * line.TaxRate / 100;
+            line.DiscountAmount = RoundMoney(lineDisc + share);
+            line.TaxAmount = RoundMoney(kdv);
+            line.LineTotal = RoundMoney(net + kdv);
+            subtotal += tutar; discount += lineDisc + share; tax += kdv; grand += net + kdv;
+        }
+
+        invoice.AmountDiscount = amountDiscount;
+        invoice.Subtotal = RoundMoney(subtotal);
+        invoice.DiscountTotal = RoundMoney(discount);
+        invoice.TaxTotal = RoundMoney(tax);
+        invoice.GrandTotal = RoundMoney(grand);
     }
 
     // KDV dahil hat: tüm indirimler KDV dahil tutar üzerinden uygulanır (genel tutar iskontosu da KDV dahil girilir).
