@@ -62,11 +62,16 @@
                 </div>
                 <div class="erp-field">
                     <label asp-for="CurrencyCode"></label>
-                    <input asp-for="CurrencyCode" class="form-control" />
+                    <select asp-for="CurrencyCode" id="order-currency" class="form-select">
+                        <option value="TRY">TRY - Türk Lirası</option>
+                        <option value="USD">USD - ABD Doları</option>
+                        <option value="EUR">EUR - Euro</option>
+                    </select>
                 </div>
                 <div class="erp-field">
                     <label asp-for="ExchangeRate"></label>
-                    <input asp-for="ExchangeRate" class="form-control" />
+                    <input asp-for="ExchangeRate" id="order-rate" class="form-control" />
+                    <span asp-validation-for="ExchangeRate" class="text-danger small"></span>
                 </div>
                 <div class="erp-field" style="grid-column: 1 / -1;">
                     <label asp-for="Notes"></label>
@@ -88,7 +93,7 @@
                         <tr>
                             <th style="min-width: 220px;">Ürün</th>
                             <th style="width: 100px;">Miktar</th>
-                            <th style="width: 110px;">Birim Fiyat</th>
+                            <th style="width: 130px;"><span id="order-price-header">Birim Fiyat</span></th>
                             <th style="width: 90px;">İsk. %</th>
                             <th style="width: 90px;">KDV %</th>
                             <th style="width: 40px;"></th>
@@ -163,6 +168,21 @@
             var nextIndex = @Model.Lines.Count;
             var isSales = @Json.Serialize(isSales);
 
+            var currencySel = document.getElementById('order-currency');
+            var rateInput = document.getElementById('order-rate');
+            function isForeign() { return currencySel.value !== 'TRY'; }
+            function rate() { return parseFloat(String(rateInput.value).replace(',', '.')) || 0; }
+            function syncOrderCurrency() {
+                var foreign = isForeign();
+                rateInput.disabled = !foreign;
+                if (!foreign) { rateInput.value = '1'; }
+                document.getElementById('order-price-header').textContent = foreign ? 'Birim Fiyat (' + currencySel.value + ')' : 'Birim Fiyat (TL)';
+            }
+            currencySel.addEventListener('change', syncOrderCurrency);
+            syncOrderCurrency();
+            // Devre dışı alan form gönderiminde kaybolmasın
+            document.querySelector('form').addEventListener('submit', function () { rateInput.disabled = false; });
+
             addButton.addEventListener('click', function () {
                 var html = template.innerHTML.split('__index__').join(nextIndex);
                 var wrapper = document.createElement('tbody');
@@ -186,7 +206,9 @@
                     return;
                 }
                 var item = event.detail.item;
-                row.querySelector('.price-input').value = isSales ? item.unitPrice : item.purchaseUnitPrice;
+                var tlPrice = isSales ? item.unitPrice : item.purchaseUnitPrice;
+                // Döviz siparişinde satır fiyatı sipariş para biriminde girilir: katalogdaki TL fiyat kurla bölünür.
+                row.querySelector('.price-input').value = (isForeign() && rate() > 0) ? (Math.round((tlPrice / rate()) * 100) / 100) : tlPrice;
                 row.querySelector('.tax-input').value = item.taxRate;
             });
         })();

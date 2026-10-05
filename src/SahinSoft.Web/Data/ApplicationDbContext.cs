@@ -1069,6 +1069,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.Quantity).HasPrecision(18, 3);
             entity.Property(x => x.FulfilledQuantity).HasPrecision(18, 3);
             entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
+            entity.Property(x => x.ForeignUnitPrice).HasPrecision(18, 4);
             entity.Property(x => x.DiscountRate).HasPrecision(5, 2);
             entity.Property(x => x.TaxRate).HasPrecision(5, 2);
             entity.Property(x => x.LineTotal).HasPrecision(18, 2);

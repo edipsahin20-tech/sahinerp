@@ -755,7 +755,17 @@
                             }
                             row.querySelector('.quantity-input').value = line.remainingQuantity;
                             var sourcePrice = line.unitPrice;
-                            if (isForeignCurrency() && currentRate() > 0) { sourcePrice = Math.round((sourcePrice / currentRate()) * 10000) / 10000; }
+                            // Döviz siparişten gelen irsaliyede fatura para birimi/kur siparişten alınır; satırın döviz fiyatı aynen taşınır.
+                            var curSel = document.getElementById('currency-select');
+                            if (dispatch.orderCurrency && dispatch.orderCurrency !== 'TRY' && line.foreignUnitPrice != null) {
+                                if (curSel && curSel.value !== dispatch.orderCurrency && Array.from(curSel.options).some(function (o) { return o.value === dispatch.orderCurrency; })) {
+                                    curSel.value = dispatch.orderCurrency;
+                                    var rateEl = document.getElementById('exchange-rate-input');
+                                    if (rateEl) { rateEl.value = dispatch.orderExchangeRate; }
+                                    syncCurrencyUi();
+                                }
+                                sourcePrice = (isForeignCurrency() && curSel.value === dispatch.orderCurrency) ? line.foreignUnitPrice : sourcePrice;
+                            } else if (isForeignCurrency() && currentRate() > 0) { sourcePrice = Math.round((sourcePrice / currentRate()) * 10000) / 10000; }
                             row.querySelector('.price-input').value = sourcePrice;
                             row.querySelector('.discount-input').value = line.discountRate;
                             row.querySelector('.tax-input').value = line.taxRate;

@@ -181,7 +181,7 @@ public sealed class BusinessOrdersController(
                 {
                     ProductId = x.ProductId,
                     Quantity = x.Quantity,
-                    UnitPrice = x.UnitPrice,
+                    UnitPrice = x.ForeignUnitPrice ?? x.UnitPrice,
                     DiscountRate = x.DiscountRate,
                     TaxRate = x.TaxRate
                 })
@@ -315,6 +315,7 @@ public sealed class BusinessOrdersController(
                     Quantity = x.Quantity,
                     FulfilledQuantity = x.FulfilledQuantity,
                     UnitPrice = x.UnitPrice,
+                    ForeignUnitPrice = x.ForeignUnitPrice,
                     LineTotal = x.LineTotal
                 })
                 .ToList()
@@ -409,6 +410,12 @@ public sealed class BusinessOrdersController(
             }
         }
 
+        form.CurrencyCode = string.IsNullOrWhiteSpace(form.CurrencyCode) ? "TRY" : form.CurrencyCode.Trim().ToUpperInvariant();
+        if (form.CurrencyCode != "TRY" && form.ExchangeRate <= 0)
+        {
+            ModelState.AddModelError(nameof(form.ExchangeRate), "Döviz siparişi için geçerli bir kur giriniz.");
+        }
+
         form.Lines = form.Lines.Where(x => x.ProductId is not null).ToList();
         if (form.Lines.Count == 0)
         {
@@ -424,7 +431,7 @@ public sealed class BusinessOrdersController(
             ? DateTime.SpecifyKind(source.RequestedDeliveryDateUtc.Value, DateTimeKind.Utc)
             : null;
         target.CurrencyCode = source.CurrencyCode.Trim().ToUpperInvariant();
-        target.ExchangeRate = source.ExchangeRate;
+        target.ExchangeRate = target.CurrencyCode == "TRY" ? 1 : source.ExchangeRate;
         target.Notes = source.Notes?.Trim();
     }
 
@@ -441,7 +448,13 @@ public sealed class BusinessOrdersController(
                 continue;
             }
 
-            var gross = RoundMoney(line.Quantity * line.UnitPrice);
+            // Döviz siparişinde satıra girilen fiyat sipariş para birimindedir (ör. USD); TL birim fiyat = döviz × kur
+            // (faturadaki ile aynı model). Toplamlar ve stok/muhasebe hep TL üzerinden çalışır.
+            var isForeign = target.CurrencyCode != "TRY";
+            decimal? foreignPrice = isForeign ? line.UnitPrice : null;
+            var unitPriceTl = isForeign ? RoundMoney(line.UnitPrice * target.ExchangeRate) : line.UnitPrice;
+
+            var gross = RoundMoney(line.Quantity * unitPriceTl);
             var discountAmount = RoundMoney(gross * line.DiscountRate / 100);
             var net = gross - discountAmount;
             var taxAmount = RoundMoney(net * line.TaxRate / 100);
@@ -454,7 +467,8 @@ public sealed class BusinessOrdersController(
                 ProductNameSnapshot = product.Name,
                 UnitSnapshot = product.Unit,
                 Quantity = line.Quantity,
-                UnitPrice = line.UnitPrice,
+                UnitPrice = unitPriceTl,
+                ForeignUnitPrice = foreignPrice,
                 DiscountRate = line.DiscountRate,
                 TaxRate = line.TaxRate,
                 LineTotal = net + taxAmount

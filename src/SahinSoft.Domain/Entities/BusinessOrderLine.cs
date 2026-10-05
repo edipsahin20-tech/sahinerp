@@ -11,6 +11,9 @@ public sealed class BusinessOrderLine : EntityBase
     public decimal Quantity { get; set; }
     public decimal FulfilledQuantity { get; set; }
     public decimal UnitPrice { get; set; }
+    // Döviz siparişinde satırın sipariş para birimindeki (ör. USD) KDV hariç birim fiyatı; UnitPrice bu × kur olarak TL'dir
+    // (InvoiceLine/QuoteLine.ForeignUnitPrice ile aynı model).
+    public decimal? ForeignUnitPrice { get; set; }
     public decimal DiscountRate { get; set; }
     public decimal TaxRate { get; set; }
     public decimal LineTotal { get; set; }

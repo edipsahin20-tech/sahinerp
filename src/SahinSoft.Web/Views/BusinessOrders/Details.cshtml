@@ -82,7 +82,7 @@
                         <td class="text-end">@line.Quantity.ToString("N3")</td>
                         <td class="text-end">@line.FulfilledQuantity.ToString("N3")</td>
                         <td class="text-end">@line.RemainingQuantity.ToString("N3")</td>
-                        <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                        <td class="text-end">@line.UnitPrice.ToString("N2") ₺@(line.ForeignUnitPrice is decimal fp ? Html.Raw($"<div class=\"text-secondary small\">({fp:N2} {Model.CurrencyCode})</div>") : null)</td>
                         <td class="text-end">@line.LineTotal.ToString("N2")</td>
                     </tr>
                 }

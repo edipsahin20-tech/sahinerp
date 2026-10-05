@@ -31,6 +31,7 @@ public sealed class LinkedDocumentViewModel
 
 public sealed class BusinessOrderDetailsLineViewModel
 {
+    public decimal? ForeignUnitPrice { get; set; }
     public string ProductNameSnapshot { get; set; } = string.Empty;
     public string UnitSnapshot { get; set; } = string.Empty;
     public decimal Quantity { get; set; }

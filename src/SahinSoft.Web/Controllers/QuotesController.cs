@@ -768,6 +768,13 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        // Aynı teklif ikinci kez faturaya dönüştürülemez (iptal edilmemiş bir faturası varsa).
+        if (await dbContext.Invoices.AnyAsync(x => x.QuoteId == quote.Id && x.Status != InvoiceStatus.Cancelled))
+        {
+            TempData["Error"] = "Bu teklif zaten faturaya dönüştürülmüş.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         var invoice = await BuildInvoiceFromQuoteAsync(quote, warehouseId);
         dbContext.Invoices.Add(invoice);
         await dbContext.SaveChangesAsync();
@@ -786,9 +793,13 @@ public sealed class QuotesController(
             return RedirectToAction(nameof(Index));
         }
 
+        var alreadyConverted = await dbContext.Invoices
+            .Where(x => x.QuoteId != null && ids.Contains(x.QuoteId.Value) && x.Status != InvoiceStatus.Cancelled)
+            .Select(x => x.QuoteId!.Value)
+            .ToListAsync();
         var quotes = await dbContext.Quotes
             .Include(x => x.Lines)
-            .Where(x => ids.Contains(x.Id) && x.Status == QuoteStatus.Approved)
+            .Where(x => ids.Contains(x.Id) && x.Status == QuoteStatus.Approved && !alreadyConverted.Contains(x.Id))
             .ToListAsync();
 
         var createdCount = 0;

@@ -430,6 +430,7 @@ public sealed class InvoicesController(
                             UnitSnapshot = orderLine.UnitSnapshot,
                             Quantity = line.QuantityToInvoice,
                             UnitPrice = orderLine.UnitPrice,
+                            ForeignUnitPrice = orderLine.ForeignUnitPrice,
                             DiscountRate = orderLine.DiscountRate,
                             TaxRate = orderLine.TaxRate,
                             BusinessOrderLineId = orderLine.Id
@@ -529,6 +530,7 @@ public sealed class InvoicesController(
         var dispatches = await dbContext.DispatchNotes
             .AsNoTracking()
             .Include(x => x.Warehouse)
+            .Include(x => x.BusinessOrder)
             .Include(x => x.Lines)
             .ThenInclude(x => x.Product)
             .ThenInclude(x => x.TaxRate)
@@ -548,6 +550,8 @@ public sealed class InvoicesController(
                 dateUtc = dispatch.DispatchDateUtc.ToString("dd.MM.yyyy"),
                 warehouseId = dispatch.WarehouseId,
                 warehouseDisplay = $"{dispatch.Warehouse.Code} - {dispatch.Warehouse.Name}",
+                orderCurrency = dispatch.BusinessOrder?.CurrencyCode,
+                orderExchangeRate = dispatch.BusinessOrder?.ExchangeRate ?? 1m,
                 lines = dispatch.Lines
                     .Where(x => x.Quantity - x.InvoicedQuantity > 0)
                     .OrderBy(x => x.LineNumber)
@@ -558,6 +562,7 @@ public sealed class InvoicesController(
                         productDisplay = $"{line.Product.StockCode} - {line.Product.Name}",
                         unitSnapshot = line.Product.Unit,
                         remainingQuantity = line.Quantity - line.InvoicedQuantity,
+                        foreignUnitPrice = line.BusinessOrderLine?.ForeignUnitPrice,
                         unitPrice = line.BusinessOrderLine?.UnitPrice
                             ?? (invoiceType == InvoiceType.Sales ? line.Product.SalePrice : line.Product.PurchasePrice),
                         discountRate = line.BusinessOrderLine?.DiscountRate ?? 0,
