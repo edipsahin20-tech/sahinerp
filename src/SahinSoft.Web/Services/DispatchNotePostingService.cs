@@ -89,6 +89,7 @@ public sealed class DispatchNotePostingService(
             order.UpdatedAtUtc = DateTime.UtcNow;
         }
 
+        var dispatchStockSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
         foreach (var line in dispatch.Lines)
         {
             if (line.Quantity <= 0)
@@ -96,7 +97,7 @@ public sealed class DispatchNotePostingService(
                 throw new InvalidOperationException("İrsaliye satır miktarı sıfırdan büyük olmalıdır.");
             }
 
-            if (!line.Product.TrackStock)
+            if (!StockPolicy.MovesStock(line.Product, dispatchStockSettings))
             {
                 continue;
             }

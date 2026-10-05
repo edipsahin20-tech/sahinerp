@@ -347,7 +347,7 @@ public sealed class QuotesController(
             {
                 customer = new Customer
                 {
-                    Code = await documentNumberGenerator.GenerateAsync("CUSTOMER"),
+                    Code = await documentNumberGenerator.GenerateAboveExistingAsync("CUSTOMER", prefix => dbContext.Customers.AsNoTracking().Where(x => x.Code.StartsWith(prefix)).Select(x => x.Code).ToListAsync()),
                     Name = request.Company.Trim(),
                     Phone = request.Phone,
                     Email = request.Email,

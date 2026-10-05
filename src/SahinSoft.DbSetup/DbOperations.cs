@@ -236,6 +236,29 @@ internal static class DbOperations
         "CustomerAddresses", "CustomerContacts", "Customers"
     ];
 
+    // MASTER-SEQUENCE-REPAIR-SQL-BEGIN
+    internal const string MasterSequenceRepairSql = @"
+IF OBJECT_ID(N'[dbo].[NumberSequences]') IS NOT NULL
+BEGIN
+    IF OBJECT_ID(N'[dbo].[Customers]') IS NOT NULL
+        UPDATE ns SET NextNumber = x.mx + 1 FROM [dbo].[NumberSequences] ns
+        CROSS APPLY (SELECT ISNULL(MAX(t.n), 0) AS mx FROM (SELECT TRY_CAST(SUBSTRING(c.Code, LEN(ns.Prefix) + 1, 18) AS bigint) AS n FROM [dbo].[Customers] c WHERE c.Code LIKE ns.Prefix + '%') t) x
+        WHERE ns.[Key] = 'CUSTOMER' AND ns.Prefix <> '' AND x.mx >= ns.NextNumber;
+    IF OBJECT_ID(N'[dbo].[Products]') IS NOT NULL
+        UPDATE ns SET NextNumber = x.mx + 1 FROM [dbo].[NumberSequences] ns
+        CROSS APPLY (SELECT ISNULL(MAX(t.n), 0) AS mx FROM (SELECT TRY_CAST(SUBSTRING(p.StockCode, LEN(ns.Prefix) + 1, 18) AS bigint) AS n FROM [dbo].[Products] p WHERE p.StockCode LIKE ns.Prefix + '%') t) x
+        WHERE ns.[Key] = 'STOCK' AND ns.Prefix <> '' AND x.mx >= ns.NextNumber;
+    IF OBJECT_ID(N'[dbo].[FinancialAccounts]') IS NOT NULL
+        UPDATE ns SET NextNumber = x.mx + 1 FROM [dbo].[NumberSequences] ns
+        CROSS APPLY (SELECT ISNULL(MAX(t.n), 0) AS mx FROM (SELECT TRY_CAST(SUBSTRING(f.Code, LEN(ns.Prefix) + 1, 18) AS bigint) AS n FROM [dbo].[FinancialAccounts] f WHERE f.Code LIKE ns.Prefix + '%') t) x
+        WHERE ns.[Key] IN ('FINANCIAL_ACCOUNT_CASH', 'FINANCIAL_ACCOUNT_BANK') AND ns.Prefix <> '' AND x.mx >= ns.NextNumber;
+    IF OBJECT_ID(N'[dbo].[AspNetUsers]') IS NOT NULL
+        UPDATE ns SET NextNumber = x.mx + 1 FROM [dbo].[NumberSequences] ns
+        CROSS APPLY (SELECT ISNULL(MAX(t.n), 0) AS mx FROM (SELECT TRY_CAST(SUBSTRING(u.UserName, LEN(ns.Prefix) + 1, 18) AS bigint) AS n FROM [dbo].[AspNetUsers] u WHERE u.UserName LIKE ns.Prefix + '%') t) x
+        WHERE ns.[Key] = 'PERSONNEL' AND ns.Prefix <> '' AND x.mx >= ns.NextNumber;
+END";
+    // MASTER-SEQUENCE-REPAIR-SQL-END
+
     public static void ClearTransactionalData(string server, string user, string password, string databaseName, Action<string> log, bool useWindowsAuth = false) =>
         // Hareketler silinince ürün kartındaki stok bakiyesi de sıfırlanmalı - bakiye hareketlerden
         // türetilmiyor, kartta saklanıyor. Bu olmazsa hareket kalmadığı halde stok eksi/artı kalır.
@@ -304,6 +327,14 @@ internal static class DbOperations
                 connection, transaction))
             {
                 resetSequences.ExecuteNonQuery();
+            }
+
+            // Belge numaraları (fatura, fiş, sipariş...) başa döner; ama silinmeden KALAN ana veri kartlarının
+            // (cari, stok, kasa/banka hesabı, personel) kodları varsa onların sayaçları kalan en büyük kodun
+            // ilerisine alınır - yoksa yeni kart "bu kod zaten kullanılıyor" hatası verir.
+            using (var keepMasterSequences = new SqlCommand(MasterSequenceRepairSql, connection, transaction))
+            {
+                keepMasterSequences.ExecuteNonQuery();
             }
 
             transaction.Commit();

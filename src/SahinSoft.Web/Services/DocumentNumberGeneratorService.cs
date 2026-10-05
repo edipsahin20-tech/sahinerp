@@ -16,6 +16,38 @@ public sealed class ConcurrencyRetryExhaustedException()
 
 public sealed class DocumentNumberGeneratorService(ApplicationDbContext dbContext)
 {
+    // Otomatik kod üretimi (cari, kasa/banka hesabı, personel — StockCodeGeneratorService ile AYNI mantık): sayaç
+    // sistemdeki gerçek en büyük koddan geride kalabilir (sayaç sıfırlandı, veri aktarıldı, elle kod girildi...). Bu yüzden
+    // sayaç ile "mevcut en büyük numara + 1"in BÜYÜĞÜ kullanılır; kayıt anında yeniden hesaplanır, böylece
+    // "kod zaten kullanılıyor" hatası oluşmaz ve boşluklar doldurulmaz (her zaman görülen en büyük numaranın bir fazlası).
+    public Task<string> GenerateAboveExistingAsync(string sequenceKey, Func<string, Task<List<string>>> loadExistingCodes, CancellationToken cancellationToken = default) =>
+        ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                dbContext.ChangeTracker.Clear();
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+                var sequence = await dbContext.NumberSequences.SingleAsync(x => x.Key == sequenceKey, cancellationToken);
+                var existing = await loadExistingCodes(sequence.Prefix);
+                var highest = existing
+                    .Where(c => c.StartsWith(sequence.Prefix, StringComparison.Ordinal))
+                    .Select(c => long.TryParse(c[sequence.Prefix.Length..], out var n) ? n : 0)
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                var next = Math.Max(sequence.NextNumber, highest + 1);
+                var code = $"{sequence.Prefix}{next.ToString($"D{sequence.Padding}")}";
+                sequence.NextNumber = next + 1;
+                sequence.UpdatedAtUtc = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return code;
+            });
+        }, cancellationToken);
+
     public Task<string> GenerateAsync(string sequenceKey, CancellationToken cancellationToken = default) =>
         ExecuteWithConcurrencyRetryAsync(dbContext, async () =>
         {

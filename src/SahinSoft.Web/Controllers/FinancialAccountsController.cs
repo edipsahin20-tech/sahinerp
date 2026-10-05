@@ -47,7 +47,7 @@ public sealed class FinancialAccountsController(
             var sequenceKey = form.AccountType == FinancialAccountType.Bank
                 ? "FINANCIAL_ACCOUNT_BANK"
                 : "FINANCIAL_ACCOUNT_CASH";
-            form.Code = await documentNumberGenerator.GenerateAsync(sequenceKey);
+            form.Code = await documentNumberGenerator.GenerateAboveExistingAsync(sequenceKey, prefix => dbContext.FinancialAccounts.AsNoTracking().Where(x => x.Code.StartsWith(prefix)).Select(x => x.Code).ToListAsync());
             // Code, non-nullable reference type olduğu için model binding sırasında boş bırakılırsa
             // örtük "zorunlu alan" hatası ModelState'e ekleniyor — kodu burada ürettikten sonra bu
             // eski hatayı temizlemezsek ModelState.IsValid hep false kalır (bkz. ProductsController.

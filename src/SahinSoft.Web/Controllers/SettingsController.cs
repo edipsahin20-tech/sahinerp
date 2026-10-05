@@ -148,6 +148,9 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         settings.OrderToInvoiceSalesAutoApprove = model.OrderToInvoiceSalesAutoApprove;
         settings.DispatchToInvoicePurchaseAutoApprove = model.DispatchToInvoicePurchaseAutoApprove;
         settings.DispatchToInvoiceSalesAutoApprove = model.DispatchToInvoiceSalesAutoApprove;
+        settings.PurchaseInvoiceAutoApproveOnSave = model.PurchaseInvoiceAutoApproveOnSave;
+        settings.SalesInvoiceAutoApproveOnSave = model.SalesInvoiceAutoApproveOnSave;
+        settings.StockMovementForServiceItems = model.StockMovementForServiceItems;
         settings.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
@@ -212,6 +215,9 @@ public sealed class SettingsController(ApplicationDbContext dbContext) : Control
         OrderToInvoicePurchaseAutoApprove = settings.OrderToInvoicePurchaseAutoApprove,
         OrderToInvoiceSalesAutoApprove = settings.OrderToInvoiceSalesAutoApprove,
         DispatchToInvoicePurchaseAutoApprove = settings.DispatchToInvoicePurchaseAutoApprove,
-        DispatchToInvoiceSalesAutoApprove = settings.DispatchToInvoiceSalesAutoApprove
+        DispatchToInvoiceSalesAutoApprove = settings.DispatchToInvoiceSalesAutoApprove,
+        PurchaseInvoiceAutoApproveOnSave = settings.PurchaseInvoiceAutoApproveOnSave,
+        SalesInvoiceAutoApproveOnSave = settings.SalesInvoiceAutoApproveOnSave,
+        StockMovementForServiceItems = settings.StockMovementForServiceItems
     };
 }

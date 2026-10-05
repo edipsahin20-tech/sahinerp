@@ -402,6 +402,15 @@ catch (Exception ex)
 
 try
 {
+    await SahinSoft.Web.Data.NumberSequenceRepair.RunAsync(app.Services, app.Logger);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Numara sayacı onarımı başarısız.");
+}
+
+try
+{
     await SahinSoft.Web.Data.PrintTemplateSeed.InitializeAsync(app.Services);
 }
 catch (Exception ex)

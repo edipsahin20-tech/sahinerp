@@ -279,7 +279,11 @@ public sealed class InvoicesController(
         }
         else
         {
-            TempData["Success"] = $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.";
+            // "Fatura kaydedilince otomatik onay" parametresi açıksa (Administrator) doğrudan onaylı fatura olur;
+            // kapalıyken (varsayılan) Taslak olarak kalır.
+            await TryAutoApproveAsync(invoice.Id, ConversionAutoApprovalKind.DirectInvoiceSave, form.InvoiceType, createdByUserId,
+                successMessage: $"{invoice.InvoiceNumber} numaralı fatura kaydedildi ve onaylandı.",
+                fallbackMessage: $"{invoice.InvoiceNumber} numaralı fatura taslağı oluşturuldu.");
         }
 
         // Mikro tarzı hızlı ardışık evrak girişi: yeni fatura kaydedilince Detay'a değil, aynı

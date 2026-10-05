@@ -395,9 +395,10 @@ public sealed class InvoicePostingService(
         string description,
         CancellationToken cancellationToken)
     {
+        var stockSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
         foreach (var line in invoice.Lines)
         {
-            if (line.ProductId is null || line.Product is null || !line.Product.TrackStock)
+            if (line.ProductId is null || line.Product is null || !StockPolicy.MovesStock(line.Product, stockSettings))
             {
                 continue;
             }
@@ -485,9 +486,10 @@ public sealed class InvoicePostingService(
 
         InvoiceTotalsCalculator.Calculate(invoice);
 
+        var postingStockSettings = await dbContext.InventorySettings.AsNoTracking().SingleAsync(x => x.Id == 1, cancellationToken);
         foreach (var line in invoice.Lines.OrderBy(x => x.LineNumber))
         {
-            if (line.ProductId is null || line.Product is null || !line.Product.TrackStock)
+            if (line.ProductId is null || line.Product is null || !StockPolicy.MovesStock(line.Product, postingStockSettings))
             {
                 continue;
             }

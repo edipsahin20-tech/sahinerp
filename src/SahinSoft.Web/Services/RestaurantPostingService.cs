@@ -2029,7 +2029,7 @@ public sealed class RestaurantPostingService(
                     .Where(x => x.Id == 1)
                     .SingleOrDefaultAsync(cancellationToken)
                     ?? throw new InvalidOperationException("Envanter ayarları bulunamadı.");
-                var trackedLines = lines.Where(x => x.Product.TrackStock).ToList();
+                var trackedLines = lines.Where(x => StockPolicy.MovesStock(x.Product, inventorySettings)).ToList();
                 if (trackedLines.Count > 0)
                 {
                     // Depo ADİSYONUN şubesinden seçilir (kapatan kullanıcının şubesinden değil). O şubenin aktif

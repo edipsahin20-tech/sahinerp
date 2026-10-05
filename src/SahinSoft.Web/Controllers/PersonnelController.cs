@@ -75,7 +75,7 @@ public sealed class PersonnelController(
         }
 
         var personnelCode = string.IsNullOrWhiteSpace(form.PersonnelCode)
-            ? await documentNumberGenerator.GenerateAsync("PERSONNEL")
+            ? await documentNumberGenerator.GenerateAboveExistingAsync("PERSONNEL", prefix => userManager.Users.Where(x => x.UserName!.StartsWith(prefix)).Select(x => x.UserName!).ToListAsync())
             : form.PersonnelCode.Trim();
         var hasEmail = !string.IsNullOrWhiteSpace(form.Email);
 

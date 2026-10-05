@@ -232,6 +232,16 @@
                 <div class="col-md-6">
                     <div class="form-check form-switch"><input asp-for="DispatchToInvoiceSalesAutoApprove" class="form-check-input" /><label asp-for="DispatchToInvoiceSalesAutoApprove" class="form-check-label"></label></div>
                 </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="PurchaseInvoiceAutoApproveOnSave" class="form-check-input" /><label asp-for="PurchaseInvoiceAutoApproveOnSave" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch"><input asp-for="SalesInvoiceAutoApproveOnSave" class="form-check-input" /><label asp-for="SalesInvoiceAutoApproveOnSave" class="form-check-label"></label></div>
+                </div>
+                <div class="col-md-12">
+                    <div class="form-check form-switch"><input asp-for="StockMovementForServiceItems" class="form-check-input" /><label asp-for="StockMovementForServiceItems" class="form-check-label"></label>
+                    <div class="text-secondary small">Kapalıyken yalnızca "Stok takip edilsin" işaretli ürünler stok hareketi üretir; Hizmet tipindeki kalemler (ör. montaj, yazılım) stoğu etkilemez. Açıkken Hizmet tipindeki ürünler de fatura/irsaliye/satışta stok hareketi oluşturur.</div></div>
+                </div>
             </div>
         </div>
     </div>

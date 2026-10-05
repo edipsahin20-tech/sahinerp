@@ -158,4 +158,13 @@ public sealed class InventorySettingsViewModel
 
     [Display(Name = "Satış İrsaliyesi → Fatura otomatik onay")]
     public bool DispatchToInvoiceSalesAutoApprove { get; set; }
+
+    [Display(Name = "Alış Faturası kaydedilince otomatik onay (kapalıyken Taslak)")]
+    public bool PurchaseInvoiceAutoApproveOnSave { get; set; }
+
+    [Display(Name = "Satış Faturası kaydedilince otomatik onay (kapalıyken Taslak)")]
+    public bool SalesInvoiceAutoApproveOnSave { get; set; }
+
+    [Display(Name = "Hizmet ürünlerinde de stok hareketi oluştur (Hizmet faturası)")]
+    public bool StockMovementForServiceItems { get; set; }
 }

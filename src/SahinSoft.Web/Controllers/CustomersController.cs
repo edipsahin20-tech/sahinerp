@@ -98,7 +98,7 @@ public sealed class CustomersController(
 
         if (string.IsNullOrWhiteSpace(form.Code))
         {
-            form.Code = await documentNumberGenerator.GenerateAsync("CUSTOMER");
+            form.Code = await documentNumberGenerator.GenerateAboveExistingAsync("CUSTOMER", prefix => dbContext.Customers.AsNoTracking().Where(x => x.Code.StartsWith(prefix)).Select(x => x.Code).ToListAsync());
             // Code, non-nullable reference type olduğu için model binding sırasında boş bırakılırsa
             // örtük "zorunlu alan" hatası ModelState'e ekleniyor — kodu burada ürettikten sonra bu
             // eski hatayı temizlemezsek ModelState.IsValid hep false kalır (bkz. ProductsController.

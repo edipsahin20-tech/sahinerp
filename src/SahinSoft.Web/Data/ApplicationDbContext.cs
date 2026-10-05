@@ -780,6 +780,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(x => x.OrderToInvoiceSalesAutoApprove).HasDefaultValue(false);
             entity.Property(x => x.DispatchToInvoicePurchaseAutoApprove).HasDefaultValue(false);
             entity.Property(x => x.DispatchToInvoiceSalesAutoApprove).HasDefaultValue(false);
+            entity.Property(x => x.PurchaseInvoiceAutoApproveOnSave).HasDefaultValue(false);
+            entity.Property(x => x.SalesInvoiceAutoApproveOnSave).HasDefaultValue(false);
+            entity.Property(x => x.StockMovementForServiceItems).HasDefaultValue(false);
         });
 
         builder.Entity<NumberSequence>(entity =>

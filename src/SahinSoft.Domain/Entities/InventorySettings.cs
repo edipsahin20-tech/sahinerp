@@ -139,4 +139,13 @@ public sealed class InventorySettings : EntityBase
     public bool OrderToInvoiceSalesAutoApprove { get; set; }
     public bool DispatchToInvoicePurchaseAutoApprove { get; set; }
     public bool DispatchToInvoiceSalesAutoApprove { get; set; }
+
+    // Alış/Satış faturası KAYDEDİLİNCE doğrudan onaylı (stok/cari hareketleri işlenmiş) olsun mu?
+    // Kapalıyken (varsayılan) fatura Taslak olarak kaydedilir.
+    public bool PurchaseInvoiceAutoApproveOnSave { get; set; }
+    public bool SalesInvoiceAutoApproveOnSave { get; set; }
+
+    // Hizmet tipindeki ürünler (stok takibi kapalı olsa bile) fatura/irsaliye/satışta stok hareketi oluştursun mu?
+    // Kapalıyken (varsayılan) yalnızca "Stok takip edilsin" işaretli ürünler stok hareketi üretir.
+    public bool StockMovementForServiceItems { get; set; }
 }

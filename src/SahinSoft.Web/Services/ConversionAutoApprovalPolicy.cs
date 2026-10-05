@@ -9,7 +9,8 @@ public enum ConversionAutoApprovalKind
 {
     OrderToDispatch,
     OrderToInvoice,
-    DispatchToInvoice
+    DispatchToInvoice,
+    DirectInvoiceSave
 }
 
 // Sipariş→İrsaliye, Sipariş→Fatura ve İrsaliye→Fatura dönüşümlerinde hedef belgenin taslak mı
@@ -39,6 +40,9 @@ public static class ConversionAutoApprovalPolicy
             ConversionAutoApprovalKind.DispatchToInvoice => direction == InvoiceType.Sales
                 ? settings.DispatchToInvoiceSalesAutoApprove
                 : settings.DispatchToInvoicePurchaseAutoApprove,
+            ConversionAutoApprovalKind.DirectInvoiceSave => direction == InvoiceType.Sales
+                ? settings.SalesInvoiceAutoApproveOnSave
+                : settings.PurchaseInvoiceAutoApproveOnSave,
             _ => false
         };
     }
