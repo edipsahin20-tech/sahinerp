@@ -15,7 +15,7 @@ public sealed class CustomerStatementViewModel
     public bool Detailed { get; set; }
 }
 
-public sealed record StatementDetailRow(string Name, string Quantity, string UnitPrice, string Total);
+public sealed record StatementDetailRow(string Name, string Quantity, string UnitPrice, string Total, string? Note = null);
 
 public sealed class CustomerStatementLineViewModel
 {

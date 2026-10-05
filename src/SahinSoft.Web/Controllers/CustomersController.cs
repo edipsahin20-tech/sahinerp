@@ -324,6 +324,15 @@ public sealed class CustomersController(
         var statementRetailSaleByNumber = statementRetailSaleLookup.ToLookup(x => x.DocumentNumber);
 
         var branchNamesForLines = await dbContext.Branches.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name);
+        // Hareketin kendi açıklaması boşsa fatura satırlarının açıklamaları (ör. "TEMMUZ AYI · AĞUSTOS AYI") gösterilir.
+        var stmtInvoiceIds = transactions.Where(x => x.InvoiceId != null).Select(x => x.InvoiceId!.Value).Distinct().ToList();
+        var invoiceLineNotes = (await dbContext.InvoiceLines.AsNoTracking()
+                .Where(x => stmtInvoiceIds.Contains(x.InvoiceId) && x.Description != null && x.Description != "")
+                .OrderBy(x => x.LineNumber)
+                .Select(x => new { x.InvoiceId, x.Description })
+                .ToListAsync())
+            .GroupBy(x => x.InvoiceId)
+            .ToDictionary(g => g.Key, g => string.Join(" · ", g.Select(x => x.Description!.Trim()).Distinct()));
         var detailsByCariId = detail ? await BuildStatementDetailsAsync(transactions) : new Dictionary<int, List<StatementDetailRow>>();
 
         var runningBalance = openingBalance;
@@ -339,7 +348,9 @@ public sealed class CustomersController(
                 // Ters kayıt (iptal) mevcut tür adıyla değil "İptal" olarak gösterilir.
                 TransactionType = transaction.ReversalOfId is not null ? "İptal" : transaction.TransactionType.GetDisplayName(),
                 DocumentNumber = transaction.DocumentNumber,
-                Description = transaction.Description,
+                Description = !string.IsNullOrWhiteSpace(transaction.Description)
+                    ? transaction.Description
+                    : (transaction.InvoiceId is int stmtInv && invoiceLineNotes.TryGetValue(stmtInv, out var stmtNote) ? stmtNote : null),
                 Debit = transaction.Debit,
                 Credit = transaction.Credit,
                 RunningBalance = runningBalance,
@@ -404,7 +415,7 @@ public sealed class CustomersController(
             if (t.InvoiceId is int invId)
             {
                 rows.AddRange(invoiceLines[invId].Select(l => new StatementDetailRow(
-                    l.ProductNameSnapshot, $"{l.Quantity:N2} {l.UnitSnapshot}", $"{l.UnitPrice:N2}" + (l.TaxRate > 0 ? $" (KDV %{l.TaxRate:0.##})" : ""), l.LineTotal.ToString("N2"))));
+                    l.ProductNameSnapshot, $"{l.Quantity:N2} {l.UnitSnapshot}", l.UnitPrice.ToString("N2"), l.LineTotal.ToString("N2"), string.IsNullOrWhiteSpace(l.Description) ? null : l.Description.Trim())));
             }
             else if (receiptByNumber.TryGetValue(Core(t.DocumentNumber), out var rid))
             {

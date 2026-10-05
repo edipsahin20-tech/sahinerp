@@ -20,7 +20,8 @@
     #statementTable thead { display: table-header-group; }
     #statementTable tr { page-break-inside: avoid; }
     .erp-statement-detail { font-size: 7pt !important; }
-    .erp-statement-detail td.text-end { white-space: normal !important; }
+    .erp-statement-detail td.text-end { white-space: nowrap !important; }
+    #statementTable thead th table { table-layout: fixed; }
     .erp-code-badge { font-size: 7pt !important; padding: 1px 3px !important; }
     #statementTable { font-size: 7.5pt; }
     .erp-statement-detail td { padding: 1px 4px !important; white-space: normal; }
@@ -113,7 +114,12 @@
                         }
                         @if (Model.Detailed)
                         {
-                            <th>Stok İsmi / Ödeme</th>
+                            <th style="min-width:340px;">
+                                <table style="width:100%;table-layout:fixed;border-collapse:collapse;">
+                                    <colgroup><col style="width:46%" /><col style="width:16%" /><col style="width:19%" /><col style="width:19%" /></colgroup>
+                                    <tr><th style="padding:0;border:0;">Stok İsmi / Ödeme</th><th class="text-end" style="padding:0;border:0;">Miktar</th><th class="text-end" style="padding:0;border:0;">Birim Fiyat</th><th class="text-end" style="padding:0;border:0;">Tutar</th></tr>
+                                </table>
+                            </th>
                         }
                         <th data-sort="text">Açıklama</th>
                         <th class="text-end" data-sort="number">Borç</th>
@@ -154,17 +160,18 @@
                                     {
                                         <div style="font-size:.78rem;font-weight:700;color:#334155;">@line.Description</div>
                                     }
-                                    <table class="erp-statement-detail" style="width:100%;font-size:.78rem;color:#475569;margin-top:4px;border-top:1px dashed #cbd5e1;">
-                                    @foreach (var d in line.Details)
-                                    {
-                                        <tr>
-                                            <td>@d.Name</td>
-                                            <td class="text-end">@d.Quantity</td>
-                                            <td class="text-end">@d.UnitPrice</td>
-                                            <td class="text-end">@d.Total</td>
-                                        </tr>
-                                    }
-                                </table>
+                                    <table class="erp-statement-detail" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:.78rem;color:#475569;margin-top:4px;border-top:1px dashed #cbd5e1;">
+                                        <colgroup><col style="width:46%" /><col style="width:16%" /><col style="width:19%" /><col style="width:19%" /></colgroup>
+                                        @foreach (var d in line.Details)
+                                        {
+                                            <tr>
+                                                <td style="overflow-wrap:anywhere;">@d.Name@if (!string.IsNullOrWhiteSpace(d.Note)){<span style="color:#94a3b8;"> — @d.Note</span>}</td>
+                                                <td class="text-end">@d.Quantity</td>
+                                                <td class="text-end">@d.UnitPrice</td>
+                                                <td class="text-end">@d.Total</td>
+                                            </tr>
+                                        }
+                                    </table>
                                 }
                             </td>
                         }
