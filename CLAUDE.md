@@ -23,3 +23,8 @@ Kullanıcı makale özeti sunumlarında aşağıdaki tasarımı onayladı (refer
 ## Teknik notlar
 - Slayt silip yenisini eklerken önce yenileri ekle, sonra eskiyi sil (aksi halde `slideN.xml` yinelenen parça adı oluşur).
 - Doğrulama: LibreOffice ile PDF'e çevirip görsel kontrol et; PowerPoint'te açılmadığını kullanıcıya belirt.
+
+## Renk paleti (makaleye göre)
+- Makale 1: turuncu `E36C0A` + siyah/koyu kahve tonları (`Makale1_Gorsel_Sunum.pptx`).
+- Makale 2: yeşil `2E8B3A` + siyah `1A1A1A`, açık yeşil `8FD19E`, kart zemini `E6F4E8` (`Makale2_Gorsel_Sunum.pptx`). Aynı kartlı tasarım, sadece renkler değişir; tema `accent1`/`accent3` ve master şeridi yeşile çevrilir.
+- Makale 2 son slayt bağlantısı: https://baflas.penpublishing.net/makale/8774
